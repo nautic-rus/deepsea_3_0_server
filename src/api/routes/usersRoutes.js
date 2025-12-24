@@ -3,7 +3,7 @@
 
 /**
  * If you want to remove this file from the repository, ensure no external code
- * requires it. Currently `src/api/routes/index.js` is the consolidated routes file.
+ * requires it. Currently `backend/src/api/routes/index.js` uses `allRoutes.js`.
  */
 
 module.exports = null;
