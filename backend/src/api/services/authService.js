@@ -72,6 +72,83 @@ class AuthService {
       user: userData
     };
   }
+
+  /**
+   * Refresh tokens using refresh token
+   */
+  static async refresh(refreshToken, ipAddress, userAgent) {
+    if (!refreshToken) {
+      throw new AuthError('Refresh token required', 400);
+    }
+
+    // Найти активную сессию по refresh token
+    const session = await Session.findByRefreshToken(refreshToken);
+    if (!session) {
+      throw new AuthError('Invalid refresh token', 401);
+    }
+
+    // Найти пользователя
+    const user = await User.findById(session.user_id);
+    if (!user) {
+      throw new AuthError('User not found', 401);
+    }
+    if (!user.is_active) {
+      throw new AuthError('User account is deactivated', 403);
+    }
+
+    // Генерация новых токенов
+    const tokenPayload = {
+      id: user.id,
+      username: user.username,
+      email: user.email
+    };
+
+    const accessToken = generateAccessToken(tokenPayload);
+    const newRefreshToken = generateRefreshToken();
+    const expiresAt = getTokenExpiration();
+
+    // Деактивируем старую сессию (по старому access token)
+    if (session.token) {
+      await Session.deactivate(session.token);
+    }
+
+    // Создаём новую сессию
+    await Session.create({
+      user_id: user.id,
+      token: accessToken,
+      refresh_token: newRefreshToken,
+      ip_address: ipAddress,
+      user_agent: userAgent,
+      expires_at: expiresAt
+    });
+
+    const userData = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name
+    };
+
+    return {
+      token: accessToken,
+      refresh_token: newRefreshToken,
+      expires_at: expiresAt.toISOString(),
+      user: userData
+    };
+  }
+
+  /**
+   * Logout (deactivate session by access token)
+   */
+  static async logout(token) {
+    if (!token) {
+      throw new AuthError('Token required', 400);
+    }
+
+    await Session.deactivate(token);
+    return true;
+  }
 }
 
 module.exports = AuthService;

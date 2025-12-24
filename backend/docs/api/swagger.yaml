@@ -24,6 +24,43 @@ components:
           type: array
           items:
             type: string
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        first_name:
+          type: string
+          nullable: true
+        last_name:
+          type: string
+          nullable: true
+        middle_name:
+          type: string
+          nullable: true
+        department_id:
+          type: integer
+          nullable: true
+        job_title_id:
+          type: integer
+          nullable: true
+        is_active:
+          type: boolean
+        is_verified:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 paths:
   /api/auth/login:
     post:
@@ -214,3 +251,82 @@ paths:
           description: Authentication required
         '403':
           description: Forbidden - missing permission users.view
+  /api/auth/refresh:
+    post:
+      tags:
+        - auth
+      summary: Обновить access token
+      description: Обновляет access token по refresh token и возвращает новый pair (token, refresh_token)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Токены обновлены
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  refresh_token:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Неверный refresh token
+        '401':
+          description: Unauthorized
+        '500':
+          description: Внутренняя ошибка сервера
+  /api/auth/logout:
+    post:
+      tags:
+        - auth
+      summary: Выйти из системы (деактивировать сессию)
+      description: Деактивирует текущую сессию / refresh token. Требуется авторизация.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Authentication required
+        '500':
+          description: Внутренняя ошибка сервера
+  /api/auth/me:
+    get:
+      tags:
+        - auth
+      summary: Информация о текущем пользователе
+      description: Возвращает профиль авторизованного пользователя.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Authentication required

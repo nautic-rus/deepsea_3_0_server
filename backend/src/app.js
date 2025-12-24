@@ -31,6 +31,9 @@ function getSwaggerSpec() {
 // Swagger UI - загружаем динамически при каждом запросе
 app.use('/api-docs', swaggerUi.serve);
 app.get('/api-docs', (req, res, next) => {
+  // Prevent the browser from caching the HTML UI page so it will request
+  // /api-docs.json each time (which we also mark as no-cache below).
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   const spec = getSwaggerSpec();
   const swaggerUiHandler = swaggerUi.setup(spec, {
     customCss: '.swagger-ui .topbar { display: none }',
@@ -41,7 +44,10 @@ app.get('/api-docs', (req, res, next) => {
 
 // Swagger JSON endpoint - загружаем динамически
 app.get('/api-docs.json', (req, res) => {
+  // Ensure the JSON is not cached by browsers or intermediate proxies so
+  // updates to `backend/docs/api/swagger.json` are visible immediately.
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   const spec = getSwaggerSpec();
   res.send(spec);
 });

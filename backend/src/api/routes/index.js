@@ -17,6 +17,12 @@ const authMiddleware = require('../middleware/authMiddleware');
 // ===== Auth routes =====
 // POST /api/auth/login
 router.post('/auth/login', validateLogin, authController.login);
+// POST /api/auth/refresh
+router.post('/auth/refresh', authController.refresh);
+// POST /api/auth/logout
+router.post('/auth/logout', authMiddleware, authController.logout);
+// GET /api/auth/me
+router.get('/auth/me', authMiddleware, authController.me);
 
 // ===== Users routes =====
 // POST /api/create_users

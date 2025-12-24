@@ -52,7 +52,25 @@ async function authMiddleware(req, res, next) {
     const permsRes = await pool.query(permsQuery, [user.id]);
     const permissions = permsRes.rows.map(r => r.code);
 
-    // Установим req.user
+    // Попробуем получить текстовые наименования отдела и должности
+    let department = null;
+    let jobTitle = null;
+    try {
+      if (user.department_id) {
+        const depRes = await pool.query('SELECT name FROM department WHERE id = $1', [user.department_id]);
+        department = depRes.rows[0] ? depRes.rows[0].name : null;
+      }
+      if (user.job_title_id) {
+        const jtRes = await pool.query('SELECT name FROM job_title WHERE id = $1', [user.job_title_id]);
+        jobTitle = jtRes.rows[0] ? jtRes.rows[0].name : null;
+      }
+    } catch (e) {
+      // Не фатальная ошибка — логируем и продолжаем без текстовых значений
+      // eslint-disable-next-line no-console
+      console.warn('Failed to load department/job_title names for user', user.id, e.message);
+    }
+
+    // Установим req.user (включаем как id ссылки, так и текстовые значения)
     req.user = {
       id: user.id,
       username: user.username,
@@ -61,6 +79,8 @@ async function authMiddleware(req, res, next) {
       last_name: user.last_name,
       department_id: user.department_id,
       job_title_id: user.job_title_id,
+      department: department,
+      job_title: jobTitle,
       is_active: user.is_active,
       permissions
     };
