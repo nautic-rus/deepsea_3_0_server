@@ -18,6 +18,15 @@ class Permission {
     const res = await pool.query(query, [userId, permissionCode]);
     return res.rowCount > 0;
   }
+
+  /**
+   * Список всех разрешений
+   */
+  static async list() {
+    const q = `SELECT id, name, code, description, resource, action FROM permissions ORDER BY id`;
+    const res = await pool.query(q);
+    return res.rows;
+  }
 }
 
 module.exports = Permission;

@@ -48,15 +48,62 @@
         }
       }
       ,
-      "JobTitle": {
+      "Role": {
         "type": "object",
         "properties": {
           "id": { "type": "integer" },
           "name": { "type": "string" },
           "description": { "type": "string", "nullable": true },
-          "is_active": { "type": "boolean" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time" }
+          "permissions": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "code": { "type": "string" } } } },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Permission": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "code": { "type": "string" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "code": { "type": "string", "nullable": true },
+          "status": { "type": "string", "nullable": true },
+          "owner_id": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Issue": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "project_id": { "type": "integer" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "status_id": { "type": "integer" },
+          "assignee_id": { "type": "integer", "nullable": true },
+          "reporter_id": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Document": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "project_id": { "type": "integer" },
+          "stage_id": { "type": "integer", "nullable": true },
+          "specialization_id": { "type": "integer", "nullable": true },
+          "directory_id": { "type": "integer", "nullable": true },
+          "created_by": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
         }
       }
     }
@@ -350,162 +397,183 @@
           }
         }
       }
-      ,
-      "/api/departments/{id}": {
-        "put": {
-          "tags": ["departments"],
-          "summary": "Обновление отдела",
-          "description": "Обновляет отдел по ID. Требуется разрешение departments.update.",
-          "security": [{ "bearerAuth": [] }],
-          "x-permissions": ["departments.update"],
-          "parameters": [
-            { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID отдела" }
-          ],
-          "requestBody": {
-            "required": true,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "name": { "type": "string" },
-                    "description": { "type": "string" },
-                    "manager_id": { "type": "integer" }
-                  }
-                }
-              }
-            }
-          },
-          "responses": {
-            "200": { "description": "Отдел обновлён", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Department" } } } },
-            "400": { "description": "Validation error" },
-            "401": { "description": "Authentication required" },
-            "403": { "description": "Forbidden - missing permission departments.update" },
-            "404": { "description": "Department not found" }
-          }
-        },
-        "delete": {
-          "tags": ["departments"],
-          "summary": "Удаление отдела (soft-delete)",
-          "description": "Пометить отдел как неактивный. Требуется разрешение departments.delete.",
-          "security": [{ "bearerAuth": [] }],
-          "x-permissions": ["departments.delete"],
-          "parameters": [
-            { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID отдела" }
-          ],
-          "responses": {
-            "200": { "description": "Department deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } } } } },
-            "400": { "description": "Invalid department id" },
-            "401": { "description": "Authentication required" },
-            "403": { "description": "Forbidden - missing permission departments.delete" },
-            "404": { "description": "Department not found" }
-          }
-        }
-      }
-      ,
-      "/api/job-titles": {
-        "get": {
-          "tags": ["job-titles"],
-          "summary": "Список должностей",
-          "description": "Возвращает список должностей. Требуется разрешение job_titles.view.",
-          "security": [{ "bearerAuth": [] }],
-          "x-permissions": ["job_titles.view"],
-          "responses": {
-            "200": {
-              "description": "Список должностей",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "data": { "type": "array", "items": { "$ref": "#/components/schemas/JobTitle" } }
-                    }
-                  }
-                }
-              }
-            },
-            "401": { "description": "Authentication required" },
-            "403": { "description": "Forbidden - missing permission job_titles.view" }
-          }
-        },
-        "post": {
-          "tags": ["job-titles"],
-          "summary": "Создать должность",
-          "description": "Создать новую должность. Требуется разрешение job_titles.create.",
-          "security": [{ "bearerAuth": [] }],
-          "x-permissions": ["job_titles.create"],
-          "requestBody": {
-            "required": true,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": ["name"],
-                  "properties": {
-                    "name": { "type": "string" },
-                    "description": { "type": "string" }
-                  }
-                }
-              }
-            }
-          },
-          "responses": {
-            "201": { "description": "Должность создана", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/JobTitle" } } } },
-            "400": { "description": "Validation error" },
-            "401": { "description": "Authentication required" },
-            "403": { "description": "Forbidden - missing permission job_titles.create" }
-          }
-        }
+    ,
+    "/api/roles": {
+      "get": {
+        "tags": ["roles"],
+        "summary": "Список ролей",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["roles.view"],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Role" } } } } } } } }
       },
-      "/api/job-titles/{id}": {
-        "put": {
-          "tags": ["job-titles"],
-          "summary": "Обновление должности",
-          "description": "Обновление должности по ID. Требуется разрешение job_titles.update.",
-          "security": [{ "bearerAuth": [] }],
-          "x-permissions": ["job_titles.update"],
-          "parameters": [
-            { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID должности" }
-          ],
-          "requestBody": {
-            "required": true,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "name": { "type": "string" },
-                    "description": { "type": "string" }
-                  }
-                }
-              }
-            }
-          },
-          "responses": {
-            "200": { "description": "Должность обновлена", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/JobTitle" } } } },
-            "400": { "description": "Validation error" },
-            "401": { "description": "Authentication required" },
-            "403": { "description": "Forbidden - missing permission job_titles.update" },
-            "404": { "description": "Job title not found" }
-          }
-        },
-        "delete": {
-          "tags": ["job-titles"],
-          "summary": "Удаление должности (soft-delete)",
-          "description": "Пометить должность как неактивную. Требуется разрешение job_titles.delete.",
-          "security": [{ "bearerAuth": [] }],
-          "x-permissions": ["job_titles.delete"],
-          "parameters": [
-            { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID должности" }
-          ],
-          "responses": {
-            "200": { "description": "Job title deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } } } } },
-            "400": { "description": "Invalid id" },
-            "401": { "description": "Authentication required" },
-            "403": { "description": "Forbidden - missing permission job_titles.delete" },
-            "404": { "description": "Job title not found" }
-          }
-        }
+      "post": {
+        "tags": ["roles"],
+        "summary": "Создать роль",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["roles.create"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "description": { "type": "string" }, "permission_ids": { "type": "array", "items": { "type": "integer" } } } } } } },
+        "responses": { "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Role" } } } } }
       }
+    },
+    "/api/roles/{id}": {
+      "put": {
+        "tags": ["roles"],
+        "summary": "Обновить роль",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["roles.update"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "description": { "type": "string" }, "permission_ids": { "type": "array", "items": { "type": "integer" } } } } } } },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Role" } } } } }
+      },
+      "delete": {
+        "tags": ["roles"],
+        "summary": "Удалить роль",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["roles.delete"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Deleted" } }
+      }
+    },
+    "/api/permissions": {
+      "get": {
+        "tags": ["permissions"],
+        "summary": "Список разрешений",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["permissions.view"],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Permission" } } } } } } } }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "tags": ["projects"],
+        "summary": "Список проектов",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["projects.view"],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Project" } } } } } } } }
+      },
+      "post": {
+        "tags": ["projects"],
+        "summary": "Создать проект",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["projects.create"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" }, "description": { "type": "string" }, "code": { "type": "string" }, "owner_id": { "type": "integer" } } } } } },
+        "responses": { "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Project" } } } } }
+      }
+    },
+    "/api/projects/{id}": {
+      "get": {
+        "tags": ["projects"],
+        "summary": "Получить проект",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["projects.view"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Project" } } } } }
+      },
+      "put": {
+        "tags": ["projects"],
+        "summary": "Обновить проект",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["projects.update"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "description": { "type": "string" }, "status": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Project" } } } } }
+      },
+      "delete": {
+        "tags": ["projects"],
+        "summary": "Удалить проект",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["projects.delete"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Deleted" } }
+      }
+    },
+    "/api/issues": {
+      "get": {
+        "tags": ["issues"],
+        "summary": "Список задач",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["issues.view"],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Issue" } } } } } } } }
+      },
+      "post": {
+        "tags": ["issues"],
+        "summary": "Создать задачу",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["issues.create"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["project_id","title"], "properties": { "project_id": { "type": "integer" }, "title": { "type": "string" }, "description": { "type": "string" }, "assignee_id": { "type": "integer" } } } } } },
+        "responses": { "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Issue" } } } } }
+      }
+    },
+    "/api/issues/{id}": {
+      "get": {
+        "tags": ["issues"],
+        "summary": "Получить задачу",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["issues.view"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Issue" } } } } }
+      },
+      "put": {
+        "tags": ["issues"],
+        "summary": "Обновить задачу",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["issues.update"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string" }, "description": { "type": "string" }, "status_id": { "type": "integer" } } } } } },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Issue" } } } } }
+      },
+      "delete": {
+        "tags": ["issues"],
+        "summary": "Удалить задачу",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["issues.delete"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Deleted" } }
+      }
+    },
+    "/api/documents": {
+      "get": {
+        "tags": ["documents"],
+        "summary": "Список документов",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.view"],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Document" } } } } } } } }
+      },
+      "post": {
+        "tags": ["documents"],
+        "summary": "Создать документ",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.create"],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["title","project_id"], "properties": { "title": { "type": "string" }, "description": { "type": "string" }, "project_id": { "type": "integer" } } } } } },
+        "responses": { "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Document" } } } } }
+      }
+    },
+    "/api/documents/{id}": {
+      "get": {
+        "tags": ["documents"],
+        "summary": "Получить документ",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.view"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Document" } } } } }
+      },
+      "put": {
+        "tags": ["documents"],
+        "summary": "Обновить документ",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.update"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string" }, "description": { "type": "string" }, "stage_id": { "type": "integer" } } } } } },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Document" } } } } }
+      },
+      "delete": {
+        "tags": ["documents"],
+        "summary": "Удалить документ",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.delete"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Deleted" } }
+      }
+    }
   }
 }
