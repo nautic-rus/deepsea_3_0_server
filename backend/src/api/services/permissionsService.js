@@ -1,5 +1,5 @@
 const Permission = require('../../db/models/Permission');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class PermissionsService {
   static async listPermissions(actor) {

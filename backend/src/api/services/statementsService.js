@@ -1,5 +1,5 @@
 const Statement = require('../../db/models/Statement');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class StatementsService {
   static async listStatements(query = {}, actor) {

@@ -1,5 +1,5 @@
 const Department = require('../../db/models/Department');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class DepartmentsService {
   static async listDepartments(actor) {
@@ -24,7 +24,7 @@ class DepartmentsService {
   static async updateDepartment(id, fields, actor) {
     const requiredPermission = 'departments.update';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const { hasPermission } = require('./permissionService');
+  const { hasPermission } = require('./permissionChecker');
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission departments.update'); err.statusCode = 403; throw err; }
 
@@ -45,7 +45,7 @@ class DepartmentsService {
   static async deleteDepartment(id, actor) {
     const requiredPermission = 'departments.delete';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const { hasPermission } = require('./permissionService');
+  const { hasPermission } = require('./permissionChecker');
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission departments.delete'); err.statusCode = 403; throw err; }
 

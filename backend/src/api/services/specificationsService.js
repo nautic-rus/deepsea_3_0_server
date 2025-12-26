@@ -1,5 +1,5 @@
 const Specification = require('../../db/models/Specification');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class SpecificationsService {
   static async listSpecifications(query = {}, actor) {

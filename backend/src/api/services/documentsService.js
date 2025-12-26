@@ -1,5 +1,5 @@
 const Document = require('../../db/models/Document');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class DocumentsService {
   static async listDocuments(query = {}, actor) {

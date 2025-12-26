@@ -1,5 +1,5 @@
 const Project = require('../../db/models/Project');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class ProjectsService {
   static async listProjects(query = {}, actor) {

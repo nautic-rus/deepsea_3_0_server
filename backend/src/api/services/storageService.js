@@ -1,5 +1,5 @@
 const Storage = require('../../db/models/Storage');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class StorageService {
   static async listStorage(query = {}, actor) {

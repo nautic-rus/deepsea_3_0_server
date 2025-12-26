@@ -6,15 +6,51 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
-    { "key": "accessToken", "value": "", "type": "string" },
-    { "key": "refreshToken", "value": "", "type": "string" },
-    { "key": "createdUserId", "value": "", "type": "string" },
-    { "key": "createdDeptId", "value": "", "type": "string" },
-    { "key": "createdRoleId", "value": "", "type": "string" },
-    { "key": "createdProjectId", "value": "", "type": "string" },
-    { "key": "createdIssueId", "value": "", "type": "string" },
-    { "key": "createdDocumentId", "value": "", "type": "string" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdDeptId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdRoleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdProjectId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdIssueId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdDocumentId",
+      "value": "",
+      "type": "string"
+    }
   ],
   "item": [
     {
@@ -24,94 +60,1346 @@
           "name": "POST /api/auth/login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password123\"\n}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api","auth","login"] }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
           },
-          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json(); const token = res.token || res.tokens?.access || res.accessToken || res.data?.token; if(token) pm.collectionVariables.set('accessToken', token); const refresh = res.refresh_token || res.refreshToken || res.tokens?.refresh || res.data?.refresh_token; if(refresh) pm.collectionVariables.set('refreshToken', refresh); const uid = res.user?.id || res.data?.user?.id || res.id || res.data?.id; if(uid) pm.collectionVariables.set('createdUserId', String(uid)); pm.test('status is 200 or 201', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));"], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json(); const token = res.token || res.tokens?.access || res.accessToken || res.data?.token; if(token) pm.collectionVariables.set('accessToken', token); const refresh = res.refresh_token || res.refreshToken || res.tokens?.refresh || res.data?.refresh_token; if(refresh) pm.collectionVariables.set('refreshToken', refresh); const uid = res.user?.id || res.data?.user?.id || res.id || res.data?.id; if(uid) pm.collectionVariables.set('createdUserId', String(uid)); pm.test('status is 200 or 201', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/auth/refresh",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","auth","refresh"] }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            }
           },
-          "event": [{ "listen": "test", "script": { "exec": ["const res = pm.response.json(); const token = res.token || res.accessToken || res.data?.token; if(token) pm.collectionVariables.set('accessToken', token); pm.test('status 200', ()=> pm.response.to.have.status(200));"], "type": "text/javascript" } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json(); const token = res.token || res.accessToken || res.data?.token; if(token) pm.collectionVariables.set('accessToken', token); pm.test('status 200', ()=> pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "POST /api/auth/logout",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","auth","logout"] } }
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          }
         },
         {
           "name": "GET /api/auth/me",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/auth/me", "host": ["{{baseUrl}}"], "path": ["api","auth","me"] } }
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          }
         }
       ]
     },
     {
       "name": "Users",
       "item": [
-        { "name": "POST /api/create_users", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"username\": \"auto.user{{_$randomInt}}\",\n  \"email\": \"auto.user{{_$randomInt}}@example.com\",\n  \"phone\": \"+10000000000\",\n  \"password\": \"Password123!\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/create_users", "host": ["{{baseUrl}}"], "path": ["api","create_users"] } , "event": [{ "listen": "test", "script": { "exec": [ "const res = pm.response.json(); const id = res.id || res.data?.id || res.user?.id; if(id) pm.collectionVariables.set('createdUserId', String(id)); pm.test('created', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));" ], "type": "text/javascript" } }] } },
-        { "name": "GET /api/users", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api","users"] } } },
-        { "name": "GET /api/users/{id}", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/users/{{createdUserId}}", "host": ["{{baseUrl}}"], "path": ["api","users","{{createdUserId}}"] } } },
-        { "name": "PUT /api/users/{id}", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"first_name\": \"Updated\",\n  \"last_name\": \"User\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/users/{{createdUserId}}", "host": ["{{baseUrl}}"], "path": ["api","users","{{createdUserId}}"] } } },
-        { "name": "DELETE /api/users/{id}", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/users/{{createdUserId}}", "host": ["{{baseUrl}}"], "path": ["api","users","{{createdUserId}}"] } } }
+        {
+          "name": "POST /api/create_users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"auto.user{{_$randomInt}}\",\n  \"email\": \"auto.user{{_$randomInt}}@example.com\",\n  \"phone\": \"+10000000000\",\n  \"password\": \"Password123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/create_users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "create_users"
+              ]
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "const res = pm.response.json(); const id = res.id || res.data?.id || res.user?.id; if(id) pm.collectionVariables.set('createdUserId', String(id)); pm.test('created', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                  ],
+                  "type": "text/javascript"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "GET /api/users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/users/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{createdUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{createdUserId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /api/users/{id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"Updated\",\n  \"last_name\": \"User\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{createdUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{createdUserId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/users/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{createdUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{createdUserId}}"
+              ]
+            }
+          }
+        }
       ]
     },
     {
       "name": "Departments",
       "item": [
-        { "name": "GET /api/departments", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/departments", "host": ["{{baseUrl}}"], "path": ["api","departments"] } } },
-        { "name": "POST /api/departments", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Auto Dept\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/departments", "host": ["{{baseUrl}}"], "path": ["api","departments"] }, "event": [{ "listen": "test", "script": { "exec": [ "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdDeptId', String(id)); pm.test('created dept', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));" ], "type": "text/javascript" } }] } }
+        {
+          "name": "GET /api/departments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "departments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/departments",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Auto Dept\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "departments"
+              ]
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdDeptId', String(id)); pm.test('created dept', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                  ],
+                  "type": "text/javascript"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "PUT /api/departments/{{createdDeptId}}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Dept\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/departments/{{createdDeptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "departments",
+                "{{createdDeptId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/departments/{{createdDeptId}}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/departments/{{createdDeptId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "departments",
+                "{{createdDeptId}}"
+              ]
+            }
+          }
+        }
       ]
     },
     {
       "name": "Roles",
       "item": [
-        { "name": "GET /api/roles", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/roles", "host": ["{{baseUrl}}"], "path": ["api","roles"] } } },
-        { "name": "POST /api/roles", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"auto-role\",\n  \"description\": \"Created by tests\"\n}\n", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/roles", "host": ["{{baseUrl}}"], "path": ["api","roles"] }, "event": [{ "listen": "test", "script": { "exec": [ "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdRoleId', String(id)); pm.test('created role', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));" ], "type": "text/javascript" } }] } },
-        { "name": "PUT /api/roles/{id}", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"auto-role-updated\"\n}\n", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/roles/{{createdRoleId}}", "host": ["{{baseUrl}}"], "path": ["api","roles","{{createdRoleId}}"] } } },
-        { "name": "DELETE /api/roles/{id}", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/roles/{{createdRoleId}}", "host": ["{{baseUrl}}"], "path": ["api","roles","{{createdRoleId}}"] } } }
+        {
+          "name": "GET /api/roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/roles",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"auto-role\",\n  \"description\": \"Created by tests\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles"
+              ]
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdRoleId', String(id)); pm.test('created role', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                  ],
+                  "type": "text/javascript"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "PUT /api/roles/{id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"auto-role-updated\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/{{createdRoleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                "{{createdRoleId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/roles/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/{{createdRoleId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                "{{createdRoleId}}"
+              ]
+            }
+          }
+        }
       ]
     },
     {
       "name": "Permissions",
       "item": [
-        { "name": "GET /api/permissions", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/permissions", "host": ["{{baseUrl}}"], "path": ["api","permissions"] } } }
+        {
+          "name": "GET /api/permissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "permissions"
+              ]
+            }
+          }
+        }
       ]
     },
     {
       "name": "Projects",
       "item": [
-        { "name": "GET /api/projects", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/projects", "host": ["{{baseUrl}}"], "path": ["api","projects"] } } },
-        { "name": "POST /api/projects", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Auto Project\",\n  \"description\": \"Created by tests\"\n}\n", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/projects", "host": ["{{baseUrl}}"], "path": ["api","projects"] }, "event": [{ "listen": "test", "script": { "exec": [ "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdProjectId', String(id)); pm.test('created project', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));" ], "type": "text/javascript" } }] } },
-        { "name": "GET /api/projects/{id}", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/projects/{{createdProjectId}}", "host": ["{{baseUrl}}"], "path": ["api","projects","{{createdProjectId}}"] } } },
-        { "name": "PUT /api/projects/{id}", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Auto Project Updated\"\n}\n", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/projects/{{createdProjectId}}", "host": ["{{baseUrl}}"], "path": ["api","projects","{{createdProjectId}}"] } } },
-        { "name": "DELETE /api/projects/{id}", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/projects/{{createdProjectId}}", "host": ["{{baseUrl}}"], "path": ["api","projects","{{createdProjectId}}"] } } }
+        {
+          "name": "GET /api/projects",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/projects",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Auto Project\",\n  \"description\": \"Created by tests\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/projects",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects"
+              ]
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdProjectId', String(id)); pm.test('created project', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                  ],
+                  "type": "text/javascript"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "GET /api/projects/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{createdProjectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{createdProjectId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /api/projects/{id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Auto Project Updated\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{createdProjectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{createdProjectId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/projects/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{createdProjectId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{createdProjectId}}"
+              ]
+            }
+          }
+        }
       ]
     },
     {
       "name": "Issues",
       "item": [
-        { "name": "GET /api/issues", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/issues", "host": ["{{baseUrl}}"], "path": ["api","issues"] } } },
-        { "name": "POST /api/issues", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"project_id\": {{createdProjectId}},\n  \"title\": \"Auto Issue\",\n  \"description\": \"Created by tests\"\n}\n", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/issues", "host": ["{{baseUrl}}"], "path": ["api","issues"] }, "event": [{ "listen": "test", "script": { "exec": [ "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdIssueId', String(id)); pm.test('created issue', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));" ], "type": "text/javascript" } }] } },
-        { "name": "GET /api/issues/{id}", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/issues/{{createdIssueId}}", "host": ["{{baseUrl}}"], "path": ["api","issues","{{createdIssueId}}"] } } },
-        { "name": "PUT /api/issues/{id}", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"title\": \"Auto Issue Updated\"\n}\n", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/issues/{{createdIssueId}}", "host": ["{{baseUrl}}"], "path": ["api","issues","{{createdIssueId}}"] } } },
-        { "name": "DELETE /api/issues/{id}", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/issues/{{createdIssueId}}", "host": ["{{baseUrl}}"], "path": ["api","issues","{{createdIssueId}}"] } } }
+        {
+          "name": "GET /api/issues",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/issues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "issues"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/issues",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{createdProjectId}},\n  \"title\": \"Auto Issue\",\n  \"description\": \"Created by tests\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/issues",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "issues"
+              ]
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdIssueId', String(id)); pm.test('created issue', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                  ],
+                  "type": "text/javascript"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "GET /api/issues/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/issues/{{createdIssueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{createdIssueId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /api/issues/{id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Auto Issue Updated\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/issues/{{createdIssueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{createdIssueId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/issues/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/issues/{{createdIssueId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "issues",
+                "{{createdIssueId}}"
+              ]
+            }
+          }
+        }
       ]
     },
     {
       "name": "Documents",
       "item": [
-        { "name": "GET /api/documents", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/documents", "host": ["{{baseUrl}}"], "path": ["api","documents"] } } },
-        { "name": "POST /api/documents", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"title\": \"Auto Document\",\n  \"project_id\": {{createdProjectId}},\n  \"description\": \"Created by tests\"\n}\n", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/documents", "host": ["{{baseUrl}}"], "path": ["api","documents"] }, "event": [{ "listen": "test", "script": { "exec": [ "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdDocumentId', String(id)); pm.test('created document', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));" ], "type": "text/javascript" } }] } },
-        { "name": "GET /api/documents/{id}", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/documents/{{createdDocumentId}}", "host": ["{{baseUrl}}"], "path": ["api","documents","{{createdDocumentId}}"] } } },
-        { "name": "PUT /api/documents/{id}", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "raw", "raw": "{\n  \"title\": \"Auto Document Updated\"\n}\n", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{baseUrl}}/api/documents/{{createdDocumentId}}", "host": ["{{baseUrl}}"], "path": ["api","documents","{{createdDocumentId}}"] } } },
-        { "name": "DELETE /api/documents/{id}", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/documents/{{createdDocumentId}}", "host": ["{{baseUrl}}"], "path": ["api","documents","{{createdDocumentId}}"] } } }
+        {
+          "name": "GET /api/documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "documents"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Auto Document\",\n  \"project_id\": {{createdProjectId}},\n  \"description\": \"Created by tests\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "documents"
+              ]
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "const res = pm.response.json(); const id = res.id || res.data?.id; if(id) pm.collectionVariables.set('createdDocumentId', String(id)); pm.test('created document', ()=> pm.expect(pm.response.code).to.be.oneOf([200,201]));"
+                  ],
+                  "type": "text/javascript"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "GET /api/documents/{id}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/{{createdDocumentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "documents",
+                "{{createdDocumentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "PUT /api/documents/{id}",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Auto Document Updated\"\n}\n",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/{{createdDocumentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "documents",
+                "{{createdDocumentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/documents/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/{{createdDocumentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "documents",
+                "{{createdDocumentId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Materials",
+      "item": [
+        {
+          "name": "GET /api/materials",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/materials",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "materials"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/materials/{{createdMaterialId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/materials/{{createdMaterialId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "materials",
+                "{{createdMaterialId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Equipment",
+      "item": [
+        {
+          "name": "GET /api/equipment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/equipment/{{createdEquipmenId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/equipment/{{createdEquipmenId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "equipment",
+                "{{createdEquipmenId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Specifications",
+      "item": [
+        {
+          "name": "GET /api/specifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/specifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "specifications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/specifications/{{createdSpecificationId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/specifications/{{createdSpecificationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "specifications",
+                "{{createdSpecificationId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stages",
+      "item": [
+        {
+          "name": "GET /api/stages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stages"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/stages/{{createdStageId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stages/{{createdStageId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stages",
+                "{{createdStageId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Storage",
+      "item": [
+        {
+          "name": "GET /api/storage",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/storage",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "storage"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/storage/{{createdStoragId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/storage/{{createdStoragId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "storage",
+                "{{createdStoragId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Statements",
+      "item": [
+        {
+          "name": "GET /api/statements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/statements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "statements"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/statements/{{createdStatementId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/statements/{{createdStatementId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "statements",
+                "{{createdStatementId}}"
+              ]
+            }
+          }
+        }
       ]
     }
   ]
 }
- 

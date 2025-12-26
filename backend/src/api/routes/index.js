@@ -19,6 +19,7 @@ const specificationsController = require('../controllers/specificationsControlle
 const stagesController = require('../controllers/stagesController');
 const storageController = require('../controllers/storageController');
 const statementsController = require('../controllers/statementsController');
+const permissionsController = require('../controllers/permissionsController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -147,6 +148,10 @@ router.get('/statements/:id', authMiddleware, statementsController.get);
 router.post('/statements', authMiddleware, statementsController.create);
 router.put('/statements/:id', authMiddleware, statementsController.update);
 router.delete('/statements/:id', authMiddleware, statementsController.delete);
+
+// ===== Permissions routes =====
+// GET /api/permissions
+router.get('/permissions', authMiddleware, permissionsController.list);
 
 module.exports = router;
 

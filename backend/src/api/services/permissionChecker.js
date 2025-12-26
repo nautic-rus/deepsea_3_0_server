@@ -1,10 +1,10 @@
 /**
- * Сервис для проверки разрешений (RBAC)
- * Экспортирует hasPermission(actor, permissionCode)
+ * Permission checker for RBAC
+ * Exports hasPermission(actor, permissionCode)
  *
- * Логика:
- * - Если у actor есть поле permissions (массив) — проверяем в памяти
- * - Иначе делаем быстрый SQL-запрос к user_roles -> role_permissions -> permissions
+ * Logic:
+ * - If actor has `permissions` array, check in-memory
+ * - Otherwise perform a quick SQL query via Permission.hasPermissionForUser
  */
 
 const Permission = require('../../db/models/Permission');
@@ -20,7 +20,7 @@ async function hasPermission(actor, permissionCode) {
     return await Permission.hasPermissionForUser(actor.id, permissionCode);
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error('permissionService.hasPermission error:', err.message);
+    console.error('permissionChecker.hasPermission error:', err.message);
     return false;
   }
 }

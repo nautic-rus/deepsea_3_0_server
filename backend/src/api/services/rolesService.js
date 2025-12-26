@@ -1,6 +1,6 @@
 const Role = require('../../db/models/Role');
 
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class RolesService {
   static async listRoles(actor) {

@@ -1,5 +1,5 @@
 const Issue = require('../../db/models/Issue');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class IssuesService {
   static async listIssues(query = {}, actor) {

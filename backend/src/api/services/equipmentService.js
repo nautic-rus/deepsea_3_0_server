@@ -1,5 +1,5 @@
 const Equipment = require('../../db/models/Equipment');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class EquipmentService {
   static async listEquipment(query = {}, actor) {

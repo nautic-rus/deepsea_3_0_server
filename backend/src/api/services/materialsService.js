@@ -1,5 +1,5 @@
 const Material = require('../../db/models/Material');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class MaterialsService {
   static async listMaterials(query = {}, actor) {

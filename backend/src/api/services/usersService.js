@@ -5,6 +5,7 @@
 const User = require('../../db/models/User');
 const pool = require('../../db/connection');
 const { hashPassword } = require('../../utils/password');
+const { hasPermission } = require('./permissionChecker');
 
 class UsersService {
   /**
@@ -26,8 +27,7 @@ class UsersService {
     } = userData;
 
     // Проверка прав: требуется разрешение 'users.create'
-    const requiredPermission = 'users.create';
-
+  const requiredPermission = 'users.create';
     // Если нет информации о вызывающем пользователе — нельзя создавать
     if (!actor || !actor.id) {
       const err = new Error('Authentication required');
@@ -35,7 +35,6 @@ class UsersService {
       throw err;
     }
 
-    const { hasPermission } = require('./permissionService');
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) {
       const err = new Error('Forbidden: missing permission users.create');
@@ -115,7 +114,6 @@ class UsersService {
       throw err;
     }
 
-    const { hasPermission } = require('./permissionService');
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) {
       const err = new Error('Forbidden: missing permission users.view');
@@ -167,7 +165,6 @@ class UsersService {
       throw err;
     }
 
-    const { hasPermission } = require('./permissionService');
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) {
       const err = new Error('Forbidden: missing permission users.view');
@@ -213,7 +210,6 @@ UsersService.updateUser = async function (id, fields, actor) {
   if (!actor || !actor.id) {
     const err = new Error('Authentication required'); err.statusCode = 401; throw err;
   }
-  const { hasPermission } = require('./permissionService');
   const allowed = await hasPermission(actor, requiredPermission);
   if (!allowed) { const err = new Error('Forbidden: missing permission users.update'); err.statusCode = 403; throw err; }
 
@@ -251,7 +247,6 @@ UsersService.deleteUser = async function (id, actor) {
   if (!actor || !actor.id) {
     const err = new Error('Authentication required'); err.statusCode = 401; throw err;
   }
-  const { hasPermission } = require('./permissionService');
   const allowed = await hasPermission(actor, requiredPermission);
   if (!allowed) { const err = new Error('Forbidden: missing permission users.delete'); err.statusCode = 403; throw err; }
 

@@ -1,5 +1,5 @@
 const Stage = require('../../db/models/Stage');
-const { hasPermission } = require('./permissionService');
+const { hasPermission } = require('./permissionChecker');
 
 class StagesService {
   static async listStages(query = {}, actor) {
