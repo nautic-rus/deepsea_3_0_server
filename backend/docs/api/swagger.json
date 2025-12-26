@@ -39,6 +39,7 @@
           "updated_at": { "type": "string", "format": "date-time" }
         }
       }
+      }
       ,
       "Department": {
         "type": "object",
@@ -106,8 +107,87 @@
           "created_at": { "type": "string", "format": "date-time" }
         }
       }
-    }
-  },
+      ,
+      "Material": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "stock_code": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "directory_id": { "type": "integer", "nullable": true },
+          "unit_id": { "type": "integer", "nullable": true },
+          "category_id": { "type": "integer", "nullable": true },
+          "manufacturer": { "type": "string", "nullable": true },
+          "created_by": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Equipment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "equipment_code": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "sfi_code_id": { "type": "integer" },
+          "project_id": { "type": "integer", "nullable": true },
+          "supplier_id": { "type": "integer", "nullable": true },
+          "manufacturer": { "type": "string", "nullable": true },
+          "model": { "type": "string", "nullable": true },
+          "serial_number": { "type": "string", "nullable": true },
+          "installation_date": { "type": "string", "format": "date" },
+          "status": { "type": "string" },
+          "technical_specifications": { "type": "string", "nullable": true }
+        }
+      },
+      "Specification": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "project_id": { "type": "integer" },
+          "document_id": { "type": "integer", "nullable": true },
+          "code": { "type": "string", "nullable": true },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "version": { "type": "string", "nullable": true }
+        }
+      },
+      "Stage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "project_id": { "type": "integer" },
+          "name": { "type": "string" },
+          "code": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "end_date": { "type": "string", "format": "date" },
+          "order_index": { "type": "integer" }
+        }
+      },
+      "Storage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "bucket_name": { "type": "string" },
+          "object_key": { "type": "string" },
+          "storage_type": { "type": "string" },
+          "file_category_id": { "type": "integer", "nullable": true },
+          "uploaded_by": { "type": "integer" }
+        }
+      },
+      "Statement": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "document_id": { "type": "integer" },
+          "code": { "type": "string", "nullable": true },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "version": { "type": "string", "nullable": true }
+        }
+      }
+    },
   "paths": {
     "/api/auth/login": {
       "post": {
@@ -575,5 +655,5 @@
         "responses": { "200": { "description": "Deleted" } }
       }
     }
-  }
+    }
 }

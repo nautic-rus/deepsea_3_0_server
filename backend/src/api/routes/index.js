@@ -13,6 +13,12 @@ const rolesController = require('../controllers/rolesController');
 const projectsController = require('../controllers/projectsController');
 const issuesController = require('../controllers/issuesController');
 const documentsController = require('../controllers/documentsController');
+const materialsController = require('../controllers/materialsController');
+const equipmentController = require('../controllers/equipmentController');
+const specificationsController = require('../controllers/specificationsController');
+const stagesController = require('../controllers/stagesController');
+const storageController = require('../controllers/storageController');
+const statementsController = require('../controllers/statementsController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -99,6 +105,48 @@ router.post('/documents', authMiddleware, documentsController.create);
 router.put('/documents/:id', authMiddleware, documentsController.update);
 // DELETE /api/documents/:id
 router.delete('/documents/:id', authMiddleware, documentsController.delete);
+
+// ===== Materials routes =====
+router.get('/materials', authMiddleware, materialsController.list);
+router.get('/materials/:id', authMiddleware, materialsController.get);
+router.post('/materials', authMiddleware, materialsController.create);
+router.put('/materials/:id', authMiddleware, materialsController.update);
+router.delete('/materials/:id', authMiddleware, materialsController.delete);
+
+// ===== Equipment routes =====
+router.get('/equipment', authMiddleware, equipmentController.list);
+router.get('/equipment/:id', authMiddleware, equipmentController.get);
+router.post('/equipment', authMiddleware, equipmentController.create);
+router.put('/equipment/:id', authMiddleware, equipmentController.update);
+router.delete('/equipment/:id', authMiddleware, equipmentController.delete);
+
+// ===== Specifications routes =====
+router.get('/specifications', authMiddleware, specificationsController.list);
+router.get('/specifications/:id', authMiddleware, specificationsController.get);
+router.post('/specifications', authMiddleware, specificationsController.create);
+router.put('/specifications/:id', authMiddleware, specificationsController.update);
+router.delete('/specifications/:id', authMiddleware, specificationsController.delete);
+
+// ===== Stages routes =====
+router.get('/stages', authMiddleware, stagesController.list);
+router.get('/stages/:id', authMiddleware, stagesController.get);
+router.post('/stages', authMiddleware, stagesController.create);
+router.put('/stages/:id', authMiddleware, stagesController.update);
+router.delete('/stages/:id', authMiddleware, stagesController.delete);
+
+// ===== Storage routes =====
+router.get('/storage', authMiddleware, storageController.list);
+router.get('/storage/:id', authMiddleware, storageController.get);
+router.post('/storage', authMiddleware, storageController.create);
+router.put('/storage/:id', authMiddleware, storageController.update);
+router.delete('/storage/:id', authMiddleware, storageController.delete);
+
+// ===== Statements routes =====
+router.get('/statements', authMiddleware, statementsController.list);
+router.get('/statements/:id', authMiddleware, statementsController.get);
+router.post('/statements', authMiddleware, statementsController.create);
+router.put('/statements/:id', authMiddleware, statementsController.update);
+router.delete('/statements/:id', authMiddleware, statementsController.delete);
 
 module.exports = router;
 
