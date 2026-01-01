@@ -20,6 +20,7 @@ const stagesController = require('../controllers/stagesController');
 const storageController = require('../controllers/storageController');
 const statementsController = require('../controllers/statementsController');
 const permissionsController = require('../controllers/permissionsController');
+const userProjectsController = require('../controllers/userProjectsController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -70,6 +71,10 @@ router.post('/roles', authMiddleware, rolesController.create);
 router.put('/roles/:id', authMiddleware, rolesController.update);
 // DELETE /api/roles/:id
 router.delete('/roles/:id', authMiddleware, rolesController.delete);
+// GET /api/roles/:id/permissions
+router.get('/roles/:id/permissions', authMiddleware, rolesController.getPermissions);
+// GET /api/roles/permissions?role_id= - fallback when id is not provided in path
+router.get('/roles/permissions', authMiddleware, rolesController.getPermissionsByQuery);
 
 // ===== Projects routes =====
 // GET /api/projects
@@ -82,6 +87,12 @@ router.post('/projects', authMiddleware, projectsController.create);
 router.put('/projects/:id', authMiddleware, projectsController.update);
 // DELETE /api/projects/:id
 router.delete('/projects/:id', authMiddleware, projectsController.delete);
+// GET /api/projects/:id/assignments
+router.get('/projects/:id/assignments', authMiddleware, userProjectsController.listByProject);
+// POST /api/projects/:id/assign - assign a user to project (body: { user_id, role })
+router.post('/projects/:id/assign', authMiddleware, userProjectsController.assign);
+// DELETE /api/projects/:id/assignments/:userId
+router.delete('/projects/:id/assignments/:userId', authMiddleware, userProjectsController.unassign);
 
 // ===== Issues routes =====
 // GET /api/issues

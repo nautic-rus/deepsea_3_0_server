@@ -16,10 +16,37 @@ class Project {
     return res.rows;
   }
 
+  // List projects that are assigned to a given user (via user_projects join table)
+  static async listForUser(userId, { page = 1, limit = 50, search, owner_id, status } = {}) {
+    const offset = (page - 1) * limit;
+    const where = ['up.user_id = $1'];
+    const values = [userId];
+    let idx = 2;
+    if (owner_id) { where.push(`p.owner_id = $${idx++}`); values.push(owner_id); }
+    if (status) { where.push(`p.status = $${idx++}`); values.push(status); }
+    if (search) { where.push(`(p.name ILIKE $${idx} OR p.description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id, p.created_at
+      FROM projects p
+      JOIN user_projects up ON up.project_id = p.id
+      ${whereSql}
+      ORDER BY p.id
+      LIMIT $${idx++} OFFSET $${idx}`;
+    values.push(limit, offset);
+    const res = await pool.query(q, values);
+    return res.rows;
+  }
+
   static async findById(id) {
     const q = `SELECT id, name, description, code, status, owner_id, created_at FROM projects WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
+  }
+
+  static async isUserAssigned(projectId, userId) {
+    const q = `SELECT 1 FROM user_projects WHERE project_id = $1 AND user_id = $2 LIMIT 1`;
+    const res = await pool.query(q, [projectId, userId]);
+    return res.rows.length > 0;
   }
 
   static async create({ name, description, code, owner_id }) {

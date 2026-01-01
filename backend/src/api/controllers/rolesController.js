@@ -43,6 +43,34 @@ class RolesController {
       res.json({ message: 'Role deleted' });
     } catch (err) { next(err); }
   }
+
+  static async getPermissions(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const rows = await RolesService.getPermissionsByRole(id, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  // Fallback handler: accepts role_id via query string or uses actor's role
+  static async getPermissionsByQuery(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const qid = req.query.role_id || req.query.id || null;
+      const id = qid ? parseInt(qid, 10) : null;
+      if (!id) {
+        // Try to infer role id from actor (if user has single role)
+        if (actor && actor.role_id) {
+          const rows = await RolesService.getPermissionsByRole(actor.role_id, actor);
+          return res.json({ data: rows });
+        }
+        return res.status(400).json({ error: 'role_id is required (provide as path param or ?role_id=)' });
+      }
+      const rows = await RolesService.getPermissionsByRole(id, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = RolesController;

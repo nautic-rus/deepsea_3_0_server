@@ -40,24 +40,28 @@ class User {
   static async findById(id) {
     const query = `
       SELECT 
-        id, 
-        username, 
-        email, 
-        phone,
-        first_name, 
-        last_name, 
-        middle_name,
-        department_id,
-        job_title_id,
-        is_active, 
-        is_verified,
-        last_login,
-        created_at,
-        updated_at
-      FROM users 
-      WHERE id = $1
+        u.id, 
+        u.username, 
+        u.email, 
+        u.phone,
+        u.first_name, 
+        u.last_name, 
+        u.middle_name,
+        u.department_id,
+        d.name AS department,
+        u.job_title_id,
+        jt.name AS job_title,
+        u.is_active, 
+        u.is_verified,
+        u.last_login,
+        u.created_at,
+        u.updated_at
+      FROM users u
+      LEFT JOIN department d ON u.department_id = d.id
+      LEFT JOIN job_title jt ON u.job_title_id = jt.id
+      WHERE u.id = $1
     `;
-    
+
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
   }
@@ -251,17 +255,41 @@ class User {
   static async listUsers({ search = null, limit = 25, offset = 0 } = {}) {
     const params = [];
     let where = '';
+    // Build WHERE clause with dynamic parameter positions
     if (search) {
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-      where = `WHERE username ILIKE $1 OR email ILIKE $2 OR phone ILIKE $3`;
+      where = `WHERE u.username ILIKE $1 OR u.email ILIKE $2 OR u.phone ILIKE $3`;
     }
+
+    // push limit and offset
     params.push(limit, offset);
+
+    // Note: join department and job_title to return textual names
+    const limitParamIndex = params.length - 1; // limit is second-last
+    const offsetParamIndex = params.length; // offset is last
+
     const query = `
-      SELECT id, username, email, phone, first_name, last_name, middle_name, department_id, job_title_id, is_active, is_verified, created_at, updated_at
-      FROM users
+      SELECT u.id,
+             u.username,
+             u.email,
+             u.phone,
+             u.first_name,
+             u.last_name,
+             u.middle_name,
+            u.department_id,
+             d.name AS department,
+             u.job_title_id,
+             jt.name AS job_title,
+             u.is_active,
+             u.is_verified,
+             u.created_at,
+             u.updated_at
+      FROM users u
+      LEFT JOIN department d ON u.department_id = d.id
+      LEFT JOIN job_title jt ON u.job_title_id = jt.id
       ${where}
-      ORDER BY id ASC
-      LIMIT $${params.length - 1} OFFSET $${params.length}
+      ORDER BY u.id ASC
+      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
     `;
     const res = await pool.query(query, params);
     return res.rows;

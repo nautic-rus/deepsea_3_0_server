@@ -27,6 +27,21 @@ class Permission {
     const res = await pool.query(q);
     return res.rows;
   }
+
+  /**
+   * List permissions assigned to a specific role
+   */
+  static async listByRole(roleId) {
+    const q = `
+      SELECT p.id, p.name, p.code, p.description, p.resource, p.action
+      FROM permissions p
+      JOIN role_permissions rp ON rp.permission_id = p.id
+      WHERE rp.role_id = $1
+      ORDER BY p.id
+    `;
+    const res = await pool.query(q, [roleId]);
+    return res.rows;
+  }
 }
 
 module.exports = Permission;

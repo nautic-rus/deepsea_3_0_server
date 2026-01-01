@@ -11,7 +11,16 @@ class Department {
   }
 
   static async list() {
-    const res = await pool.query('SELECT id, name FROM department ORDER BY id ASC');
+    const query = `
+      SELECT d.id,
+             d.name,
+             d.manager_id,
+             TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_name
+      FROM department d
+      LEFT JOIN users u ON d.manager_id = u.id
+      ORDER BY d.id ASC
+    `;
+    const res = await pool.query(query);
     return res.rows;
   }
 
@@ -33,12 +42,26 @@ class Department {
       }
     }
     if (sets.length === 0) {
-      const res = await pool.query('SELECT id, name, description, manager_id, created_at, updated_at FROM department WHERE id = $1', [id]);
+      const res = await pool.query(
+        `SELECT d.id, d.name, d.description, d.manager_id, TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_name, d.created_at, d.updated_at
+         FROM department d
+         LEFT JOIN users u ON d.manager_id = u.id
+         WHERE d.id = $1`,
+        [id]
+      );
       return res.rows[0] || null;
     }
     params.push(id);
-    const query = `UPDATE department SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, name, description, manager_id, created_at, updated_at`;
-    const res = await pool.query(query, params);
+    // perform update then re-select enriched row to include manager_name
+    const updateQuery = `UPDATE department SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx}`;
+    await pool.query(updateQuery, params);
+    const res = await pool.query(
+      `SELECT d.id, d.name, d.description, d.manager_id, TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_name, d.created_at, d.updated_at
+       FROM department d
+       LEFT JOIN users u ON d.manager_id = u.id
+       WHERE d.id = $1`,
+      [id]
+    );
     return res.rows[0] || null;
   }
 

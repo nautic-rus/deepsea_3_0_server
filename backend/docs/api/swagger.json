@@ -70,9 +70,19 @@
             "type": "integer",
             "nullable": true
           },
+          "department": {
+            "type": "string",
+            "nullable": true,
+            "description": "Department name"
+          },
           "job_title_id": {
             "type": "integer",
             "nullable": true
+          },
+          "job_title": {
+            "type": "string",
+            "nullable": true,
+            "description": "Job title name"
           },
           "is_active": {
             "type": "boolean"
@@ -99,6 +109,16 @@
         },
         "name": {
           "type": "string"
+        }
+        ,
+        "manager_id": {
+          "type": "integer",
+          "nullable": true
+        },
+        "manager_name": {
+          "type": "string",
+          "nullable": true,
+          "description": "Full name of the manager"
         }
       }
     },
@@ -182,6 +202,17 @@
           "type": "string",
           "format": "date-time"
         }
+      }
+    },
+    "UserProject": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "user_id": { "type": "integer" },
+        "project_id": { "type": "integer" },
+        "role": { "type": "string", "nullable": true },
+        "assigned_by": { "type": "integer", "nullable": true },
+        "assigned_at": { "type": "string", "format": "date-time" }
       }
     },
     "Issue": {
@@ -1320,6 +1351,50 @@
         }
       }
     },
+    "/api/roles/{id}/permissions": {
+      "get": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Get permissions for role",
+        "description": "Returns list of permissions assigned to a role",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "Role ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Permission" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission roles.view" },
+          "400": { "description": "Invalid id" }
+        }
+      }
+    },
     "/api/permissions": {
       "get": {
         "tags": [
@@ -1566,6 +1641,73 @@
           "200": {
             "description": "Deleted"
           }
+        }
+      }
+    },
+    "/api/projects/{id}/assignments": {
+      "get": {
+        "tags": ["projects"],
+        "summary": "Список привязанных пользователей к проекту",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProject" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/assign": {
+      "post": {
+        "tags": ["projects"],
+        "summary": "Назначить пользователя на проект",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["user_id"],
+                "properties": {
+                  "user_id": { "type": "integer" },
+                  "role": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserProject" } } } }
+        }
+      }
+    },
+    "/api/projects/{id}/assignments/{userId}": {
+      "delete": {
+        "tags": ["projects"],
+        "summary": "Удалить привязку пользователя к проекту",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } },
+          { "in": "path", "name": "userId", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
         }
       }
     },

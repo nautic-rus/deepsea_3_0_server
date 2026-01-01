@@ -259,7 +259,21 @@
                 "users"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('status is 200', ()=> pm.response.to.have.status(200));",
+                  "pm.test('has data array', ()=> pm.expect(Array.isArray(res.data)).to.be.true);",
+                  "if (res.data.length>0) { pm.test('items contain department and job_title', ()=> { const item=res.data[0]; pm.expect(item).to.have.property('department'); pm.expect(item).to.have.property('job_title'); }); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "GET /api/users/{id}",
@@ -282,7 +296,20 @@
                 "{{createdUserId}}"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "pm.test('status is 200', ()=> pm.response.to.have.status(200));",
+                  "pm.test('response has department and job_title', ()=> { pm.expect(res).to.have.property('department'); pm.expect(res).to.have.property('job_title'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         },
         {
           "name": "PUT /api/users/{id}",
@@ -498,6 +525,30 @@
               "path": [
                 "api",
                 "roles"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/roles/{id}/permissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/{{createdRoleId}}/permissions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "roles",
+                "{{createdRoleId}}",
+                "permissions"
               ]
             }
           }
@@ -788,6 +839,126 @@
               ]
             }
           }
+        }
+        ,
+        {
+          "name": "GET /api/projects/{id}/assignments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{createdProjectId}}/assignments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{createdProjectId}}",
+                "assignments"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json(); pm.test('status 200', ()=> pm.response.to.have.status(200)); const found = Array.isArray(res.data) && res.data.some(i => String(i.user_id) === pm.collectionVariables.get('createdUserId')); pm.test('creator assigned to project', ()=> pm.expect(found).to.be.true);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/projects/{id}/assign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": {{createdUserId}},\n  \"role\": \"member\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{createdProjectId}}/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{createdProjectId}}",
+                "assign"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json(); pm.test('status 201', ()=> pm.expect(pm.response.code).to.be.oneOf([201,200])); pm.test('assignment created', ()=> pm.expect(res.data).to.have.property('user_id'))"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /api/projects/{id}/assignments/{userId}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/projects/{{createdProjectId}}/assignments/{{createdUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "projects",
+                "{{createdProjectId}}",
+                "assignments",
+                "{{createdUserId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json(); pm.test('status 200', ()=> pm.expect(pm.response.code).to.be.oneOf([200,204])); pm.test('success true', ()=> pm.expect(res.success).to.be.oneOf([true, 'true']));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
         }
       ]
     },
