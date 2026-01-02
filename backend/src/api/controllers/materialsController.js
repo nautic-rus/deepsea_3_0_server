@@ -43,6 +43,14 @@ class MaterialsController {
       res.json({ message: 'Material deleted' });
     } catch (err) { next(err); }
   }
+
+  static async next_stock_code(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const code = await MaterialsService.nextStockCode(actor);
+      res.json({ stock_code: code });
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = MaterialsController;

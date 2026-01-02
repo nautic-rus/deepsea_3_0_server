@@ -120,6 +120,8 @@ router.delete('/documents/:id', authMiddleware, documentsController.delete);
 
 // ===== Materials routes =====
 router.get('/materials', authMiddleware, materialsController.list);
+// GET next stock code
+router.get('/materials/next_stock_code', authMiddleware, materialsController.next_stock_code);
 router.get('/materials/:id', authMiddleware, materialsController.get);
 router.post('/materials', authMiddleware, materialsController.create);
 router.put('/materials/:id', authMiddleware, materialsController.update);

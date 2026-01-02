@@ -26,7 +26,16 @@ class Specification {
     const q = `INSERT INTO specification (project_id, document_id, code, name, description, version, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, project_id, document_id, code, name, description, version, created_by, created_at`;
     const vals = [fields.project_id, fields.document_id, fields.code, fields.name, fields.description, fields.version, fields.created_by];
     const res = await pool.query(q, vals);
-    return res.rows[0];
+    const spec = res.rows[0];
+    // record initial version in specification_version table
+    try {
+      if (spec && spec.version) {
+        await pool.query(`INSERT INTO specification_version (specification_id, version, notes, created_by) VALUES ($1,$2,$3,$4)`, [spec.id, spec.version, null, spec.created_by]);
+      }
+    } catch (e) {
+      // don't break main flow if version table isn't available
+    }
+    return spec;
   }
 
   static async update(id, fields) {
@@ -40,7 +49,16 @@ class Specification {
     const q = `UPDATE specification SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, project_id, document_id, code, name, description, version, created_by, created_at`;
     values.push(id);
     const res = await pool.query(q, values);
-    return res.rows[0] || null;
+    const updated = res.rows[0] || null;
+    // if version was provided, insert a new version record
+    try {
+      if (updated && fields.version !== undefined) {
+        await pool.query(`INSERT INTO specification_version (specification_id, version, notes, created_by) VALUES ($1,$2,$3,$4)`, [updated.id, fields.version, null, updated.created_by]);
+      }
+    } catch (e) {
+      // ignore failures related to version recording
+    }
+    return updated;
   }
 
   static async softDelete(id) {

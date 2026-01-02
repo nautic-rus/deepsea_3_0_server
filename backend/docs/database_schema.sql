@@ -513,6 +513,29 @@ CREATE TABLE specification (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Таблица версий спецификаций (история версий каждой спецификации)
+CREATE TABLE specification_version (
+    id SERIAL PRIMARY KEY,
+    specification_id INTEGER NOT NULL REFERENCES specification(id) ON DELETE CASCADE,
+    version VARCHAR(50),
+    notes TEXT,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Таблица частей спецификации (позиции / части, привязанные к конкретной версии спецификации)
+CREATE TABLE specification_parts (
+    id SERIAL PRIMARY KEY,
+    specification_version_id INTEGER NOT NULL REFERENCES specification_version(id) ON DELETE CASCADE,
+    part_code VARCHAR(100),
+    stock_code VARCHAR(255) REFERENCES materials(stock_code) ON DELETE SET NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    quantity DECIMAL(15,3) DEFAULT 1,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Таблица ведомостей (объединяют материалы из всех спецификаций)
 CREATE TABLE statements (
     id SERIAL PRIMARY KEY,
@@ -570,17 +593,6 @@ CREATE TABLE customer_questions_storage (
     storage_id INTEGER NOT NULL REFERENCES storage(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(customer_question_id, storage_id)
-);
-
--- Связь многие-ко-многим между спецификациями и материалами
-CREATE TABLE specification_materials (
-    id SERIAL PRIMARY KEY,
-    specification_id INTEGER NOT NULL REFERENCES specification(id) ON DELETE CASCADE,
-    material_id INTEGER NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
-    quantity DECIMAL(15, 3) DEFAULT 1,
-    notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(specification_id, material_id)
 );
 
 -- Связь многие-ко-многим между ведомостями и спецификациями
@@ -792,6 +804,9 @@ CREATE INDEX idx_specification_document_id ON specification(document_id);
 CREATE INDEX idx_specification_code ON specification(code);
 CREATE INDEX idx_specification_created_by ON specification(created_by);
 CREATE INDEX idx_specification_updated_by ON specification(updated_by);
+CREATE INDEX idx_specification_parts_specification_version_id ON specification_parts(specification_version_id);
+CREATE INDEX idx_specification_parts_stock_code ON specification_parts(stock_code);
+CREATE INDEX idx_specification_parts_created_by ON specification_parts(created_by);
 CREATE INDEX idx_statements_document_id ON statements(document_id);
 CREATE INDEX idx_statements_code ON statements(code);
 CREATE INDEX idx_statements_created_by ON statements(created_by);
@@ -862,6 +877,7 @@ COMMENT ON TABLE sfi_codes IS 'Таблица SFI классификации (Sh
 COMMENT ON TABLE suppliers IS 'Таблица поставщиков оборудования';
 COMMENT ON TABLE equipment IS 'Таблица оборудования судна с привязкой к SFI классификации';
 COMMENT ON TABLE specification IS 'Таблица спецификаций (привязана к одному проекту)';
+COMMENT ON TABLE specification_parts IS 'Таблица частей/позиций спецификации, привязана к версии спецификации (specification_version)';
 COMMENT ON TABLE statements IS 'Таблица ведомостей (объединяют материалы из всех спецификаций)';
 COMMENT ON TABLE specification_materials IS 'Связь между спецификациями и материалами';
 COMMENT ON TABLE statements_specification IS 'Связь между ведомостями и спецификациями';
