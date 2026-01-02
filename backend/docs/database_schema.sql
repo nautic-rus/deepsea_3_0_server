@@ -79,6 +79,17 @@ CREATE TABLE user_roles (
     UNIQUE(user_id, role_id, project_id)
 );
 
+-- Таблица назначения пользователей к проектам (user_projects)
+CREATE TABLE user_projects (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    role VARCHAR(100),
+    assigned_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, project_id)
+);
+
 -- Таблица сессий для авторизации по принципу SBT (Session-Based Token)
 CREATE TABLE sessions (
     id SERIAL PRIMARY KEY,
@@ -148,7 +159,7 @@ CREATE TABLE issue_work_flow (
 );
 
 -- Таблица задач/проблем (issues)
-CREATE TABLE issue (
+CREATE TABLE issues (
     id SERIAL PRIMARY KEY,
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     title VARCHAR(255) NOT NULL,
@@ -170,7 +181,7 @@ CREATE TABLE issue (
 -- Таблица истории изменений атрибутов задач
 CREATE TABLE issue_history (
     id SERIAL PRIMARY KEY,
-    issue_id INTEGER NOT NULL REFERENCES issue(id) ON DELETE CASCADE,
+    issue_id INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
     field_name VARCHAR(100) NOT NULL,
     old_value TEXT,
     new_value TEXT,
@@ -320,7 +331,7 @@ CREATE TABLE customer_questions (
 -- Таблица сообщений (комментарии к задачам и документам)
 CREATE TABLE messages (
     id SERIAL PRIMARY KEY,
-    issue_id INTEGER REFERENCES issue(id) ON DELETE CASCADE,
+    issue_id INTEGER REFERENCES issues(id) ON DELETE CASCADE,
     document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
     parent_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
@@ -344,7 +355,7 @@ CREATE TABLE notifications (
 -- Таблица списания часов на задачи
 CREATE TABLE time_logs (
     id SERIAL PRIMARY KEY,
-    issue_id INTEGER NOT NULL REFERENCES issue(id) ON DELETE CASCADE,
+    issue_id INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     hours DECIMAL(10, 2) NOT NULL,
     date DATE NOT NULL,
@@ -520,7 +531,7 @@ CREATE TABLE statements (
 CREATE TABLE documents_issue (
     id SERIAL PRIMARY KEY,
     document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    issue_id INTEGER NOT NULL REFERENCES issue(id) ON DELETE CASCADE,
+    issue_id INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(document_id, issue_id)
 );
@@ -537,7 +548,7 @@ CREATE TABLE documents_storage (
 -- Связь многие-ко-многим между задачами и файлами в хранилище
 CREATE TABLE issue_storage (
     id SERIAL PRIMARY KEY,
-    issue_id INTEGER NOT NULL REFERENCES issue(id) ON DELETE CASCADE,
+    issue_id INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
     storage_id INTEGER NOT NULL REFERENCES storage(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(issue_id, storage_id)
@@ -647,19 +658,22 @@ CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 CREATE INDEX idx_user_roles_user_id ON user_roles(user_id);
 CREATE INDEX idx_user_roles_role_id ON user_roles(role_id);
 CREATE INDEX idx_user_roles_project_id ON user_roles(project_id);
+CREATE INDEX idx_user_projects_user_id ON user_projects(user_id);
+CREATE INDEX idx_user_projects_project_id ON user_projects(project_id);
+CREATE INDEX idx_user_projects_assigned_by ON user_projects(assigned_by);
 CREATE INDEX idx_role_permissions_role_id ON role_permissions(role_id);
 CREATE INDEX idx_role_permissions_permission_id ON role_permissions(permission_id);
 CREATE INDEX idx_projects_owner_id ON projects(owner_id);
 CREATE INDEX idx_projects_code ON projects(code);
 CREATE INDEX idx_projects_status ON projects(status);
-CREATE INDEX idx_issue_project_id ON issue(project_id);
-CREATE INDEX idx_issue_assignee_id ON issue(assignee_id);
-CREATE INDEX idx_issue_reporter_id ON issue(reporter_id);
-CREATE INDEX idx_issue_status_id ON issue(status_id);
-CREATE INDEX idx_issue_type_id ON issue(type_id);
-CREATE INDEX idx_issue_priority ON issue(priority);
-CREATE INDEX idx_issue_start_date ON issue(start_date);
-CREATE INDEX idx_issue_due_date ON issue(due_date);
+CREATE INDEX idx_issue_project_id ON issues(project_id);
+CREATE INDEX idx_issue_assignee_id ON issues(assignee_id);
+CREATE INDEX idx_issue_reporter_id ON issues(reporter_id);
+CREATE INDEX idx_issue_status_id ON issues(status_id);
+CREATE INDEX idx_issue_type_id ON issues(type_id);
+CREATE INDEX idx_issue_priority ON issues(priority);
+CREATE INDEX idx_issue_start_date ON issues(start_date);
+CREATE INDEX idx_issue_due_date ON issues(due_date);
 CREATE INDEX idx_issue_history_issue_id ON issue_history(issue_id);
 CREATE INDEX idx_issue_history_field_name ON issue_history(field_name);
 CREATE INDEX idx_issue_history_changed_by ON issue_history(changed_by);
