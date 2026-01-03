@@ -527,6 +527,7 @@ CREATE TABLE specification_version (
 CREATE TABLE specification_parts (
     id SERIAL PRIMARY KEY,
     specification_version_id INTEGER NOT NULL REFERENCES specification_version(id) ON DELETE CASCADE,
+    parent_id INTEGER REFERENCES specification_parts(id) ON DELETE SET NULL,
     part_code VARCHAR(100),
     stock_code VARCHAR(255) REFERENCES materials(stock_code) ON DELETE SET NULL,
     name VARCHAR(255) NOT NULL,
@@ -535,6 +536,29 @@ CREATE TABLE specification_parts (
     created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Таблица комплектов материалов (наборы/комплекты, которые можно добавлять в спецификацию)
+CREATE TABLE material_kits (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Элементы комплекта: ссылка на материал и количество
+CREATE TABLE material_kit_items (
+    id SERIAL PRIMARY KEY,
+    kit_id INTEGER NOT NULL REFERENCES material_kits(id) ON DELETE CASCADE,
+    material_id INTEGER REFERENCES materials(id) ON DELETE SET NULL,
+    quantity DECIMAL(15,3) DEFAULT 1,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 
 -- Таблица ведомостей (объединяют материалы из всех спецификаций)
 CREATE TABLE statements (
@@ -806,7 +830,12 @@ CREATE INDEX idx_specification_created_by ON specification(created_by);
 CREATE INDEX idx_specification_updated_by ON specification(updated_by);
 CREATE INDEX idx_specification_parts_specification_version_id ON specification_parts(specification_version_id);
 CREATE INDEX idx_specification_parts_stock_code ON specification_parts(stock_code);
+CREATE INDEX idx_specification_parts_parent_id ON specification_parts(parent_id);
 CREATE INDEX idx_specification_parts_created_by ON specification_parts(created_by);
+CREATE INDEX idx_material_kits_code ON material_kits(code);
+CREATE INDEX idx_material_kit_items_kit_id ON material_kit_items(kit_id);
+CREATE INDEX idx_material_kit_items_material_id ON material_kit_items(material_id);
+-- specification_kits removed; indexes not required
 CREATE INDEX idx_statements_document_id ON statements(document_id);
 CREATE INDEX idx_statements_code ON statements(code);
 CREATE INDEX idx_statements_created_by ON statements(created_by);
@@ -878,6 +907,9 @@ COMMENT ON TABLE suppliers IS 'Таблица поставщиков обору�
 COMMENT ON TABLE equipment IS 'Таблица оборудования судна с привязкой к SFI классификации';
 COMMENT ON TABLE specification IS 'Таблица спецификаций (привязана к одному проекту)';
 COMMENT ON TABLE specification_parts IS 'Таблица частей/позиций спецификации, привязана к версии спецификации (specification_version)';
+COMMENT ON TABLE material_kits IS 'Таблица комплектов материалов (наборы/комплекты), которые можно переиспользовать и добавлять в спецификации';
+COMMENT ON TABLE material_kit_items IS 'Элементы комплекта материалов: ссылка на материал, количество и единица измерения';
+-- specification_kits removed
 COMMENT ON TABLE statements IS 'Таблица ведомостей (объединяют материалы из всех спецификаций)';
 COMMENT ON TABLE specification_materials IS 'Связь между спецификациями и материалами';
 COMMENT ON TABLE statements_specification IS 'Связь между ведомостями и спецификациями';

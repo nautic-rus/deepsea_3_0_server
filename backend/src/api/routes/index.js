@@ -15,6 +15,7 @@ const issuesController = require('../controllers/issuesController');
 const documentsController = require('../controllers/documentsController');
 const materialsController = require('../controllers/materialsController');
 const equipmentController = require('../controllers/equipmentController');
+const materialKitsController = require('../controllers/materialKitsController');
 const specificationsController = require('../controllers/specificationsController');
 const stagesController = require('../controllers/stagesController');
 const storageController = require('../controllers/storageController');
@@ -126,6 +127,22 @@ router.get('/materials/:id', authMiddleware, materialsController.get);
 router.post('/materials', authMiddleware, materialsController.create);
 router.put('/materials/:id', authMiddleware, materialsController.update);
 router.delete('/materials/:id', authMiddleware, materialsController.delete);
+
+// ===== Material kits routes =====
+router.get('/material_kits', authMiddleware, materialKitsController.list);
+router.post('/material_kits', authMiddleware, materialKitsController.create);
+router.get('/material_kits/:id', authMiddleware, materialKitsController.getById);
+router.put('/material_kits/:id', authMiddleware, materialKitsController.update);
+router.delete('/material_kits/:id', authMiddleware, materialKitsController.delete);
+
+// kit items
+router.get('/material_kits/:kit_id/items', authMiddleware, materialKitsController.listItems);
+router.post('/material_kits/:kit_id/items', authMiddleware, materialKitsController.createItem);
+router.put('/material_kits/items/:id', authMiddleware, materialKitsController.updateItem);
+router.delete('/material_kits/items/:id', authMiddleware, materialKitsController.deleteItem);
+
+// apply kit to specification version
+router.post('/material_kits/:id/apply', authMiddleware, materialKitsController.apply);
 
 // ===== Equipment routes =====
 router.get('/equipment', authMiddleware, equipmentController.list);
