@@ -1,6 +1,12 @@
 const Equipment = require('../../db/models/Equipment');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * EquipmentService
+ *
+ * Service layer for equipment CRUD and access control. Delegates DB calls to
+ * the Equipment model after verifying permissions.
+ */
 class EquipmentService {
   static async listEquipment(query = {}, actor) {
     const requiredPermission = 'equipment.view';

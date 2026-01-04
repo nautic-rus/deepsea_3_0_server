@@ -888,8 +888,8 @@
       "estimated_hours": 0.0,
       "start_date": "2024-01-01",
       "due_date": "2024-01-01",
-      "assignee_id": 1,
-      "reporter_id": 1,
+  "assignee_id": 1,
+  "author_id": 1,
       "created_at": "2024-01-01T00:00:00Z"
     }
   ],

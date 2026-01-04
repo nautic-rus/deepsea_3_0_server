@@ -1,6 +1,12 @@
 const Specification = require('../../db/models/Specification');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * SpecificationsService
+ *
+ * Service layer for specification management. Enforces permissions and
+ * forwards operations to the Specification model.
+ */
 class SpecificationsService {
   static async listSpecifications(query = {}, actor) {
     const requiredPermission = 'specifications.view';

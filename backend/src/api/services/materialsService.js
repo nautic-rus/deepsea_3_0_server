@@ -2,6 +2,12 @@ const Material = require('../../db/models/Material');
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * MaterialsService
+ *
+ * Provides operations for managing materials, including stock code
+ * generation and basic CRUD. Applies permission checks before DB actions.
+ */
 class MaterialsService {
   static async listMaterials(query = {}, actor) {
     const requiredPermission = 'materials.view';

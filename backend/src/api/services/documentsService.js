@@ -1,6 +1,12 @@
 const Document = require('../../db/models/Document');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * DocumentsService
+ *
+ * Handles document business logic, permission checks and delegates persistence
+ * to the Document model.
+ */
 class DocumentsService {
   static async listDocuments(query = {}, actor) {
     const requiredPermission = 'documents.view';

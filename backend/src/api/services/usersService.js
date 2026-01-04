@@ -1,5 +1,8 @@
 /**
- * Сервис для работы с пользователями
+ * UsersService
+ *
+ * Service responsible for user management (create, read, update, delete).
+ * Performs permission checks and delegates DB operations to the User model.
  */
 
 const User = require('../../db/models/User');

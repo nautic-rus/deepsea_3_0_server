@@ -109,8 +109,7 @@
         },
         "name": {
           "type": "string"
-        }
-        ,
+        },
         "manager_id": {
           "type": "integer",
           "nullable": true
@@ -207,12 +206,27 @@
     "UserProject": {
       "type": "object",
       "properties": {
-        "id": { "type": "integer" },
-        "user_id": { "type": "integer" },
-        "project_id": { "type": "integer" },
-        "role": { "type": "string", "nullable": true },
-        "assigned_by": { "type": "integer", "nullable": true },
-        "assigned_at": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "integer"
+        },
+        "user_id": {
+          "type": "integer"
+        },
+        "project_id": {
+          "type": "integer"
+        },
+        "role": {
+          "type": "string",
+          "nullable": true
+        },
+        "assigned_by": {
+          "type": "integer",
+          "nullable": true
+        },
+        "assigned_at": {
+          "type": "string",
+          "format": "date-time"
+        }
       }
     },
     "Issue": {
@@ -238,7 +252,7 @@
           "type": "integer",
           "nullable": true
         },
-        "reporter_id": {
+        "author_id": {
           "type": "integer"
         },
         "created_at": {
@@ -565,7 +579,10 @@
           "500": {
             "description": "Внутренняя ошибка сервера"
           }
-        }
+        },
+        "x-permissions": [
+          "auth.create"
+        ]
       }
     },
     "/api/auth/refresh": {
@@ -628,7 +645,10 @@
           "500": {
             "description": "Внутренняя ошибка сервера"
           }
-        }
+        },
+        "x-permissions": [
+          "auth.create"
+        ]
       }
     },
     "/api/auth/logout": {
@@ -665,7 +685,10 @@
           "500": {
             "description": "Внутренняя ошибка сервера"
           }
-        }
+        },
+        "x-permissions": [
+          "auth.create"
+        ]
       }
     },
     "/api/auth/me": {
@@ -694,7 +717,10 @@
           "401": {
             "description": "Authentication required"
           }
-        }
+        },
+        "x-permissions": [
+          "auth.view"
+        ]
       }
     },
     "/api/create_users": {
@@ -1168,7 +1194,8 @@
           "404": {
             "description": "User not found"
           }
-        }
+        },
+        "description": "Возвращает users. Требуется разрешение users.view."
       }
     },
     "/api/roles": {
@@ -1204,7 +1231,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает список roles. Требуется разрешение roles.view."
       },
       "post": {
         "tags": [
@@ -1257,7 +1285,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт roles. Требуется разрешение roles.create."
       }
     },
     "/api/roles/{id}": {
@@ -1319,7 +1348,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет roles. Требуется разрешение roles.update."
       },
       "delete": {
         "tags": [
@@ -1348,7 +1378,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет roles. Требуется разрешение roles.delete."
       }
     },
     "/api/roles/{id}/permissions": {
@@ -1368,7 +1399,9 @@
             "in": "path",
             "name": "id",
             "required": true,
-            "schema": { "type": "integer" },
+            "schema": {
+              "type": "integer"
+            },
             "description": "Role ID"
           }
         ],
@@ -1382,17 +1415,28 @@
                   "properties": {
                     "data": {
                       "type": "array",
-                      "items": { "$ref": "#/components/schemas/Permission" }
+                      "items": {
+                        "$ref": "#/components/schemas/Permission"
+                      }
                     }
                   }
                 }
               }
             }
           },
-          "401": { "description": "Authentication required" },
-          "403": { "description": "Forbidden - missing permission roles.view" },
-          "400": { "description": "Invalid id" }
-        }
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission roles.view"
+          }
+        },
+        "x-permissions": [
+          "roles.view"
+        ]
       }
     },
     "/api/permissions": {
@@ -1428,7 +1472,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает список permissions. Требуется разрешение permissions.view."
       }
     },
     "/api/projects": {
@@ -1464,7 +1509,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает список projects. Требуется разрешение projects.view."
       },
       "post": {
         "tags": [
@@ -1517,7 +1563,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт projects. Требуется разрешение projects.create."
       }
     },
     "/api/projects/{id}": {
@@ -1555,7 +1602,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает projects. Требуется разрешение projects.view."
       },
       "put": {
         "tags": [
@@ -1612,7 +1660,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет projects. Требуется разрешение projects.update."
       },
       "delete": {
         "tags": [
@@ -1641,16 +1690,34 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет projects. Требуется разрешение projects.delete."
       }
     },
     "/api/projects/{id}/assignments": {
       "get": {
-        "tags": ["projects"],
+        "tags": [
+          "projects"
+        ],
         "summary": "Список привязанных пользователей к проекту",
-        "security": [{ "bearerAuth": [] }],
+        "description": "Возвращает список пользователей, назначенных на проект. Требуется разрешение projects.view.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "projects.view"
+        ],
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -1660,7 +1727,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/UserProject" } }
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UserProject"
+                      }
+                    }
                   }
                 }
               }
@@ -1671,11 +1743,28 @@
     },
     "/api/projects/{id}/assign": {
       "post": {
-        "tags": ["projects"],
+        "tags": [
+          "projects"
+        ],
         "summary": "Назначить пользователя на проект",
-        "security": [{ "bearerAuth": [] }],
+        "description": "Назначить пользователя на проект. Требуется разрешение projects.assign.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "projects.assign"
+        ],
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
@@ -1683,31 +1772,81 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["user_id"],
+                "required": [
+                  "user_id"
+                ],
                 "properties": {
-                  "user_id": { "type": "integer" },
-                  "role": { "type": "string" }
+                  "user_id": {
+                    "type": "integer"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UserProject" } } } }
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProject"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/projects/{id}/assignments/{userId}": {
       "delete": {
-        "tags": ["projects"],
+        "tags": [
+          "projects"
+        ],
         "summary": "Удалить привязку пользователя к проекту",
-        "security": [{ "bearerAuth": [] }],
+        "description": "Удалить назначение пользователя с проекта. Требуется разрешение projects.assign.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "projects.assign"
+        ],
         "parameters": [
-          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } },
-          { "in": "path", "name": "userId", "required": true, "schema": { "type": "integer" } }
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
         ],
         "responses": {
-          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -1724,6 +1863,23 @@
         ],
         "x-permissions": [
           "issues.view"
+        ],
+        "parameters": [
+          { "in": "query", "name": "project_id", "schema": { "type": "integer" }, "description": "Фильтр по проекту. Только проекты, к которым принадлежит пользователь." },
+          { "in": "query", "name": "status_id", "schema": { "type": "integer" }, "description": "Фильтр по статусу задачи" },
+          { "in": "query", "name": "assignee_id", "schema": { "type": "integer" }, "description": "Фильтр по исполнителю (assignee_id)" },
+          { "in": "query", "name": "author_id", "schema": { "type": "integer" }, "description": "Фильтр по автору задачи (author_id)" },
+          { "in": "query", "name": "type_id", "schema": { "type": "integer" }, "description": "Фильтр по типу задачи (type_id)" },
+          { "in": "query", "name": "priority", "schema": { "type": "integer" }, "description": "Фильтр по приоритету" },
+          { "in": "query", "name": "estimated_hours_min", "schema": { "type": "number" }, "description": "Минимальное estimated_hours" },
+          { "in": "query", "name": "estimated_hours_max", "schema": { "type": "number" }, "description": "Максимальное estimated_hours" },
+          { "in": "query", "name": "start_date_from", "schema": { "type": "string", "format": "date" }, "description": "Начало периода start_date" },
+          { "in": "query", "name": "start_date_to", "schema": { "type": "string", "format": "date" }, "description": "Конец периода start_date" },
+          { "in": "query", "name": "due_date_from", "schema": { "type": "string", "format": "date" }, "description": "Начало периода due_date" },
+          { "in": "query", "name": "due_date_to", "schema": { "type": "string", "format": "date" }, "description": "Конец периода due_date" },
+          { "in": "query", "name": "search", "schema": { "type": "string" }, "description": "Поиск по title/description (ILIKE)" },
+          { "in": "query", "name": "page", "schema": { "type": "integer", "default": 1 }, "description": "Номер страницы" },
+          { "in": "query", "name": "limit", "schema": { "type": "integer", "default": 50 }, "description": "Количество элементов на страницу" }
         ],
         "responses": {
           "200": {
@@ -1744,7 +1900,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает список issues, только для проектов, к которым принадлежит аутентифицированный пользователь. Пример: GET /api/issues?project_id=12&status_id=2&page=1&limit=25&search=pump"
       },
       "post": {
         "tags": [
@@ -1798,7 +1955,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт issues. Требуется разрешение issues.create."
       }
     },
     "/api/issues/{id}": {
@@ -1836,7 +1994,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает issues. Требуется разрешение issues.view."
       },
       "put": {
         "tags": [
@@ -1893,7 +2052,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет issues. Требуется разрешение issues.update."
       },
       "delete": {
         "tags": [
@@ -1922,7 +2082,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет issues. Требуется разрешение issues.delete."
       }
     },
     "/api/documents": {
@@ -1958,7 +2119,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает список documents. Требуется разрешение documents.view."
       },
       "post": {
         "tags": [
@@ -2009,7 +2171,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт documents. Требуется разрешение documents.create."
       }
     },
     "/api/documents/{id}": {
@@ -2047,7 +2210,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает documents. Требуется разрешение documents.view."
       },
       "put": {
         "tags": [
@@ -2104,7 +2268,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет documents. Требуется разрешение documents.update."
       },
       "delete": {
         "tags": [
@@ -2133,7 +2298,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет documents. Требуется разрешение documents.delete."
       }
     },
     "/api/departments/{id}": {
@@ -2186,7 +2352,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет departments. Требуется разрешение departments.update."
       },
       "delete": {
         "tags": [
@@ -2215,7 +2382,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет departments. Требуется разрешение departments.delete."
       }
     },
     "/api/materials": {
@@ -2306,7 +2474,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт materials. Требуется разрешение materials.create."
       }
     },
     "/api/materials/{id}": {
@@ -2344,7 +2513,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает materials. Требуется разрешение materials.view."
       },
       "put": {
         "tags": [
@@ -2391,7 +2561,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет materials. Требуется разрешение materials.update."
       },
       "delete": {
         "tags": [
@@ -2420,7 +2591,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет materials. Требуется разрешение materials.delete."
       }
     },
     "/api/equipment": {
@@ -2511,7 +2683,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт equipment. Требуется разрешение equipment.create."
       }
     },
     "/api/equipment/{id}": {
@@ -2549,7 +2722,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает equipment. Требуется разрешение equipment.view."
       },
       "put": {
         "tags": [
@@ -2596,7 +2770,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет equipment. Требуется разрешение equipment.update."
       },
       "delete": {
         "tags": [
@@ -2625,7 +2800,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет equipment. Требуется разрешение equipment.delete."
       }
     },
     "/api/specifications": {
@@ -2717,7 +2893,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт specifications. Требуется разрешение specifications.create."
       }
     },
     "/api/specifications/{id}": {
@@ -2755,7 +2932,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает specifications. Требуется разрешение specifications.view."
       },
       "put": {
         "tags": [
@@ -2802,7 +2980,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет specifications. Требуется разрешение specifications.update."
       },
       "delete": {
         "tags": [
@@ -2831,7 +3010,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет specifications. Требуется разрешение specifications.delete."
       }
     },
     "/api/stages": {
@@ -2923,7 +3103,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт stages. Требуется разрешение stages.create."
       }
     },
     "/api/stages/{id}": {
@@ -2961,7 +3142,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает stages. Требуется разрешение stages.view."
       },
       "put": {
         "tags": [
@@ -3008,7 +3190,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет stages. Требуется разрешение stages.update."
       },
       "delete": {
         "tags": [
@@ -3037,7 +3220,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет stages. Требуется разрешение stages.delete."
       }
     },
     "/api/storage": {
@@ -3130,7 +3314,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт storage. Требуется разрешение storage.create."
       }
     },
     "/api/storage/{id}": {
@@ -3168,7 +3353,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает storage. Требуется разрешение storage.view."
       },
       "put": {
         "tags": [
@@ -3215,7 +3401,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет storage. Требуется разрешение storage.update."
       },
       "delete": {
         "tags": [
@@ -3244,7 +3431,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет storage. Требуется разрешение storage.delete."
       }
     },
     "/api/statements": {
@@ -3336,7 +3524,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Создаёт statements. Требуется разрешение statements.create."
       }
     },
     "/api/statements/{id}": {
@@ -3374,7 +3563,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Возвращает statements. Требуется разрешение statements.view."
       },
       "put": {
         "tags": [
@@ -3421,7 +3611,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Обновляет statements. Требуется разрешение statements.update."
       },
       "delete": {
         "tags": [
@@ -3450,7 +3641,8 @@
           "200": {
             "description": "Deleted"
           }
-        }
+        },
+        "description": "Удаляет statements. Требуется разрешение statements.delete."
       }
     }
   }

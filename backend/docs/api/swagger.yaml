@@ -141,7 +141,7 @@ components:
         assignee_id:
           type: integer
           nullable: true
-        reporter_id:
+        author_id:
           type: integer
         created_at:
           type: string

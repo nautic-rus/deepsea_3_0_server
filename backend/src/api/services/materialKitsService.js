@@ -4,6 +4,12 @@ const Material = require('../../db/models/Material');
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * MaterialKitsService
+ *
+ * Manages material kits and their items. Provides CRUD operations and an
+ * "apply kit to specification" helper to expand kit items into specification parts.
+ */
 class MaterialKitsService {
   static async listKits(query = {}, actor) {
     const requiredPermission = 'material_kits.view';

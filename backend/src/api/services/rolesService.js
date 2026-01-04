@@ -2,6 +2,12 @@ const Role = require('../../db/models/Role');
 
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * RolesService
+ *
+ * Manages roles and role-related queries; verifies permissions before
+ * delegating to the Role model.
+ */
 class RolesService {
   static async listRoles(actor) {
     const requiredPermission = 'roles.view';

@@ -171,7 +171,7 @@ CREATE TABLE issues (
     start_date DATE,
     due_date DATE,
     assignee_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     resolved_at TIMESTAMP,
@@ -704,7 +704,7 @@ CREATE INDEX idx_projects_code ON projects(code);
 CREATE INDEX idx_projects_status ON projects(status);
 CREATE INDEX idx_issue_project_id ON issues(project_id);
 CREATE INDEX idx_issue_assignee_id ON issues(assignee_id);
-CREATE INDEX idx_issue_reporter_id ON issues(reporter_id);
+CREATE INDEX idx_issue_author_id ON issues(author_id);
 CREATE INDEX idx_issue_status_id ON issues(status_id);
 CREATE INDEX idx_issue_type_id ON issues(type_id);
 CREATE INDEX idx_issue_priority ON issues(priority);

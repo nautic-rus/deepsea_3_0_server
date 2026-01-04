@@ -1,6 +1,14 @@
 const IssuesService = require('../services/issuesService');
 
+/**
+ * HTTP controller for issue endpoints.
+ *
+ * Maps Express requests to service layer calls and sends JSON responses.
+ */
 class IssuesController {
+  /**
+   * Handle GET /api/issues - list issues with query filters.
+   */
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
@@ -9,6 +17,9 @@ class IssuesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Handle GET /api/issues/:id - retrieve a single issue.
+   */
   static async get(req, res, next) {
     try {
       const actor = req.user || null;
@@ -18,6 +29,9 @@ class IssuesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Handle POST /api/issues - create a new issue.
+   */
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -26,6 +40,9 @@ class IssuesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Handle PUT /api/issues/:id - update an issue.
+   */
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
@@ -35,6 +52,9 @@ class IssuesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Handle DELETE /api/issues/:id - delete an issue.
+   */
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;
@@ -44,6 +64,9 @@ class IssuesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Handle PATCH /api/issues/:id/status - update only the status of an issue.
+   */
   static async updateStatus(req, res, next) {
     try {
       const actor = req.user || null;

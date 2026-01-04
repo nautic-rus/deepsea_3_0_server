@@ -9,6 +9,15 @@
 
 const Permission = require('../../db/models/Permission');
 
+/**
+ * Check whether an actor has a given permission code.
+ *
+ * Tries in-memory actor.permissions first, falls back to DB lookup.
+ *
+ * @param {Object} actor - Authenticated user object
+ * @param {string} permissionCode - Permission code to check
+ * @returns {Promise<boolean>} true if actor has permission
+ */
 async function hasPermission(actor, permissionCode) {
   if (!actor || !actor.id) return false;
 

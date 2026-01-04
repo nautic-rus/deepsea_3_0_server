@@ -1,6 +1,12 @@
 const Statement = require('../../db/models/Statement');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * StatementsService
+ *
+ * Handles statement CRUD and permission checks, delegating persistence to
+ * the Statement model.
+ */
 class StatementsService {
   static async listStatements(query = {}, actor) {
     const requiredPermission = 'statements.view';

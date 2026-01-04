@@ -2,6 +2,12 @@ const Project = require('../../db/models/Project');
 const UserProject = require('../../db/models/UserProject');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * ProjectsService
+ *
+ * Service layer for project management. Applies permission checks and uses
+ * Project and UserProject models for persistence and assignment logic.
+ */
 class ProjectsService {
   static async listProjects(query = {}, actor) {
     const requiredPermission = 'projects.view';
@@ -44,7 +50,7 @@ class ProjectsService {
 
     // Create assignment in user_projects linking actor to the project
     try {
-      await UserProject.assign(actor.id, created.id, fields.role || null, actor.id);
+      await UserProject.assign(actor.id, created.id, actor.id);
     } catch (e) {
       // don't block project creation on assignment failure; log and continue
       console.error('Failed to assign user to project:', e && e.message || e);

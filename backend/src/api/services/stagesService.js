@@ -1,6 +1,11 @@
 const Stage = require('../../db/models/Stage');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * StagesService
+ *
+ * Provides CRUD operations for project stages with permission enforcement.
+ */
 class StagesService {
   static async listStages(query = {}, actor) {
     const requiredPermission = 'stages.view';

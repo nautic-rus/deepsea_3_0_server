@@ -1,6 +1,12 @@
 const Storage = require('../../db/models/Storage');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * StorageService
+ *
+ * Service for storage-related operations (files/objects). Ensures caller has
+ * appropriate permissions before calling the Storage model.
+ */
 class StorageService {
   static async listStorage(query = {}, actor) {
     const requiredPermission = 'storage.view';

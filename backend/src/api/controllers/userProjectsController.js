@@ -14,10 +14,9 @@ class UserProjectsController {
     try {
       const actor = req.user || null;
       const projectId = parseInt(req.params.id, 10);
-      const userId = req.body.user_id || req.body.userId || null;
-      const role = req.body.role || null;
-      if (!userId) { const err = new Error('user_id required'); err.statusCode = 400; throw err; }
-      const row = await UserProjectsService.assignToProject(projectId, Number(userId), role, actor);
+  const userId = req.body.user_id || req.body.userId || null;
+  if (!userId) { const err = new Error('user_id required'); err.statusCode = 400; throw err; }
+  const row = await UserProjectsService.assignToProject(projectId, Number(userId), actor);
       res.status(201).json({ data: row });
     } catch (err) { next(err); }
   }

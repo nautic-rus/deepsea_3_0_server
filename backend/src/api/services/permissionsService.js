@@ -1,6 +1,11 @@
 const Permission = require('../../db/models/Permission');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * PermissionsService
+ *
+ * Handles listing and retrieval of system permissions with permission checks.
+ */
 class PermissionsService {
   static async listPermissions(actor) {
     const requiredPermission = 'permissions.view';

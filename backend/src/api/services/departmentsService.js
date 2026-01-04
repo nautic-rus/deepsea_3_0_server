@@ -1,6 +1,12 @@
 const Department = require('../../db/models/Department');
 const { hasPermission } = require('./permissionChecker');
 
+/**
+ * DepartmentsService
+ *
+ * Service layer for department-related operations. Performs permission checks
+ * and delegates data access to the Department model.
+ */
 class DepartmentsService {
   static async listDepartments(actor) {
     const requiredPermission = 'departments.view';
