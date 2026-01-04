@@ -1,5 +1,14 @@
+/**
+ * Departments HTTP handlers
+ *
+ * Lightweight controller functions that map requests to the DepartmentsService.
+ */
+
 const DepartmentsService = require('../services/departmentsService');
 
+/**
+ * List departments
+ */
 exports.list = async (req, res, next) => {
   try {
     const actor = req.user;
@@ -10,6 +19,9 @@ exports.list = async (req, res, next) => {
   }
 };
 
+/**
+ * Create a new department
+ */
 exports.create = async (req, res, next) => {
   try {
     const actor = req.user;
@@ -21,6 +33,9 @@ exports.create = async (req, res, next) => {
   }
 };
 
+/**
+ * Update a department
+ */
 exports.update = async (req, res, next) => {
   try {
     const actor = req.user;
@@ -33,6 +48,9 @@ exports.update = async (req, res, next) => {
   }
 };
 
+/**
+ * Delete a department (soft-delete)
+ */
 exports.delete = async (req, res, next) => {
   try {
     const actor = req.user;

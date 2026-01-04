@@ -1,6 +1,15 @@
 const ProjectsService = require('../services/projectsService');
 
+/**
+ * ProjectsController
+ *
+ * Controller for project-related HTTP endpoints. Routes requests to the
+ * ProjectsService and returns JSON responses.
+ */
 class ProjectsController {
+  /**
+   * List projects (may be restricted to assigned projects based on permissions).
+   */
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
@@ -9,6 +18,9 @@ class ProjectsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Get project by id.
+   */
   static async get(req, res, next) {
     try {
       const actor = req.user || null;
@@ -18,6 +30,9 @@ class ProjectsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Create a new project.
+   */
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -26,6 +41,9 @@ class ProjectsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Update a project.
+   */
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
@@ -35,6 +53,9 @@ class ProjectsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Delete (soft-delete) a project.
+   */
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;

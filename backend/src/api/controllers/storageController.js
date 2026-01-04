@@ -1,6 +1,15 @@
 const StorageService = require('../services/storageService');
 
+/**
+ * StorageController
+ *
+ * Handles HTTP endpoints for storage resources (files/objects). Delegates to
+ * StorageService for permission checks and persistence.
+ */
 class StorageController {
+  /**
+   * List storage objects.
+   */
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
@@ -9,6 +18,9 @@ class StorageController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Get a storage object by id.
+   */
   static async get(req, res, next) {
     try {
       const actor = req.user || null;
@@ -18,6 +30,9 @@ class StorageController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Create a storage record.
+   */
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -26,6 +41,9 @@ class StorageController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Update a storage record.
+   */
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
@@ -35,6 +53,9 @@ class StorageController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Delete a storage record.
+   */
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;

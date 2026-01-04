@@ -1,12 +1,17 @@
 /**
  * Контроллер для работы с пользователями
+ *
+ * UsersController
+ *
+ * Controller for user management endpoints: create, list, retrieve, update,
+ * and delete. Delegates business logic to UsersService.
  */
 
 const UsersService = require('../services/usersService');
 
 class UsersController {
   /**
-   * Создать нового пользователя
+   * Create a new user.
    */
   static async createUser(req, res, next) {
     try {
@@ -25,7 +30,7 @@ class UsersController {
   }
 
   /**
-   * Получить список пользователей (пагинация)
+   * List users (supports pagination and search).
    */
   static async getUsers(req, res, next) {
     try {
@@ -40,7 +45,7 @@ class UsersController {
   }
 
   /**
-   * Получить пользователя по id
+   * Get a user by id.
    */
   static async getUser(req, res, next) {
     try {
@@ -55,7 +60,7 @@ class UsersController {
   }
 
   /**
-   * Обновить пользователя (частично)
+   * Update a user (partial update).
    */
   static async updateUser(req, res, next) {
     try {
@@ -70,7 +75,7 @@ class UsersController {
   }
 
   /**
-   * Удалить пользователя (soft-delete)
+   * Delete a user (soft-delete).
    */
   static async deleteUser(req, res, next) {
     try {

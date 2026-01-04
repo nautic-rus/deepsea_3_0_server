@@ -1,6 +1,15 @@
 const StatementsService = require('../services/statementsService');
 
+/**
+ * StatementsController
+ *
+ * Controller for statement endpoints; delegates to StatementsService and
+ * returns JSON responses.
+ */
 class StatementsController {
+  /**
+   * List statements with optional filters.
+   */
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
@@ -9,6 +18,9 @@ class StatementsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Retrieve a statement by id.
+   */
   static async get(req, res, next) {
     try {
       const actor = req.user || null;
@@ -18,6 +30,9 @@ class StatementsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Create a new statement.
+   */
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -26,6 +41,9 @@ class StatementsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Update a statement.
+   */
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
@@ -35,6 +53,9 @@ class StatementsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Delete a statement.
+   */
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;

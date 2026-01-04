@@ -1,6 +1,14 @@
 const RolesService = require('../services/rolesService');
 
+/**
+ * RolesController
+ *
+ * Controller for managing roles and role-permission queries.
+ */
 class RolesController {
+  /**
+   * List roles visible to the actor.
+   */
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
@@ -9,6 +17,9 @@ class RolesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Get a role by id.
+   */
   static async get(req, res, next) {
     try {
       const actor = req.user || null;
@@ -18,6 +29,9 @@ class RolesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Create a role.
+   */
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -26,6 +40,9 @@ class RolesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Update a role.
+   */
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
@@ -35,6 +52,9 @@ class RolesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Delete a role.
+   */
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;
@@ -44,6 +64,9 @@ class RolesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Get permissions for a given role.
+   */
   static async getPermissions(req, res, next) {
     try {
       const actor = req.user || null;
@@ -54,6 +77,9 @@ class RolesController {
   }
 
   // Fallback handler: accepts role_id via query string or uses actor's role
+  /**
+   * Get permissions by query parameter (role_id) or infer from actor.
+   */
   static async getPermissionsByQuery(req, res, next) {
     try {
       const actor = req.user || null;

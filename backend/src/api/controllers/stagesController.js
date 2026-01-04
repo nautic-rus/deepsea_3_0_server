@@ -1,6 +1,15 @@
 const StagesService = require('../services/stagesService');
 
+/**
+ * StagesController
+ *
+ * Controller for project stage endpoints. Delegates to StagesService and
+ * returns JSON responses.
+ */
 class StagesController {
+  /**
+   * List stages with optional filters.
+   */
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
@@ -9,6 +18,9 @@ class StagesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Get stage by id.
+   */
   static async get(req, res, next) {
     try {
       const actor = req.user || null;
@@ -18,6 +30,9 @@ class StagesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Create a new stage.
+   */
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -26,6 +41,9 @@ class StagesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Update a stage.
+   */
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
@@ -35,6 +53,9 @@ class StagesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Delete a stage.
+   */
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;

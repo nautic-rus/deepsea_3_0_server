@@ -1,6 +1,15 @@
 const SpecificationsService = require('../services/specificationsService');
 
+/**
+ * SpecificationsController
+ *
+ * Controller for specification endpoints. Delegates to SpecificationsService
+ * and returns standardized JSON responses.
+ */
 class SpecificationsController {
+  /**
+   * List specifications for a project or query.
+   */
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
@@ -9,6 +18,9 @@ class SpecificationsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Get a specification by id.
+   */
   static async get(req, res, next) {
     try {
       const actor = req.user || null;
@@ -18,6 +30,9 @@ class SpecificationsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Create a new specification.
+   */
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -26,6 +41,9 @@ class SpecificationsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Update a specification.
+   */
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
@@ -35,6 +53,9 @@ class SpecificationsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Delete a specification (soft-delete).
+   */
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;

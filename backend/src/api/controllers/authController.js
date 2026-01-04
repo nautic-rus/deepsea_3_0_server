@@ -1,5 +1,8 @@
 /**
- * Контроллер аутентификации
+ * Authentication HTTP controller
+ *
+ * Handles login, token refresh, logout and the /me endpoint. Delegates
+ * auth logic to AuthService and returns sanitized responses.
  */
 
 const AuthService = require('../services/authService');
@@ -7,7 +10,10 @@ const AuthError = require('../../errors/AuthError');
 
 class AuthController {
   /**
-   * Вход в систему
+   * Login handler.
+   *
+   * Expects { username, password } in the request body and returns tokens
+   * and user info on success.
    */
   static async login(req, res, next) {
     try {
@@ -24,7 +30,7 @@ class AuthController {
   }
 
   /**
-   * Refresh tokens
+   * Refresh access and refresh tokens using a refresh token.
    */
   static async refresh(req, res, next) {
     try {
@@ -41,7 +47,8 @@ class AuthController {
   }
 
   /**
-   * Logout (deactivate current session)
+   * Logout handler - deactivates the current session identified by the
+   * Authorization bearer token.
    */
   static async logout(req, res, next) {
     try {
@@ -64,7 +71,9 @@ class AuthController {
   }
 
   /**
-   * Return current authenticated user
+   * Return current authenticated user (/me).
+   *
+   * Returns a sanitized user object for the authenticated request.
    */
   static async me(req, res, next) {
     try {

@@ -1,6 +1,15 @@
 const MaterialKitsService = require('../services/materialKitsService');
 
+/**
+ * MaterialKitsController
+ *
+ * Controller for material kit endpoints: manages kits, items and applying
+ * kits to specification versions.
+ */
 class MaterialKitsController {
+  /**
+   * List material kits.
+   */
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
@@ -9,6 +18,9 @@ class MaterialKitsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Get a kit by id.
+   */
   static async getById(req, res, next) {
     try {
       const actor = req.user || null;
@@ -18,6 +30,9 @@ class MaterialKitsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Create a new material kit.
+   */
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -26,6 +41,9 @@ class MaterialKitsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Update a material kit.
+   */
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
@@ -35,6 +53,9 @@ class MaterialKitsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Delete a material kit.
+   */
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;
@@ -45,6 +66,9 @@ class MaterialKitsController {
   }
 
   // items
+  /**
+   * List items for a kit.
+   */
   static async listItems(req, res, next) {
     try {
       const actor = req.user || null;
@@ -54,6 +78,9 @@ class MaterialKitsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Create an item inside a kit.
+   */
   static async createItem(req, res, next) {
     try {
       const actor = req.user || null;
@@ -63,6 +90,9 @@ class MaterialKitsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Update a kit item.
+   */
   static async updateItem(req, res, next) {
     try {
       const actor = req.user || null;
@@ -72,6 +102,9 @@ class MaterialKitsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Delete a kit item.
+   */
   static async deleteItem(req, res, next) {
     try {
       const actor = req.user || null;
@@ -82,6 +115,9 @@ class MaterialKitsController {
   }
 
   // apply kit to specification version
+  /**
+   * Apply a kit to a specification version (expand items into specification parts).
+   */
   static async apply(req, res, next) {
     try {
       const actor = req.user || null;

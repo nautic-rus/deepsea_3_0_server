@@ -1,6 +1,15 @@
 const DocumentsService = require('../services/documentsService');
 
+/**
+ * DocumentsController
+ *
+ * HTTP controller for document endpoints. Delegates to DocumentsService and
+ * returns JSON responses.
+ */
 class DocumentsController {
+  /**
+   * List documents with optional query filters.
+   */
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
@@ -9,6 +18,9 @@ class DocumentsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Retrieve a single document by ID.
+   */
   static async get(req, res, next) {
     try {
       const actor = req.user || null;
@@ -18,6 +30,9 @@ class DocumentsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Create a new document.
+   */
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -26,6 +41,9 @@ class DocumentsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Update an existing document.
+   */
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
@@ -35,6 +53,9 @@ class DocumentsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Delete (soft-delete) a document.
+   */
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;

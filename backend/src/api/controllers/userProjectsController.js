@@ -1,6 +1,14 @@
 const UserProjectsService = require('../services/userProjectsService');
 
+/**
+ * UserProjectsController
+ *
+ * Controller for user-project assignment endpoints (list, assign, unassign).
+ */
 class UserProjectsController {
+  /**
+   * List assignments for a project.
+   */
   static async listByProject(req, res, next) {
     try {
       const actor = req.user || null;
@@ -10,6 +18,9 @@ class UserProjectsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Assign a user to a project.
+   */
   static async assign(req, res, next) {
     try {
       const actor = req.user || null;
@@ -21,6 +32,9 @@ class UserProjectsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Unassign a user from a project.
+   */
   static async unassign(req, res, next) {
     try {
       const actor = req.user || null;
