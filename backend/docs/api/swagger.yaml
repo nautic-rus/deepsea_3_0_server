@@ -4,16 +4,30 @@ info:
   description: API документация для системы DeepSea 3.0
   version: 3.0.0
 servers:
-- url: https://api.deepsea.example.com
-  description: Production server
-- url: http://localhost:8000
-  description: Development server
+  - url: http://localhost:3000
+    description: Development server
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  examples:
+    AccessTokenExample:
+      summary: Placeholder access JWT token
+      value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIn0.example"
+    RefreshTokenExample:
+      summary: Placeholder refresh JWT token
+      value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IlRSIn0.eyJzdWIiOjEsImV4cCI6MTYwMDAwMDAwMH0.example"
+  parameters:
+    Authorization:
+      name: Authorization
+      in: header
+      description: Bearer auth header (use \"Bearer {{accessToken}}\" or paste a token)
+      required: true
+      schema:
+        type: string
+      example: "Bearer {{accessToken}}"
   schemas:
     Error:
       type: object
@@ -172,11 +186,25 @@ components:
         created_at:
           type: string
           format: date-time
+    ProjectAssignment:
+      type: object
+      properties:
+        user_id:
+          type: integer
+        role:
+          type: string
+          nullable: true
+        assigned_at:
+          type: string
+          format: date-time
+        assigned_by:
+          type: integer
+          nullable: true
 paths:
   /api/auth/login:
     post:
       tags:
-      - auth
+        - auth
       summary: Вход в систему
       description: Аутентификация пользователя и получение токенов доступа
       requestBody:
@@ -191,11 +219,14 @@ paths:
               properties:
                 username:
                   type: string
-                  example: "admin"
+                  example: admin
                 password:
                   type: string
                   format: password
-                  example: "password123"
+                  example: password123
+            example:
+              username: admin
+              password: password123
       responses:
         '200':
           description: Успешный вход в систему
@@ -236,12 +267,14 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Validation error"
+                    example: Validation error
                   messages:
                     type: array
                     items:
                       type: string
-                    example: ["Username is required", "Password is required"]
+                    example:
+                      - Username is required
+                      - Password is required
         '401':
           description: Неверные учетные данные
           content:
@@ -251,7 +284,7 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Invalid credentials"
+                    example: Invalid credentials
         '403':
           description: Пользователь деактивирован
           content:
@@ -261,7 +294,7 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "User account is deactivated"
+                    example: User account is deactivated
         '500':
           description: Внутренняя ошибка сервера
           content:
@@ -271,8 +304,8 @@ paths:
                 properties:
                   error:
                     type: string
-                    example: "Internal server error"
-
+                    example: Internal server error
+      parameters: []
   /api/create_users:
     post:
       tags:
@@ -298,37 +331,70 @@ paths:
                 username:
                   type: string
                   maxLength: 100
-                  example: "john_doe"
+                  example: john_doe
                   description: Уникальное имя пользователя
                 email:
                   type: string
                   format: email
                   maxLength: 255
-                  example: "john.doe@example.com"
+                  example: john.doe@example.com
                   description: Email адрес пользователя
                 phone:
                   type: string
                   maxLength: 255
-                  example: "+1234567890"
+                  example: '+1234567890'
                   description: Номер телефона пользователя
                 password:
                   type: string
                   format: password
                   minLength: 6
-                  example: "password123"
+                  example: password123
                   description: Пароль пользователя (минимум 6 символов)
+                first_name:
+                  type: string
+                  nullable: true
+                  maxLength: 100
+                  example: John
+                  description: Имя пользователя
+                last_name:
+                  type: string
+                  nullable: true
+                  maxLength: 100
+                  example: Doe
+                  description: Фамилия пользователя
+                middle_name:
+                  type: string
+                  nullable: true
+                  maxLength: 100
+                  example: Middle
+                  description: Отчество пользователя
+                department_id:
+                  type: integer
+                  nullable: true
+                  example: 3
+                  description: ID отдела
+                job_title_id:
+                  type: integer
+                  nullable: true
+                  example: 2
+                  description: ID должности
+            example:
+              username: ''
+              email: ''
+              phone: ''
+              password: ''
       responses:
         '201':
           description: Пользователь успешно создан
         '400':
           description: Ошибка валидации
-        '409':
-          description: Конфликт - пользователь с такими данными уже существует
         '401':
           description: Authentication required
         '403':
           description: Forbidden - missing permission users.create
-
+        '409':
+          description: Конфликт - пользователь с такими данными уже существует
+      parameters: []
   /api/users:
     get:
       tags:
@@ -379,6 +445,7 @@ paths:
           description: Authentication required
         '403':
           description: Forbidden - missing permission departments.view
+      parameters: []
     post:
       tags:
         - departments
@@ -399,6 +466,8 @@ paths:
               properties:
                 name:
                   type: string
+            example:
+              name: ''
       responses:
         '201':
           description: Отдел создан
@@ -408,6 +477,7 @@ paths:
           description: Authentication required
         '403':
           description: Forbidden - missing permission departments.create
+      parameters: []
   /api/users/{id}:
     get:
       tags:
@@ -425,6 +495,7 @@ paths:
           schema:
             type: integer
           description: ID пользователя
+          example: '{{id}}'
       responses:
         '200':
           description: Пользователь найден
@@ -452,6 +523,7 @@ paths:
           schema:
             type: integer
           description: ID пользователя
+          example: '{{id}}'
       requestBody:
         required: true
         content:
@@ -480,6 +552,17 @@ paths:
                   type: boolean
                 is_verified:
                   type: boolean
+            example:
+              username: ''
+              email: ''
+              phone: ''
+              first_name: ''
+              last_name: ''
+              middle_name: ''
+              department_id: 0
+              job_title_id: 0
+              is_active: false
+              is_verified: false
       responses:
         '200':
           description: Пользователь обновлён
@@ -507,6 +590,7 @@ paths:
           schema:
             type: integer
           description: ID пользователя
+          example: '{{id}}'
       responses:
         '200':
           description: User deleted
@@ -535,6 +619,8 @@ paths:
               properties:
                 refresh_token:
                   type: string
+            example:
+              refresh_token: ''
       responses:
         '200':
           description: Токены обновлены
@@ -558,6 +644,7 @@ paths:
           description: Unauthorized
         '500':
           description: Внутренняя ошибка сервера
+      parameters: []
   /api/auth/logout:
     post:
       tags:
@@ -580,6 +667,7 @@ paths:
           description: Authentication required
         '500':
           description: Внутренняя ошибка сервера
+      parameters: []
   /api/auth/me:
     get:
       tags:
@@ -597,253 +685,1209 @@ paths:
                 $ref: '#/components/schemas/User'
         '401':
           description: Authentication required
-
-    /api/roles:
-      get:
-        tags:
-          - roles
-        summary: Список ролей
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - roles.view
-        responses:
-          '200':
-            description: OK
-      post:
-        tags:
-          - roles
-        summary: Создать роль
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - roles.create
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                properties:
-                  name:
-                    type: string
-                  description:
-                    type: string
-                  permission_ids:
-                    type: array
-                    items:
-                      type: integer
-
-    /api/roles/{id}:
-      put:
-        tags:
-          - roles
-        summary: Обновить роль
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - roles.update
-        parameters:
-          - in: path
-            name: id
-            required: true
+      parameters: []
+  /api/roles:
+    get:
+      tags:
+        - roles
+      summary: Список ролей
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - roles.view
+      responses:
+        '200':
+          description: OK
+      parameters: []
+    post:
+      tags:
+        - roles
+      summary: Создать роль
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - roles.create
+      requestBody:
+        required: true
+        content:
+          application/json:
             schema:
-              type: integer
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  name:
-                    type: string
-                  description:
-                    type: string
-      delete:
-        tags:
-          - roles
-        summary: Удалить роль
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - roles.delete
-        parameters:
-          - in: path
-            name: id
-            required: true
-            schema:
-              type: integer
-
-    /api/permissions:
-      get:
-        tags:
-          - permissions
-        summary: Список разрешений
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - permissions.view
-        responses:
-          '200':
-            description: OK
-
-    /api/projects:
-      get:
-        tags:
-          - projects
-        summary: Список проектов
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - projects.view
-        responses:
-          '200':
-            description: OK
-      post:
-        tags:
-          - projects
-        summary: Создать проект
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - projects.create
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - name
-                properties:
-                  name:
-                    type: string
-                  description:
-                    type: string
-                  code:
-                    type: string
-                  owner_id:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                permission_ids:
+                  type: array
+                  items:
                     type: integer
-
-    /api/projects/{id}:
-      get:
-        tags:
-          - projects
-        summary: Получить проект
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - projects.view
-        parameters:
-          - in: path
-            name: id
-            required: true
+            example:
+              name: ''
+              description: ''
+              permission_ids: null
+      parameters: []
+  /api/roles/{id}:
+    get:
+      tags:
+        - roles
+      summary: Получить роль
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - roles.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+    put:
+      tags:
+        - roles
+      summary: Обновить роль
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - roles.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        required: true
+        content:
+          application/json:
             schema:
-              type: integer
-      put:
-        tags:
-          - projects
-        summary: Обновить проект
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - projects.update
-      delete:
-        tags:
-          - projects
-        summary: Удалить проект
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - projects.delete
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+            example:
+              name: ''
+              description: ''
+              permission_ids: null
+    delete:
+      tags:
+        - roles
+      summary: Удалить роль
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - roles.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+  /api/permissions:
+    get:
+      tags:
+        - permissions
+      summary: Список разрешений
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - permissions.view
+      responses:
+        '200':
+          description: OK
+      parameters: []
+  /api/projects:
+    get:
+      tags:
+        - projects
+      summary: Список проектов
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - projects.view
+      responses:
+        '200':
+          description: OK
+      parameters: []
+    post:
+      tags:
+        - projects
+      summary: Создать проект
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - projects.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                code:
+                  type: string
+                owner_id:
+                  type: integer
+            example:
+              name: ''
+              description: ''
+              code: ''
+              owner_id: 0
+      parameters: []
+  /api/projects/{id}:
+    get:
+      tags:
+        - projects
+      summary: Получить проект
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - projects.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+    put:
+      tags:
+        - projects
+      summary: Обновить проект
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - projects.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              name: ''
+              description: ''
+              status: ''
+    delete:
+      tags:
+        - projects
+      summary: Удалить проект
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - projects.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+  /api/projects/assign:
+    post:
+      tags:
+        - projects
+      summary: Назначить пользователя в проект
+      description: >-
+        Assign a user to a project. Provide `project_id` and `user_id` in the request body. Optionally include `role`
+        (string) to indicate desired role name; the system will create or use the global role and map it via
+        `user_roles`.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - projects.assign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - project_id
+                - user_id
+              properties:
+                project_id:
+                  type: integer
+                  description: ID проекта
+                  example: 12
+                user_id:
+                  type: integer
+                  description: ID пользователя для назначения
+                  example: 34
+                role_id:
+                  type: integer
+                  description: Optional single role id. If provided the role id will be assigned to user in project.
+                  example: 5
+                roles:
+                  type: array
+                  items:
+                    type: integer
+                  description: Optional array of role IDs to assign (e.g. [4, 5]). If provided, each role will be assigned.
+                  example: [4, 5]
+            example:
+              project_id: 12
+              user_id: 34
+              roles:
+                - 4
+                - 5
+          text/plain:
+            schema:
+              type: string
+            example: |-
+              {
+                "project_id": {{createdProjectId}} ,
+                "user_id": {{createdUserId}},
+                "role": "member"
+              }
+      responses:
+        '201':
+          description: User assigned to project
+        '400':
+          description: Missing or invalid parameters
+        '403':
+          description: Forbidden - missing permission projects.assign
+      parameters: []
+  /api/projects/{id}/assignments:
+    get:
+      tags:
+        - projects
+      summary: Список назначений для проекта
+      description: Возвращает список пользователей, назначенных в проект с их ролями и временем назначения.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - projects.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID проекта
+          example: 12
+      responses:
+        '200':
+          description: Список назначений
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectAssignment'
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission projects.view
+    delete:
+      tags:
+        - projects
+      summary: Отвязать пользователя от проекта
+      description: >-
+        Удаляет назначение пользователя в проекте. Параметры передаются в теле запроса:
+        user_id и необязательное role или roles.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - projects.assign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+              properties:
+                user_id:
+                  type: integer
+                  description: ID пользователя, которого нужно отвязать
+                  example: 34
+                role_id:
+                  type: integer
+                  description: ID роли, которую нужно удалить (если указано — удалит только эту роль)
+                  example: 5
+                roles:
+                  type: array
+                  items:
+                    type: integer
+                  description: Массив ID ролей для удаления
+                  example: [4, 5]
+      responses:
+        '200':
+          description: Успешно отвязан пользователь
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                example:
+                  success: true
+        '400':
+          description: Missing or invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - missing permission projects.assign
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project or assignment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/issues:
+    get:
+      tags:
+        - issues
+      summary: Список задач
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - issues.view
+      parameters:
+        - name: is_closed
+          in: query
+          description: Фильтр по закрытому статусу задачи (true = закрытые, false = не закрытые)
+          schema:
+            type: boolean
+          example: false
+        - name: is_active
+          in: query
+          description: Фильтр по активности задачи (true = активные, false = неактивные)
+          schema:
+            type: boolean
+          example: true
+        - name: project_id
+          in: query
+          schema:
+            type: integer
+          example: 12
+        - name: status_id
+          in: query
+          schema:
+            type: integer
+          example: 2
+        - name: assignee_id
+          in: query
+          description: ID пользователя, назначенного на задачу
+          schema:
+            type: integer
+          example: 5
+        - name: author_id
+          in: query
+          description: ID автора/создателя задачи
+          schema:
+            type: integer
+          example: 7
+        - name: type_id
+          in: query
+          description: ID типа задачи
+          schema:
+            type: integer
+          example: 1
+        - name: priority
+          in: query
+          description: Приоритет (внутренний код)
+          schema:
+            type: integer
+          example: 3
+        - name: estimated_hours
+          in: query
+          description: Оценочные часы (точное совпадение)
+          schema:
+            type: number
+            format: float
+          example: 8
+        - name: estimated_hours_min
+          in: query
+          description: Минимум оценочных часов
+          schema:
+            type: number
+            format: float
+          example: 1
+        - name: estimated_hours_max
+          in: query
+          description: Максимум оценочных часов
+          schema:
+            type: number
+            format: float
+          example: 40
+        - name: start_date_from
+          in: query
+          description: Начальная дата (>=)
+          schema:
+            type: string
+            format: date-time
+          example: "2025-01-01T00:00:00Z"
+        - name: start_date_to
+          in: query
+          description: Начальная дата (<=)
+          schema:
+            type: string
+            format: date-time
+          example: "2025-12-31T23:59:59Z"
+        - name: due_date_from
+          in: query
+          description: Дата завершения (>=)
+          schema:
+            type: string
+            format: date-time
+          example: "2025-01-01T00:00:00Z"
+        - name: due_date_to
+          in: query
+          description: Дата завершения (<=)
+          schema:
+            type: string
+            format: date-time
+          example: "2025-12-31T23:59:59Z"
+        - name: page
+          in: query
+          schema:
+            type: integer
+          example: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          example: 25
+        - name: search
+          in: query
+          description: Поиск по title/description
+          schema:
+            type: string
+          example: pump
+    post:
+      tags:
+        - issues
+      summary: Создать задачу
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - issues.create
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              project_id: 0
+              title: ''
+              description: ''
+              assignee_id: 0
+  /api/issues/{id}:
+    get:
+      tags:
+        - issues
+      summary: Получить задачу
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - issues.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+    put:
+      tags:
+        - issues
+      summary: Обновить задачу
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - issues.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              title: ''
+              description: ''
+              status_id: 0
+    delete:
+      tags:
+        - issues
+      summary: Удалить задачу
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - issues.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+  /api/documents:
+    get:
+      tags:
+        - documents
+      summary: Список документов
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - documents.view
+      parameters:
+        - name: project_id
+          in: query
+          description: ID проекта для фильтрации
+          schema:
+            type: integer
+          example: 12
+        - name: stage_id
+          in: query
+          description: ID стадии
+          schema:
+            type: integer
+          example: 3
+        - name: specialization_id
+          in: query
+          description: ID специализации
+          schema:
+            type: integer
+          example: 2
+        - name: directory_id
+          in: query
+          description: ID папки/каталога
+          schema:
+            type: integer
+          example: 7
+        - name: status_id
+          in: query
+          description: ID статуса документа
+          schema:
+            type: integer
+          example: 1
+        - name: created_by
+          in: query
+          description: ID пользователя, создавшего документ
+          schema:
+            type: integer
+          example: 5
+        - name: is_active
+          in: query
+          description: Фильтр по активности
+          schema:
+            type: boolean
+          example: true
+        - name: created_before
+          in: query
+          description: Возвращать документы созданные до указанной даты (RFC3339)
+          schema:
+            type: string
+            format: date-time
+          example: '2025-12-31T23:59:59Z'
+        - name: created_after
+          in: query
+          description: Возвращать документы созданные после указанной даты (RFC3339)
+          schema:
+            type: string
+            format: date-time
+          example: '2025-01-01T00:00:00Z'
+        - name: title
+          in: query
+          description: Фильтрация по названию (частичный поиск)
+          schema:
+            type: string
+          example: Pipe specification
+        - name: description
+          in: query
+          description: Фильтрация по описанию (частичный поиск)
+          schema:
+            type: string
+          example: Main pipeline
+        - name: search
+          in: query
+          description: Общий поиск по title/description
+          schema:
+            type: string
+          example: pipe
+        - name: page
+          in: query
+          description: Номер страницы
+          schema:
+            type: integer
+          example: 1
+        - name: limit
+          in: query
+          description: Количество записей на страницу
+          schema:
+            type: integer
+          example: 20
+      x-example-request: |
+        # Пример запроса
+        GET /api/documents?project_id=12&search=pipe&page=1&limit=20 HTTP/1.1
+        Host: {{baseUrl}}
+        Authorization: Bearer <your-jwt-token>
 
-    /api/issues:
-      get:
-        tags:
-          - issues
-        summary: Список задач
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - issues.view
-      post:
-        tags:
-          - issues
-        summary: Создать задачу
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - issues.create
-
-    /api/issues/{id}:
-      get:
-        tags:
-          - issues
-        summary: Получить задачу
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - issues.view
-      put:
-        tags:
-          - issues
-        summary: Обновить задачу
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - issues.update
-      delete:
-        tags:
-          - issues
-        summary: Удалить задачу
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - issues.delete
-
-    /api/documents:
-      get:
-        tags:
-          - documents
-        summary: Список документов
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - documents.view
-      post:
-        tags:
-          - documents
-        summary: Создать документ
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - documents.create
-
-    /api/documents/{id}:
-      get:
-        tags:
-          - documents
-        summary: Получить документ
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - documents.view
-      put:
-        tags:
-          - documents
-        summary: Обновить документ
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - documents.update
-      delete:
-        tags:
-          - documents
-        summary: Удалить документ
-        security:
-          - bearerAuth: []
-        x-permissions:
-          - documents.delete
+        # Описание параметров в запросе:
+        # - project_id: id проекта
+        # - search: поиск по title/description
+        # - page, limit: пагинация
+    post:
+      tags:
+        - documents
+      summary: Создать документ
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - documents.create
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              title: ''
+              description: ''
+              project_id: 0
+  /api/documents/{id}:
+    get:
+      tags:
+        - documents
+      summary: Получить документ
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - documents.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+    put:
+      tags:
+        - documents
+      summary: Обновить документ
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - documents.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example:
+              title: ''
+              description: ''
+              stage_id: 0
+    delete:
+      tags:
+        - documents
+      summary: Удалить документ
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - documents.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+  /api/materials:
+    get:
+      tags:
+        - materials
+      summary: Список материалов
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - materials.view
+      responses:
+        '200':
+          description: OK
+      parameters: []
+    post:
+      tags:
+        - materials
+      summary: Создать материал
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - materials.create
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /api/materials/{id}:
+    get:
+      tags:
+        - materials
+      summary: Получить материал
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - materials.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+    put:
+      tags:
+        - materials
+      summary: Обновить материал
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - materials.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+    delete:
+      tags:
+        - materials
+      summary: Удалить материал
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - materials.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+  /api/equipment:
+    get:
+      tags:
+        - equipment
+      summary: Список оборудования
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - equipment.view
+      responses:
+        '200':
+          description: OK
+      parameters: []
+    post:
+      tags:
+        - equipment
+      summary: Создать оборудование
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - equipment.create
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /api/equipment/{id}:
+    get:
+      tags:
+        - equipment
+      summary: Получить оборудование
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - equipment.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+    put:
+      tags:
+        - equipment
+      summary: Обновить оборудование
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - equipment.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+    delete:
+      tags:
+        - equipment
+      summary: Удалить оборудование
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - equipment.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+  /api/specifications:
+    get:
+      tags:
+        - specifications
+      summary: Список спецификаций
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.view
+      responses:
+        '200':
+          description: OK
+      parameters: []
+    post:
+      tags:
+        - specifications
+      summary: Создать спецификацию
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.create
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /api/specifications/{id}:
+    get:
+      tags:
+        - specifications
+      summary: Получить спецификацию
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+    put:
+      tags:
+        - specifications
+      summary: Обновить спецификацию
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+    delete:
+      tags:
+        - specifications
+      summary: Удалить спецификацию
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+  /api/stages:
+    get:
+      tags:
+        - stages
+      summary: Список стадий
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - stages.view
+      responses:
+        '200':
+          description: OK
+      parameters: []
+    post:
+      tags:
+        - stages
+      summary: Создать стадию
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - stages.create
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /api/stages/{id}:
+    get:
+      tags:
+        - stages
+      summary: Получить стадию
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - stages.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+    put:
+      tags:
+        - stages
+      summary: Обновить стадию
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - stages.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+    delete:
+      tags:
+        - stages
+      summary: Удалить стадию
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - stages.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+  /api/storage:
+    get:
+      tags:
+        - storage
+      summary: Список файлов в хранилище
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - storage.view
+      responses:
+        '200':
+          description: OK
+      parameters: []
+    post:
+      tags:
+        - storage
+      summary: Загрузить файл
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - storage.create
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+  /api/storage/{id}:
+    get:
+      tags:
+        - storage
+      summary: Получить файл
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - storage.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+    put:
+      tags:
+        - storage
+      summary: Обновить файл
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - storage.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+    delete:
+      tags:
+        - storage
+      summary: Удалить файл
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - storage.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+  /api/statements:
+    get:
+      tags:
+        - statements
+      summary: Список ведомостей
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - statements.view
+      responses:
+        '200':
+          description: OK
+      parameters: []
+    post:
+      tags:
+        - statements
+      summary: Создать ведомость
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - statements.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: integer
+                  example: 12
+                title:
+                  type: string
+                  example: "Monthly materials statement"
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      material_id:
+                        type: integer
+                        example: 1
+                      quantity:
+                        type: number
+                        example: 10
+            example:
+              project_id: 12
+              title: "Monthly materials statement"
+              items:
+                - material_id: 1
+                  quantity: 10

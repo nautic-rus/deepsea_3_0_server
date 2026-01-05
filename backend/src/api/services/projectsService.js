@@ -1,5 +1,6 @@
 const Project = require('../../db/models/Project');
-const UserProject = require('../../db/models/UserProject');
+const Role = require('../../db/models/Role');
+const UserRole = require('../../db/models/UserRole');
 const { hasPermission } = require('./permissionChecker');
 
 /**
@@ -18,8 +19,8 @@ class ProjectsService {
     const canViewAll = await hasPermission(actor, 'projects.view_all');
     if (canViewAll) return await Project.list(query);
 
-    // Otherwise return only projects assigned to this user via user_projects
-    return await Project.listForUser(actor.id, query);
+  // Otherwise return only projects assigned to this user via project-scoped roles
+  return await Project.listForUser(actor.id, query);
   }
 
   static async getProjectById(id, actor) {
@@ -48,12 +49,13 @@ class ProjectsService {
     const ownerId = (fields.owner_id && Number(fields.owner_id)) ? Number(fields.owner_id) : actor.id;
     const created = await Project.create({ name: fields.name, description: fields.description || null, code: fields.code || null, owner_id: ownerId });
 
-    // Create assignment in user_projects linking actor to the project
+    // Create a project-scoped owner role and assign the actor to it
     try {
-      await UserProject.assign(actor.id, created.id, actor.id);
+      // Create or get a global 'owner' role and assign it scoped to the created project via user_roles
+      const ownerRole = await Role.findOrCreate({ name: 'owner', description: 'Project owner' });
+      await UserRole.assign(actor.id, ownerRole.id, created.id);
     } catch (e) {
-      // don't block project creation on assignment failure; log and continue
-      console.error('Failed to assign user to project:', e && e.message || e);
+      console.error('Failed to assign owner role to project creator:', e && e.message || e);
     }
 
     return created;

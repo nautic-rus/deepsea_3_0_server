@@ -90,10 +90,10 @@ router.put('/projects/:id', authMiddleware, projectsController.update);
 router.delete('/projects/:id', authMiddleware, projectsController.delete);
 // GET /api/projects/:id/assignments
 router.get('/projects/:id/assignments', authMiddleware, userProjectsController.listByProject);
-// POST /api/projects/:id/assign - assign a user to project (body: { user_id, role })
-router.post('/projects/:id/assign', authMiddleware, userProjectsController.assign);
-// DELETE /api/projects/:id/assignments/:userId
-router.delete('/projects/:id/assignments/:userId', authMiddleware, userProjectsController.unassign);
+// POST /api/projects/assign
+router.post('/projects/assign', authMiddleware, userProjectsController.assign);
+// DELETE /api/projects/:id/assignments - unassign user(s)/role(s) via request body
+router.delete('/projects/:id/assignments', authMiddleware, userProjectsController.unassign);
 
 // ===== Issues routes =====
 // GET /api/issues

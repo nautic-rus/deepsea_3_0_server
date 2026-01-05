@@ -1,24 +1,9 @@
-const pool = require('../connection');
-
+// The `user_projects` table has been removed; project membership is now represented
+// via `user_roles` and `roles` tables. This module is kept for backward
+// compatibility but its methods throw to prevent accidental usage.
 class UserProject {
-  /**
-   * Assign a user to a project. Role and assigned_by are optional.
-   * Returns the inserted row.
-   */
-  static async assign(userId, projectId, assignedBy = null) {
-    const q = `INSERT INTO user_projects (user_id, project_id, assigned_by, assigned_at)
-      VALUES ($1, $2, $3, now())
-      ON CONFLICT (user_id, project_id) DO UPDATE SET assigned_by = EXCLUDED.assigned_by, assigned_at = now()
-      RETURNING id, user_id, project_id, assigned_by, assigned_at`;
-    const res = await pool.query(q, [userId, projectId, assignedBy]);
-    return res.rows[0];
-  }
-
-  static async unassign(userId, projectId) {
-    const q = `DELETE FROM user_projects WHERE user_id = $1 AND project_id = $2`;
-    const res = await pool.query(q, [userId, projectId]);
-    return res.rowCount > 0;
-  }
+  static async assign() { throw new Error('user_projects table removed; use user_roles/UserRole.assign instead'); }
+  static async unassign() { throw new Error('user_projects table removed; use user_roles/UserRole.unassignByUserAndProject instead'); }
 }
 
 module.exports = UserProject;

@@ -25,6 +25,7 @@ class Role {
     let idx = 1;
     if (fields.name !== undefined) { parts.push(`name = $${idx++}`); values.push(fields.name); }
     if (fields.description !== undefined) { parts.push(`description = $${idx++}`); values.push(fields.description); }
+    // project_id field removed from Role methods; roles are global in the model
     if (parts.length === 0) return await Role.findById(id);
     const q = `UPDATE roles SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, name, description, created_at`;
     values.push(id);
@@ -44,6 +45,18 @@ class Role {
     const q2 = `DELETE FROM roles WHERE id = $1`;
     const res2 = await pool.query(q2, [id]);
     return res2.rowCount > 0;
+  }
+
+  static async findByName(name) {
+    const q = `SELECT id, name, description, created_at FROM roles WHERE name = $1 LIMIT 1`;
+    const res = await pool.query(q, [name]);
+    return res.rows[0] || null;
+  }
+
+  static async findOrCreate({ name, description = null }) {
+    const existing = await Role.findByName(name);
+    if (existing) return existing;
+    return await Role.create({ name, description });
   }
 }
 

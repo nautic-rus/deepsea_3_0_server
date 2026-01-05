@@ -42,10 +42,11 @@ CREATE TABLE users (
 -- Таблица ролей для RBAC
 CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(name, project_id)
 );
 
 -- Таблица разрешений для RBAC
@@ -296,7 +297,8 @@ CREATE TABLE documents (
     created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
 );
 
 -- Таблица истории изменений атрибутов документов

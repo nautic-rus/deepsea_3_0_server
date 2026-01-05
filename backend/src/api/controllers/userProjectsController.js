@@ -24,10 +24,18 @@ class UserProjectsController {
   static async assign(req, res, next) {
     try {
       const actor = req.user || null;
-      const projectId = parseInt(req.params.id, 10);
-  const userId = req.body.user_id || req.body.userId || null;
-  if (!userId) { const err = new Error('user_id required'); err.statusCode = 400; throw err; }
-  const row = await UserProjectsService.assignToProject(projectId, Number(userId), actor);
+      // Accept parameters from request body. Support backward-compatibility with params.id.
+      const body = req.body || {};
+      const projectId = body.project_id ? Number(body.project_id) : (req.params.id ? Number(req.params.id) : null);
+      const userId = body.user_id || body.userId || null;
+  // support single role_id (number) or multiple role ids (roles array), fallback to role name string for compatibility
+  let roles = null;
+  if (body.roles) roles = Array.isArray(body.roles) ? body.roles : [body.roles];
+  else if (body.role) roles = Array.isArray(body.role) ? body.role : [body.role];
+  // roles may be numbers (ids) or strings (names) — service will normalize
+      if (!projectId) { const err = new Error('project_id required'); err.statusCode = 400; throw err; }
+      if (!userId) { const err = new Error('user_id required'); err.statusCode = 400; throw err; }
+  const row = await UserProjectsService.assignToProject(Number(projectId), Number(userId), actor, roles);
       res.status(201).json({ data: row });
     } catch (err) { next(err); }
   }
@@ -39,10 +47,16 @@ class UserProjectsController {
     try {
       const actor = req.user || null;
       const projectId = parseInt(req.params.id, 10);
-      const userId = parseInt(req.params.userId || req.query.user_id, 10) || null;
-      if (!userId) { const err = new Error('userId required'); err.statusCode = 400; throw err; }
-      const ok = await UserProjectsService.unassignFromProject(projectId, userId, actor);
-      res.json({ success: ok });
+      const body = req.body || {};
+      // prefer body parameters (moved from path/query into request body)
+      const userId = body.user_id || body.userId || (req.query.user_id ? Number(req.query.user_id) : null);
+      if (!userId) { const err = new Error('user_id required in request body'); err.statusCode = 400; throw err; }
+  // support deleting a single role_id/name (`role`) or multiple role ids/names (`roles`)
+  let roles = null;
+  if (body.roles) roles = Array.isArray(body.roles) ? body.roles : [body.roles];
+  else if (body.role) roles = Array.isArray(body.role) ? body.role : [body.role];
+  const ok = await UserProjectsService.unassignFromProject(projectId, Number(userId), actor, roles);
+      res.json({ success: !!ok });
     } catch (err) { next(err); }
   }
 }

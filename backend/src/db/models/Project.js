@@ -19,16 +19,19 @@ class Project {
   // List projects that are assigned to a given user (via user_projects join table)
   static async listForUser(userId, { page = 1, limit = 50, search, owner_id, status } = {}) {
     const offset = (page - 1) * limit;
-    const where = ['up.user_id = $1'];
+    // Build filters; membership is determined via user_roles entries
     const values = [userId];
     let idx = 2;
+    const where = [`t.project_id IS NOT NULL`];
     if (owner_id) { where.push(`p.owner_id = $${idx++}`); values.push(owner_id); }
     if (status) { where.push(`p.status = $${idx++}`); values.push(status); }
     if (search) { where.push(`(p.name ILIKE $${idx} OR p.description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id, p.created_at
       FROM projects p
-      JOIN user_projects up ON up.project_id = p.id
+      JOIN (
+        SELECT project_id FROM user_roles WHERE user_id = $1
+      ) t ON t.project_id = p.id
       ${whereSql}
       ORDER BY p.id
       LIMIT $${idx++} OFFSET $${idx}`;
@@ -44,9 +47,18 @@ class Project {
   }
 
   static async isUserAssigned(projectId, userId) {
-    const q = `SELECT 1 FROM user_projects WHERE project_id = $1 AND user_id = $2 LIMIT 1`;
+    // Check assignment via user_roles (role entries scoped to a project)
+    const q = `SELECT 1 FROM user_roles WHERE project_id = $1 AND user_id = $2 LIMIT 1`;
     const res = await pool.query(q, [projectId, userId]);
     return res.rows.length > 0;
+  }
+
+  static async listAssignedProjectIds(userId) {
+    // The `user_projects` table has been removed. Project membership is
+    // represented via `user_roles` (project-scoped role assignments).
+    const q = `SELECT DISTINCT project_id FROM user_roles WHERE user_id = $1 AND project_id IS NOT NULL`;
+    const res = await pool.query(q, [userId]);
+    return res.rows.map(r => r.project_id);
   }
 
   static async create({ name, description, code, owner_id }) {

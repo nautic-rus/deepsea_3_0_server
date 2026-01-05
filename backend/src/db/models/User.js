@@ -219,10 +219,12 @@ class User {
       }
     }
     if (sets.length === 0) return await User.findById(id);
-    params.push(id);
-    const query = `UPDATE users SET ${sets.join(', ')} , updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, username, email, phone, first_name, last_name, middle_name, department_id, job_title_id, is_active, is_verified, created_at, updated_at`;
-    const res = await pool.query(query, params);
-    return res.rows[0] || null;
+  params.push(id);
+  const query = `UPDATE users SET ${sets.join(', ')} , updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id`;
+  const res = await pool.query(query, params);
+  if (res.rowCount === 0) return null;
+  // Return full record with joined department and job_title names
+  return await User.findById(id);
   }
 
   /**

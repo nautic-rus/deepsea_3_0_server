@@ -20,10 +20,14 @@ class IssuesService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
-    // Enforce that the actor belongs to the project(s) requested.
+  // If actor has global view permission, allow unrestricted listing
+  const canViewAll = await hasPermission(actor, 'issues.view_all');
+  if (canViewAll) return await Issue.list(query);
+
+  // Enforce that the actor belongs to the project(s) requested.
     // Get list of project_ids the user is assigned to.
-    const pjRes = await pool.query('SELECT project_id FROM user_projects WHERE user_id = $1', [actor.id]);
-    const projectIds = pjRes.rows.map(r => r.project_id);
+  const Project = require('../../db/models/Project');
+  const projectIds = await Project.listAssignedProjectIds(actor.id);
 
     // If a specific project_id was requested, ensure user is assigned to it.
     if (query.project_id) {
@@ -56,6 +60,13 @@ class IssuesService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const i = await Issue.findById(Number(id));
     if (!i) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+    // Ensure actor belongs to the issue's project unless they have view_all
+    const canViewSingleAll = await hasPermission(actor, 'issues.view_all');
+    if (!canViewSingleAll && i.project_id) {
+      const Project = require('../../db/models/Project');
+      const assigned = await Project.isUserAssigned(i.project_id, actor.id);
+      if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
     return i;
   }
 
@@ -72,8 +83,18 @@ class IssuesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.project_id || !fields.title) { const err = new Error('Missing required fields'); err.statusCode = 400; throw err; }
-  // author_id default to actor.id if not provided (API field name). Stored in DB as reporter_id.
-  if (!fields.author_id) fields.author_id = actor.id;
+    // Ensure actor is allowed to create issues in the target project
+    const canCreateAll = await hasPermission(actor, 'issues.create_all');
+    const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
+    const Project = require('../../db/models/Project');
+    const project = await Project.findById(Number(fields.project_id));
+    if (!project) { const err = new Error('Project not found'); err.statusCode = 404; throw err; }
+    if (!canCreateAll && !canViewAllProjects && project.owner_id !== actor.id) {
+      const assigned = await Project.isUserAssigned(project.id, actor.id);
+      if (!assigned) { const err = new Error('Forbidden: user not assigned to target project'); err.statusCode = 403; throw err; }
+    }
+    // author_id default to actor.id if not provided (API field name). Stored in DB as reporter_id.
+    if (!fields.author_id) fields.author_id = actor.id;
     return await Issue.create(fields);
   }
 
@@ -91,6 +112,17 @@ class IssuesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    // Ensure actor belongs to the issue's project (unless elevated permission)
+    const canUpdateAll = await hasPermission(actor, 'issues.update_all');
+    const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
+    const existing = await Issue.findById(Number(id));
+    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+    if (!canUpdateAll && !canViewAllProjects && existing.project_id) {
+      const Project = require('../../db/models/Project');
+      const isAssigned = await Project.isUserAssigned(existing.project_id, actor.id);
+      if (!isAssigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
+
     const updated = await Issue.update(Number(id), fields);
     if (!updated) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
     return updated;
@@ -109,6 +141,17 @@ class IssuesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    // Ensure actor belongs to the issue's project (unless elevated permission)
+    const canDeleteAll = await hasPermission(actor, 'issues.delete_all');
+    const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
+    const existing = await Issue.findById(Number(id));
+    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+    if (!canDeleteAll && !canViewAllProjects && existing.project_id) {
+      const Project = require('../../db/models/Project');
+      const isAssigned = await Project.isUserAssigned(existing.project_id, actor.id);
+      if (!isAssigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
+
     const ok = await Issue.softDelete(Number(id));
     if (!ok) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
     return { success: true };

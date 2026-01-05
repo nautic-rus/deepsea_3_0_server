@@ -14,14 +14,20 @@ class Issue {
    * @returns {Promise<Array<Object>>} Array of issue objects matching filters
    */
   static async list(filters = {}) {
-    const { project_id, status_id, assignee_id, type_id, priority, estimated_hours, author_id, page = 1, limit = 50, search, start_date_from, start_date_to, due_date_from, due_date_to, estimated_hours_min, estimated_hours_max, allowed_project_ids } = filters;
+    const { project_id, status_id, assignee_id, type_id, priority, estimated_hours, author_id, is_closed, is_active, page = 1, limit = 50, search, start_date_from, start_date_to, due_date_from, due_date_to, estimated_hours_min, estimated_hours_max, allowed_project_ids } = filters;
     const offset = (page - 1) * limit;
     const where = [];
     const values = [];
     let idx = 1;
     if (project_id) { where.push(`project_id = $${idx++}`); values.push(project_id); }
     if (status_id) { where.push(`status_id = $${idx++}`); values.push(status_id); }
+    // is_closed: map to issue_status.is_final boolean flag
+    if (is_closed !== undefined && is_closed !== null) {
+      where.push(`status_id IN (SELECT id FROM issue_status WHERE is_final = $${idx++})`);
+      values.push(is_closed);
+    }
     if (assignee_id) { where.push(`assignee_id = $${idx++}`); values.push(assignee_id); }
+  if (is_active !== undefined) { where.push(`is_active = $${idx++}`); values.push(is_active); }
     if (type_id) { where.push(`type_id = $${idx++}`); values.push(type_id); }
     if (priority) { where.push(`priority = $${idx++}`); values.push(priority); }
     if (estimated_hours !== undefined && estimated_hours !== null) { where.push(`estimated_hours = $${idx++}`); values.push(estimated_hours); }

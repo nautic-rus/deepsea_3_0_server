@@ -13,7 +13,11 @@ class DocumentsController {
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
-      const rows = await DocumentsService.listDocuments(req.query || {}, actor);
+      const query = Object.assign({}, req.query || {});
+      if (query.is_active !== undefined) {
+        query.is_active = (query.is_active === 'true' || query.is_active === '1' || query.is_active === true);
+      }
+      const rows = await DocumentsService.listDocuments(query || {}, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
