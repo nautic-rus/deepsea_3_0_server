@@ -15,10 +15,10 @@ components:
   examples:
     AccessTokenExample:
       summary: Placeholder access JWT token
-      value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIn0.example"
+      value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIn0.example
     RefreshTokenExample:
       summary: Placeholder refresh JWT token
-      value: "eyJhbGciOiJIUzI1NiIsInR5cCI6IlRSIn0.eyJzdWIiOjEsImV4cCI6MTYwMDAwMDAwMH0.example"
+      value: eyJhbGciOiJIUzI1NiIsInR5cCI6IlRSIn0.eyJzdWIiOjEsImV4cCI6MTYwMDAwMDAwMH0.example
   parameters:
     Authorization:
       name: Authorization
@@ -27,7 +27,7 @@ components:
       required: true
       schema:
         type: string
-      example: "Bearer {{accessToken}}"
+      example: Bearer {{accessToken}}
   schemas:
     Error:
       type: object
@@ -729,6 +729,13 @@ paths:
               description: ''
               permission_ids: null
       parameters: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
   /api/roles/{id}:
     get:
       tags:
@@ -744,6 +751,13 @@ paths:
           required: true
           schema:
             type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
     put:
       tags:
         - roles
@@ -774,6 +788,13 @@ paths:
               name: ''
               description: ''
               permission_ids: null
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
     delete:
       tags:
         - roles
@@ -789,6 +810,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
   /api/permissions:
     get:
       tags:
@@ -846,6 +870,13 @@ paths:
               code: ''
               owner_id: 0
       parameters: []
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
   /api/projects/{id}:
     get:
       tags:
@@ -862,6 +893,13 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
     put:
       tags:
         - projects
@@ -886,6 +924,13 @@ paths:
               name: ''
               description: ''
               status: ''
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
     delete:
       tags:
         - projects
@@ -901,6 +946,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
   /api/projects/assign:
     post:
       tags:
@@ -941,7 +989,9 @@ paths:
                   items:
                     type: integer
                   description: Optional array of role IDs to assign (e.g. [4, 5]). If provided, each role will be assigned.
-                  example: [4, 5]
+                  example:
+                    - 4
+                    - 5
             example:
               project_id: 12
               user_id: 34
@@ -1001,8 +1051,8 @@ paths:
         - projects
       summary: Отвязать пользователя от проекта
       description: >-
-        Удаляет назначение пользователя в проекте. Параметры передаются в теле запроса:
-        user_id и необязательное role или roles.
+        Удаляет назначение пользователя в проекте. Параметры передаются в теле запроса: user_id и необязательное role
+        или roles.
       security:
         - bearerAuth: []
       x-permissions:
@@ -1029,7 +1079,9 @@ paths:
                   items:
                     type: integer
                   description: Массив ID ролей для удаления
-                  example: [4, 5]
+                  example:
+                    - 4
+                    - 5
       responses:
         '200':
           description: Успешно отвязан пользователь
@@ -1149,28 +1201,28 @@ paths:
           schema:
             type: string
             format: date-time
-          example: "2025-01-01T00:00:00Z"
+          example: '2025-01-01T00:00:00Z'
         - name: start_date_to
           in: query
           description: Начальная дата (<=)
           schema:
             type: string
             format: date-time
-          example: "2025-12-31T23:59:59Z"
+          example: '2025-12-31T23:59:59Z'
         - name: due_date_from
           in: query
           description: Дата завершения (>=)
           schema:
             type: string
             format: date-time
-          example: "2025-01-01T00:00:00Z"
+          example: '2025-01-01T00:00:00Z'
         - name: due_date_to
           in: query
           description: Дата завершения (<=)
           schema:
             type: string
             format: date-time
-          example: "2025-12-31T23:59:59Z"
+          example: '2025-12-31T23:59:59Z'
         - name: page
           in: query
           schema:
@@ -1187,6 +1239,27 @@ paths:
           schema:
             type: string
           example: pump
+      responses:
+        '200':
+          description: Список задач
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Issue'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - missing permission issues.view
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     post:
       tags:
         - issues
@@ -1206,6 +1279,13 @@ paths:
               title: ''
               description: ''
               assignee_id: 0
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
   /api/issues/{id}:
     get:
       tags:
@@ -1222,6 +1302,13 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
     put:
       tags:
         - issues
@@ -1246,6 +1333,13 @@ paths:
               title: ''
               description: ''
               status_id: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
     delete:
       tags:
         - issues
@@ -1261,6 +1355,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
   /api/documents:
     get:
       tags:
@@ -1367,6 +1464,15 @@ paths:
         # - project_id: id проекта
         # - search: поиск по title/description
         # - page, limit: пагинация
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
     post:
       tags:
         - documents
@@ -1385,6 +1491,13 @@ paths:
               title: ''
               description: ''
               project_id: 0
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
   /api/documents/{id}:
     get:
       tags:
@@ -1401,6 +1514,13 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
     put:
       tags:
         - documents
@@ -1425,6 +1545,13 @@ paths:
               title: ''
               description: ''
               stage_id: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
     delete:
       tags:
         - documents
@@ -1440,6 +1567,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
   /api/materials:
     get:
       tags:
@@ -1468,6 +1598,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '201':
+          description: Created
   /api/materials/{id}:
     get:
       tags:
@@ -1484,6 +1617,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
     put:
       tags:
         - materials
@@ -1505,6 +1641,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '200':
+          description: OK
     delete:
       tags:
         - materials
@@ -1520,6 +1659,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
   /api/equipment:
     get:
       tags:
@@ -1548,6 +1690,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '201':
+          description: Created
   /api/equipment/{id}:
     get:
       tags:
@@ -1564,6 +1709,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
     put:
       tags:
         - equipment
@@ -1585,6 +1733,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '200':
+          description: OK
     delete:
       tags:
         - equipment
@@ -1600,6 +1751,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
   /api/specifications:
     get:
       tags:
@@ -1628,6 +1782,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '201':
+          description: Created
   /api/specifications/{id}:
     get:
       tags:
@@ -1644,6 +1801,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
     put:
       tags:
         - specifications
@@ -1665,6 +1825,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '200':
+          description: OK
     delete:
       tags:
         - specifications
@@ -1680,6 +1843,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
   /api/stages:
     get:
       tags:
@@ -1708,6 +1874,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '201':
+          description: Created
   /api/stages/{id}:
     get:
       tags:
@@ -1724,6 +1893,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
     put:
       tags:
         - stages
@@ -1745,6 +1917,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '200':
+          description: OK
     delete:
       tags:
         - stages
@@ -1760,6 +1935,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
   /api/storage:
     get:
       tags:
@@ -1788,6 +1966,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '201':
+          description: Created
   /api/storage/{id}:
     get:
       tags:
@@ -1804,6 +1985,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
     put:
       tags:
         - storage
@@ -1825,6 +2009,9 @@ paths:
             schema:
               type: object
             example: {}
+      responses:
+        '200':
+          description: OK
     delete:
       tags:
         - storage
@@ -1840,6 +2027,9 @@ paths:
           schema:
             type: integer
           example: '{{id}}'
+      responses:
+        '200':
+          description: OK
   /api/statements:
     get:
       tags:
@@ -1873,7 +2063,7 @@ paths:
                   example: 12
                 title:
                   type: string
-                  example: "Monthly materials statement"
+                  example: Monthly materials statement
                 items:
                   type: array
                   items:
@@ -1887,7 +2077,10 @@ paths:
                         example: 10
             example:
               project_id: 12
-              title: "Monthly materials statement"
+              title: Monthly materials statement
               items:
                 - material_id: 1
                   quantity: 10
+      responses:
+        '201':
+          description: Created

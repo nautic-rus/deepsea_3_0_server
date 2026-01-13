@@ -1095,7 +1095,19 @@
             }
           }
         },
-        "parameters": []
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/roles/{id}": {
@@ -1121,7 +1133,19 @@
               "type": "integer"
             }
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          }
+        }
       },
       "put": {
         "tags": [
@@ -1169,6 +1193,18 @@
               }
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Role"
+                }
+              }
+            }
+          }
         }
       },
       "delete": {
@@ -1194,7 +1230,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/permissions": {
@@ -1286,7 +1327,19 @@
             }
           }
         },
-        "parameters": []
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/projects/{id}": {
@@ -1313,7 +1366,19 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          }
+        }
       },
       "put": {
         "tags": [
@@ -1352,6 +1417,18 @@
               }
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          }
         }
       },
       "delete": {
@@ -1377,7 +1454,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/projects/assign": {
@@ -1806,7 +1888,42 @@
             },
             "example": "pump"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "Список задач",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Issue"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - missing permission issues.view",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
       },
       "post": {
         "tags": [
@@ -1833,6 +1950,18 @@
                 "title": "",
                 "description": "",
                 "assignee_id": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
               }
             }
           }
@@ -1863,7 +1992,19 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          }
+        }
       },
       "put": {
         "tags": [
@@ -1902,6 +2043,18 @@
               }
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          }
         }
       },
       "delete": {
@@ -1927,7 +2080,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/documents": {
@@ -2074,7 +2232,22 @@
             "example": 20
           }
         ],
-        "x-example-request": "# Пример запроса\nGET /api/documents?project_id=12&search=pipe&page=1&limit=20 HTTP/1.1\nHost: {{baseUrl}}\nAuthorization: Bearer <your-jwt-token>\n\n# Описание параметров в запросе:\n# - project_id: id проекта\n# - search: поиск по title/description\n# - page, limit: пагинация\n"
+        "x-example-request": "# Пример запроса\nGET /api/documents?project_id=12&search=pipe&page=1&limit=20 HTTP/1.1\nHost: {{baseUrl}}\nAuthorization: Bearer <your-jwt-token>\n\n# Описание параметров в запросе:\n# - project_id: id проекта\n# - search: поиск по title/description\n# - page, limit: пагинация\n",
+        "responses": {
+          "200": {
+            "description": "List",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Document"
+                  }
+                }
+              }
+            }
+          }
+        }
       },
       "post": {
         "tags": [
@@ -2100,6 +2273,18 @@
                 "title": "",
                 "description": "",
                 "project_id": 0
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
               }
             }
           }
@@ -2130,7 +2315,19 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          }
+        }
       },
       "put": {
         "tags": [
@@ -2169,6 +2366,18 @@
               }
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Document"
+                }
+              }
+            }
+          }
         }
       },
       "delete": {
@@ -2194,7 +2403,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/materials": {
@@ -2241,6 +2455,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
         }
       }
     },
@@ -2268,7 +2487,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       },
       "put": {
         "tags": [
@@ -2303,6 +2527,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
         }
       },
       "delete": {
@@ -2328,7 +2557,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/equipment": {
@@ -2375,6 +2609,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
         }
       }
     },
@@ -2402,7 +2641,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       },
       "put": {
         "tags": [
@@ -2437,6 +2681,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
         }
       },
       "delete": {
@@ -2462,7 +2711,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/specifications": {
@@ -2509,6 +2763,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
         }
       }
     },
@@ -2536,7 +2795,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       },
       "put": {
         "tags": [
@@ -2571,6 +2835,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
         }
       },
       "delete": {
@@ -2596,7 +2865,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/stages": {
@@ -2643,6 +2917,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
         }
       }
     },
@@ -2670,7 +2949,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       },
       "put": {
         "tags": [
@@ -2705,6 +2989,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
         }
       },
       "delete": {
@@ -2730,7 +3019,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/storage": {
@@ -2777,6 +3071,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
         }
       }
     },
@@ -2804,7 +3103,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       },
       "put": {
         "tags": [
@@ -2839,6 +3143,11 @@
               "example": {}
             }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
         }
       },
       "delete": {
@@ -2864,7 +3173,12 @@
             },
             "example": "{{id}}"
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
       }
     },
     "/api/statements": {
@@ -2945,6 +3259,11 @@
                 ]
               }
             }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
           }
         }
       }
