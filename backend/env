@@ -12,9 +12,9 @@ NODE_ENV=development
 DB_SSL=false
 
 # JWT конфигурация
-JWT_SECRET=your-secret-key-change-in-production
-JWT_REFRESH_SECRET=your-refresh-secret-key-change-in-production
-JWT_EXPIRES_IN=24h
+JWT_SECRET=cHKm1K+ApDSNrQPNG6gdvsZGMiKBP+2SMYOdXp1UF6kuEpXrLH1C6AavhaN+7UGaFywUyhTnQTStRF4QdCuqgA==
+JWT_REFRESH_SECRET=4LAV+39ECeZy2Hb739/JuUlos3dKJnzqjMt+hls3eCqp/31YRif3IBV5nQL1kjwpKgxAYaB7rb8S1aBCFyTeOg==
+JWT_EXPIRES_IN=8h
 REFRESH_TOKEN_EXPIRES_IN=7d
 
 # Порт сервера
