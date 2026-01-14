@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:3000",
+      "url": "",
       "description": "Development server"
     }
   ],
@@ -288,6 +288,31 @@
             "type": "integer",
             "nullable": true
           }
+        }
+      },
+      "PageItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "path": { "type": "string" },
+          "titleKey": { "type": "string" },
+          "order": { "type": "integer", "nullable": true },
+          "icon": { "type": "string", "nullable": true },
+          "children": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PageItem" }
+          }
+        }
+      },
+      "PagesResponse": {
+        "type": "object",
+        "properties": {
+          "pages": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/PageItem" }
+          },
+          "generatedAt": { "type": "string", "format": "date-time" },
+          "version": { "type": "string" }
         }
       }
     }
@@ -1255,6 +1280,36 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        },
+        "parameters": []
+      }
+    },
+    "/api/user/pages": {
+      "get": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Список страниц (меню) доступных пользователю",
+        "description": "Возвращает клиент-ориентированный список страниц/разделов, доступных для текущего пользователя.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
           }
         },
         "parameters": []

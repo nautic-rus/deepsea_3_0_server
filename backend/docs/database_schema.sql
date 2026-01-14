@@ -70,6 +70,29 @@ CREATE TABLE role_permissions (
     UNIQUE(role_id, permission_id)
 );
 
+-- Таблица страниц (pages) для выдачи меню на клиент
+CREATE TABLE pages (
+    id SERIAL PRIMARY KEY,
+    key VARCHAR(200) NOT NULL UNIQUE,
+    path VARCHAR(400) NOT NULL,
+    title_key VARCHAR(200),
+    parent_id INTEGER REFERENCES pages(id) ON DELETE SET NULL,
+    icon VARCHAR(100),
+    order_index INTEGER DEFAULT 0,
+    feature_flag VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Связь страницы -> требуемые разрешения
+CREATE TABLE page_permissions (
+    id SERIAL PRIMARY KEY,
+    page_id INTEGER NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+    permission_id INTEGER NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(page_id, permission_id)
+);
+
 -- Связь многие-ко-многим между пользователями и ролями
 CREATE TABLE user_roles (
     id SERIAL PRIMARY KEY,

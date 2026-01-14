@@ -21,6 +21,7 @@ const stagesController = require('../controllers/stagesController');
 const storageController = require('../controllers/storageController');
 const statementsController = require('../controllers/statementsController');
 const permissionsController = require('../controllers/permissionsController');
+const userPagesController = require('../controllers/userPagesController');
 const userProjectsController = require('../controllers/userProjectsController');
 
 // Validators and middleware
@@ -182,6 +183,10 @@ router.delete('/statements/:id', authMiddleware, statementsController.delete);
 // ===== Permissions routes =====
 // GET /api/permissions
 router.get('/permissions', authMiddleware, permissionsController.list);
+
+// ===== User pages (menu) =====
+// GET /api/user/pages
+router.get('/user/pages', authMiddleware, userPagesController.getPages);
 
 module.exports = router;
 
