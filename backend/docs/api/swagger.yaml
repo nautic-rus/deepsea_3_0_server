@@ -272,6 +272,32 @@ components:
         assigned_by:
           type: integer
           nullable: true
+    HistoryEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        issue_id:
+          type: integer
+          nullable: true
+        document_id:
+          type: integer
+          nullable: true
+        field_name:
+          type: string
+          description: Short code / action (e.g. created, assigned, updated)
+        old_value:
+          type: string
+          nullable: true
+        new_value:
+          type: string
+          nullable: true
+        changed_by:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
 paths:
   /api/auth/login:
     post:
@@ -1924,6 +1950,40 @@ paths:
           description: Forbidden - missing permission issues.update
         '404':
           description: Issue not found
+  /api/issues/{id}/history:
+    get:
+      tags:
+        - issues
+      summary: История изменений задачи
+      description: Возвращает хронологию изменений и действий над задачей (timeline). Требуется разрешение issues.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - issues.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID задачи
+      responses:
+        '200':
+          description: History entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistoryEntry'
+        '400':
+          description: Invalid issue id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission issues.view
+        '404':
+          description: Issue not found
   /api/documents:
     get:
       tags:
@@ -2136,6 +2196,40 @@ paths:
       responses:
         '200':
           description: OK
+  /api/documents/{id}/history:
+    get:
+      tags:
+        - documents
+      summary: История изменений документа
+      description: Возвращает хронологию изменений и действий над документом. Требуется разрешение documents.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - documents.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID документа
+      responses:
+        '200':
+          description: History entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistoryEntry'
+        '400':
+          description: Invalid document id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission documents.view
+        '404':
+          description: Document not found
   /api/materials:
     get:
       tags:

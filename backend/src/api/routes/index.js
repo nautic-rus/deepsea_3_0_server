@@ -13,6 +13,8 @@ const rolesController = require('../controllers/rolesController');
 const projectsController = require('../controllers/projectsController');
 const issuesController = require('../controllers/issuesController');
 const documentsController = require('../controllers/documentsController');
+const issueHistoryController = require('../controllers/issueHistoryController');
+const documentHistoryController = require('../controllers/documentHistoryController');
 const materialsController = require('../controllers/materialsController');
 const equipmentController = require('../controllers/equipmentController');
 const materialKitsController = require('../controllers/materialKitsController');
@@ -128,6 +130,8 @@ router.put('/issues/:id', authMiddleware, issuesController.update);
 router.delete('/issues/:id', authMiddleware, issuesController.delete);
 // POST /api/issues/:id/assign - assign/change assignee for an issue
 router.post('/issues/:id/assign', authMiddleware, issuesController.assign);
+// GET /api/issues/:id/history - issue timeline/history
+router.get('/issues/:id/history', authMiddleware, issueHistoryController.list);
 
 // ===== Documents routes =====
 // GET /api/documents
@@ -140,6 +144,8 @@ router.post('/documents', authMiddleware, documentsController.create);
 router.put('/documents/:id', authMiddleware, documentsController.update);
 // DELETE /api/documents/:id
 router.delete('/documents/:id', authMiddleware, documentsController.delete);
+// GET /api/documents/:id/history - document timeline/history
+router.get('/documents/:id/history', authMiddleware, documentHistoryController.list);
 
 // ===== Materials routes =====
 router.get('/materials', authMiddleware, materialsController.list);

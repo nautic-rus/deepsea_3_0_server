@@ -2,6 +2,7 @@ const Issue = require('../../db/models/Issue');
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 const RocketChatService = require('./rocketChatService');
+const HistoryService = require('./historyService');
 
 /**
  * Service layer for issue-related business logic.
@@ -97,6 +98,13 @@ class IssuesService {
     // author_id default to actor.id if not provided (API field name). Stored in DB as reporter_id.
     if (!fields.author_id) fields.author_id = actor.id;
     const created = await Issue.create(fields);
+
+    // Add history record for creation (fire-and-forget) - save per-field values
+    (async () => {
+      try {
+        await HistoryService.addIssueHistory(created.id, actor, 'created', { before: {}, after: created });
+      } catch (e) { console.error('Failed to write issue history for created issue', e && e.message ? e.message : e); }
+    })();
 
     // Fire-and-forget: notify users who subscribed to 'issue_created' (project-specific or global)
     (async () => {
@@ -204,6 +212,12 @@ class IssuesService {
 
     const updated = await Issue.update(Number(id), fields);
     if (!updated) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+    // Record update in history (fire-and-forget)
+    (async () => {
+      try {
+        await HistoryService.addIssueHistory(Number(id), actor, 'updated', { before: existing, after: updated });
+      } catch (e) { console.error('Failed to write issue history for update', e && e.message ? e.message : e); }
+    })();
     return updated;
   }
 
@@ -244,6 +258,13 @@ class IssuesService {
 
     const updated = await Issue.update(Number(id), { assignee_id: newAssignee });
     if (!updated) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+
+    // Record assignment in history (fire-and-forget) - write only changed field 'assignee_id'
+    (async () => {
+      try {
+        await HistoryService.addIssueHistory(Number(id), actor, 'assigned', { before: { assignee_id: prevAssignee }, after: { assignee_id: newAssignee } });
+      } catch (e) { console.error('Failed to write issue history for assignment', e && e.message ? e.message : e); }
+    })();
 
     // Send notifications for 'task_assigned' (fire-and-forget)
     (async () => {
@@ -339,6 +360,15 @@ class IssuesService {
 
     const ok = await Issue.softDelete(Number(id));
     if (!ok) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+
+    // Record deletion in history (fire-and-forget)
+    (async () => {
+      try {
+        // Represent soft-delete as change of is_active -> false
+        const after = Object.assign({}, existing, { is_active: false });
+        await HistoryService.addIssueHistory(Number(id), actor, 'deleted', { before: existing, after });
+      } catch (e) { console.error('Failed to write issue history for deletion', e && e.message ? e.message : e); }
+    })();
     return { success: true };
   }
 }

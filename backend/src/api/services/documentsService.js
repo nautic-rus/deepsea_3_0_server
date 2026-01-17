@@ -1,5 +1,6 @@
 const Document = require('../../db/models/Document');
 const { hasPermission } = require('./permissionChecker');
+const HistoryService = require('./historyService');
 
 /**
  * DocumentsService
@@ -67,7 +68,14 @@ class DocumentsService {
     }
 
     if (!fields.created_by) fields.created_by = actor.id;
-    return await Document.create(fields);
+    const created = await Document.create(fields);
+    // Record creation in history (fire-and-forget) - write per-field entries
+    (async () => {
+      try {
+        await HistoryService.addDocumentHistory(created.id, actor, 'created', { before: {}, after: created });
+      } catch (e) { console.error('Failed to write document history for creation', e && e.message ? e.message : e); }
+    })();
+    return created;
   }
 
   static async updateDocument(id, fields, actor) {
@@ -91,6 +99,12 @@ class DocumentsService {
 
     const updated = await Document.update(Number(id), fields);
     if (!updated) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+    // Record update in history
+    (async () => {
+      try {
+        await HistoryService.addDocumentHistory(Number(id), actor, 'updated', { before: existing, after: updated });
+      } catch (e) { console.error('Failed to write document history for update', e && e.message ? e.message : e); }
+    })();
     return updated;
   }
 
@@ -113,6 +127,13 @@ class DocumentsService {
 
     const ok = await Document.softDelete(Number(id));
     if (!ok) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+    // Record deletion in history (soft-delete -> is_active=false)
+    (async () => {
+      try {
+        const after = Object.assign({}, existing, { is_active: false });
+        await HistoryService.addDocumentHistory(Number(id), actor, 'deleted', { before: existing, after });
+      } catch (e) { console.error('Failed to write document history for deletion', e && e.message ? e.message : e); }
+    })();
     return { success: true };
   }
 }
