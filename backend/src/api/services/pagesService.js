@@ -41,9 +41,9 @@ class PagesService {
         dbId: r.id,
         path: r.path,
         titleKey: r.title_key,
+        title: r.title_en || null,
         order: r.order_index,
         icon: r.icon,
-        featureFlag: r.feature_flag,
         permissions: r.permissions || [],
         parentId: r.parent_id,
         children: []
@@ -78,6 +78,7 @@ class PagesService {
         id: node.id,
         path: node.path,
         titleKey: node.titleKey,
+        title: node.title || undefined,
         order: node.order,
         icon: node.icon
       };

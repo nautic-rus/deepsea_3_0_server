@@ -7,11 +7,11 @@ const pool = require('../connection');
 class Page {
   /**
    * List pages with aggregated permission codes.
-   * Returns rows with: id, key, path, title_key, parent_id, icon, order, feature_flag, permissions (array)
+   * Returns rows with: id, key, path, title_key, parent_id, icon, order_index, permissions (array)
    */
   static async listAllWithPermissions() {
     const q = `
-      SELECT p.id, p.key, p.path, p.title_key, p.parent_id, p.icon, p.order_index, p.feature_flag,
+      SELECT p.id, p.key, p.path, p.title_key, p.title_en, p.parent_id, p.icon, p.order_index,
         COALESCE(array_agg(pp_code.code) FILTER (WHERE pp_code.code IS NOT NULL), ARRAY[]::text[]) AS permissions
       FROM pages p
       LEFT JOIN (

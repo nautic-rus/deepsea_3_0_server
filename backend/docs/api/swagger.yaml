@@ -75,6 +75,78 @@ components:
         updated_at:
           type: string
           format: date-time
+    UserRocketChat:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        rc_username:
+          type: string
+        rc_user_id:
+          type: string
+          nullable: true
+        rc_display_name:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UserNotificationSetting:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        project_id:
+          type: integer
+          nullable: true
+        event_id:
+          type: integer
+        method_id:
+          type: integer
+        enabled:
+          type: boolean
+        config:
+          type: object
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UserNotification:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        event_code:
+          type: string
+          nullable: true
+        project_id:
+          type: integer
+          nullable: true
+        data:
+          type: object
+          nullable: true
+        is_read:
+          type: boolean
+        is_hidden:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        read_at:
+          type: string
+          format: date-time
     Department:
       type: object
       properties:
@@ -596,6 +668,450 @@ paths:
           description: User deleted
         '400':
           description: Invalid user id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission users.delete
+        '404':
+          description: User not found
+    /api/users/{id}/notifications:
+      get:
+        tags:
+          - users
+        summary: Список уведомлений пользователя (центр уведомлений)
+        description: Возвращает список уведомлений для пользователя. По умолчанию скрытые уведомления не включаются.
+        security:
+          - bearerAuth: []
+        parameters:
+          - in: path
+            name: id
+            required: true
+            schema:
+              type: integer
+            description: ID пользователя
+            example: '{{id}}'
+          - in: query
+            name: limit
+            required: false
+            schema:
+              type: integer
+              default: 50
+          - in: query
+            name: offset
+            required: false
+            schema:
+              type: integer
+              default: 0
+          - in: query
+            name: include_hidden
+            required: false
+            schema:
+              type: boolean
+            description: Include hidden notifications
+        responses:
+          '200':
+            description: List of notifications
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    data:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/UserNotification'
+          '400':
+            description: Invalid user id
+          '401':
+            description: Authentication required
+          '403':
+            description: Forbidden
+
+    /api/users/{id}/notifications/unread_count:
+      get:
+        tags:
+          - users
+        summary: Количество непрочитанных уведомлений
+        description: Возвращает число непрочитанных и не скрытых уведомлений для пользователя.
+        security:
+          - bearerAuth: []
+        parameters:
+          - in: path
+            name: id
+            required: true
+            schema:
+              type: integer
+            description: ID пользователя
+        responses:
+          '200':
+            description: Unread count
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    data:
+                      type: object
+                      properties:
+                        unread_count:
+                          type: integer
+          '400':
+            description: Invalid user id
+          '401':
+            description: Authentication required
+          '403':
+            description: Forbidden
+
+    /api/users/{id}/notifications/{notificationId}/read:
+      post:
+        tags:
+          - users
+        summary: Пометить уведомление как прочитанное
+        description: Помечает указанное уведомление как прочитанное для пользователя.
+        security:
+          - bearerAuth: []
+        parameters:
+          - in: path
+            name: id
+            required: true
+            schema:
+              type: integer
+          - in: path
+            name: notificationId
+            required: true
+            schema:
+              type: integer
+        responses:
+          '200':
+            description: Notification marked as read
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/UserNotification'
+          '400':
+            description: Invalid parameters
+          '401':
+            description: Authentication required
+          '403':
+            description: Forbidden
+          '404':
+            description: Notification not found
+
+    /api/users/{id}/notifications/{notificationId}/hide:
+      post:
+        tags:
+          - users
+        summary: Скрыть уведомление
+        description: Помечает уведомление как скрытое (не отображается в списке по умолчанию).
+        security:
+          - bearerAuth: []
+        parameters:
+          - in: path
+            name: id
+            required: true
+            schema:
+              type: integer
+          - in: path
+            name: notificationId
+            required: true
+            schema:
+              type: integer
+        responses:
+          '200':
+            description: Notification hidden
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/UserNotification'
+          '400':
+            description: Invalid parameters
+          '401':
+            description: Authentication required
+          '403':
+            description: Forbidden
+          '404':
+            description: Notification not found
+  /api/users/{id}/rocket_chat:
+    get:
+      tags:
+        - users
+      summary: Получить связку Rocket.Chat для пользователя
+      description: Возвращает соответствие пользователя приложения и аккаунта Rocket.Chat. Требуется разрешение users.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - users.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID пользователя
+          example: '{{id}}'
+      responses:
+        '200':
+          description: Mapping found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRocketChat'
+        '400':
+          description: Invalid user id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission users.view
+        '404':
+          description: Not found
+    post:
+      tags:
+        - users
+      summary: Создать/обновить связку Rocket.Chat для пользователя
+      description: Создаёт или обновляет соответствие между пользователем и аккаунтом Rocket.Chat. Требуется разрешение users.update.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - users.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID пользователя
+          example: '{{id}}'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rc_username
+              properties:
+                rc_username:
+                  type: string
+                  description: Rocket.Chat username (login)
+                rc_user_id:
+                  type: string
+                  description: Rocket.Chat internal user id (optional)
+                rc_display_name:
+                  type: string
+                  description: Rocket.Chat display name (optional)
+            example:
+              rc_username: 'john.doe'
+      responses:
+        '201':
+          description: Mapping created/updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRocketChat'
+        '400':
+          description: Invalid user id or bad payload
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission users.update
+        '404':
+          description: User not found
+    delete:
+      tags:
+        - users
+      summary: Удалить связку Rocket.Chat для пользователя
+      description: Удаляет запись соответствия между пользователем и аккаунтом Rocket.Chat. Требуется разрешение users.delete.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - users.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID пользователя
+          example: '{{id}}'
+      responses:
+        '200':
+          description: Mapping deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '400':
+          description: Invalid user id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission users.delete
+        '404':
+          description: User not found
+  /api/users/{id}/notification_settings:
+    get:
+      tags:
+        - users
+      summary: Получить настройки уведомлений пользователя
+      description: Возвращает список настроек уведомлений для пользователя. Можно передать project_id в query для фильтрации по проекту.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - users.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID пользователя
+          example: '{{id}}'
+        - in: query
+          name: project_id
+          required: false
+          schema:
+            type: integer
+          description: Optional project id to filter settings
+      responses:
+        '200':
+          description: List of settings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserNotificationSetting'
+        '400':
+          description: Invalid user id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission users.view
+        '404':
+          description: User not found
+    post:
+      tags:
+        - users
+      summary: Создать/обновить настройку уведомлений пользователя
+      description: Создаёт или обновляет настройку уведомлений (project-specific или global) для пользователя.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - users.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID пользователя
+          example: '{{id}}'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event_id
+                - method_id
+              properties:
+                project_id:
+                  type: integer
+                  nullable: true
+                event_id:
+                  type: integer
+                method_id:
+                  type: integer
+                enabled:
+                  type: boolean
+                config:
+                  type: object
+            example:
+              project_id: null
+              event_id: 1
+              method_id: 1
+              enabled: true
+      responses:
+        '201':
+          description: Setting created/updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserNotificationSetting'
+        '400':
+          description: Invalid payload
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission users.update
+        '404':
+          description: User not found
+    delete:
+      tags:
+        - users
+      summary: Удалить настройку уведомлений пользователя
+      description: Удаляет настройку по composite key (project_id, event_id, method_id). Для глобальной настройки передайте project_id = null.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - users.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID пользователя
+          example: '{{id}}'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - event_id
+                - method_id
+              properties:
+                project_id:
+                  type: integer
+                  nullable: true
+                event_id:
+                  type: integer
+                method_id:
+                  type: integer
+            example:
+              project_id: null
+              event_id: 1
+              method_id: 1
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '400':
+          description: Invalid payload
         '401':
           description: Authentication required
         '403':
@@ -1358,6 +1874,56 @@ paths:
       responses:
         '200':
           description: OK
+    
+  /api/issues/{id}/assign:
+    post:
+      tags:
+        - issues
+      summary: Назначить исполнителя задачи / сменить исполнителя
+      description: "Назначить пользователя на задачу (assignee). Тело запроса: { assignee_id: <int|null> } — передайте null чтобы снять назначение. Требуется разрешение issues.update."
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - issues.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID задачи
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                assignee_id:
+                  type: integer
+                  nullable: true
+              example:
+                assignee_id: 42
+    
+      responses:
+        '200':
+          description: Обновлённая задача
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Issue'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission issues.update
+        '404':
+          description: Issue not found
   /api/documents:
     get:
       tags:

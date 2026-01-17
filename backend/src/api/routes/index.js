@@ -23,6 +23,9 @@ const statementsController = require('../controllers/statementsController');
 const permissionsController = require('../controllers/permissionsController');
 const userPagesController = require('../controllers/userPagesController');
 const userProjectsController = require('../controllers/userProjectsController');
+const userRocketChatController = require('../controllers/userRocketChatController');
+const userNotificationSettingsController = require('../controllers/userNotificationSettingsController');
+const userNotificationsController = require('../controllers/userNotificationsController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -48,6 +51,22 @@ router.get('/users', authMiddleware, usersController.getUsers);
 
 // GET /api/users/:id (single user)
 router.get('/users/:id', authMiddleware, usersController.getUser);
+
+// Rocket.Chat mapping for user
+router.get('/users/:id/rocket_chat', authMiddleware, userRocketChatController.get);
+router.post('/users/:id/rocket_chat', authMiddleware, userRocketChatController.set);
+router.delete('/users/:id/rocket_chat', authMiddleware, userRocketChatController.remove);
+
+// User notification settings
+router.get('/users/:id/notification_settings', authMiddleware, userNotificationSettingsController.list);
+router.post('/users/:id/notification_settings', authMiddleware, userNotificationSettingsController.upsert);
+router.delete('/users/:id/notification_settings', authMiddleware, userNotificationSettingsController.remove);
+
+// User notification center endpoints
+router.get('/users/:id/notifications', authMiddleware, userNotificationsController.list);
+router.get('/users/:id/notifications/unread_count', authMiddleware, userNotificationsController.unreadCount);
+router.post('/users/:id/notifications/:notificationId/read', authMiddleware, userNotificationsController.markAsRead);
+router.post('/users/:id/notifications/:notificationId/hide', authMiddleware, userNotificationsController.markAsHidden);
 
 // PUT /api/users/:id (update)
 router.put('/users/:id', authMiddleware, usersController.updateUser);
@@ -107,6 +126,8 @@ router.post('/issues', authMiddleware, issuesController.create);
 router.put('/issues/:id', authMiddleware, issuesController.update);
 // DELETE /api/issues/:id
 router.delete('/issues/:id', authMiddleware, issuesController.delete);
+// POST /api/issues/:id/assign - assign/change assignee for an issue
+router.post('/issues/:id/assign', authMiddleware, issuesController.assign);
 
 // ===== Documents routes =====
 // GET /api/documents

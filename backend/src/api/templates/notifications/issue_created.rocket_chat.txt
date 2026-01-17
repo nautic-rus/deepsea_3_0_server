@@ -1,0 +1,11 @@
+DeepSea — Project: {{project.name}}
+
+New issue
+Issue: #{{issue.id}} - {{issue.title}}
+Author: {{actor.email}}
+
+{{issue.description}}
+
+Open: {{issueUrl}}
+
+This is an automated notification from DeepSea.

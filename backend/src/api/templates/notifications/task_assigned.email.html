@@ -1,0 +1,36 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Task assigned</title>
+  </head>
+  <body>
+    <div style="font-family: Arial, Helvetica, sans-serif; color: #222;">
+        <!-- Header with inline logo -->
+        <div style="display:flex;align-items:center;padding:12px 0;border-bottom:1px solid #e6e6e6;margin-bottom:12px">
+          <div style="width:48px;height:48px;flex:0 0 48px;margin-right:12px">
+            <!-- simple inline SVG logo to avoid external dependencies -->
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DeepSea logo">
+              <rect width="48" height="48" rx="6" fill="#007bff" />
+              <path d="M12 30c6-8 18-8 24 0" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+              <circle cx="16" cy="20" r="3" fill="#fff" />
+            </svg>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:600;color:#007bff">DeepSea</div>
+            <div style="font-size:12px;color:#666">Project: {{project.name}}</div>
+          </div>
+        </div>
+
+        <h2 style="margin-top:8px">Task assignment</h2>
+      <p><strong>Task</strong>: #{{issue.id}} — {{issue.title}}</p>
+      <p><strong>Assigned by</strong>: {{actor.email}}</p>
+      <p><strong>Assignee</strong>: {{issue.assignee_id}}</p>
+      <hr />
+      <p>{{issue.description}}</p>
+      <p>
+        <a href="{{issueUrl}}" style="background:#007bff;color:#fff;padding:8px 12px;border-radius:4px;text-decoration:none;">Open task in app</a>
+      </p>
+      <p style="color:#888;font-size:12px">This is an automated notification from DeepSea.</p>
+    </div>
+  </body>
+</html>

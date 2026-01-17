@@ -1,9 +1,9 @@
 # Конфигурация базы данных
-DB_HOST=192.168.1.201
+DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=deepsea3
-DB_USER=postgres
-DB_PASSWORD=postgres
+DB_NAME=deepsea_3_0
+DB_USER=
+DB_PASSWORD=
 
 # Окружение
 NODE_ENV=development
@@ -19,4 +19,39 @@ REFRESH_TOKEN_EXPIRES_IN=7d
 
 # Порт сервера
 PORT=3000
+
+
+# Rocket.Chat configuration (REST API)
+# Base URL of Rocket.Chat instance (no trailing slash)
+# Example: ROCKET_CHAT_URL=https://chat.example
+ROCKET_CHAT_URL=https://rocket.nautic-rus.com
+
+# If you already have a valid auth token and user id you can set them
+# (these take precedence over login/password)
+# Example: ROCKET_CHAT_TOKEN=abcd1234
+#ROCKET_CHAT_TOKEN=
+# Example: ROCKET_CHAT_USER_ID=someUserId
+#ROCKET_CHAT_USER_ID=
+
+# Alternatively, provide login credentials — the server will call /api/v1/login
+# to obtain token and user id (these are cached in-memory for the process lifetime)
+# Example: ROCKET_CHAT_LOGIN=bot_username
+ROCKET_CHAT_LOGIN=deepsea
+# Example: ROCKET_CHAT_PASSWORD=supersecret
+ROCKET_CHAT_PASSWORD=Ship1234
+
+# SMTP / Email settings (optional)
+# Example:
+# SMTP_HOST=smtp.example.com
+# SMTP_PORT=587
+# SMTP_USER=username@example.com
+# SMTP_PASS=supersecret
+# SMTP_SECURE=false   # true for TLS on port 465
+# EMAIL_FROM="DeepSea <no-reply@example.com>"
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=
+SMTP_PASS=
+SMTP_SECURE=false
+EMAIL_FROM=
 

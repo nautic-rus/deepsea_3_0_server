@@ -81,6 +81,20 @@ class IssuesController {
       res.json({ data: updated });
     } catch (err) { next(err); }
   }
+
+  /**
+   * Handle POST /api/issues/:id/assign - assign or change assignee of an issue.
+   * Body: { assignee_id: <userId|null> }
+   */
+  static async assign(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { assignee_id } = req.body || {};
+      const updated = await IssuesService.assignIssue(Number(id), assignee_id === null ? null : Number(assignee_id), actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = IssuesController;

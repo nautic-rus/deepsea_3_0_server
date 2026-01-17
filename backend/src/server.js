@@ -2,8 +2,9 @@
  * Точка входа сервера
  */
 
-// Загрузка переменных окружения
-require('dotenv').config();
+// Загрузка переменных окружения (use repository `env` file so server and scripts behave the same)
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', 'env') });
 
 const app = require('./app');
 const config = require('./config');

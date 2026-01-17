@@ -6,11 +6,11 @@ const pool = require('../connection');
 
 // Define pages with optional parentKey and permission codes
 const PAGES = [
-  { key: 'dashboard', path: '/dashboard', title_key: 'menu.dashboard', permissions: [] },
-  { key: 'projects', path: '/projects', title_key: 'menu.projects', permissions: ['projects.view'] },
-  { key: 'project-details', path: '/projects/:id', title_key: 'menu.projectDetails', permissions: ['projects.view'], parentKey: 'projects' },
-  { key: 'documents', path: '/documents', title_key: 'menu.documents', permissions: ['documents.view'] },
-  { key: 'users', path: '/admin/users', title_key: 'menu.users', permissions: ['users.view'] }
+  { key: 'dashboard', path: '/dashboard', title_key: 'menu.dashboard', title_en: 'Dashboard', permissions: [] },
+  { key: 'projects', path: '/projects', title_key: 'menu.projects', title_en: 'Projects', permissions: ['projects.view'] },
+  { key: 'project-details', path: '/projects/:id', title_key: 'menu.projectDetails', title_en: 'Project details', permissions: ['projects.view'], parentKey: 'projects' },
+  { key: 'documents', path: '/documents', title_key: 'menu.documents', title_en: 'Documents', permissions: ['documents.view'] },
+  { key: 'users', path: '/admin/users', title_key: 'menu.users', title_en: 'Users', permissions: ['users.view'] }
 ];
 
 async function upsertPages() {
@@ -26,9 +26,9 @@ async function upsertPages() {
       if (res.rowCount > 0) {
         id = res.rows[0].id;
         // Optionally update path/title
-        await client.query('UPDATE pages SET path = $1, title_key = $2 WHERE id = $3', [p.path, p.title_key || null, id]);
+        await client.query('UPDATE pages SET path = $1, title_key = $2, title_en = $3 WHERE id = $4', [p.path, p.title_key || null, p.title_en || null, id]);
       } else {
-        const ins = await client.query('INSERT INTO pages (key, path, title_key, icon, order_index, feature_flag) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [p.key, p.path, p.title_key || null, null, 0, null]);
+        const ins = await client.query('INSERT INTO pages (key, path, title_key, title_en, icon, order_index) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [p.key, p.path, p.title_key || null, p.title_en || null, null, 0]);
         id = ins.rows[0].id;
       }
       keyToId[p.key] = id;

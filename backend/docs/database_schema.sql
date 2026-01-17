@@ -39,6 +39,19 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Таблица соответствия пользователя системы и аккаунта в Rocket.Chat
+CREATE TABLE user_rocket_chat (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rc_username VARCHAR(255) NOT NULL,
+    rc_user_id VARCHAR(255),
+    rc_display_name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id),
+    UNIQUE(rc_username)
+);
+
 -- Таблица ролей для RBAC
 CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
@@ -76,10 +89,10 @@ CREATE TABLE pages (
     key VARCHAR(200) NOT NULL UNIQUE,
     path VARCHAR(400) NOT NULL,
     title_key VARCHAR(200),
+    title_en VARCHAR(255),
     parent_id INTEGER REFERENCES pages(id) ON DELETE SET NULL,
     icon VARCHAR(100),
     order_index INTEGER DEFAULT 0,
-    feature_flag VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -376,6 +389,46 @@ CREATE TABLE notifications (
     specialization_id INTEGER REFERENCES specializations(id) ON DELETE SET NULL,
     method VARCHAR(100)
 );
+
+-- Таблицы для управления настройками уведомлений пользователей
+-- Список поддерживаемых методов уведомлений (email, rocket_chat, sms, push, internal и т.д.)
+CREATE TABLE notification_methods (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Справочник событий, по которым можно отправлять уведомления (issue_created, comment_added и т.д.)
+CREATE TABLE notification_events (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Настройки уведомлений пользователя. project_id = NULL означает глобальную настройку;
+-- конкретная запись с project_id переопределяет глобальную настройку для пользователя и события
+CREATE TABLE user_notification_settings (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    event_id INTEGER NOT NULL REFERENCES notification_events(id) ON DELETE CASCADE,
+    method_id INTEGER NOT NULL REFERENCES notification_methods(id) ON DELETE CASCADE,
+    enabled BOOLEAN DEFAULT TRUE,
+    config JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, project_id, event_id, method_id)
+);
+
+-- Индексы для ускорения поиска настроек
+CREATE INDEX idx_user_notification_settings_user ON user_notification_settings(user_id);
+CREATE INDEX idx_user_notification_settings_project ON user_notification_settings(project_id);
+CREATE INDEX idx_user_notification_settings_event ON user_notification_settings(event_id);
+
 
 -- Таблица списания часов на задачи
 CREATE TABLE time_logs (
@@ -745,6 +798,24 @@ CREATE INDEX idx_issue_type_code ON issue_type(code);
 CREATE INDEX idx_issue_type_order ON issue_type(order_index);
 CREATE INDEX idx_issue_work_flow_issue_type ON issue_work_flow(issue_type_id);
 CREATE INDEX idx_issue_work_flow_from_status ON issue_work_flow(from_status_id);
+
+-- Таблица центра уведомлений: записи, показываемые пользователю в UI (входящие уведомления)
+CREATE TABLE IF NOT EXISTS user_notifications (
+    id BIGSERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    event_code VARCHAR(100),
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+    data JSONB,
+    is_read BOOLEAN DEFAULT FALSE,
+    is_hidden BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    read_at TIMESTAMP WITH TIME ZONE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id ON user_notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id_is_read ON user_notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_user_notifications_user_id_is_hidden ON user_notifications(user_id, is_hidden);
+
 CREATE INDEX idx_issue_work_flow_to_status ON issue_work_flow(to_status_id);
 CREATE INDEX idx_issue_work_flow_active ON issue_work_flow(is_active);
 CREATE INDEX idx_document_status_code ON document_status(code);
