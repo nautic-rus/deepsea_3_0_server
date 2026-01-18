@@ -3,6 +3,11 @@ const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 const RocketChatService = require('./rocketChatService');
 const HistoryService = require('./historyService');
+const IssueMessage = require('../../db/models/IssueMessage');
+const UserNotification = require('../../db/models/UserNotification');
+const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+const IssueStorage = require('../../db/models/IssueStorage');
+const Storage = require('../../db/models/Storage');
 
 /**
  * Service layer for issue-related business logic.
@@ -24,7 +29,11 @@ class IssuesService {
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
   // If actor has global view permission, allow unrestricted listing
   const canViewAll = await hasPermission(actor, 'issues.view_all');
-  if (canViewAll) return await Issue.list(query);
+  if (canViewAll) {
+    const rows = await Issue.list(query);
+    await IssuesService.attachDisplayFieldsToList(rows);
+    return rows;
+  }
 
   // Enforce that the actor belongs to the project(s) requested.
     // Get list of project_ids the user is assigned to.
@@ -38,13 +47,76 @@ class IssuesService {
         const err = new Error('Forbidden: user is not assigned to the requested project'); err.statusCode = 403; throw err;
       }
       // pass through project_id as usual
-      return await Issue.list(query);
+      const rows = await Issue.list(query);
+      await IssuesService.attachDisplayFieldsToList(rows);
+      return rows;
     }
 
     // No specific project requested: restrict to user's projects
     if (projectIds.length === 0) return [];
     const filters = Object.assign({}, query, { allowed_project_ids: projectIds });
-    return await Issue.list(filters);
+    const rows = await Issue.list(filters);
+    await IssuesService.attachDisplayFieldsToList(rows);
+    return rows;
+  }
+
+  /**
+   * Attach lightweight textual display fields to an array of issues.
+   * Mutates the array elements in-place and returns once complete.
+   */
+  static async attachDisplayFieldsToList(issues) {
+    if (!issues || !Array.isArray(issues) || issues.length === 0) return;
+    try {
+      const projectIds = [...new Set(issues.filter(i => i.project_id).map(i => i.project_id))];
+      const assigneeIds = [...new Set(issues.filter(i => i.assignee_id).map(i => i.assignee_id))];
+      const authorIds = [...new Set(issues.filter(i => i.author_id).map(i => i.author_id))];
+      const statusIds = [...new Set(issues.filter(i => i.status_id).map(i => i.status_id))];
+      const typeIds = [...new Set(issues.filter(i => i.type_id).map(i => i.type_id))];
+
+      const qProjects = projectIds.length ? pool.query(`SELECT id, name FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
+      const qUsers = (assigneeIds.length || authorIds.length) ? pool.query(`SELECT id, username, first_name, last_name, middle_name, email FROM users WHERE id = ANY($1::int[])`, [[...new Set([...assigneeIds, ...authorIds])]]) : Promise.resolve({ rows: [] });
+      const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM issue_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
+      const qTypes = typeIds.length ? pool.query(`SELECT id, name, code FROM issue_type WHERE id = ANY($1::int[])`, [typeIds]) : Promise.resolve({ rows: [] });
+
+      const [projectsRes, usersRes, statusesRes, typesRes] = await Promise.all([qProjects, qUsers, qStatuses, qTypes]);
+
+      const projectMap = new Map((projectsRes.rows || []).map(r => [r.id, r]));
+      const userMap = new Map((usersRes.rows || []).map(r => [r.id, r]));
+      const statusMap = new Map((statusesRes.rows || []).map(r => [r.id, r]));
+      const typeMap = new Map((typesRes.rows || []).map(r => [r.id, r]));
+
+      const mkUserDisplay = (u) => {
+        if (!u) return null;
+        const parts = [];
+        if (u.last_name) parts.push(u.last_name);
+        if (u.first_name) parts.push(u.first_name);
+        if (u.middle_name) parts.push(u.middle_name);
+        const byName = parts.length ? parts.join(' ') : null;
+        return byName || u.username || u.email || null;
+      };
+
+      for (const it of issues) {
+        const proj = it.project_id ? projectMap.get(it.project_id) : null;
+        it.project_name = proj ? proj.name || null : null;
+        const assignee = it.assignee_id ? userMap.get(it.assignee_id) : null;
+        const author = it.author_id ? userMap.get(it.author_id) : null;
+        it.assignee_name = mkUserDisplay(assignee);
+        it.author_name = mkUserDisplay(author);
+        const st = it.status_id ? statusMap.get(it.status_id) : null;
+        it.status_name = st ? st.name : null;
+        it.status_code = st ? st.code : null;
+        const tp = it.type_id ? typeMap.get(it.type_id) : null;
+        it.type_name = tp ? tp.name : null;
+        it.type_code = tp ? tp.code : null;
+        if (it.priority) {
+          try { const p = String(it.priority); it.priority_text = p.charAt(0).toUpperCase() + p.slice(1); } catch (e) { it.priority_text = it.priority; }
+        } else {
+          it.priority_text = null;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to attach display fields to issues list', e && e.message ? e.message : e);
+    }
   }
 
   /**
@@ -69,6 +141,77 @@ class IssuesService {
       const assigned = await Project.isUserAssigned(i.project_id, actor.id);
       if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
     }
+    // Compute allowed next statuses according to issue_work_flow for this issue's type
+    try {
+      if (i.type_id && i.status_id) {
+        const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM issue_work_flow wf JOIN issue_status s ON s.id = wf.to_status_id WHERE wf.issue_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true ORDER BY s.order_index`;
+        const res = await pool.query(q, [i.type_id, i.status_id]);
+        i.allowed_statuses = res.rows || [];
+      } else {
+        i.allowed_statuses = [];
+      }
+    } catch (e) {
+      // don't break the request if lookup fails; log and continue
+      console.error('Failed to load allowed issue statuses', e && e.message ? e.message : e);
+      i.allowed_statuses = [];
+    }
+
+    // Add lightweight textual display fields for UI (do not attach full objects)
+    try {
+      const Project = require('../../db/models/Project');
+      const User = require('../../db/models/User');
+      // Resolve project name, assignee and author display names, status and type names
+      const lookups = [];
+      if (i.project_id) {
+        lookups.push(Project.findById(i.project_id));
+      } else {
+        lookups.push(Promise.resolve(null));
+      }
+      // users
+      if (i.assignee_id) lookups.push(User.findById(i.assignee_id)); else lookups.push(Promise.resolve(null));
+      if (i.author_id) lookups.push(User.findById(i.author_id)); else lookups.push(Promise.resolve(null));
+
+      // status and type names from lookup tables
+      const qStatus = i.status_id ? pool.query('SELECT id, name, code FROM issue_status WHERE id = $1 LIMIT 1', [i.status_id]) : Promise.resolve({ rows: [] });
+      const qType = i.type_id ? pool.query('SELECT id, name, code FROM issue_type WHERE id = $1 LIMIT 1', [i.type_id]) : Promise.resolve({ rows: [] });
+
+      const [projectRow, assigneeRow, authorRow, statusRes, typeRes] = await Promise.all([...lookups, qStatus, qType]);
+
+      i.project_name = projectRow ? projectRow.name || null : null;
+
+      const mkUserDisplay = (u) => {
+        if (!u) return null;
+        const parts = [];
+        if (u.last_name) parts.push(u.last_name);
+        if (u.first_name) parts.push(u.first_name);
+        if (u.middle_name) parts.push(u.middle_name);
+        const byName = parts.length ? parts.join(' ') : null;
+        return byName || u.username || u.email || null;
+      };
+
+      i.assignee_name = mkUserDisplay(assigneeRow);
+      i.author_name = mkUserDisplay(authorRow);
+
+      i.status_name = (statusRes && statusRes.rows && statusRes.rows[0]) ? statusRes.rows[0].name : null;
+      i.status_code = (statusRes && statusRes.rows && statusRes.rows[0]) ? statusRes.rows[0].code : null;
+
+      i.type_name = (typeRes && typeRes.rows && typeRes.rows[0]) ? typeRes.rows[0].name : null;
+      i.type_code = (typeRes && typeRes.rows && typeRes.rows[0]) ? typeRes.rows[0].code : null;
+
+      // humanize priority (lightweight)
+      if (i.priority) {
+        try {
+          const p = String(i.priority);
+          i.priority_text = p.charAt(0).toUpperCase() + p.slice(1);
+        } catch (e) { i.priority_text = i.priority; }
+      } else {
+        i.priority_text = null;
+      }
+    } catch (e) {
+      console.error('Failed to resolve display fields for issue', e && e.message ? e.message : e);
+      // keep original issue object even if lookups fail
+    }
+
     return i;
   }
 
@@ -332,6 +475,140 @@ class IssuesService {
     })();
 
     return updated;
+  }
+
+  /**
+   * Add a message/comment to an issue.
+   * @param {number} id - issue id
+   * @param {string} content - message content
+   * @param {Object} actor - user performing the action
+   */
+  static async addIssueMessage(id, content, actor) {
+    const requiredPermission = 'issues.comment';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.comment'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+
+    const existing = await Issue.findById(Number(id));
+    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+
+    // Ensure actor is assigned to project unless they have view_all
+    const canViewAll = await hasPermission(actor, 'issues.view_all');
+    if (!canViewAll && existing.project_id) {
+      const Project = require('../../db/models/Project');
+      const assigned = await Project.isUserAssigned(existing.project_id, actor.id);
+      if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
+
+    if (!content || String(content).trim().length === 0) { const err = new Error('Empty content'); err.statusCode = 400; throw err; }
+
+    const created = await IssueMessage.create({ issue_id: Number(id), user_id: actor.id, content: String(content) });
+
+    // History: simple entry for comment
+    (async () => {
+      try {
+        await HistoryService.addIssueHistory(Number(id), actor, 'commented', { before: {}, after: { comment: created.content } });
+      } catch (e) { console.error('Failed to write issue history for comment', e && e.message ? e.message : e); }
+    })();
+
+    // Notify issue participants (assignee, author) by creating user_notifications
+    (async () => {
+      try {
+        const recipients = [];
+        if (existing.assignee_id && existing.assignee_id !== actor.id) recipients.push(existing.assignee_id);
+        if (existing.author_id && existing.author_id !== actor.id && existing.author_id !== existing.assignee_id) recipients.push(existing.author_id);
+        for (const uid of recipients) {
+          try {
+            await UserNotification.create({ user_id: uid, event_code: 'comment_added', project_id: existing.project_id, data: { issue_id: existing.id, message: created } });
+          } catch (e) { console.error('Failed to create user notification for comment', e && e.message ? e.message : e); }
+        }
+      } catch (e) { console.error('Failed to enqueue notifications for issue comment', e && e.message ? e.message : e); }
+    })();
+
+    return created;
+  }
+
+  /**
+   * Attach an existing storage item to an issue.
+   * @param {number} id - issue id
+   * @param {number} storageId - storage item id
+   * @param {Object} actor
+   */
+  static async attachFileToIssue(id, storageId, actor) {
+    const requiredPermission = 'issues.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
+
+    const existing = await Issue.findById(Number(id));
+    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+    const storageItem = await Storage.findById(Number(storageId));
+    if (!storageItem) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
+
+    // Ensure actor belongs to the project's scope unless elevated
+    const canUpdateAll = await hasPermission(actor, 'issues.update_all');
+    const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
+    if (!canUpdateAll && !canViewAllProjects && existing.project_id) {
+      const Project = require('../../db/models/Project');
+      const isAssigned = await Project.isUserAssigned(existing.project_id, actor.id);
+      if (!isAssigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
+
+    const attached = await IssueStorage.attach({ issue_id: Number(id), storage_id: Number(storageId) });
+
+    // History
+    (async () => {
+      try {
+        await HistoryService.addIssueHistory(Number(id), actor, 'file_attached', { before: {}, after: { storage_id: storageId } });
+      } catch (e) { console.error('Failed to write issue history for file attach', e && e.message ? e.message : e); }
+    })();
+
+    return attached;
+  }
+
+  static async detachFileFromIssue(id, storageId, actor) {
+    const requiredPermission = 'issues.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
+    const existing = await Issue.findById(Number(id));
+    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+    const detached = await IssueStorage.detach({ issue_id: Number(id), storage_id: Number(storageId) });
+    (async () => {
+      try {
+        await HistoryService.addIssueHistory(Number(id), actor, 'file_detached', { before: {}, after: { storage_id: storageId } });
+      } catch (e) { console.error('Failed to write issue history for file detach', e && e.message ? e.message : e); }
+    })();
+
+    // Attempt to delete storage object + DB record. This may fail if actor lacks storage.delete permission;
+    // we won't block the detach operation because of that — just log failures.
+    (async () => {
+      try {
+        const StorageService = require('./storageService');
+        try {
+          await StorageService.deleteStorage(Number(storageId), actor);
+        } catch (e) {
+          // If forbidden or not found, just log
+          console.error('Failed to delete storage after detach', e && e.message ? e.message : e);
+        }
+      } catch (e) { console.error('Failed to run post-detach storage cleanup', e && e.message ? e.message : e); }
+    })();
+
+    return detached;
+  }
+
+  static async listIssueFiles(id, opts = {}, actor) {
+    // basic permission check
+    const requiredPermission = 'issues.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
+    const existing = await Issue.findById(Number(id));
+    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+    return await IssueStorage.listByIssue(Number(id), opts);
   }
 
   /**

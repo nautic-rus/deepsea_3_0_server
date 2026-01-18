@@ -85,7 +85,7 @@ class Issue {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['title','description','priority','estimated_hours','start_date','due_date','assignee_id','status_id'].forEach((k) => {
+    ['title','description','priority','estimated_hours','start_date','due_date','assignee_id','status_id','type_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Issue.findById(id);

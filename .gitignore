@@ -1,0 +1,61 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.pnpm-debug.log
+
+# Env files
+.env
+.env.*
+backend/env
+backend/.env
+
+# Logs
+logs
+*.log
+logs/*.log
+pids
+*.pid
+*.seed
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Build
+dist/
+build/
+coverage/
+coverage/**
+.nyc_output/
+
+# Temporary
+tmp/
+temp/
+.cache/
+
+# Misc
+*.tgz
+*.gz
+
+# Lockfiles (optional to keep)
+# pnpm-lock.yaml
+
+# Mac specific
+.AppleDouble
+.LSOverride
+
+# S3 uploads temp
+uploads/
+
+# Ignore local node binary (nvm)
+.node-version
+
+# End

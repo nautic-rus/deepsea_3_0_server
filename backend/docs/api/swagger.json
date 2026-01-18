@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": null,
+      "url": "",
       "description": "Development server"
     }
   ],
@@ -323,6 +323,46 @@
           "status_id": {
             "type": "integer"
           },
+          "type_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "priority": {
+            "type": "string",
+            "nullable": true
+          },
+          "estimated_hours": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "resolved_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "closed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "allowed_statuses": {
+            "type": "array",
+            "description": "Allowed next statuses according to issue_work_flow for this issue's type and current status",
+            "items": {
+              "$ref": "#/components/schemas/IssueStatus"
+            }
+          },
           "assignee_id": {
             "type": "integer",
             "nullable": true
@@ -393,6 +433,28 @@
           }
         }
       },
+      "IssueStatus": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_final": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      },
       "HistoryEntry": {
         "type": "object",
         "properties": {
@@ -427,6 +489,57 @@
             "type": "string",
             "format": "date-time"
           }
+        }
+      },
+      "IssueMessageCreate": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "content": {
+            "type": "string",
+            "example": "Please review the attached specs."
+          }
+        }
+      },
+      "IssueMessage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "issue_id": { "type": "integer" },
+          "content": { "type": "string" },
+          "created_by": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "author_name": { "type": "string", "nullable": true }
+        }
+      },
+      "DocumentMessageCreate": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "content": { "type": "string" }
+        }
+      },
+      "DocumentMessage": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "document_id": { "type": "integer" },
+          "content": { "type": "string" },
+          "created_by": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "author_name": { "type": "string", "nullable": true }
+        }
+      },
+      "StorageRef": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "filename": { "type": "string" },
+          "url": { "type": "string" },
+          "size": { "type": "integer" },
+          "content_type": { "type": "string" },
+          "created_by": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
         }
       }
     }
@@ -2783,13 +2896,41 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "project_id": {
+                    "type": "integer"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "assignee_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "type_id": {
+                    "type": "integer",
+                    "description": "ID типа задачи (issue_type)",
+                    "nullable": true
+                  },
+                  "priority": {
+                    "type": "string",
+                    "description": "Приоритет задачи (low|medium|high or custom code)",
+                    "nullable": true
+                  }
+                }
               },
               "example": {
                 "project_id": 0,
                 "title": "",
                 "description": "",
-                "assignee_id": 0
+                "assignee_id": 0,
+                "type_id": 1,
+                "priority": "medium"
               }
             }
           }
@@ -2874,12 +3015,57 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "status_id": {
+                    "type": "integer"
+                  },
+                  "assignee_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "type_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "priority": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "estimated_hours": {
+                    "type": "number",
+                    "format": "float",
+                    "nullable": true
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "format": "date",
+                    "nullable": true
+                  },
+                  "due_date": {
+                    "type": "string",
+                    "format": "date",
+                    "nullable": true
+                  }
+                }
               },
               "example": {
                 "title": "",
                 "description": "",
-                "status_id": 0
+                "status_id": 0,
+                "assignee_id": 0,
+                "type_id": 1,
+                "priority": "medium",
+                "estimated_hours": 8,
+                "start_date": "2026-01-01",
+                "due_date": "2026-02-01"
               }
             }
           }
@@ -3058,6 +3244,240 @@
           "404": {
             "description": "Issue not found"
           }
+        }
+      }
+    },
+    "/api/issues/{id}/messages": {
+      "post": {
+        "tags": ["issues"],
+        "summary": "Добавить сообщение к задаче",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "issues.comment" ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "ID задачи"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/IssueMessageCreate" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IssueMessage" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input or issue id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission issues.comment" },
+          "404": { "description": "Issue not found" }
+        }
+      }
+    },
+    "/api/issues/{id}/files": {
+      "post": {
+        "tags": ["issues"],
+        "summary": "Прикрепить файл к задаче",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "issues.update" ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "ID задачи"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["storage_id"],
+                "properties": {
+                  "storage_id": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attached",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRef" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input or ids" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission issues.update" },
+          "404": { "description": "Issue or storage item not found" }
+        }
+      },
+      "get": {
+        "tags": ["issues"],
+        "summary": "Список прикреплённых файлов задачи",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "issues.view" ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "ID задачи"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/StorageRef" } }
+              }
+            }
+          },
+          "400": { "description": "Invalid issue id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission issues.view" },
+          "404": { "description": "Issue not found" }
+        }
+      }
+    },
+    "/api/issues/{id}/files/{storage_id}": {
+      "delete": {
+        "tags": ["issues"],
+        "summary": "Открепить файл от задачи",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "issues.update" ],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID задачи" },
+          { "in": "path", "name": "storage_id", "required": true, "schema": { "type": "integer" }, "description": "ID файла в storage" }
+        ],
+        "responses": {
+          "200": { "description": "Detached" },
+          "400": { "description": "Invalid ids" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission issues.update" },
+          "404": { "description": "Issue or storage item not found" }
+        }
+      }
+    },
+    "/api/documents/{id}/messages": {
+      "post": {
+        "tags": ["documents"],
+        "summary": "Добавить сообщение к документу",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "documents.comment" ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "ID документа"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DocumentMessageCreate" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocumentMessage" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input or document id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.comment" },
+          "404": { "description": "Document not found" }
+        }
+      }
+    },
+    "/api/documents/{id}/files": {
+      "post": {
+        "tags": ["documents"],
+        "summary": "Прикрепить файл к документу",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "documents.update" ],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID документа" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["storage_id"],
+                "properties": { "storage_id": { "type": "integer" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Attached", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StorageRef" } } } },
+          "400": { "description": "Invalid input or ids" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.update" },
+          "404": { "description": "Document or storage item not found" }
+        }
+      },
+      "get": {
+        "tags": ["documents"],
+        "summary": "Список прикреплённых файлов документа",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "documents.view" ],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID документа" } ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/StorageRef" } } } } },
+          "400": { "description": "Invalid document id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.view" },
+          "404": { "description": "Document not found" }
+        }
+      }
+    },
+    "/api/documents/{id}/files/{storage_id}": {
+      "delete": {
+        "tags": ["documents"],
+        "summary": "Открепить файл от документа",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "documents.update" ],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID документа" },
+          { "in": "path", "name": "storage_id", "required": true, "schema": { "type": "integer" }, "description": "ID файла в storage" }
+        ],
+        "responses": {
+          "200": { "description": "Detached" },
+          "400": { "description": "Invalid ids" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.update" },
+          "404": { "description": "Document or storage item not found" }
         }
       }
     },

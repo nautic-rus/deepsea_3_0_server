@@ -1,5 +1,6 @@
 const Storage = require('../../db/models/Storage');
 const { hasPermission } = require('./permissionChecker');
+const S3Service = require('./s3Service');
 
 /**
  * StorageService
@@ -32,7 +33,21 @@ class StorageService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission storage.create'); err.statusCode = 403; throw err; }
-    if (!fields || !fields.bucket_name || !fields.object_key) { const err = new Error('Missing required fields'); err.statusCode = 400; throw err; }
+    // Backwards-compatible: allow direct DB record creation when bucket_name/object_key are provided.
+    if (!fields) { const err = new Error('Missing required fields'); err.statusCode = 400; throw err; }
+    if (fields._file) {
+      // Upload buffer to S3 then create DB record
+      const bucket = fields.bucket_name || process.env.S3_DEFAULT_BUCKET || process.env.YC_S3_BUCKET;
+      if (!bucket) { const err = new Error('S3 bucket not configured'); err.statusCode = 500; throw err; }
+      const file = fields._file; // { buffer, originalname, mimetype }
+      const uploaded = await S3Service.uploadBuffer({ buffer: file.buffer, originalName: file.originalname, bucket, contentType: file.mimetype });
+      const createFields = { bucket_name: uploaded.bucket, object_key: uploaded.key, storage_type: 's3', uploaded_by: actor.id };
+      const created = await Storage.create(createFields);
+      // Optionally attach returned url/size/content_type for API consumers
+      return Object.assign({}, created, { url: uploaded.url, size: uploaded.size, content_type: uploaded.content_type });
+    }
+
+    if (!fields.bucket_name || !fields.object_key) { const err = new Error('Missing required fields'); err.statusCode = 400; throw err; }
     if (!fields.uploaded_by) fields.uploaded_by = actor.id;
     return await Storage.create(fields);
   }
@@ -54,9 +69,39 @@ class StorageService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission storage.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    // Find storage item to know bucket/key
+    const s = await Storage.findById(Number(id));
+    if (!s) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
+    try {
+      if (s.bucket_name && s.object_key) {
+        await S3Service.deleteObject({ bucket: s.bucket_name, key: s.object_key });
+      }
+    } catch (e) {
+      // Log and continue with DB deletion — we don't want to block the API if S3 deletion fails
+      console.error('Failed to delete object from S3', e && e.message ? e.message : e);
+    }
     const ok = await Storage.softDelete(Number(id));
     if (!ok) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
     return { success: true };
+  }
+
+  /**
+   * Upload a file buffer to S3 and create a storage DB record in one call.
+   * @param {Object} file - { buffer, originalname, mimetype }
+   * @param {Object} actor - authenticated user
+   * @param {Object} opts - optional { bucket_name }
+   */
+  static async uploadAndCreate(file, actor, opts = {}) {
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, 'storage.create');
+    if (!allowed) { const err = new Error('Forbidden: missing permission storage.create'); err.statusCode = 403; throw err; }
+    if (!file || !file.buffer || !file.originalname) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
+    const bucket = opts.bucket_name || process.env.S3_DEFAULT_BUCKET || process.env.YC_S3_BUCKET;
+    if (!bucket) { const err = new Error('S3 bucket not configured'); err.statusCode = 500; throw err; }
+    const uploaded = await S3Service.uploadBuffer({ buffer: file.buffer, originalName: file.originalname, bucket, contentType: file.mimetype });
+    const createFields = { bucket_name: uploaded.bucket, object_key: uploaded.key, storage_type: 's3', uploaded_by: actor.id };
+    const created = await Storage.create(createFields);
+    return Object.assign({}, created, { url: uploaded.url, size: uploaded.size, content_type: uploaded.content_type });
   }
 }
 

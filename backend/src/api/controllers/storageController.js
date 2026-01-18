@@ -1,4 +1,8 @@
 const StorageService = require('../services/storageService');
+const multer = require('multer');
+
+// Use memory storage: file will be available as buffer on req.file
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 /**
  * StorageController
@@ -36,6 +40,12 @@ class StorageController {
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
+      // When file is uploaded via multipart/form-data (field name 'file'), delegate to uploadAndCreate
+      if (req.file) {
+        const created = await StorageService.uploadAndCreate(req.file, actor, req.body || {});
+        res.status(201).json({ data: created });
+        return;
+      }
       const created = await StorageService.createStorage(req.body || {}, actor);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }

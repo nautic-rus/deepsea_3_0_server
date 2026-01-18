@@ -224,6 +224,37 @@ components:
           nullable: true
         status_id:
           type: integer
+        type_id:
+          type: integer
+          nullable: true
+        priority:
+          type: string
+          nullable: true
+        estimated_hours:
+          type: number
+          format: float
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+        closed_at:
+          type: string
+          format: date-time
+          nullable: true
+        allowed_statuses:
+          type: array
+          description: Allowed next statuses according to issue_work_flow for this issue's type and current status
+          items:
+            $ref: '#/components/schemas/IssueStatus'
         assignee_id:
           type: integer
           nullable: true
@@ -271,6 +302,21 @@ components:
           format: date-time
         assigned_by:
           type: integer
+          nullable: true
+    IssueStatus:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        code:
+          type: string
+        color:
+          type: string
+          nullable: true
+        is_final:
+          type: boolean
           nullable: true
     HistoryEntry:
       type: object
@@ -1816,11 +1862,32 @@ paths:
           application/json:
             schema:
               type: object
+              properties:
+                project_id:
+                  type: integer
+                title:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                assignee_id:
+                  type: integer
+                  nullable: true
+                type_id:
+                  type: integer
+                  description: ID типа задачи (issue_type)
+                  nullable: true
+                priority:
+                  type: string
+                  description: Приоритет задачи (low|medium|high or custom code)
+                  nullable: true
             example:
               project_id: 0
               title: ''
               description: ''
               assignee_id: 0
+              type_id: 1
+              priority: medium
       responses:
         '201':
           description: Created
@@ -1871,10 +1938,45 @@ paths:
           application/json:
             schema:
               type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                status_id:
+                  type: integer
+                assignee_id:
+                  type: integer
+                  nullable: true
+                type_id:
+                  type: integer
+                  nullable: true
+                priority:
+                  type: string
+                  nullable: true
+                estimated_hours:
+                  type: number
+                  format: float
+                  nullable: true
+                start_date:
+                  type: string
+                  format: date
+                  nullable: true
+                due_date:
+                  type: string
+                  format: date
+                  nullable: true
             example:
               title: ''
               description: ''
               status_id: 0
+              assignee_id: 0
+              type_id: 1
+              priority: medium
+              estimated_hours: 8
+              start_date: '2026-01-01'
+              due_date: '2026-02-01'
       responses:
         '200':
           description: OK

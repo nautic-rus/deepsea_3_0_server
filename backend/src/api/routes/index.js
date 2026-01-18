@@ -21,6 +21,8 @@ const materialKitsController = require('../controllers/materialKitsController');
 const specificationsController = require('../controllers/specificationsController');
 const stagesController = require('../controllers/stagesController');
 const storageController = require('../controllers/storageController');
+const multer = require('multer');
+const _upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 const statementsController = require('../controllers/statementsController');
 const permissionsController = require('../controllers/permissionsController');
 const userPagesController = require('../controllers/userPagesController');
@@ -130,6 +132,15 @@ router.put('/issues/:id', authMiddleware, issuesController.update);
 router.delete('/issues/:id', authMiddleware, issuesController.delete);
 // POST /api/issues/:id/assign - assign/change assignee for an issue
 router.post('/issues/:id/assign', authMiddleware, issuesController.assign);
+// POST /api/issues/:id/messages - add comment/message to an issue
+router.post('/issues/:id/messages', authMiddleware, issuesController.addMessage);
+// POST /api/issues/:id/files - attach file to issue
+// POST /api/issues/:id/files - attach file to issue (supports multipart field 'file' or JSON { storage_id })
+router.post('/issues/:id/files', authMiddleware, _upload.single('file'), issuesController.attachFile);
+// DELETE /api/issues/:id/files/:storage_id - detach file from issue
+router.delete('/issues/:id/files/:storage_id', authMiddleware, issuesController.detachFile);
+// GET /api/issues/:id/files - list files attached to issue
+router.get('/issues/:id/files', authMiddleware, issuesController.listFiles);
 // GET /api/issues/:id/history - issue timeline/history
 router.get('/issues/:id/history', authMiddleware, issueHistoryController.list);
 
@@ -146,6 +157,15 @@ router.put('/documents/:id', authMiddleware, documentsController.update);
 router.delete('/documents/:id', authMiddleware, documentsController.delete);
 // GET /api/documents/:id/history - document timeline/history
 router.get('/documents/:id/history', authMiddleware, documentHistoryController.list);
+// POST /api/documents/:id/messages - add comment/message to a document
+router.post('/documents/:id/messages', authMiddleware, documentsController.addMessage);
+// POST /api/documents/:id/files - attach file to document
+// POST /api/documents/:id/files - attach file to document (supports multipart field 'file' or JSON { storage_id })
+router.post('/documents/:id/files', authMiddleware, _upload.single('file'), documentsController.attachFile);
+// DELETE /api/documents/:id/files/:storage_id - detach file from document
+router.delete('/documents/:id/files/:storage_id', authMiddleware, documentsController.detachFile);
+// GET /api/documents/:id/files - list files attached to document
+router.get('/documents/:id/files', authMiddleware, documentsController.listFiles);
 
 // ===== Materials routes =====
 router.get('/materials', authMiddleware, materialsController.list);
@@ -196,7 +216,8 @@ router.delete('/stages/:id', authMiddleware, stagesController.delete);
 // ===== Storage routes =====
 router.get('/storage', authMiddleware, storageController.list);
 router.get('/storage/:id', authMiddleware, storageController.get);
-router.post('/storage', authMiddleware, storageController.create);
+// POST /api/storage - supports multipart/form-data with field 'file'
+router.post('/storage', authMiddleware, _upload.single('file'), storageController.create);
 router.put('/storage/:id', authMiddleware, storageController.update);
 router.delete('/storage/:id', authMiddleware, storageController.delete);
 

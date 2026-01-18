@@ -95,6 +95,68 @@ class IssuesController {
       res.json({ data: updated });
     } catch (err) { next(err); }
   }
+
+  /**
+   * Handle POST /api/issues/:id/messages - add a message to an issue.
+   * Body: { content: string }
+   */
+  static async addMessage(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { content } = req.body || {};
+      const created = await IssuesService.addIssueMessage(Number(id), content, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * POST /api/issues/:id/files - attach existing storage item to issue
+   * Body: { storage_id: number }
+   */
+  static async attachFile(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      // If a file was uploaded via multipart/form-data (multer), req.file will exist
+      if (req.file) {
+        const StorageService = require('../services/storageService');
+        const createdStorage = await StorageService.uploadAndCreate(req.file, actor, req.body || {});
+        const created = await IssuesService.attachFileToIssue(Number(id), Number(createdStorage.id), actor);
+        res.status(201).json({ data: created });
+        return;
+      }
+      const { storage_id } = req.body || {};
+      const created = await IssuesService.attachFileToIssue(Number(id), Number(storage_id), actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * DELETE /api/issues/:id/files/:storage_id - detach file from issue
+   */
+  static async detachFile(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const storageId = parseInt(req.params.storage_id, 10);
+      await IssuesService.detachFileFromIssue(Number(id), Number(storageId), actor);
+      res.json({ message: 'File detached' });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/issues/:id/files - list attached files
+   */
+  static async listFiles(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { limit = 100, offset = 0 } = req.query || {};
+      const rows = await IssuesService.listIssueFiles(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = IssuesController;
