@@ -10,6 +10,7 @@ const apiRoutes = require('./api/routes');
 const errorHandler = require('./api/middleware/errorHandler');
 const config = require('./config');
 const { swaggerUi, swaggerSpec } = require('./config/swagger');
+const storageConfig = require('./config/storage');
 
 const app = express();
 
@@ -54,6 +55,13 @@ app.get('/api-docs.json', (req, res) => {
 
 // API Routes
 app.use('/api', apiRoutes);
+
+// Serve local uploads (if any) — mount path and directory come from config/storage
+try {
+  app.use(storageConfig.mountPath, express.static(storageConfig.uploadsDir));
+} catch (e) {
+  console.error('Failed to mount uploads static directory', e && e.message ? e.message : e);
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {

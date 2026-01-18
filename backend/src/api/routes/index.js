@@ -137,6 +137,8 @@ router.post('/issues/:id/messages', authMiddleware, issuesController.addMessage)
 // POST /api/issues/:id/files - attach file to issue
 // POST /api/issues/:id/files - attach file to issue (supports multipart field 'file' or JSON { storage_id })
 router.post('/issues/:id/files', authMiddleware, _upload.single('file'), issuesController.attachFile);
+// POST /api/issues/:id/files/local - upload file to local storage and attach
+router.post('/issues/:id/files/local', authMiddleware, _upload.single('file'), issuesController.attachLocalFile);
 // DELETE /api/issues/:id/files/:storage_id - detach file from issue
 router.delete('/issues/:id/files/:storage_id', authMiddleware, issuesController.detachFile);
 // GET /api/issues/:id/files - list files attached to issue
@@ -162,6 +164,8 @@ router.post('/documents/:id/messages', authMiddleware, documentsController.addMe
 // POST /api/documents/:id/files - attach file to document
 // POST /api/documents/:id/files - attach file to document (supports multipart field 'file' or JSON { storage_id })
 router.post('/documents/:id/files', authMiddleware, _upload.single('file'), documentsController.attachFile);
+// POST /api/documents/:id/files/local - upload file to local storage and attach to document
+router.post('/documents/:id/files/local', authMiddleware, _upload.single('file'), documentsController.attachLocalFile);
 // DELETE /api/documents/:id/files/:storage_id - detach file from document
 router.delete('/documents/:id/files/:storage_id', authMiddleware, documentsController.detachFile);
 // GET /api/documents/:id/files - list files attached to document

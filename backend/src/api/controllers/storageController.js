@@ -42,11 +42,31 @@ class StorageController {
       const actor = req.user || null;
       // When file is uploaded via multipart/form-data (field name 'file'), delegate to uploadAndCreate
       if (req.file) {
-        const created = await StorageService.uploadAndCreate(req.file, actor, req.body || {});
+        // Choose local vs S3 based on request or environment
+        const useLocal = (req.body && String(req.body.storage_type || '').toLowerCase() === 'local') || process.env.USE_LOCAL_STORAGE === 'true';
+        let created;
+        if (useLocal) {
+          created = await StorageService.uploadToLocalAndCreate(req.file, actor, req.body || {});
+        } else {
+          created = await StorageService.uploadAndCreate(req.file, actor, req.body || {});
+        }
         res.status(201).json({ data: created });
         return;
       }
       const created = await StorageService.createStorage(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * Create/upload a file specifically to local storage (backend/uploads).
+   * Endpoint: POST /api/storage/local
+   */
+  static async uploadLocal(req, res, next) {
+    try {
+      const actor = req.user || null;
+      if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
+      const created = await StorageService.uploadToLocalAndCreate(req.file, actor, req.body || {});
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }
