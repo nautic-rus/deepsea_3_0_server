@@ -17,11 +17,13 @@ class AuthController {
    */
   static async login(req, res, next) {
     try {
-      const { username, password } = req.body;
+  const { username, email, password } = req.body;
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('user-agent') || '';
 
-      const result = await AuthService.login(username, password, ipAddress, userAgent);
+  // Allow login by username OR email. Pass identifier to service.
+  const identifier = username || email || null;
+  const result = await AuthService.login(identifier, password, ipAddress, userAgent);
 
       res.status(200).json(result);
     } catch (error) {
@@ -99,6 +101,35 @@ class AuthController {
       };
 
       res.status(200).json(out);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Request password reset by email. Public endpoint: { email }
+   */
+  static async requestPasswordReset(req, res, next) {
+    try {
+      const { email } = req.body || {};
+      const PasswordResetService = require('../services/passwordResetService');
+      await PasswordResetService.createTokenForEmail(email);
+      // Always return 200 to avoid email enumeration
+      res.status(200).json({ message: 'If an account with that email exists, password reset instructions have been sent.' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Reset password using token: { token, password }
+   */
+  static async resetPassword(req, res, next) {
+    try {
+      const { token, password } = req.body || {};
+      const PasswordResetService = require('../services/passwordResetService');
+      const updatedUser = await PasswordResetService.resetPassword(token, password);
+      res.status(200).json({ message: 'Password updated', user: updatedUser });
     } catch (error) {
       next(error);
     }

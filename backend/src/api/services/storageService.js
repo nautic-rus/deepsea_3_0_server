@@ -119,7 +119,7 @@ class StorageService {
     if (!allowed) { const err = new Error('Forbidden: missing permission storage.create'); err.statusCode = 403; throw err; }
     if (!file || !file.buffer || !file.originalname) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
 
-    const uploadsRoot = path.resolve(process.cwd(), 'backend', 'uploads');
+    const uploadsRoot = path.resolve(process.cwd(), 'uploads');
     const subdir = opts.subdir ? String(opts.subdir).replace(/[^a-zA-Z0-9_\-\/]/g, '') : '';
     const targetDir = subdir ? path.join(uploadsRoot, subdir) : uploadsRoot;
     await fs.promises.mkdir(targetDir, { recursive: true });

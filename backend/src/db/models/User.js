@@ -45,6 +45,7 @@ class User {
         u.email, 
         u.phone,
         u.first_name, 
+    u.avatar_url,
         u.last_name, 
         u.middle_name,
         u.department_id,
@@ -64,6 +65,26 @@ class User {
 
     const result = await pool.query(query, [id]);
     return result.rows[0] || null;
+  }
+
+  /**
+   * Set avatar URL for a user and return updated user record
+   */
+  static async setAvatar(id, url) {
+    const query = `UPDATE users SET avatar_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
+    const res = await pool.query(query, [url || null, id]);
+    if (res.rowCount === 0) return null;
+    return await User.findById(id);
+  }
+
+  /**
+   * Set password hash for a user
+   */
+  static async setPassword(id, password_hash) {
+    const query = `UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
+    const res = await pool.query(query, [password_hash, id]);
+    if (res.rowCount === 0) return null;
+    return await User.findById(id);
   }
 
   /**

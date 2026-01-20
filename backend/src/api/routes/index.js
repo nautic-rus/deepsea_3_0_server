@@ -30,6 +30,7 @@ const userProjectsController = require('../controllers/userProjectsController');
 const userRocketChatController = require('../controllers/userRocketChatController');
 const userNotificationSettingsController = require('../controllers/userNotificationSettingsController');
 const userNotificationsController = require('../controllers/userNotificationsController');
+const entityLinksController = require('../controllers/entityLinksController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -45,6 +46,10 @@ router.post('/auth/refresh', authController.refresh);
 router.post('/auth/logout', authMiddleware, authController.logout);
 // GET /api/auth/me
 router.get('/auth/me', authMiddleware, authController.me);
+// POST /api/auth/request_password_reset
+router.post('/auth/request_password_reset', authController.requestPasswordReset);
+// POST /api/auth/reset_password
+router.post('/auth/reset_password', authController.resetPassword);
 
 // ===== Users routes =====
 // POST /api/create_users
@@ -76,6 +81,8 @@ router.post('/users/:id/notifications/:notificationId/hide', authMiddleware, use
 router.put('/users/:id', authMiddleware, usersController.updateUser);
 // DELETE /api/users/:id (soft-delete)
 router.delete('/users/:id', authMiddleware, usersController.deleteUser);
+// POST /api/users/:id/avatar - upload avatar (multipart field 'file')
+router.post('/users/:id/avatar', authMiddleware, _upload.single('file'), usersController.uploadAvatar);
 
 // ===== Departments routes =====
 // GET /api/departments
@@ -171,6 +178,12 @@ router.delete('/documents/:id/files/:storage_id', authMiddleware, documentsContr
 // GET /api/documents/:id/files - list files attached to document
 router.get('/documents/:id/files', authMiddleware, documentsController.listFiles);
 
+// ===== Entity links routes =====
+// POST /api/links - create a link between entities
+router.post('/links', authMiddleware, entityLinksController.create);
+// DELETE /api/links/:id - remove a link
+router.delete('/links/:id', authMiddleware, entityLinksController.remove);
+
 // ===== Materials routes =====
 router.get('/materials', authMiddleware, materialsController.list);
 // GET next stock code
@@ -220,8 +233,11 @@ router.delete('/stages/:id', authMiddleware, stagesController.delete);
 // ===== Storage routes =====
 router.get('/storage', authMiddleware, storageController.list);
 router.get('/storage/:id', authMiddleware, storageController.get);
-// POST /api/storage - supports multipart/form-data with field 'file'
-router.post('/storage', authMiddleware, _upload.single('file'), storageController.create);
+// POST /api/storage - (removed) create storage DB record was removed; use /storage/local or /storage/s3 instead
+// POST /api/storage/local - upload file to local storage
+router.post('/storage/local', authMiddleware, _upload.single('file'), storageController.uploadLocal);
+// POST /api/storage/s3 - upload file to S3
+router.post('/storage/s3', authMiddleware, _upload.single('file'), storageController.uploadS3);
 router.put('/storage/:id', authMiddleware, storageController.update);
 router.delete('/storage/:id', authMiddleware, storageController.delete);
 

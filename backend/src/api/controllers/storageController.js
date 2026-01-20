@@ -40,19 +40,11 @@ class StorageController {
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
-      // When file is uploaded via multipart/form-data (field name 'file'), delegate to uploadAndCreate
-      if (req.file) {
-        // Choose local vs S3 based on request or environment
-        const useLocal = (req.body && String(req.body.storage_type || '').toLowerCase() === 'local') || process.env.USE_LOCAL_STORAGE === 'true';
-        let created;
-        if (useLocal) {
-          created = await StorageService.uploadToLocalAndCreate(req.file, actor, req.body || {});
-        } else {
-          created = await StorageService.uploadAndCreate(req.file, actor, req.body || {});
-        }
-        res.status(201).json({ data: created });
-        return;
-      }
+      // For direct file uploads use explicit endpoints:
+      // - POST /api/storage/local  -> upload to local storage
+      // - POST /api/storage/s3     -> upload to S3
+      // This create() handler only creates DB records when bucket_name/object_key provided.
+      if (req.file) { const err = new Error('Direct file uploads are not supported on this endpoint. Use /api/storage/local or /api/storage/s3'); err.statusCode = 400; throw err; }
       const created = await StorageService.createStorage(req.body || {}, actor);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
@@ -67,6 +59,19 @@ class StorageController {
       const actor = req.user || null;
       if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
       const created = await StorageService.uploadToLocalAndCreate(req.file, actor, req.body || {});
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * Upload a file specifically to S3 and create a storage DB record.
+   * Endpoint: POST /api/storage/s3
+   */
+  static async uploadS3(req, res, next) {
+    try {
+      const actor = req.user || null;
+      if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
+      const created = await StorageService.uploadAndCreate(req.file, actor, req.body || {});
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }

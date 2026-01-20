@@ -12,10 +12,20 @@ class AuthService {
   /**
    * Вход в систему
    */
-  static async login(username, password, ipAddress, userAgent) {
-    // Найти пользователя
-    const user = await User.findByUsername(username);
-    
+  static async login(identifier, password, ipAddress, userAgent) {
+    // Найти пользователя по username или email
+    let user = null;
+    if (!identifier) {
+      throw new AuthError('Invalid credentials', 401);
+    }
+
+    // Try as username first
+    user = await User.findByUsername(identifier);
+    // If not found and identifier looks like an email, try email
+    if (!user && identifier && identifier.includes('@')) {
+      user = await User.findByEmail(identifier);
+    }
+
     if (!user) {
       throw new AuthError('Invalid credentials', 401);
     }

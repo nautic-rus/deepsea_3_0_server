@@ -11,6 +11,12 @@
       "description": "Development server"
     }
   ],
+  "tags": [
+    {
+      "name": "links",
+      "description": "Операции по созданию и удалению связей между сущностями (задачи, документы)."
+    }
+  ],
   "components": {
     "securitySchemes": {
       "bearerAuth": {
@@ -541,6 +547,20 @@
           "created_by": { "type": "integer" },
           "created_at": { "type": "string", "format": "date-time" }
         }
+      },
+      "EntityLink": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "source_type": { "type": "string", "example": "issue" },
+          "source_id": { "type": "integer" },
+          "target_type": { "type": "string", "example": "issue" },
+          "target_id": { "type": "integer" },
+          "relation_type": { "type": "string", "example": "blocks" },
+          "blocks_closure": { "type": "boolean", "example": true },
+          "created_by": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
       }
     }
   },
@@ -550,8 +570,8 @@
         "tags": [
           "auth"
         ],
-        "summary": "Вход в систему",
-        "description": "Аутентификация пользователя и получение токенов доступа",
+        "summary": "Вход в систему (по username или email)",
+        "description": "Аутентификация пользователя по username или email и паролю; возвращает токены доступа и информацию о пользователе.",
         "requestBody": {
           "required": true,
           "content": {
@@ -559,13 +579,17 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "username",
                   "password"
                 ],
                 "properties": {
                   "username": {
                     "type": "string",
                     "example": "admin"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
                   },
                   "password": {
                     "type": "string",
@@ -583,7 +607,7 @@
         },
         "responses": {
           "200": {
-            "description": "Успешный вход в систему",
+            "description": "Successful login",
             "content": {
               "application/json": {
                 "schema": {
@@ -628,7 +652,7 @@
             }
           },
           "400": {
-            "description": "Ошибка валидации",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -654,7 +678,7 @@
             }
           },
           "401": {
-            "description": "Неверные учетные данные",
+            "description": "Invalid credentials",
             "content": {
               "application/json": {
                 "schema": {
@@ -670,7 +694,7 @@
             }
           },
           "403": {
-            "description": "Пользователь деактивирован",
+            "description": "User account is deactivated",
             "content": {
               "application/json": {
                 "schema": {
@@ -686,7 +710,7 @@
             }
           },
           "500": {
-            "description": "Внутренняя ошибка сервера",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -700,6 +724,103 @@
                 }
               }
             }
+          }
+        },
+        "parameters": []
+      }
+    },
+    "/api/auth/request_password_reset": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Запрос на восстановление пароля",
+        "description": "Отправляет письмо с инструкциями по восстановлению пароля, если email существует в системе. Ответ не будет раскрывать, существует ли указанный адрес в системе.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  }
+                }
+              },
+              "example": {
+                "email": "user@example.com"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request accepted"
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        },
+        "parameters": []
+      }
+    },
+    "/api/auth/reset_password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Сброс пароля по токену",
+        "description": "Устанавливает новый пароль для аккаунта по предоставленному действительному токену восстановления.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "password"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "example": "abcdef123456"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "example": "newStrongP@ssw0rd"
+                  }
+                }
+              },
+              "example": {
+                "token": "abcdef123456",
+                "password": "newStrongP@ssw0rd"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password successfully reset"
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Invalid or expired token"
+          },
+          "500": {
+            "description": "Internal server error"
           }
         },
         "parameters": []
@@ -729,8 +850,7 @@
                 "required": [
                   "username",
                   "email",
-                  "phone",
-                  "password"
+                  "phone"
                 ],
                 "properties": {
                   "username": {
@@ -752,13 +872,7 @@
                     "example": "+1234567890",
                     "description": "Номер телефона пользователя"
                   },
-                  "password": {
-                    "type": "string",
-                    "format": "password",
-                    "minLength": 6,
-                    "example": "password123",
-                    "description": "Пароль пользователя (минимум 6 символов)"
-                  },
+                  
                   "first_name": {
                     "type": "string",
                     "nullable": true,
@@ -805,10 +919,10 @@
         },
         "responses": {
           "201": {
-            "description": "Пользователь успешно создан"
+            "description": "User created successfully"
           },
           "400": {
-            "description": "Ошибка валидации"
+            "description": "Validation error"
           },
           "401": {
             "description": "Authentication required"
@@ -817,7 +931,7 @@
             "description": "Forbidden - missing permission users.create"
           },
           "409": {
-            "description": "Конфликт - пользователь с такими данными уже существует"
+            "description": "Conflict - user with such data already exists"
           }
         },
         "parameters": []
@@ -2211,6 +2325,83 @@
           }
         },
         "parameters": []
+      }
+    },
+    "/api/user/pages": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Получить страницы меню пользователя",
+        "description": "Возвращает список страниц (menu items) доступных для текущего пользователя на основе его прав и ролей.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        },
+        "parameters": []
+      }
+    },
+    "/api/links": {
+      "post": {
+        "tags": ["links"],
+        "summary": "Создать связь между сущностями",
+        "description": "Создаёт отношение между двумя сущностями (задачи, документы и др.). Установите `blocks_closure=true`, чтобы пометить связь, блокирующую закрытие исходной сущности, пока целевая не перейдёт в финальный статус.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "links.create" ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["source_type","source_id","target_type","target_id"],
+                "properties": {
+                  "source_type": { "type": "string", "example": "issue" },
+                  "source_id": { "type": "integer", "example": 123 },
+                  "target_type": { "type": "string", "example": "issue" },
+                  "target_id": { "type": "integer", "example": 456 },
+                  "relation_type": { "type": "string", "example": "blocks" },
+                  "blocks_closure": { "type": "boolean", "example": true }
+                }
+              },
+              "example": { "source_type": "issue", "source_id": 123, "target_type": "issue", "target_id": 456, "relation_type": "blocks", "blocks_closure": true }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Создано", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EntityLink" } } } },
+          "400": { "description": "Неверный ввод" },
+          "401": { "description": "Требуется аутентификация" },
+          "403": { "description": "Запрещено — отсутствует разрешение links.create" }
+        }
+      }
+    },
+    "/api/links/{id}": {
+      "delete": {
+        "tags": ["links"],
+        "summary": "Удалить связь",
+        "description": "Удаляет ранее созданную связь по её ID.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "links.delete" ],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": 1 }
+        ],
+        "responses": {
+          "200": { "description": "OK" },
+          "400": { "description": "Неверный id" },
+          "401": { "description": "Требуется аутентификация" },
+          "403": { "description": "Запрещено — отсутствует разрешение links.delete" },
+          "404": { "description": "Связь не найдена" }
+        }
       }
     },
     "/api/projects": {
@@ -3911,6 +4102,78 @@
         }
       }
     },
+    "/api/storage/local": {
+      "post": {
+        "tags": ["storage"],
+        "summary": "Upload file to local storage",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "storage.create" ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "subdir": { "type": "string", "description": "Optional subdirectory under uploads" }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRef" }
+              }
+            }
+          },
+          "400": { "description": "Missing file or invalid input" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission storage.create" }
+        }
+      }
+    },
+    "/api/storage/s3": {
+      "post": {
+        "tags": ["storage"],
+        "summary": "Upload file to S3 storage",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "storage.create" ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "bucket_name": { "type": "string", "description": "Optional bucket to override default" }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRef" }
+              }
+            }
+          },
+          "400": { "description": "Missing file or invalid input" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission storage.create" }
+        }
+      }
+    },
     "/api/materials/{id}": {
       "get": {
         "tags": [
@@ -4495,36 +4758,6 @@
           }
         },
         "parameters": []
-      },
-      "post": {
-        "tags": [
-          "storage"
-        ],
-        "summary": "Загрузить файл",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "storage.create"
-        ],
-        "parameters": [],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              },
-              "example": {}
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Created"
-          }
-        }
       }
     },
     "/api/storage/{id}": {
@@ -4713,6 +4946,65 @@
           "201": {
             "description": "Created"
           }
+        }
+      }
+    },
+    "/api/users/{id}/avatar": {
+      "post": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Upload user avatar (local storage)",
+  "description": "Upload avatar for a user. Accepts multipart/form-data with field 'file'. Stores file in local uploads and updates user's avatar_url.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" },
+            "description": "ID пользователя",
+            "example": "{{id}}"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Avatar uploaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": { "$ref": "#/components/schemas/User" },
+                    "storage": { "$ref": "#/components/schemas/StorageRef" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing file or validation error" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission users.update" },
+          "404": { "description": "User not found" }
         }
       }
     }

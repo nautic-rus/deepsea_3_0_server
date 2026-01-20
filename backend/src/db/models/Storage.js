@@ -11,21 +11,21 @@ class Storage {
     if (storage_type) { where.push(`storage_type = $${idx++}`); values.push(storage_type); }
     if (search) { where.push(`(bucket_name ILIKE $${idx} OR object_key ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT id, bucket_name, object_key, storage_type, file_category_id, uploaded_by, created_at FROM storage ${whereSql} ORDER BY id DESC LIMIT $${idx++} OFFSET $${idx}`;
+  const q = `SELECT id, url, bucket_name, object_key, file_name, file_size, mime_type, storage_type, uploaded_by, created_at FROM storage ${whereSql} ORDER BY id DESC LIMIT $${idx++} OFFSET $${idx}`;
     values.push(limit, offset);
     const res = await pool.query(q, values);
     return res.rows;
   }
 
   static async findById(id) {
-    const q = `SELECT id, bucket_name, object_key, storage_type, file_category_id, uploaded_by, created_at FROM storage WHERE id = $1 LIMIT 1`;
+  const q = `SELECT id, url, bucket_name, object_key, file_name, file_size, mime_type, storage_type, uploaded_by, created_at FROM storage WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
 
   static async create(fields) {
-    const q = `INSERT INTO storage (bucket_name, object_key, storage_type, file_category_id, uploaded_by) VALUES ($1,$2,$3,$4,$5) RETURNING id, bucket_name, object_key, storage_type, file_category_id, uploaded_by, created_at`;
-    const vals = [fields.bucket_name, fields.object_key, fields.storage_type || 's3', fields.file_category_id, fields.uploaded_by];
+  const q = `INSERT INTO storage (url, bucket_name, object_key, file_name, file_size, mime_type, storage_type, uploaded_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, url, bucket_name, object_key, file_name, file_size, mime_type, storage_type, uploaded_by, created_at`;
+  const vals = [fields.url || null, fields.bucket_name, fields.object_key, fields.file_name, fields.file_size, fields.mime_type, fields.storage_type || 's3', fields.uploaded_by];
     const res = await pool.query(q, vals);
     return res.rows[0];
   }
@@ -34,11 +34,11 @@ class Storage {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['bucket_name','object_key','storage_type','file_category_id'].forEach((k) => {
+    ['url','bucket_name','object_key','file_name','file_size','mime_type','storage_type'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Storage.findById(id);
-    const q = `UPDATE storage SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, bucket_name, object_key, storage_type, file_category_id, uploaded_by, created_at`;
+    const q = `UPDATE storage SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, url, bucket_name, object_key, file_name, file_size, mime_type, storage_type, uploaded_by, created_at`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;

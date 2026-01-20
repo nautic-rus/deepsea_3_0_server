@@ -8,7 +8,10 @@
 const User = require('../../db/models/User');
 const pool = require('../../db/connection');
 const { hashPassword } = require('../../utils/password');
+const crypto = require('crypto');
 const { hasPermission } = require('./permissionChecker');
+const NotificationTemplateService = require('./notificationTemplateService');
+const EmailService = require('./emailService');
 
 class UsersService {
   /**
@@ -69,8 +72,15 @@ class UsersService {
       throw error;
     }
 
+    // Если пароль не передан — сгенерируем временный пароль
+    let plainPassword = password;
+    if (!plainPassword) {
+      // generate alphanumeric password of length 12
+      plainPassword = crypto.randomBytes(16).toString('base64').replace(/[^A-Za-z0-9]/g, '').slice(0, 12);
+    }
+
     // Хешировать пароль
-    const password_hash = await hashPassword(password);
+    const password_hash = await hashPassword(plainPassword);
 
     // Создать пользователя
     const newUser = await User.create({
@@ -86,6 +96,27 @@ class UsersService {
       is_active: is_active !== undefined ? is_active : true,
       is_verified: is_verified !== undefined ? is_verified : false
     });
+
+    // Send welcome/creation email to the new user (non-blocking, log errors)
+    (async () => {
+      try {
+        const frontendRoot = process.env.FRONTEND_URL || '';
+        const loginUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/login` : '';
+        const company = {
+          name: process.env.COMPANY_NAME || 'Deep Sea',
+          logo_url: process.env.COMPANY_LOGO_URL || '',
+          address: process.env.COMPANY_ADDRESS || ''
+        };
+        const support_email = process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || '';
+        const context = { user: newUser, actor: actor || null, loginUrl, company, support_email, password: plainPassword };
+        const rendered = await NotificationTemplateService.render('user_created', 'email', context);
+        const subject = rendered.subject || `Welcome, ${newUser.username}`;
+        await EmailService.sendMail({ to: newUser.email, subject, text: rendered.text, html: rendered.html });
+      } catch (e) {
+        // Log but don't fail user creation if email sending fails
+        console.error('Failed to send user creation email', e && e.message ? e.message : e);
+      }
+    })();
 
     // Вернуть данные пользователя без пароля
     return {
