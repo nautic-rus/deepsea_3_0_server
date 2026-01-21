@@ -1,0 +1,53 @@
+# Node
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+
+# dotenv and env files (may contain secrets)
+.env
+.env.*
+env
+env.*
+
+# Uploaded files (user content)
+uploads/
+
+# Build / output
+dist/
+build/
+coverage/
+.nyc_output/
+
+# Generated API docs
+docs/api/swagger.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Temporary
+/tmp
+/temp
+.cache
+
+# Misc
+*.tgz
+*.log.*
