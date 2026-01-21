@@ -1,5 +1,5 @@
 const Page = require('../../db/models/Page');
-const { hasPermission } = require('./permissionChecker');
+const Permission = require('../../db/models/Permission');
 
 /**
  * PagesService
@@ -61,15 +61,26 @@ class PagesService {
       }
     }
 
-    // filter by permissions
+    // Determine user's permission codes once (normalized). We prefer req.user.permissions
+    // if present (authMiddleware fills it). Otherwise fetch from DB via Permission.listCodesForUser.
+    let userPermCodes = [];
+    if (user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0) {
+      userPermCodes = user.permissions.map(p => String(p).trim().toLowerCase()).filter(Boolean);
+    } else {
+      userPermCodes = await Permission.listCodesForUser(user.id);
+    }
+    const userPermSet = new Set(userPermCodes);
+
+    // filter by permissions using page_permissions (already aggregated into node.permissions)
     const allowedPages = [];
-    async function filterAndSanitize(node) {
-      // check permissions for this node
+    function filterAndSanitize(node) {
+      // If page has no permissions assigned => visible to all
+      const pagePerms = (node.permissions && Array.isArray(node.permissions)) ? node.permissions.map(p => String(p).trim().toLowerCase()).filter(Boolean) : [];
       let allowed = false;
-      if (!node.permissions || node.permissions.length === 0) allowed = true;
+      if (pagePerms.length === 0) allowed = true;
       else {
-        for (const perm of node.permissions) {
-          if (await hasPermission(user, perm)) { allowed = true; break; }
+        for (const perm of pagePerms) {
+          if (userPermSet.has(perm)) { allowed = true; break; }
         }
       }
       if (!allowed) return null;
@@ -85,7 +96,7 @@ class PagesService {
       if (node.children && node.children.length > 0) {
         const children = [];
         for (const ch of node.children) {
-          const childOut = await filterAndSanitize(ch);
+          const childOut = filterAndSanitize(ch);
           if (childOut) children.push(childOut);
         }
         if (children.length) out.children = children;
@@ -94,7 +105,7 @@ class PagesService {
     }
 
     for (const root of roots) {
-      const sanitizedRoot = await filterAndSanitize(root);
+      const sanitizedRoot = filterAndSanitize(root);
       if (sanitizedRoot) allowedPages.push(sanitizedRoot);
     }
 

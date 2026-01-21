@@ -20,6 +20,22 @@ class Permission {
   }
 
   /**
+   * Возвращает список кодов разрешений, которые есть у пользователя (через роли).
+   * Возвращаемые коды нормализованы (trim + lowercase).
+   */
+  static async listCodesForUser(userId) {
+    const q = `
+      SELECT DISTINCT p.code
+      FROM permissions p
+      JOIN role_permissions rp ON rp.permission_id = p.id
+      JOIN user_roles ur ON ur.role_id = rp.role_id
+      WHERE ur.user_id = $1
+    `;
+    const res = await pool.query(q, [userId]);
+    return res.rows.map(r => (r.code || '').trim().toLowerCase()).filter(Boolean);
+  }
+
+  /**
    * Список всех разрешений
    */
   static async list() {
