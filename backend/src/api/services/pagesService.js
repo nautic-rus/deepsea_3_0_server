@@ -10,27 +10,14 @@ const { hasPermission } = require('./permissionChecker');
  * later if desired.
  */
 class PagesService {
-  // Simple in-memory cache: key -> { pages, expiresAt }
-  static _cache = new Map();
-  static _cacheTtlMs = 30 * 1000; // 30 seconds
-
-  static _cacheKeyForUser(user) {
-    // include a simple signature of user's permissions so cached pages respect permission set
-    const perms = (user && Array.isArray(user.permissions)) ? user.permissions.slice().sort().join(',') : '';
-    return `user:${user.id}:perms:${perms}`;
-  }
+  // No in-memory caching — always compute pages per request to respect current permissions
 
   static async getPagesForUser(user) {
     if (!user || !user.id) {
       const err = new Error('Authentication required'); err.statusCode = 401; throw err;
     }
 
-    const key = this._cacheKeyForUser(user);
-    const now = Date.now();
-    const entry = this._cache.get(key);
-    if (entry && entry.expiresAt > now) {
-      return entry.pages;
-    }
+    // Always compute freshly (no cache)
 
     // load pages from DB (with aggregated permission codes)
     const rows = await Page.listAllWithPermissions();
@@ -110,7 +97,6 @@ class PagesService {
 
     const sanitized = allowedPages;
 
-    this._cache.set(key, { pages: sanitized, expiresAt: now + this._cacheTtlMs });
     return sanitized;
   }
 
