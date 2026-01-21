@@ -59,8 +59,10 @@ class PagesService {
       // ensure permissions is an array (DB may return different shapes in edge cases)
       const perms = Array.isArray(node.permissions) ? node.permissions : (node.permissions ? [node.permissions] : []);
       if (!perms || perms.length === 0) {
-        allowed = true;
-        if (debug) console.debug(`pagesService: page ${node.id} allowed (no perms)`);
+        // If a page has no permissions assigned in page_permissions, deny by default.
+        // This prevents returning all pages when page_permissions table is empty.
+        allowed = false;
+        if (debug) console.debug(`pagesService: page ${node.id} denied (no perms defined)`);
       } else {
         for (const perm of perms) {
           const ok = await hasPermission(user, perm);
@@ -101,9 +103,11 @@ class PagesService {
   }
 
   static async _isPageAllowed(user, page) {
-    if (!page.permissions || page.permissions.length === 0) return true;
+    // If page.permissions is empty, deny by default (explicit permissions required)
+    const perms = Array.isArray(page.permissions) ? page.permissions : (page.permissions ? [page.permissions] : []);
+    if (!perms || perms.length === 0) return false;
     // allow if user has at least one of the permissions listed
-    for (const perm of page.permissions) {
+    for (const perm of perms) {
       if (await hasPermission(user, perm)) return true;
     }
     return false;
