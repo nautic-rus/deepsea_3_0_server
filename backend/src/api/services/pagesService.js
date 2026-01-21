@@ -1,5 +1,5 @@
 const Page = require('../../db/models/Page');
-const Permission = require('../../db/models/Permission');
+const { hasPermission } = require('./permissionChecker');
 
 /**
  * PagesService
@@ -15,7 +15,9 @@ class PagesService {
   static _cacheTtlMs = 30 * 1000; // 30 seconds
 
   static _cacheKeyForUser(user) {
-    return `user:${user.id}`;
+    // include a simple signature of user's permissions so cached pages respect permission set
+    const perms = (user && Array.isArray(user.permissions)) ? user.permissions.slice().sort().join(',') : '';
+    return `user:${user.id}:perms:${perms}`;
   }
 
   static async getPagesForUser(user) {
@@ -61,27 +63,24 @@ class PagesService {
       }
     }
 
-    // Determine user's permission codes once (normalized). We prefer req.user.permissions
-    // if present (authMiddleware fills it). Otherwise fetch from DB via Permission.listCodesForUser.
-    let userPermCodes = [];
-    if (user.permissions && Array.isArray(user.permissions) && user.permissions.length > 0) {
-      userPermCodes = user.permissions.map(p => String(p).trim().toLowerCase()).filter(Boolean);
-    } else {
-      userPermCodes = await Permission.listCodesForUser(user.id);
-    }
-    const userPermSet = new Set(userPermCodes);
-
-    // filter by permissions using page_permissions (already aggregated into node.permissions)
-    const allowedPages = [];
-    function filterAndSanitize(node) {
-      // If page has no permissions assigned => visible to all
-      const pagePerms = (node.permissions && Array.isArray(node.permissions)) ? node.permissions.map(p => String(p).trim().toLowerCase()).filter(Boolean) : [];
+  // filter by permissions
+  const allowedPages = [];
+  const debug = process.env.DEBUG_PAGES === '1';
+    async function filterAndSanitize(node) {
+      // check permissions for this node
       let allowed = false;
-      if (pagePerms.length === 0) allowed = true;
-      else {
-        for (const perm of pagePerms) {
-          if (userPermSet.has(perm)) { allowed = true; break; }
+      // ensure permissions is an array (DB may return different shapes in edge cases)
+      const perms = Array.isArray(node.permissions) ? node.permissions : (node.permissions ? [node.permissions] : []);
+      if (!perms || perms.length === 0) {
+        allowed = true;
+        if (debug) console.debug(`pagesService: page ${node.id} allowed (no perms)`);
+      } else {
+        for (const perm of perms) {
+          const ok = await hasPermission(user, perm);
+          if (debug) console.debug(`pagesService: checking perm='${perm}' for user=${user.id} => ${ok}`);
+          if (ok) { allowed = true; break; }
         }
+        if (debug && !allowed) console.debug(`pagesService: page ${node.id} denied (no matching perms)`);
       }
       if (!allowed) return null;
 
@@ -96,7 +95,7 @@ class PagesService {
       if (node.children && node.children.length > 0) {
         const children = [];
         for (const ch of node.children) {
-          const childOut = filterAndSanitize(ch);
+          const childOut = await filterAndSanitize(ch);
           if (childOut) children.push(childOut);
         }
         if (children.length) out.children = children;
@@ -105,7 +104,7 @@ class PagesService {
     }
 
     for (const root of roots) {
-      const sanitizedRoot = filterAndSanitize(root);
+      const sanitizedRoot = await filterAndSanitize(root);
       if (sanitizedRoot) allowedPages.push(sanitizedRoot);
     }
 
