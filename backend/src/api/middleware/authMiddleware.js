@@ -93,7 +93,8 @@ async function authMiddleware(req, res, next) {
       `;
       // Используем pool напрямую здесь для совместимости с существующей структурой
       const permsRes = await require('../../db/connection').query(permQuery, [user.id]);
-      permissions = permsRes.rows.map(r => r.code);
+  // normalize permission codes (trim + lowercase) to make comparisons reliable
+  permissions = permsRes.rows.map(r => (r.code || '').trim().toLowerCase()).filter(Boolean);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Failed to load permissions for user', user.id, e.message);

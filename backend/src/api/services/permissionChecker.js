@@ -21,8 +21,12 @@ const Permission = require('../../db/models/Permission');
 async function hasPermission(actor, permissionCode) {
   if (!actor || !actor.id) return false;
 
+  if (!permissionCode) return false;
+
+  // If actor.permissions is present, perform a normalized, case-insensitive check.
   if (actor.permissions && Array.isArray(actor.permissions)) {
-    return actor.permissions.includes(permissionCode);
+    const expected = String(permissionCode).trim().toLowerCase();
+    return actor.permissions.some(p => p && String(p).trim().toLowerCase() === expected);
   }
 
   try {
