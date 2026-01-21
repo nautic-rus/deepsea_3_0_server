@@ -29,11 +29,12 @@ class PagesService {
         id: r.key || `page_${r.id}`,
         dbId: r.id,
         path: r.path,
-        titleKey: r.title_key,
+        // title_key intentionally not exposed in API
         title: r.title_en || null,
         order: r.order_index,
         icon: r.icon,
         permissions: r.permissions || [],
+        mainMenu: !!r.main_menu,
         parentId: r.parent_id,
         children: []
       });
@@ -76,8 +77,9 @@ class PagesService {
       const out = {
         id: node.id,
         path: node.path,
-        titleKey: node.titleKey,
+        // titleKey removed from API payload per request
         title: node.title || undefined,
+        mainMenu: node.mainMenu,
         order: node.order,
         icon: node.icon
       };
@@ -89,6 +91,12 @@ class PagesService {
         }
         if (children.length) out.children = children;
       }
+      // If main_menu flag is present on nodes, only include nodes that are marked mainMenu
+      // or have allowed children. This ensures pages without main_menu won't appear in main menu.
+      if (typeof node.mainMenu !== 'undefined') {
+        if (!node.mainMenu && !(out.children && out.children.length)) return null;
+      }
+
       return out;
     }
 
