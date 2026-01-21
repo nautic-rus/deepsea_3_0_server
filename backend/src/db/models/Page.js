@@ -10,8 +10,10 @@ class Page {
    * Returns rows with: id, key, path, title_key, parent_id, icon, order_index, permissions (array)
    */
   static async listAllWithPermissions() {
+    // The schema may not contain title_key/title_en (removed in some deployments).
+    // Select stable columns and provide fallbacks so code can work regardless of schema.
     const q = `
-      SELECT p.id, p.key, p.path, p.title_key, p.title_en, p.parent_id, p.icon, p.order_index,
+      SELECT p.id, p.key, p.path, p.key AS title_key, NULL::text AS title_en, p.parent_id, p.icon, p.order_index,
         COALESCE(array_agg(pp_code.code) FILTER (WHERE pp_code.code IS NOT NULL), ARRAY[]::text[]) AS permissions
       FROM pages p
       LEFT JOIN (

@@ -25,10 +25,10 @@ async function upsertPages() {
       let id;
       if (res.rowCount > 0) {
         id = res.rows[0].id;
-        // Optionally update path/title
-        await client.query('UPDATE pages SET path = $1, title_key = $2, title_en = $3 WHERE id = $4', [p.path, p.title_key || null, p.title_en || null, id]);
+        // Optionally update path (title columns removed from schema)
+        await client.query('UPDATE pages SET path = $1 WHERE id = $2', [p.path, id]);
       } else {
-        const ins = await client.query('INSERT INTO pages (key, path, title_key, title_en, icon, order_index) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id', [p.key, p.path, p.title_key || null, p.title_en || null, null, 0]);
+        const ins = await client.query('INSERT INTO pages (key, path, icon, order_index) VALUES ($1, $2, $3, $4) RETURNING id', [p.key, p.path, null, 0]);
         id = ins.rows[0].id;
       }
       keyToId[p.key] = id;
