@@ -15,7 +15,15 @@ const storageConfig = require('./config/storage');
 const app = express();
 
 // Middleware
-app.use(cors());
+// Allow requests from any origin. This sets Access-Control-Allow-Origin: *
+// and permits common methods and headers used by the frontend.
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Disposition'],
+  optionsSuccessStatus: 204
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

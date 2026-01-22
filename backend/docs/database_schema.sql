@@ -102,10 +102,9 @@ CREATE TABLE pages (
     id SERIAL PRIMARY KEY,
     key VARCHAR(200) NOT NULL UNIQUE,
     path VARCHAR(400) NOT NULL,
-    title_key VARCHAR(200),
-    title_en VARCHAR(255),
     parent_id INTEGER REFERENCES pages(id) ON DELETE SET NULL,
     icon VARCHAR(100),
+    main_menu boolean DEFAULT FALSE,
     order_index INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
