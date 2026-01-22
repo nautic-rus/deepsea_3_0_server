@@ -28,8 +28,6 @@ build/
 coverage/
 .nyc_output/
 
-# Generated API docs
-docs/api/swagger.json
 
 # OS files
 .DS_Store
