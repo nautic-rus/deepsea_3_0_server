@@ -10,9 +10,10 @@ const app = require('./app');
 const config = require('./config');
 
 const PORT = config.port || 3000;
+const HOST = config.host || '0.0.0.0';
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Server is running on http://${HOST}:${PORT}`);
   console.log(`Environment: ${config.env}`);
 });
 
