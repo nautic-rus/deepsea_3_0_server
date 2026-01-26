@@ -62,6 +62,19 @@ class DepartmentsService {
     // Attempt soft-delete
     const ok = await Department.softDelete(Number(id));
     if (!ok) { const err = new Error('Department not found or could not be deleted'); err.statusCode = 404; throw err; }
+    // Record audit log for department deletion
+    try {
+      const AuditLog = require('../../db/models/AuditLog');
+      await AuditLog.create({
+        actor_id: actor.id,
+        entity: 'department',
+        entity_id: Number(id),
+        action: 'delete',
+        details: { by: actor.id }
+      });
+    } catch (e) {
+      console.error('Failed to write audit log for department delete', e && e.message ? e.message : e);
+    }
     return { success: true };
   }
 }

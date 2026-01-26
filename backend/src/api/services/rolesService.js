@@ -34,7 +34,21 @@ class RolesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission roles.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.name) { const err = new Error('Missing role name'); err.statusCode = 400; throw err; }
-    return await Role.create({ name: fields.name, description: fields.description || null });
+    const created = await Role.create({ name: fields.name, description: fields.description || null });
+    // Audit log (non-blocking)
+    try {
+      const AuditLog = require('../../db/models/AuditLog');
+      await AuditLog.create({
+        actor_id: actor.id,
+        entity: 'roles',
+        entity_id: created.id,
+        action: 'create',
+        details: { name: created.name }
+      });
+    } catch (e) {
+      console.error('Failed to write audit log for role create', e && e.message ? e.message : e);
+    }
+    return created;
   }
 
   static async updateRole(id, fields, actor) {
@@ -45,6 +59,19 @@ class RolesService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const updated = await Role.update(Number(id), fields);
     if (!updated) { const err = new Error('Role not found'); err.statusCode = 404; throw err; }
+    // Audit log (non-blocking)
+    try {
+      const AuditLog = require('../../db/models/AuditLog');
+      await AuditLog.create({
+        actor_id: actor.id,
+        entity: 'roles',
+        entity_id: updated.id,
+        action: 'update',
+        details: { fields }
+      });
+    } catch (e) {
+      console.error('Failed to write audit log for role update', e && e.message ? e.message : e);
+    }
     return updated;
   }
 
@@ -56,6 +83,19 @@ class RolesService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const ok = await Role.softDelete(Number(id));
     if (!ok) { const err = new Error('Role not found'); err.statusCode = 404; throw err; }
+    // Audit log (non-blocking)
+    try {
+      const AuditLog = require('../../db/models/AuditLog');
+      await AuditLog.create({
+        actor_id: actor.id,
+        entity: 'roles',
+        entity_id: Number(id),
+        action: 'delete',
+        details: { by: actor.id }
+      });
+    } catch (e) {
+      console.error('Failed to write audit log for role delete', e && e.message ? e.message : e);
+    }
     return { success: true };
   }
 

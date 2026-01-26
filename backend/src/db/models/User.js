@@ -294,10 +294,11 @@ class User {
     const query = `
       SELECT u.id,
              u.username,
+              u.avatar_url,
              u.email,
              u.phone,
              u.first_name,
-             u.last_name,
+             u.last_name, 
              u.middle_name,
             u.department_id,
              d.name AS department,

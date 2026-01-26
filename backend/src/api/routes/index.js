@@ -31,6 +31,7 @@ const userRocketChatController = require('../controllers/userRocketChatControlle
 const userNotificationSettingsController = require('../controllers/userNotificationSettingsController');
 const userNotificationsController = require('../controllers/userNotificationsController');
 const entityLinksController = require('../controllers/entityLinksController');
+const auditLogsController = require('../controllers/auditLogsController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -251,6 +252,16 @@ router.delete('/statements/:id', authMiddleware, statementsController.delete);
 // ===== Permissions routes =====
 // GET /api/permissions
 router.get('/permissions', authMiddleware, permissionsController.list);
+// POST /api/permissions - create a new permission
+router.post('/permissions', authMiddleware, permissionsController.create);
+// PUT /api/permissions/:id - update permission
+router.put('/permissions/:id', authMiddleware, permissionsController.update);
+// DELETE /api/permissions/:id - remove permission
+router.delete('/permissions/:id', authMiddleware, permissionsController.delete);
+
+// ===== Audit routes =====
+// GET /api/audit_logs - list audit entries (filters: actor_id, entity, entity_id, limit, offset)
+router.get('/audit_logs', authMiddleware, auditLogsController.list);
 
 // ===== User pages (menu) =====
 // GET /api/user/pages

@@ -226,6 +226,21 @@
           "name": {
             "type": "string"
           }
+          ,
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "manager_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "manager_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
         }
       },
       "Role": {
@@ -277,6 +292,27 @@
             "type": "string",
             "nullable": true
           }
+          ,
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "actor_id": { "type": "integer" },
+          "entity": { "type": "string" },
+          "entity_id": { "type": "integer", "nullable": true },
+          "action": { "type": "string" },
+          "details": { "type": "object", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
         }
       },
       "Project": {
@@ -1069,6 +1105,71 @@
           }
         },
         "parameters": []
+      }
+    },
+    "/api/departments/{id}": {
+      "put": {
+        "tags": [
+          "departments"
+        ],
+        "summary": "Обновить отдел",
+        "description": "Обновить существующий отдел. Требуется разрешение departments.update.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "departments.update" ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string", "nullable": true },
+                  "manager_id": { "type": "integer", "nullable": true }
+                }
+              },
+              "example": { "name": "New Dept", "description": "...", "manager_id": null }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Department" } } } },
+          "400": { "description": "Invalid id or payload" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission departments.update" }
+        }
+      }
+      ,
+      "delete": {
+        "tags": [
+          "departments"
+        ],
+        "summary": "Удалить отдел",
+        "description": "Удалить (soft-delete) отдел. Требуется разрешение departments.delete.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "departments.delete" ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "OK" },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission departments.delete" }
+        }
       }
     },
     "/api/users/{id}": {
@@ -2305,6 +2406,37 @@
         }
       }
     },
+    "/api/audit_logs": {
+      "get": {
+        "tags": ["audit"],
+        "summary": "Список audit логов",
+        "description": "Просмотр записей аудита. Требуется соответствующее право доступа.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": ["audit.view"],
+        "parameters": [
+          { "in": "query", "name": "actor_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "entity", "schema": { "type": "string" } },
+          { "in": "query", "name": "entity_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "limit", "schema": { "type": "integer", "default": 50 } },
+          { "in": "query", "name": "offset", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/AuditLog" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/permissions": {
       "get": {
         "tags": [
@@ -2325,6 +2457,110 @@
           }
         },
         "parameters": []
+      },
+      "post": {
+        "tags": [
+          "permissions"
+        ],
+        "summary": "Создать разрешение",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "permissions.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["code"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "code": { "type": "string" },
+                  "description": { "type": "string", "nullable": true }
+                }
+              },
+              "example": { "name": "", "code": "", "description": "" }
+            }
+          }
+        },
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Permission" }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/api/permissions/{id}": {
+      "put": {
+        "tags": ["permissions"],
+        "summary": "Обновить разрешение",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": ["permissions.update"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "code": { "type": "string" },
+                  "description": { "type": "string", "nullable": true }
+                }
+              },
+              "example": { "name": "Updated name", "code": "perm.code", "description": "..." }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Permission" }
+              }
+            }
+          }
+        }
+      }
+      ,
+      "delete": {
+        "tags": ["permissions"],
+        "summary": "Удалить разрешение",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": ["permissions.delete"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "OK" },
+          "404": { "description": "Not found" }
+        }
       }
     },
     "/api/user/pages": {
