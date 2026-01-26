@@ -2406,6 +2406,55 @@
         }
       }
     },
+    "/api/roles/{id}/permissions": {
+      "get": {
+        "tags": ["roles"],
+        "summary": "Получить разрешения роли",
+        "description": "Возвращает список разрешений, привязанных к роли. Требуется разрешение roles.view.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["roles.view"],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Permission" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/roles/permissions": {
+      "get": {
+        "tags": ["roles"],
+        "summary": "Получить разрешения по role_id",
+        "description": "Возвращает разрешения для роли по query-параметру role_id (fallback endpoint). Требуется roles.view.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["roles.view"],
+        "parameters": [
+          { "in": "query", "name": "role_id", "schema": { "type": "integer" }, "description": "ID роли" }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Permission" } } } }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/audit_logs": {
       "get": {
         "tags": ["audit"],
@@ -4336,6 +4385,115 @@
             "description": "Created"
           }
         }
+      }
+    },
+    "/api/materials/next_stock_code": {
+      "get": {
+        "tags": ["materials"],
+        "summary": "Получить следующий код склада",
+        "description": "Возвращает следующий доступный stock code для материалов.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["materials.view"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "stock_code": { "type": "string" } } } } }
+          }
+        }
+      }
+    },
+    "/api/material_kits": {
+      "get": {
+        "tags": ["material_kits"],
+        "summary": "Список material kits",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.view"],
+        "responses": { "200": { "description": "OK" } },
+        "parameters": []
+      },
+      "post": {
+        "tags": ["material_kits"],
+        "summary": "Создать material kit",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.create"],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object" } } } },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/api/material_kits/{id}": {
+      "get": {
+        "tags": ["material_kits"],
+        "summary": "Получить material kit",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.view"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "put": {
+        "tags": ["material_kits"],
+        "summary": "Обновить material kit",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.update"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object" } } } },
+        "responses": { "200": { "description": "OK" } }
+      },
+      "delete": {
+        "tags": ["material_kits"],
+        "summary": "Удалить material kit",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.delete"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/material_kits/{kit_id}/items": {
+      "get": {
+        "tags": ["material_kits"],
+        "summary": "Список items в kit",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.view"],
+        "parameters": [{ "in": "path", "name": "kit_id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK" } }
+      },
+      "post": {
+        "tags": ["material_kits"],
+        "summary": "Добавить item в kit",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.update"],
+        "parameters": [{ "in": "path", "name": "kit_id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object" } } } },
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/api/material_kits/items/{id}": {
+      "put": {
+        "tags": ["material_kits"],
+        "summary": "Обновить item",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.update"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object" } } } },
+        "responses": { "200": { "description": "OK" } }
+      },
+      "delete": {
+        "tags": ["material_kits"],
+        "summary": "Удалить item",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.update"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/material_kits/{id}/apply": {
+      "post": {
+        "tags": ["material_kits"],
+        "summary": "Применить kit к спецификации",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["material_kits.apply"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object" } } } },
+        "responses": { "200": { "description": "OK" } }
       }
     },
     "/api/storage/local": {
