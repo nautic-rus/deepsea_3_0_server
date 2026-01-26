@@ -5,6 +5,13 @@ DB_NAME=deepsea3
 DB_USER=postgres
 DB_PASSWORD=230571Sp
 
+# Конфигурация базы данных
+DB_HOST=localhost
+DB_PORT=3010
+DB_NAME=deepsea3
+DB_USER=postgres
+DB_PASSWORD=230571Sp
+
 # Окружение
 NODE_ENV=development
 
