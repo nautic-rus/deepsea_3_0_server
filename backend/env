@@ -5,12 +5,12 @@ DB_NAME=deepsea3
 DB_USER=postgres
 DB_PASSWORD=230571Sp
 
-# Конфигурация базы данных
-DB_HOST=localhost
-DB_PORT=3010
-DB_NAME=deepsea3
-DB_USER=postgres
-DB_PASSWORD=230571Sp
+; # Конфигурация базы данных
+; DB_HOST=192.168.1.177
+; DB_PORT=5432
+; DB_NAME=deepsea3
+; DB_USER=postgres
+; DB_PASSWORD=230571Sp
 
 # Окружение
 NODE_ENV=development
@@ -28,7 +28,7 @@ REFRESH_TOKEN_EXPIRES_IN=7d
 PORT=3000
 # Host binding for the server. Set to 0.0.0.0 to accept requests from any interface.
 # Example: HOST=0.0.0.0
-HOST=0.0.0.0
+HOST=localhost
 
 
 # Rocket.Chat configuration (REST API)

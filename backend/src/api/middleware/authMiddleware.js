@@ -10,16 +10,27 @@ const pool = require('../../db/connection');
 async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization || req.headers.Authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    let token = null;
+
+    // Prefer Authorization header Bearer token, but fall back to HttpOnly cookie
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+      // eslint-disable-next-line no-console
+      // console.debug('authMiddleware: using token from Authorization header');
+    } else if (req.cookies && req.cookies.access_token) {
+      token = req.cookies.access_token;
+      // eslint-disable-next-line no-console
+      // console.debug('authMiddleware: using token from access_token cookie');
+    }
+
+    if (!token) {
       const err = new Error('Authentication required');
       err.statusCode = 401;
       throw err;
     }
 
-    const token = authHeader.split(' ')[1];
-
     // Верифицируем JWT и получаем полезную нагрузку
-    const payload = verifyAccessToken(token);
+  const payload = verifyAccessToken(token);
 
     if (!payload || !payload.id) {
       const err = new Error('Invalid token payload');

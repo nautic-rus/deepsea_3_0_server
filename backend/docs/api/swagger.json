@@ -23,6 +23,12 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT"
+      },
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access_token",
+        "description": "HttpOnly cookie named `access_token` (JWT). The API accepts either Bearer header or this cookie."
       }
     },
     "examples": {
@@ -607,7 +613,7 @@
           "auth"
         ],
         "summary": "Вход в систему (по username или email)",
-        "description": "Аутентификация пользователя по username или email и паролю; возвращает токены доступа и информацию о пользователе.",
+  "description": "Аутентификация пользователя по username или email и паролю; возвращает информацию о пользователе.\n\nПосле успешного входа сервер устанавливает HttpOnly cookies: `access_token` (JWT access token) и `refresh_token` (refresh token). Токены не возвращаются в теле ответа — они доставляются в HttpOnly cookies. Ответ содержит только `expires_at` и `user`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -649,14 +655,6 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "token": {
-                      "type": "string",
-                      "description": "JWT токен доступа"
-                    },
-                    "refresh_token": {
-                      "type": "string",
-                      "description": "Токен для обновления access токена"
-                    },
                     "expires_at": {
                       "type": "string",
                       "format": "date-time",
@@ -665,21 +663,11 @@
                     "user": {
                       "type": "object",
                       "properties": {
-                        "id": {
-                          "type": "integer"
-                        },
-                        "username": {
-                          "type": "string"
-                        },
-                        "email": {
-                          "type": "string"
-                        },
-                        "first_name": {
-                          "type": "string"
-                        },
-                        "last_name": {
-                          "type": "string"
-                        }
+                        "id": { "type": "integer" },
+                        "username": { "type": "string" },
+                        "email": { "type": "string" },
+                        "first_name": { "type": "string" },
+                        "last_name": { "type": "string" }
                       }
                     }
                   }
@@ -870,9 +858,8 @@
         "summary": "Создать нового пользователя",
         "description": "Создание нового пользователя в системе",
         "security": [
-          {
-            "bearerAuth": []
-          }
+          { "bearerAuth": [] },
+          { "cookieAuth": [] }
         ],
         "x-permissions": [
           "users.create"
@@ -2068,7 +2055,7 @@
           "auth"
         ],
         "summary": "Обновить access token",
-  "description": "Обновляет access token по refresh token и возвращает новый pair (token, refresh_token).\n\nRefresh token должен быть передан в HttpOnly cookie с именем `refresh_token`.",
+  "description": "Обновляет access token по refresh token. Refresh token должен быть передан в HttpOnly cookie с именем `refresh_token`.\n\nНовые токены выдаются в HttpOnly cookies; тело ответа содержит только `expires_at` и `user`.",
         "responses": {
           "200": {
             "description": "Токены обновлены",
@@ -2077,19 +2064,8 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "token": {
-                      "type": "string"
-                    },
-                    "refresh_token": {
-                      "type": "string"
-                    },
-                    "expires_at": {
-                      "type": "string",
-                      "format": "date-time"
-                    },
-                    "user": {
-                      "$ref": "#/components/schemas/User"
-                    }
+                    "expires_at": { "type": "string", "format": "date-time" },
+                    "user": { "$ref": "#/components/schemas/User" }
                   }
                 }
               }

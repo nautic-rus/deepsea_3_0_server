@@ -1355,6 +1355,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: "HttpOnly cookie named `access_token` (JWT). The API accepts either Bearer header or this cookie."
   examples:
     AccessTokenExample:
       summary: Placeholder access JWT token
@@ -1693,8 +1698,10 @@ paths:
       tags:
         - auth
       summary: Вход в систему (по username или email)
-      description: >
-        Аутентификация пользователя по username или email и паролю; возвращает токены доступа и информацию о пользователе.
+      description: |
+        Аутентификация пользователя по username или email и паролю; возвращает информацию о пользователе.
+
+        После успешного входа сервер устанавливает HttpOnly cookies: `access_token` (JWT access token) и `refresh_token` (refresh token). Токены не возвращаются в теле ответа — они доставляются в HttpOnly cookies. Ответ содержит только `expires_at` и `user`.
       requestBody:
         required: true
         content:
@@ -1726,12 +1733,6 @@ paths:
               schema:
                 type: object
                 properties:
-                  token:
-                    type: string
-                    description: JWT токен доступа
-                  refresh_token:
-                    type: string
-                    description: Токен для обновления access токена
                   expires_at:
                     type: string
                     format: date-time
@@ -1896,18 +1897,12 @@ paths:
         - bearerAuth: []
       x-permissions:
         - users.view
-      parameters:
-        - in: query
-          name: page
-          schema:
-            type: integer
-          description: Номер страницы (по умолчанию 1)
-        - in: query
-          name: limit
-          schema:
-            type: integer
-          description: Количество элементов на страницу (по умолчанию 25)
-        - in: query
+                properties:
+                  expires_at:
+                    type: string
+                    format: date-time
+                    description: Время истечения токена
+                  user:
           name: search
           schema:
             type: string
@@ -2543,9 +2538,9 @@ paths:
         - auth
       summary: Обновить access token
       description: |
-        Обновляет access token по refresh token и возвращает новый pair (token, refresh_token).
+        Обновляет access token по refresh token. Refresh token должен передаваться в HttpOnly cookie с именем `refresh_token`.
 
-        Refresh token должен передаваться в HttpOnly cookie с именем `refresh_token`.
+        Новые токены выдаются в HttpOnly cookies; тело ответа содержит только `expires_at` и `user`.
       responses:
         '200':
           description: Токены обновлены
@@ -2554,10 +2549,6 @@ paths:
               schema:
                 type: object
                 properties:
-                  token:
-                    type: string
-                  refresh_token:
-                    type: string
                   expires_at:
                     type: string
                     format: date-time
@@ -2578,6 +2569,7 @@ paths:
       description: Деактивирует текущую сессию / refresh token. Требуется авторизация.
       security:
         - bearerAuth: []
+        - cookieAuth: []
       responses:
         '200':
           description: Logged out
@@ -2601,6 +2593,7 @@ paths:
       description: Возвращает профиль авторизованного пользователя.
       security:
         - bearerAuth: []
+        - cookieAuth: []
       responses:
         '200':
           description: Профиль пользователя

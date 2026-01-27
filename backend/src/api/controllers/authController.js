@@ -25,7 +25,7 @@ class AuthController {
   const identifier = username || email || null;
   const result = await AuthService.login(identifier, password, ipAddress, userAgent);
 
-      // Set HttpOnly cookie for refresh token (keep returning it in body for backwards compatibility)
+      // Set HttpOnly cookies for refresh and access tokens (keep returning them in body for backwards compatibility)
       try {
         const cookieName = 'refresh_token';
         const raw = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
@@ -41,12 +41,31 @@ class AuthController {
           sameSite: 'lax',
           maxAge: maxAge
         });
+        // Access token cookie
+        try {
+          const accessRaw = process.env.JWT_EXPIRES_IN || '24h';
+          let accessMaxAge = null;
+          if (accessRaw.endsWith('d')) { accessMaxAge = parseInt(accessRaw) * 24 * 60 * 60 * 1000; }
+          else if (accessRaw.endsWith('h')) { accessMaxAge = parseInt(accessRaw) * 60 * 60 * 1000; }
+          else if (accessRaw.endsWith('m')) { accessMaxAge = parseInt(accessRaw) * 60 * 1000; }
+          else if (accessRaw.endsWith('s')) { accessMaxAge = parseInt(accessRaw) * 1000; }
+
+          res.cookie('access_token', result.token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: accessMaxAge
+          });
+        } catch (e) {
+          console.error('Failed to set access_token cookie', e && e.message ? e.message : e);
+        }
       } catch (e) {
         // Don't fail login if cookie cannot be set for some reason
         console.error('Failed to set refresh_token cookie', e && e.message ? e.message : e);
       }
 
-      res.status(200).json(result);
+  // Return only non-sensitive data in body; tokens are delivered via HttpOnly cookies
+  res.status(200).json({ expires_at: result.expires_at, user: result.user });
     } catch (error) {
       next(error);
     }
@@ -58,25 +77,14 @@ class AuthController {
   static async refresh(req, res, next) {
     try {
       // Expect refresh token to be supplied via HttpOnly cookie named 'refresh_token'.
-      // Try req.cookies (if cookie-parser is used) or parse header manually.
-      let refresh_token = null;
-      if (req.cookies && req.cookies.refresh_token) {
-        refresh_token = req.cookies.refresh_token;
-      } else if (req.headers && req.headers.cookie) {
-        const cookies = req.headers.cookie.split(';').map(s => s.trim());
-        for (const c of cookies) {
-          if (c.startsWith('refresh_token=')) {
-            refresh_token = decodeURIComponent(c.split('=')[1] || '');
-            break;
-          }
-        }
-      }
+      // Use req.cookies (cookie-parser must be enabled); do not parse raw headers.
+      const refresh_token = (req.cookies && req.cookies.refresh_token) ? req.cookies.refresh_token : null;
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('user-agent') || '';
 
       const result = await AuthService.refresh(refresh_token, ipAddress, userAgent);
 
-      // Rotate refresh token in cookie as well
+      // Rotate refresh and access tokens in cookies as well
       try {
         const cookieName = 'refresh_token';
         const raw = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
@@ -92,11 +100,30 @@ class AuthController {
           sameSite: 'lax',
           maxAge: maxAge
         });
+        // access token
+        try {
+          const accessRaw = process.env.JWT_EXPIRES_IN || '24h';
+          let accessMaxAge = null;
+          if (accessRaw.endsWith('d')) { accessMaxAge = parseInt(accessRaw) * 24 * 60 * 60 * 1000; }
+          else if (accessRaw.endsWith('h')) { accessMaxAge = parseInt(accessRaw) * 60 * 60 * 1000; }
+          else if (accessRaw.endsWith('m')) { accessMaxAge = parseInt(accessRaw) * 60 * 1000; }
+          else if (accessRaw.endsWith('s')) { accessMaxAge = parseInt(accessRaw) * 1000; }
+
+          res.cookie('access_token', result.token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: accessMaxAge
+          });
+        } catch (e) {
+          console.error('Failed to set access_token cookie on refresh', e && e.message ? e.message : e);
+        }
       } catch (e) {
         console.error('Failed to set refresh_token cookie on refresh', e && e.message ? e.message : e);
       }
 
-      res.status(200).json(result);
+  // Return only non-sensitive data in body; tokens are delivered via HttpOnly cookies
+  res.status(200).json({ expires_at: result.expires_at, user: result.user });
     } catch (error) {
       next(error);
     }
@@ -108,9 +135,13 @@ class AuthController {
    */
   static async logout(req, res, next) {
     try {
-      // Expect Authorization: Bearer <token>
+      // Try Authorization header first, otherwise support access token in HttpOnly cookie
       const authHeader = req.headers.authorization || req.headers.Authorization;
-      const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+      let token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+
+      if (!token && req.cookies && req.cookies.access_token) {
+        token = req.cookies.access_token;
+      }
 
       if (!token) {
         const err = new Error('Authentication required');
@@ -119,6 +150,14 @@ class AuthController {
       }
 
       await AuthService.logout(token);
+
+      // Clear cookies on logout
+      try {
+        res.clearCookie('access_token');
+        res.clearCookie('refresh_token');
+      } catch (e) {
+        // Not critical
+      }
 
       res.status(200).json({ message: 'Logged out' });
     } catch (error) {

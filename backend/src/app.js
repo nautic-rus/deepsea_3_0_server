@@ -4,6 +4,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 const fs = require('fs');
 const apiRoutes = require('./api/routes');
@@ -26,6 +27,8 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Parse cookies (used for HttpOnly token cookies)
+app.use(cookieParser());
 
 // Trust proxy для получения реального IP адреса
 app.set('trust proxy', true);
