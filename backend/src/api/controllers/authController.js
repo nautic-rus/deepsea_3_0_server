@@ -25,6 +25,27 @@ class AuthController {
   const identifier = username || email || null;
   const result = await AuthService.login(identifier, password, ipAddress, userAgent);
 
+      // Set HttpOnly cookie for refresh token (keep returning it in body for backwards compatibility)
+      try {
+        const cookieName = 'refresh_token';
+        const raw = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+        let maxAge = null;
+        if (raw.endsWith('d')) { maxAge = parseInt(raw) * 24 * 60 * 60 * 1000; }
+        else if (raw.endsWith('h')) { maxAge = parseInt(raw) * 60 * 60 * 1000; }
+        else if (raw.endsWith('m')) { maxAge = parseInt(raw) * 60 * 1000; }
+        else if (raw.endsWith('s')) { maxAge = parseInt(raw) * 1000; }
+
+        res.cookie(cookieName, result.refresh_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: maxAge
+        });
+      } catch (e) {
+        // Don't fail login if cookie cannot be set for some reason
+        console.error('Failed to set refresh_token cookie', e && e.message ? e.message : e);
+      }
+
       res.status(200).json(result);
     } catch (error) {
       next(error);
@@ -36,11 +57,44 @@ class AuthController {
    */
   static async refresh(req, res, next) {
     try {
-      const { refresh_token } = req.body || {};
+      // Expect refresh token to be supplied via HttpOnly cookie named 'refresh_token'.
+      // Try req.cookies (if cookie-parser is used) or parse header manually.
+      let refresh_token = null;
+      if (req.cookies && req.cookies.refresh_token) {
+        refresh_token = req.cookies.refresh_token;
+      } else if (req.headers && req.headers.cookie) {
+        const cookies = req.headers.cookie.split(';').map(s => s.trim());
+        for (const c of cookies) {
+          if (c.startsWith('refresh_token=')) {
+            refresh_token = decodeURIComponent(c.split('=')[1] || '');
+            break;
+          }
+        }
+      }
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('user-agent') || '';
 
       const result = await AuthService.refresh(refresh_token, ipAddress, userAgent);
+
+      // Rotate refresh token in cookie as well
+      try {
+        const cookieName = 'refresh_token';
+        const raw = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+        let maxAge = null;
+        if (raw.endsWith('d')) { maxAge = parseInt(raw) * 24 * 60 * 60 * 1000; }
+        else if (raw.endsWith('h')) { maxAge = parseInt(raw) * 60 * 60 * 1000; }
+        else if (raw.endsWith('m')) { maxAge = parseInt(raw) * 60 * 1000; }
+        else if (raw.endsWith('s')) { maxAge = parseInt(raw) * 1000; }
+
+        res.cookie(cookieName, result.refresh_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: maxAge
+        });
+      } catch (e) {
+        console.error('Failed to set refresh_token cookie on refresh', e && e.message ? e.message : e);
+      }
 
       res.status(200).json(result);
     } catch (error) {

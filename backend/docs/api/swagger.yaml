@@ -2542,20 +2542,10 @@ paths:
       tags:
         - auth
       summary: Обновить access token
-      description: Обновляет access token по refresh token и возвращает новый pair (token, refresh_token)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - refresh_token
-              properties:
-                refresh_token:
-                  type: string
-            example:
-              refresh_token: ''
+      description: |
+        Обновляет access token по refresh token и возвращает новый pair (token, refresh_token).
+
+        Refresh token должен передаваться в HttpOnly cookie с именем `refresh_token`.
       responses:
         '200':
           description: Токены обновлены
