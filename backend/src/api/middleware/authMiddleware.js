@@ -69,12 +69,24 @@ async function authMiddleware(req, res, next) {
         throw err;
       }
 
-      // Проверим expires_at (если указано) и деактивируем при просрочке
+      // Проверим expires_at (если указано). По умолчанию мы не деактивируем
+      // сессию автоматически при истечении expires_at — это позволяет клиенту
+      // вызвать /api/auth/refresh и получить новый pair (refresh được работать
+      // даже если access token истёк). Если требуется прежнее поведение, можно
+      // включить деактивацию установкой SESSION_DEACTIVATE_ON_EXPIRE=true в env.
       if (session.expires_at) {
         const exp = new Date(session.expires_at);
         if (exp.getTime() <= Date.now()) {
-          // деактивируем сессию и отклоняем
-          try { await Session.deactivate(session.token); } catch (e) { /* ignore */ }
+          // Если необходимо — деактивируем старую сессию (по флагу окружения).
+          // По умолчанию флаг выключен (не деактивируем) чтобы не блокировать
+          // последующий refresh. Установите SESSION_DEACTIVATE_ON_EXPIRE=true
+          // в production, если нужна строгая деактивация при первом обращении.
+          try {
+            if (String(process.env.SESSION_DEACTIVATE_ON_EXPIRE || '').toLowerCase() === 'true') {
+              await Session.deactivate(session.token);
+            }
+          } catch (e) { /* ignore */ }
+
           const err = new Error('Session expired');
           err.statusCode = 401;
           throw err;
