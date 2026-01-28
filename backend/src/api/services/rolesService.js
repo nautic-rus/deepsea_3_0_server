@@ -149,6 +149,52 @@ class RolesService {
   }
 
   /**
+   * Assign multiple permissions to a role.
+   * Accepts an array of permission ids and returns per-id results.
+   */
+  static async addPermissionsToRole(roleId, permissionIds, actor) {
+    const requiredPermission = 'roles.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission roles.update'); err.statusCode = 403; throw err; }
+    if (!roleId || Number.isNaN(Number(roleId))) { const err = new Error('Invalid role id'); err.statusCode = 400; throw err; }
+    if (!Array.isArray(permissionIds) || permissionIds.length === 0) { const err = new Error('permission_ids must be a non-empty array'); err.statusCode = 400; throw err; }
+
+    // normalize and dedupe ids
+    const ids = Array.from(new Set(permissionIds.map(x => Number(x)).filter(x => Number.isFinite(x) && x > 0)));
+    if (ids.length === 0) { const err = new Error('permission_ids contains no valid ids'); err.statusCode = 400; throw err; }
+
+    const RoleModel = require('../../db/models/Role');
+    const results = [];
+    for (const pid of ids) {
+      try {
+        const insertedId = await RoleModel.addPermission(Number(roleId), Number(pid));
+        results.push({ permission_id: pid, created: !!insertedId });
+      } catch (e) {
+        // don't fail whole operation on a single bad id; record error
+        results.push({ permission_id: pid, created: false, error: e && e.message ? e.message : String(e) });
+      }
+    }
+
+    // Audit log (single entry summarizing the bulk op)
+    try {
+      const AuditLog = require('../../db/models/AuditLog');
+      await AuditLog.create({
+        actor_id: actor.id,
+        entity: 'role_permissions',
+        entity_id: null,
+        action: 'bulk_create',
+        details: { role_id: Number(roleId), results }
+      });
+    } catch (e) {
+      console.error('Failed to write audit log for role permission bulk add', e && e.message ? e.message : e);
+    }
+
+    const created_count = results.filter(r => r.created).length;
+    return { results, created_count };
+  }
+
+  /**
    * Remove a permission from a role.
    * Requires roles.update permission.
    */

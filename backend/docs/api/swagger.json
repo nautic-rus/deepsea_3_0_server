@@ -2403,12 +2403,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["permission_id"],
+                "required": ["permission_ids"],
                 "properties": {
-                  "permission_id": { "type": "integer" }
+                  "permission_ids": { "type": "array", "items": { "type": "integer" } }
                 }
               },
-              "example": { "permission_id": 123 }
+              "example": { "permission_ids": [123, 124] }
             }
           }
         },
@@ -2422,7 +2422,16 @@
                   "properties": {
                     "data": {
                       "type": "object",
-                      "properties": { "created": { "type": "boolean" } }
+                      "properties": {
+                        "results": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": { "permission_id": { "type": "integer" }, "created": { "type": "boolean" }, "error": { "type": "string", "nullable": true } }
+                          }
+                        },
+                        "created_count": { "type": "integer" }
+                      }
                     }
                   }
                 }

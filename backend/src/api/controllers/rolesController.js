@@ -84,7 +84,14 @@ class RolesController {
     try {
       const actor = req.user || null;
       const roleId = parseInt(req.params.id, 10);
-      const permissionId = req.body && req.body.permission_id ? parseInt(req.body.permission_id, 10) : null;
+      // Accept either single permission_id or an array permission_ids
+      const body = req.body || {};
+      if (Array.isArray(body.permission_ids)) {
+        const ids = body.permission_ids.map(x => parseInt(x, 10)).filter(x => !Number.isNaN(x));
+        const result = await RolesService.addPermissionsToRole(roleId, ids, actor);
+        return res.status(201).json({ data: result });
+      }
+      const permissionId = body.permission_id ? parseInt(body.permission_id, 10) : null;
       const result = await RolesService.addPermissionToRole(roleId, permissionId, actor);
       res.status(201).json({ data: result });
     } catch (err) { next(err); }
