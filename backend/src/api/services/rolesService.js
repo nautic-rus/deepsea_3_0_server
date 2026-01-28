@@ -109,6 +109,76 @@ class RolesService {
     const Permission = require('../../db/models/Permission');
     return await Permission.listByRole(Number(id));
   }
+
+  /**
+   * Assign a permission to a role.
+   * Expects numeric role id and permission id. Requires roles.update permission.
+   */
+  static async addPermissionToRole(roleId, permissionId, actor) {
+    const requiredPermission = 'roles.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission roles.update'); err.statusCode = 403; throw err; }
+    if (!roleId || Number.isNaN(Number(roleId))) { const err = new Error('Invalid role id'); err.statusCode = 400; throw err; }
+    if (!permissionId || Number.isNaN(Number(permissionId))) { const err = new Error('Invalid permission id'); err.statusCode = 400; throw err; }
+
+    // ensure permission exists
+    const Permission = require('../../db/models/Permission');
+    const permRowQ = `SELECT id FROM permissions WHERE id = $1 LIMIT 1`;
+    const permRes = await require('../../db/connection').query(permRowQ, [Number(permissionId)]);
+    if (permRes.rowCount === 0) { const err = new Error('Permission not found'); err.statusCode = 404; throw err; }
+
+    const RoleModel = require('../../db/models/Role');
+    const insertedId = await RoleModel.addPermission(Number(roleId), Number(permissionId));
+
+    // Audit log
+    try {
+      const AuditLog = require('../../db/models/AuditLog');
+      await AuditLog.create({
+        actor_id: actor.id,
+        entity: 'role_permissions',
+        entity_id: insertedId || null,
+        action: insertedId ? 'create' : 'noop',
+        details: { role_id: Number(roleId), permission_id: Number(permissionId) }
+      });
+    } catch (e) {
+      console.error('Failed to write audit log for role permission add', e && e.message ? e.message : e);
+    }
+
+    return { created: !!insertedId };
+  }
+
+  /**
+   * Remove a permission from a role.
+   * Requires roles.update permission.
+   */
+  static async removePermissionFromRole(roleId, permissionId, actor) {
+    const requiredPermission = 'roles.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission roles.update'); err.statusCode = 403; throw err; }
+    if (!roleId || Number.isNaN(Number(roleId))) { const err = new Error('Invalid role id'); err.statusCode = 400; throw err; }
+    if (!permissionId || Number.isNaN(Number(permissionId))) { const err = new Error('Invalid permission id'); err.statusCode = 400; throw err; }
+
+    const RoleModel = require('../../db/models/Role');
+    const removed = await RoleModel.removePermission(Number(roleId), Number(permissionId));
+
+    // Audit log
+    try {
+      const AuditLog = require('../../db/models/AuditLog');
+      await AuditLog.create({
+        actor_id: actor.id,
+        entity: 'role_permissions',
+        entity_id: null,
+        action: removed ? 'delete' : 'noop',
+        details: { role_id: Number(roleId), permission_id: Number(permissionId) }
+      });
+    } catch (e) {
+      console.error('Failed to write audit log for role permission remove', e && e.message ? e.message : e);
+    }
+
+    return { removed: !!removed };
+  }
 }
 
 module.exports = RolesService;

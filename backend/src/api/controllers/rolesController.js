@@ -76,6 +76,33 @@ class RolesController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * Assign a permission to a role (POST /roles/:id/permissions)
+   * Body: { permission_id: number }
+   */
+  static async assignPermission(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const roleId = parseInt(req.params.id, 10);
+      const permissionId = req.body && req.body.permission_id ? parseInt(req.body.permission_id, 10) : null;
+      const result = await RolesService.addPermissionToRole(roleId, permissionId, actor);
+      res.status(201).json({ data: result });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * Unassign a permission from a role (DELETE /roles/:id/permissions/:permission_id)
+   */
+  static async unassignPermission(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const roleId = parseInt(req.params.id, 10);
+      const permissionId = req.params.permission_id ? parseInt(req.params.permission_id, 10) : null;
+      const result = await RolesService.removePermissionFromRole(roleId, permissionId, actor);
+      res.json({ data: result });
+    } catch (err) { next(err); }
+  }
+
   // Fallback handler: accepts role_id via query string or uses actor's role
   /**
    * Get permissions by query parameter (role_id) or infer from actor.

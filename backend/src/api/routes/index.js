@@ -106,6 +106,10 @@ router.put('/roles/:id', authMiddleware, rolesController.update);
 router.delete('/roles/:id', authMiddleware, rolesController.delete);
 // GET /api/roles/:id/permissions
 router.get('/roles/:id/permissions', authMiddleware, rolesController.getPermissions);
+// POST /api/roles/:id/permissions - assign permission to role
+router.post('/roles/:id/permissions', authMiddleware, rolesController.assignPermission);
+// DELETE /api/roles/:id/permissions/:permission_id - remove permission from role
+router.delete('/roles/:id/permissions/:permission_id', authMiddleware, rolesController.unassignPermission);
 // GET /api/roles/permissions?role_id= - fallback when id is not provided in path
 router.get('/roles/permissions', authMiddleware, rolesController.getPermissionsByQuery);
 
