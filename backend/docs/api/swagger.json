@@ -467,6 +467,10 @@
           "user_id": {
             "type": "integer"
           },
+          "full_name": {
+            "type": "string",
+            "description": "ФИО пользователя (фамилия, имя, отчество)"
+          },
           "role": {
             "type": "string",
             "nullable": true

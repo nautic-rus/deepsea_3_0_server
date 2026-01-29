@@ -24,9 +24,13 @@ class UserProjectsService {
       if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
     }
 
-    const q = `SELECT ur.id, ur.user_id, ur.project_id, ur.role_id, r.name AS role_name, ur.created_at
+    const q = `SELECT ur.id, ur.user_id, ur.project_id, ur.role_id, r.name AS role_name,
+      u.first_name, u.last_name, u.middle_name,
+      concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS full_name,
+      ur.created_at
       FROM user_roles ur
       JOIN roles r ON r.id = ur.role_id
+      JOIN users u ON u.id = ur.user_id
       WHERE ur.project_id = $1
       ORDER BY ur.created_at DESC`;
     const res = await require('../../db/connection').query(q, [projectId]);
