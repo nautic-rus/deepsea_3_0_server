@@ -3103,9 +3103,17 @@ paths:
                   description: ID проекта
                   example: 12
                 user_id:
-                  type: integer
-                  description: ID пользователя для назначения
-                  example: 34
+                  oneOf:
+                    - type: integer
+                    - type: array
+                      items:
+                        type: integer
+                    - type: string
+                  description: >-
+                    ID пользователя для назначения. Может быть целым числом (e.g. 34), массивом целых чисел
+                    (e.g. [34, 55]) или CSV-строкой (e.g. "34,55,77"). Контроллер поддерживает все три формата.
+                  example:
+                    - 34
                 role_id:
                   type: integer
                   description: Optional single role id. If provided the role id will be assigned to user in project.
