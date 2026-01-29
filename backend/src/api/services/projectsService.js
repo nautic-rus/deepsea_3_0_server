@@ -15,12 +15,10 @@ class ProjectsService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission projects.view'); err.statusCode = 403; throw err; }
-    // If actor has global view-all permission, return all projects
-    const canViewAll = await hasPermission(actor, 'projects.view_all');
-    if (canViewAll) return await Project.list(query);
-
-  // Otherwise return only projects assigned to this user via project-scoped roles
-  return await Project.listForUser(actor.id, query);
+    // Return all projects to any user with projects.view permission.
+    // Previously we limited this to projects assigned to the user unless they had projects.view_all;
+    // requirement changed: remove assignment-based filtering.
+    return await Project.list(query);
   }
 
   static async getProjectById(id, actor) {
@@ -31,11 +29,7 @@ class ProjectsService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const p = await Project.findById(Number(id));
     if (!p) { const err = new Error('Project not found'); err.statusCode = 404; throw err; }
-    // If actor has view_all permission, allow access; otherwise require user-project assignment
-    const canViewAll = await hasPermission(actor, 'projects.view_all');
-    if (canViewAll) return p;
-    const assigned = await Project.isUserAssigned(Number(id), actor.id);
-    if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    // Any user with projects.view permission may access project details; remove assignment check.
     return p;
   }
 

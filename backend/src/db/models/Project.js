@@ -10,7 +10,13 @@ class Project {
     if (status) { where.push(`status = $${idx++}`); values.push(status); }
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT id, name, description, code, status, owner_id, created_at FROM projects ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
+    const q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id, 
+      concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS owner_full_name, p.created_at
+      FROM projects p
+      LEFT JOIN users u ON u.id = p.owner_id
+      ${whereSql}
+      ORDER BY p.id
+      LIMIT $${idx++} OFFSET $${idx}`;
     values.push(limit, offset);
     const res = await pool.query(q, values);
     return res.rows;
@@ -27,8 +33,10 @@ class Project {
     if (status) { where.push(`p.status = $${idx++}`); values.push(status); }
     if (search) { where.push(`(p.name ILIKE $${idx} OR p.description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id, p.created_at
+    const q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id,
+      concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS owner_full_name, p.created_at
       FROM projects p
+      LEFT JOIN users u ON u.id = p.owner_id
       JOIN (
         SELECT project_id FROM user_roles WHERE user_id = $1
       ) t ON t.project_id = p.id
@@ -41,7 +49,12 @@ class Project {
   }
 
   static async findById(id) {
-    const q = `SELECT id, name, description, code, status, owner_id, created_at FROM projects WHERE id = $1 LIMIT 1`;
+    const q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id,
+      concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS owner_full_name, p.created_at
+      FROM projects p
+      LEFT JOIN users u ON u.id = p.owner_id
+      WHERE p.id = $1
+      LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }

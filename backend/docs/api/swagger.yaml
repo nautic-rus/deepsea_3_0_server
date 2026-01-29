@@ -1555,6 +1555,9 @@ components:
         owner_id:
           type: integer
           nullable: true
+        owner_full_name:
+          type: string
+          description: ФИО владельца проекта (фамилия имя отчество)
         created_at:
           type: string
           format: date-time
