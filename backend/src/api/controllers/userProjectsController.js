@@ -73,14 +73,37 @@ class UserProjectsController {
       const projectId = parseInt(req.params.id, 10);
       const body = req.body || {};
       // prefer body parameters (moved from path/query into request body)
-      const userId = body.user_id || body.userId || (req.query.user_id ? Number(req.query.user_id) : null);
-      if (!userId) { const err = new Error('user_id required in request body'); err.statusCode = 400; throw err; }
-  // support deleting a single role_id/name (`role`) or multiple role ids/names (`roles`)
-  let roles = null;
-  if (body.roles) roles = Array.isArray(body.roles) ? body.roles : [body.roles];
-  else if (body.role) roles = Array.isArray(body.role) ? body.role : [body.role];
-  const ok = await UserProjectsService.unassignFromProject(projectId, Number(userId), actor, roles);
-      res.json({ success: !!ok });
+      let userId = body.user_id || body.userId || (req.query.user_id ? req.query.user_id : null);
+      if (!userId && userId !== 0) { const err = new Error('user_id required in request body'); err.statusCode = 400; throw err; }
+
+      // support deleting a single user or multiple users (array or CSV string)
+      // support deleting a single role_id/name (`role`) or multiple role ids/names (`roles`)
+      let roles = null;
+      if (body.roles) roles = Array.isArray(body.roles) ? body.roles : [body.roles];
+      else if (body.role) roles = Array.isArray(body.role) ? body.role : [body.role];
+
+      const results = [];
+      if (Array.isArray(userId)) {
+        for (const u of userId) {
+          if (u === null || u === undefined || u === '') continue;
+          const uid = Number(u);
+          const ok = await UserProjectsService.unassignFromProject(projectId, uid, actor, roles);
+          results.push({ user_id: uid, removed: !!ok });
+        }
+      } else if (typeof userId === 'string' && userId.indexOf(',') !== -1) {
+        const parts = userId.split(',').map(s => s.trim()).filter(s => s !== '');
+        for (const p of parts) {
+          const uid = Number(p);
+          const ok = await UserProjectsService.unassignFromProject(projectId, uid, actor, roles);
+          results.push({ user_id: uid, removed: !!ok });
+        }
+      } else {
+        const uid = Number(userId);
+        const ok = await UserProjectsService.unassignFromProject(projectId, uid, actor, roles);
+        results.push({ user_id: uid, removed: !!ok });
+      }
+
+      res.json({ success: true, results });
     } catch (err) { next(err); }
   }
 }

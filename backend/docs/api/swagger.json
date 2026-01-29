@@ -3093,9 +3093,13 @@
                 ],
                 "properties": {
                   "user_id": {
-                    "type": "integer",
-                    "description": "ID пользователя, которого нужно отвязать",
-                    "example": 34
+                    "oneOf": [
+                      { "type": "integer" },
+                      { "type": "array", "items": { "type": "integer" } },
+                      { "type": "string" }
+                    ],
+                    "description": "ID пользователя, которого нужно отвязать. Может быть целым числом, массивом целых чисел или CSV-строкой (e.g. \"34,55\"). Контроллер поддерживает все три формата.",
+                    "example": [34]
                   },
                   "role_id": {
                     "type": "integer",
@@ -3120,18 +3124,30 @@
         },
         "responses": {
           "200": {
-            "description": "Успешно отвязан пользователь",
+            "description": "Успешно отвязан пользователь(и)",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": {
-                      "type": "boolean"
+                    "success": { "type": "boolean" },
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "user_id": { "type": "integer" },
+                          "removed": { "type": "boolean" }
+                        }
+                      }
                     }
                   },
                   "example": {
-                    "success": true
+                    "success": true,
+                    "results": [
+                      { "user_id": 34, "removed": true },
+                      { "user_id": 55, "removed": false }
+                    ]
                   }
                 }
               }
