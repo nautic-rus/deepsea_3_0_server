@@ -350,6 +350,20 @@
             "type": "string",
             "description": "ФИО владельца проекта (фамилия имя отчество)"
           },
+          "participants": {
+            "type": "array",
+            "description": "Список участников проекта",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "full_name": { "type": "string" },
+                "email": { "type": "string", "nullable": true },
+                "phone": { "type": "string", "nullable": true },
+                "url_avatar": { "type": "string", "nullable": true }
+              }
+            }
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -2757,6 +2771,7 @@
         },
         "parameters": []
       },
+      
       "post": {
         "tags": [
           "projects"
@@ -2818,6 +2833,40 @@
         }
       }
     },
+    "/api/my_projects": {
+      "get": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Мои проекты",
+        "description": "Возвращает список проектов, к которым привязан текущий пользователь. Аутентификация требуется, дополнительных разрешений не требуется.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Project" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      }
+    },
+
     "/api/projects/{id}": {
       "get": {
         "tags": [
@@ -3790,6 +3839,37 @@
         }
       }
     },
+    "/api/issue_statuses": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Список статусов задач",
+        "description": "Возвращает список всех записей из таблицы `issue_status` со всеми атрибутами. Требуется разрешение issues.view.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "issues.view" ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/IssueStatus" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      }
+    },
+    
     "/api/issues/{id}/messages": {
       "post": {
         "tags": ["issues"],

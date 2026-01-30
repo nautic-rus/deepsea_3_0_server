@@ -116,6 +116,8 @@ router.get('/roles/permissions', authMiddleware, rolesController.getPermissionsB
 // ===== Projects routes =====
 // GET /api/projects
 router.get('/projects', authMiddleware, projectsController.list);
+// GET /api/my_projects - list projects assigned to current user (no additional permission required)
+router.get('/my_projects', authMiddleware, projectsController.myProjects);
 // GET /api/projects/:id
 router.get('/projects/:id', authMiddleware, projectsController.get);
 // POST /api/projects
@@ -134,6 +136,10 @@ router.delete('/projects/:id/assignments', authMiddleware, userProjectsControlle
 // ===== Issues routes =====
 // GET /api/issues
 router.get('/issues', authMiddleware, issuesController.list);
+// GET /api/issue_statuses - list available issue statuses
+router.get('/issue_statuses', authMiddleware, issuesController.listStatuses);
+// GET /api/issue_statuses/:id - get single issue status
+router.get('/issue_statuses/:id', authMiddleware, issuesController.getStatus);
 // GET /api/issues/:id
 router.get('/issues/:id', authMiddleware, issuesController.get);
 // POST /api/issues

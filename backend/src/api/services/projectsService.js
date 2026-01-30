@@ -55,6 +55,29 @@ class ProjectsService {
     return created;
   }
 
+  // List projects assigned to a specific user (no permission checks here;
+  // controller enforces authentication via middleware).
+  static async listProjectsForUser(query = {}, actor) {
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const projects = await Project.listForUser(actor.id, query);
+    // Attach participants for each project: id, full_name, email, phone, url_avatar
+    const pool = require('../../db/connection');
+    for (const p of projects) {
+      try {
+        const q = `SELECT u.id, u.email, u.phone, u.avatar_url,
+          concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS full_name
+          FROM users u
+          WHERE u.id IN (SELECT user_id FROM user_roles WHERE project_id = $1)
+          ORDER BY u.last_name, u.first_name`;
+        const res = await pool.query(q, [p.id]);
+        p.participants = res.rows.map(r => ({ id: r.id, full_name: r.full_name, email: r.email, phone: r.phone, url_avatar: r.avatar_url }));
+      } catch (e) {
+        p.participants = [];
+      }
+    }
+    return projects;
+  }
+
   static async updateProject(id, fields, actor) {
     const requiredPermission = 'projects.update';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }

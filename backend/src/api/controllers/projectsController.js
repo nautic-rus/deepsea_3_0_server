@@ -19,6 +19,17 @@ class ProjectsController {
   }
 
   /**
+   * List projects assigned to current authenticated user (no permission checks required).
+   */
+  static async myProjects(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const result = await ProjectsService.listProjectsForUser(req.query || {}, actor);
+      res.json({ data: result });
+    } catch (err) { next(err); }
+  }
+
+  /**
    * Get project by id.
    */
   static async get(req, res, next) {

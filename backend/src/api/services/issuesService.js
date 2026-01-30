@@ -35,6 +35,8 @@ class IssuesService {
     return rows;
   }
 
+  
+
   // Enforce that the actor belongs to the project(s) requested.
     // Get list of project_ids the user is assigned to.
   const Project = require('../../db/models/Project');
@@ -363,6 +365,21 @@ class IssuesService {
     })();
     return updated;
   }
+
+  /**
+   * List all issue statuses (reads full rows from issue_status table).
+   * Requires permission: issues.view
+   */
+  static async listStatuses(actor) {
+    const requiredPermission = 'issues.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
+    const res = await pool.query('SELECT * FROM issue_status ORDER BY COALESCE(order_index, 0), id');
+    return res.rows || [];
+  }
+
+  
 
   /**
    * Assign or unassign an issue to an assignee (user).

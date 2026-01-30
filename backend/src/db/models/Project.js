@@ -38,7 +38,7 @@ class Project {
       FROM projects p
       LEFT JOIN users u ON u.id = p.owner_id
       JOIN (
-        SELECT project_id FROM user_roles WHERE user_id = $1
+        SELECT DISTINCT project_id FROM user_roles WHERE user_id = $1
       ) t ON t.project_id = p.id
       ${whereSql}
       ORDER BY p.id

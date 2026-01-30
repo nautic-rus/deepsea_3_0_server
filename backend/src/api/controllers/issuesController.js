@@ -23,6 +23,31 @@ class IssuesController {
   }
 
   /**
+   * GET /api/issue_statuses - list all issue statuses
+   */
+  static async listStatuses(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await IssuesService.listStatuses(actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/issue_statuses/:id - get single issue status by id
+   */
+  static async getStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const rows = await IssuesService.listStatuses(actor);
+      const row = (rows || []).find(r => Number(r.id) === Number(id));
+      if (!row) { const err = new Error('Status not found'); err.statusCode = 404; throw err; }
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  /**
    * Handle GET /api/issues/:id - retrieve a single issue.
    */
   static async get(req, res, next) {
