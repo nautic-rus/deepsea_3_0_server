@@ -379,6 +379,19 @@ class IssuesService {
     return res.rows || [];
   }
 
+  /**
+   * List all issue types (reads full rows from issue_type table).
+   * Requires permission: issues.view
+   */
+  static async listTypes(actor) {
+    const requiredPermission = 'issues.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
+    const res = await pool.query('SELECT * FROM issue_type ORDER BY COALESCE(order_index, 0), id');
+    return res.rows || [];
+  }
+
   
 
   /**
@@ -500,11 +513,11 @@ class IssuesService {
    * @param {string} content - message content
    * @param {Object} actor - user performing the action
    */
-  static async addIssueMessage(id, content, actor) {
-    const requiredPermission = 'issues.comment';
+  static async addIssueMessage(id, content, actor, parent_id = null) {
+    const requiredPermission = 'issues.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission issues.comment'); err.statusCode = 403; throw err; }
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
     const existing = await Issue.findById(Number(id));
@@ -520,7 +533,7 @@ class IssuesService {
 
     if (!content || String(content).trim().length === 0) { const err = new Error('Empty content'); err.statusCode = 400; throw err; }
 
-    const created = await IssueMessage.create({ issue_id: Number(id), user_id: actor.id, content: String(content) });
+  const created = await IssueMessage.create({ issue_id: Number(id), user_id: actor.id, content: String(content), parent: parent ? Number(parent) : null });
 
     // History: simple entry for comment
     (async () => {
@@ -626,6 +639,48 @@ class IssuesService {
     const existing = await Issue.findById(Number(id));
     if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
     return await IssueStorage.listByIssue(Number(id), opts);
+  }
+
+  /**
+   * List messages for an issue (comments)
+   * @param {number} id - issue id
+   * @param {{limit:number,offset:number}} opts
+   * @param {Object} actor
+   */
+  static async listIssueMessages(id, opts = {}, actor) {
+    const requiredPermission = 'issues.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+
+    const existing = await Issue.findById(Number(id));
+    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+
+    // Ensure actor belongs to the issue's project unless they have view_all
+    const canViewAll = await hasPermission(actor, 'issues.view_all');
+    if (!canViewAll && existing.project_id) {
+      const Project = require('../../db/models/Project');
+      const assigned = await Project.isUserAssigned(existing.project_id, actor.id);
+      if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
+
+    const messages = await IssueMessage.listByIssue(Number(id), opts);
+    if (!messages || messages.length === 0) return [];
+
+    // Enrich messages with user display info (full_name, email, url_avatar)
+    const userIds = [...new Set(messages.map(m => m.user_id).filter(Boolean))];
+    let usersMap = new Map();
+    if (userIds.length) {
+      const res = await pool.query(`SELECT id, email, phone, avatar_url, first_name, last_name, middle_name, username FROM users WHERE id = ANY($1::int[])`, [userIds]);
+      usersMap = new Map((res.rows || []).map(u => [u.id, u]));
+    }
+
+    return messages.map(m => {
+      const u = usersMap.get(m.user_id) || null;
+      const fullName = u ? [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ') : null;
+      return Object.assign({}, m, { user: u ? { id: u.id, full_name: fullName || u.username || u.email, email: u.email, phone: u.phone, url_avatar: u.avatar_url } : null });
+    });
   }
 
   /**

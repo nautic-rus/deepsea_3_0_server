@@ -140,6 +140,10 @@ router.get('/issues', authMiddleware, issuesController.list);
 router.get('/issue_statuses', authMiddleware, issuesController.listStatuses);
 // GET /api/issue_statuses/:id - get single issue status
 router.get('/issue_statuses/:id', authMiddleware, issuesController.getStatus);
+// GET /api/issue_types - list available issue types
+router.get('/issue_types', authMiddleware, issuesController.listTypes);
+// GET /api/issue_types/:id - get single issue type
+router.get('/issue_types/:id', authMiddleware, issuesController.getType);
 // GET /api/issues/:id
 router.get('/issues/:id', authMiddleware, issuesController.get);
 // POST /api/issues
@@ -152,6 +156,8 @@ router.delete('/issues/:id', authMiddleware, issuesController.delete);
 router.post('/issues/:id/assign', authMiddleware, issuesController.assign);
 // POST /api/issues/:id/messages - add comment/message to an issue
 router.post('/issues/:id/messages', authMiddleware, issuesController.addMessage);
+// GET /api/issues/:id/messages - list messages for an issue
+router.get('/issues/:id/messages', authMiddleware, issuesController.listMessages);
 // POST /api/issues/:id/files - attach file to issue
 // POST /api/issues/:id/files - attach file to issue (supports multipart field 'file' or JSON { storage_id })
 router.post('/issues/:id/files', authMiddleware, _upload.single('file'), issuesController.attachFile);

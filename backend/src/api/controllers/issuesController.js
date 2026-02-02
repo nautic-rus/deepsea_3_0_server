@@ -34,6 +34,17 @@ class IssuesController {
   }
 
   /**
+   * GET /api/issue_types - list all issue types
+   */
+  static async listTypes(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await IssuesService.listTypes(actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
    * GET /api/issue_statuses/:id - get single issue status by id
    */
   static async getStatus(req, res, next) {
@@ -43,6 +54,20 @@ class IssuesController {
       const rows = await IssuesService.listStatuses(actor);
       const row = (rows || []).find(r => Number(r.id) === Number(id));
       if (!row) { const err = new Error('Status not found'); err.statusCode = 404; throw err; }
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/issue_types/:id - get single issue type by id
+   */
+  static async getType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const rows = await IssuesService.listTypes(actor);
+      const row = (rows || []).find(r => Number(r.id) === Number(id));
+      if (!row) { const err = new Error('Type not found'); err.statusCode = 404; throw err; }
       res.json(row);
     } catch (err) { next(err); }
   }
@@ -129,8 +154,8 @@ class IssuesController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { content } = req.body || {};
-      const created = await IssuesService.addIssueMessage(Number(id), content, actor);
+      const { content, parent_id = null } = req.body || {};
+      const created = await IssuesService.addIssueMessage(Number(id), content, actor, parent);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }
@@ -195,6 +220,19 @@ class IssuesController {
       const id = parseInt(req.params.id, 10);
       const { limit = 100, offset = 0 } = req.query || {};
       const rows = await IssuesService.listIssueFiles(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/issues/:id/messages - list messages for an issue
+   */
+  static async listMessages(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { limit = 100, offset = 0 } = req.query || {};
+      const rows = await IssuesService.listIssueMessages(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
