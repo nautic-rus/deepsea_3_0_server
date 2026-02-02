@@ -533,7 +533,7 @@ class IssuesService {
 
     if (!content || String(content).trim().length === 0) { const err = new Error('Empty content'); err.statusCode = 400; throw err; }
 
-  const created = await IssueMessage.create({ issue_id: Number(id), user_id: actor.id, content: String(content), parent: parent ? Number(parent) : null });
+  const created = await IssueMessage.create({ issue_id: Number(id), user_id: actor.id, content: String(content), parent_id: parent_id ? Number(parent_id) : null });
 
     // History: simple entry for comment
     (async () => {

@@ -5,10 +5,10 @@ class IssueMessage {
    * Create a new message attached to an issue
    * @param {{issue_id:number,user_id:number,content:string}} payload
    */
-  static async create({ issue_id, user_id, content }) {
+  static async create({ issue_id, user_id, content, parent_id = null }) {
     // support optional parent (reply to another message)
-    const q = `INSERT INTO issue_messages (issue_id, user_id, content, parent_id) VALUES ($1,$2,$3,$4) RETURNING id, issue_id, user_id, content, parent, created_at`;
-    const res = await pool.query(q, [issue_id, user_id, content, arguments[0].parent || null]);
+    const q = `INSERT INTO issue_messages (issue_id, user_id, content, parent_id) VALUES ($1,$2,$3,$4) RETURNING id, issue_id, user_id, content, parent_id, created_at`;
+    const res = await pool.query(q, [issue_id, user_id, content, parent_id || null]);
     return res.rows[0];
   }
 

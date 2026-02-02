@@ -155,7 +155,7 @@ class IssuesController {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
       const { content, parent_id = null } = req.body || {};
-      const created = await IssuesService.addIssueMessage(Number(id), content, actor, parent);
+      const created = await IssuesService.addIssueMessage(Number(id), content, actor, parent_id);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }
