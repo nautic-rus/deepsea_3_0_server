@@ -672,14 +672,14 @@ class IssuesService {
     const userIds = [...new Set(messages.map(m => m.user_id).filter(Boolean))];
     let usersMap = new Map();
     if (userIds.length) {
-      const res = await pool.query(`SELECT id, email, phone, avatar_url, first_name, last_name, middle_name, username FROM users WHERE id = ANY($1::int[])`, [userIds]);
+      const res = await pool.query(`SELECT id, email, phone, avatar_id, first_name, last_name, middle_name, username FROM users WHERE id = ANY($1::int[])`, [userIds]);
       usersMap = new Map((res.rows || []).map(u => [u.id, u]));
     }
 
     return messages.map(m => {
       const u = usersMap.get(m.user_id) || null;
       const fullName = u ? [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ') : null;
-      return Object.assign({}, m, { user: u ? { id: u.id, full_name: fullName || u.username || u.email, email: u.email, phone: u.phone, url_avatar: u.avatar_url } : null });
+  return Object.assign({}, m, { user: u ? { id: u.id, full_name: fullName || u.username || u.email, email: u.email, phone: u.phone, avatar_id: u.avatar_id } : null });
     });
   }
 

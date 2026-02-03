@@ -20,6 +20,30 @@ class StorageService {
     return await Storage.list(query);
   }
 
+  /**
+   * Return information needed to stream/download the file for a storage item.
+   * Returns { type: 'local', path, filename, mime } or { type: 's3', url, filename }
+   */
+  static async getFileStreamInfo(id, actor) {
+    const s = await StorageService.getStorageById(id, actor);
+    // s.object_key is stored as relative path for local files
+    if (s.storage_type === 'local') {
+      const filePath = path.resolve(process.cwd(), s.object_key);
+      try {
+        await fs.promises.access(filePath);
+      } catch (e) {
+        const err = new Error('File not found'); err.statusCode = 404; throw err;
+      }
+      return { type: 'local', path: filePath, filename: s.file_name || path.basename(filePath), mime: s.mime_type || 'application/octet-stream' };
+    }
+    if (s.storage_type === 's3') {
+      // If we have a public url stored, return it for redirection; otherwise not supported here
+      if (s.url) return { type: 's3', url: s.url, filename: s.file_name || 'file' };
+      const err = new Error('S3 download not supported'); err.statusCode = 501; throw err;
+    }
+    const err = new Error('Unsupported storage type'); err.statusCode = 500; throw err;
+  }
+
   static async getStorageById(id, actor) {
     const requiredPermission = 'storage.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }

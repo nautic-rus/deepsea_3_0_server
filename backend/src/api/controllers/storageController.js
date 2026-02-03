@@ -99,6 +99,33 @@ class StorageController {
       res.json({ message: 'Storage item deleted' });
     } catch (err) { next(err); }
   }
+
+  /**
+   * Download/stream a storage file by id. Supports local files (streams) and S3 (redirect to URL).
+   * Endpoint: GET /api/storage/:id/download
+   */
+  static async download(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const info = await StorageService.getFileStreamInfo(Number(id), actor);
+      if (info.type === 'local') {
+        // Set headers and stream
+        res.setHeader('Content-Type', info.mime || 'application/octet-stream');
+        // Use RFC5987 filename* to support utf8 filenames
+        res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(info.filename)}`);
+        const stream = require('fs').createReadStream(info.path);
+        stream.on('error', (e) => { next(e); });
+        stream.pipe(res);
+        return;
+      }
+      if (info.type === 's3') {
+        // Redirect to S3 URL (may be public)
+        return res.redirect(info.url);
+      }
+      const err = new Error('Unsupported storage type'); err.statusCode = 500; throw err;
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = StorageController;

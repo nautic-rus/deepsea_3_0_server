@@ -171,7 +171,7 @@ class UsersService {
     return {
       id: user.id,
       username: user.username,
-      avatar_url: user.avatar_url,
+      avatar_id: user.avatar_id,
       email: user.email,
       phone: user.phone,
       first_name: user.first_name,

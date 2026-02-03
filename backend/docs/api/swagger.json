@@ -77,6 +77,10 @@
           "username": {
             "type": "string"
           },
+          "avatar_id": {
+            "type": "integer",
+            "nullable": true
+          },
           "email": {
             "type": "string",
             "format": "email"
@@ -391,8 +395,8 @@
                   "type": "string",
                   "nullable": true
                 },
-                "url_avatar": {
-                  "type": "string",
+                "avatar_id": {
+                  "type": "integer",
                   "nullable": true
                 }
               }
@@ -4158,6 +4162,82 @@
       }
     },
     "/api/issues/{id}/messages": {
+      "get": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Список сообщений задачи",
+        "description": "Возвращает список сообщений (комментариев) задачи. Требуется разрешение issues.view.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID задачи"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Limit results",
+            "example": 100
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Pagination offset",
+            "example": 0
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/IssueMessage"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission issues.view"
+          },
+          "404": {
+            "description": "Issue not found"
+          }
+        }
+      },
       "post": {
         "tags": [
           "issues"
@@ -6225,6 +6305,56 @@
         }
       }
     },
+    "/api/storage/{id}/download": {
+      "get": {
+        "tags": [
+          "storage"
+        ],
+        "summary": "Скачать файл",
+        "description": "Скачать/стримить файл из хранилища. Для локальных файлов будет stream, для S3 будет редирект на URL.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "storage.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID файла в таблице storage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File stream or redirect",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission storage.view"
+          },
+          "404": {
+            "description": "File not found"
+          }
+        }
+      }
+    },
     "/api/statements": {
       "get": {
         "tags": [
@@ -6318,7 +6448,7 @@
           "users"
         ],
         "summary": "Upload user avatar (local storage)",
-        "description": "Upload avatar for a user. Accepts multipart/form-data with field 'file'. Stores file in local uploads and updates user's avatar_url.",
+        "description": "Upload avatar for a user. Accepts multipart/form-data with field 'file'. Stores file in local uploads and updates user's avatar_id (stores reference to a `storage` record).",
         "security": [
           {
             "bearerAuth": []

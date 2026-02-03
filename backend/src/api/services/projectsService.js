@@ -64,13 +64,13 @@ class ProjectsService {
     const pool = require('../../db/connection');
     for (const p of projects) {
       try {
-        const q = `SELECT u.id, u.email, u.phone, u.avatar_url,
+        const q = `SELECT u.id, u.email, u.phone, u.avatar_id,
           concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS full_name
           FROM users u
           WHERE u.id IN (SELECT user_id FROM user_roles WHERE project_id = $1)
           ORDER BY u.last_name, u.first_name`;
         const res = await pool.query(q, [p.id]);
-        p.participants = res.rows.map(r => ({ id: r.id, full_name: r.full_name, email: r.email, phone: r.phone, url_avatar: r.avatar_url }));
+        p.participants = res.rows.map(r => ({ id: r.id, full_name: r.full_name, email: r.email, phone: r.phone, avatar_id: r.avatar_id }));
       } catch (e) {
         p.participants = [];
       }

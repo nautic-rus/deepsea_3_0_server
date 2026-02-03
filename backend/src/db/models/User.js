@@ -44,9 +44,9 @@ class User {
         u.username, 
         u.email, 
         u.phone,
-        u.first_name, 
-    u.avatar_url,
-        u.last_name, 
+    u.first_name, 
+  u.avatar_id,
+    u.last_name, 
         u.middle_name,
         u.department_id,
         d.name AS department,
@@ -70,9 +70,9 @@ class User {
   /**
    * Set avatar URL for a user and return updated user record
    */
-  static async setAvatar(id, url) {
-    const query = `UPDATE users SET avatar_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
-    const res = await pool.query(query, [url || null, id]);
+  static async setAvatar(id, avatar_id) {
+    const query = `UPDATE users SET avatar_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
+    const res = await pool.query(query, [avatar_id || null, id]);
     if (res.rowCount === 0) return null;
     return await User.findById(id);
   }
@@ -294,7 +294,7 @@ class User {
     const query = `
       SELECT u.id,
              u.username,
-              u.avatar_url,
+              u.avatar_id,
              u.email,
              u.phone,
              u.first_name,

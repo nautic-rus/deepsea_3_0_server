@@ -91,7 +91,7 @@ class UsersController {
       const StorageService = require('../services/storageService');
       const createdStorage = await StorageService.uploadToLocalAndCreate(file, actor, {});
 
-      // Update user's avatar_url to the public URL returned by storage.
+  // Update user's avatar_id to the storage record id returned by storage.
       // Allow self-upload without requiring users.update permission.
       const UserModel = require('../../db/models/User');
       const { hasPermission } = require('../services/permissionChecker');
@@ -99,12 +99,12 @@ class UsersController {
       let updatedUser = null;
       if (actor && actor.id && Number(actor.id) === Number(id)) {
         // Owner uploads their own avatar — no users.update permission required
-        updatedUser = await UserModel.setAvatar(Number(id), createdStorage.url);
+        updatedUser = await UserModel.setAvatar(Number(id), createdStorage.id);
       } else {
         // Non-owner (admin) must have users.update permission
         const allowed = await hasPermission(actor, 'users.update');
         if (!allowed) { const err = new Error('Forbidden: missing permission users.update'); err.statusCode = 403; throw err; }
-        updatedUser = await UserModel.setAvatar(Number(id), createdStorage.url);
+        updatedUser = await UserModel.setAvatar(Number(id), createdStorage.id);
       }
 
       if (!updatedUser) { const err = new Error('User not found'); err.statusCode = 404; throw err; }

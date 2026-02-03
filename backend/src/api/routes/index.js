@@ -250,6 +250,8 @@ router.delete('/stages/:id', authMiddleware, stagesController.delete);
 // ===== Storage routes =====
 router.get('/storage', authMiddleware, storageController.list);
 router.get('/storage/:id', authMiddleware, storageController.get);
+// GET /api/storage/:id/download - download or stream the actual file
+router.get('/storage/:id/download', authMiddleware, storageController.download);
 // POST /api/storage - (removed) create storage DB record was removed; use /storage/local or /storage/s3 instead
 // POST /api/storage/local - upload file to local storage
 router.post('/storage/local', authMiddleware, _upload.single('file'), storageController.uploadLocal);
