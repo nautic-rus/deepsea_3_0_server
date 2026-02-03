@@ -294,7 +294,7 @@ class User {
     const query = `
       SELECT u.id,
              u.username,
-              u.avatar_url,
+              u.avatar_id,
              u.email,
              u.phone,
              u.first_name,
