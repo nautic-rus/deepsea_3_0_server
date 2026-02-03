@@ -471,8 +471,16 @@
             "type": "integer",
             "nullable": true
           },
+          "assignee_avatar_id": {
+            "type": "integer",
+            "nullable": true
+          },
           "author_id": {
             "type": "integer"
+          },
+          "author_avatar_id": {
+            "type": "integer",
+            "nullable": true
           },
           "created_at": {
             "type": "string",

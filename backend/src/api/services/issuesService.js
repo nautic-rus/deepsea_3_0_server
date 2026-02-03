@@ -76,7 +76,7 @@ class IssuesService {
       const typeIds = [...new Set(issues.filter(i => i.type_id).map(i => i.type_id))];
 
       const qProjects = projectIds.length ? pool.query(`SELECT id, name FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
-      const qUsers = (assigneeIds.length || authorIds.length) ? pool.query(`SELECT id, username, first_name, last_name, middle_name, email FROM users WHERE id = ANY($1::int[])`, [[...new Set([...assigneeIds, ...authorIds])]]) : Promise.resolve({ rows: [] });
+  const qUsers = (assigneeIds.length || authorIds.length) ? pool.query(`SELECT id, username, first_name, last_name, middle_name, email, avatar_id FROM users WHERE id = ANY($1::int[])`, [[...new Set([...assigneeIds, ...authorIds])]]) : Promise.resolve({ rows: [] });
       const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM issue_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
       const qTypes = typeIds.length ? pool.query(`SELECT id, name, code FROM issue_type WHERE id = ANY($1::int[])`, [typeIds]) : Promise.resolve({ rows: [] });
 
@@ -100,10 +100,13 @@ class IssuesService {
       for (const it of issues) {
         const proj = it.project_id ? projectMap.get(it.project_id) : null;
         it.project_name = proj ? proj.name || null : null;
-        const assignee = it.assignee_id ? userMap.get(it.assignee_id) : null;
-        const author = it.author_id ? userMap.get(it.author_id) : null;
-        it.assignee_name = mkUserDisplay(assignee);
-        it.author_name = mkUserDisplay(author);
+  const assignee = it.assignee_id ? userMap.get(it.assignee_id) : null;
+  const author = it.author_id ? userMap.get(it.author_id) : null;
+  it.assignee_name = mkUserDisplay(assignee);
+  it.author_name = mkUserDisplay(author);
+  // expose avatar ids for UI list (nullable)
+  it.assignee_avatar_id = assignee && assignee.avatar_id ? assignee.avatar_id : null;
+  it.author_avatar_id = author && author.avatar_id ? author.avatar_id : null;
         const st = it.status_id ? statusMap.get(it.status_id) : null;
         it.status_name = st ? st.name : null;
         it.status_code = st ? st.code : null;
@@ -191,8 +194,11 @@ class IssuesService {
         return byName || u.username || u.email || null;
       };
 
-      i.assignee_name = mkUserDisplay(assigneeRow);
-      i.author_name = mkUserDisplay(authorRow);
+  i.assignee_name = mkUserDisplay(assigneeRow);
+  i.author_name = mkUserDisplay(authorRow);
+  // expose avatar ids for UI (nullable)
+  i.assignee_avatar_id = assigneeRow && assigneeRow.avatar_id ? assigneeRow.avatar_id : null;
+  i.author_avatar_id = authorRow && authorRow.avatar_id ? authorRow.avatar_id : null;
 
       i.status_name = (statusRes && statusRes.rows && statusRes.rows[0]) ? statusRes.rows[0].name : null;
       i.status_code = (statusRes && statusRes.rows && statusRes.rows[0]) ? statusRes.rows[0].code : null;

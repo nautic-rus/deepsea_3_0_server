@@ -188,6 +188,9 @@ class AuthController {
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,
+        middle_name: user.middle_name,
+        phone: user.phone,
+        avatar_id: user.avatar_id || null,
         department: user.department || null,
         job_title: user.job_title || null,
         is_active: user.is_active
