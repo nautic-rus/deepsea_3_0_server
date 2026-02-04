@@ -198,6 +198,8 @@ router.get('/documents/:id/files', authMiddleware, documentsController.listFiles
 // ===== Entity links routes =====
 // POST /api/links - create a link between entities
 router.post('/links', authMiddleware, entityLinksController.create);
+// GET /api/links - list/find links
+router.get('/links', authMiddleware, entityLinksController.list);
 // DELETE /api/links/:id - remove a link
 router.delete('/links/:id', authMiddleware, entityLinksController.remove);
 

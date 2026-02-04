@@ -14,6 +14,18 @@ class EntityLinksController {
   }
 
   /**
+   * GET /api/links - list/find links
+   * Supports query params: id, source_type, source_id, target_type, target_id, relation_type, created_by, blocks_closure
+   */
+  static async list(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await EntityLinksService.listLinks(req.query || {}, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
    * DELETE /api/links/:id
    */
   static async remove(req, res, next) {
