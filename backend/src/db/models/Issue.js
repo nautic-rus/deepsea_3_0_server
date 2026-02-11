@@ -14,24 +14,47 @@ class Issue {
    * @returns {Promise<Array<Object>>} Array of issue objects matching filters
    */
   static async list(filters = {}) {
-    const { project_id, status_id, assignee_id, type_id, priority, estimated_hours, author_id, is_closed, is_active, page = 1, limit = 50, search, start_date_from, start_date_to, due_date_from, due_date_to, estimated_hours_min, estimated_hours_max, allowed_project_ids } = filters;
+  const { project_id, status_id, assignee_id, type_id, priority, estimated_hours, author_id, my_issue_user_id, is_closed, page = 1, limit = 50, search, start_date_from, start_date_to, due_date_from, due_date_to, estimated_hours_min, estimated_hours_max, allowed_project_ids } = filters;
     const offset = (page - 1) * limit;
     const where = [];
     const values = [];
     let idx = 1;
-    if (project_id) { where.push(`project_id = $${idx++}`); values.push(project_id); }
-    if (status_id) { where.push(`status_id = $${idx++}`); values.push(status_id); }
+    if (project_id !== undefined && project_id !== null) {
+      if (Array.isArray(project_id)) { where.push(`project_id = ANY($${idx}::int[])`); values.push(project_id); idx++; }
+      else { where.push(`project_id = $${idx++}`); values.push(project_id); }
+    }
+    if (status_id !== undefined && status_id !== null) {
+      if (Array.isArray(status_id)) { where.push(`status_id = ANY($${idx}::int[])`); values.push(status_id); idx++; }
+      else { where.push(`status_id = $${idx++}`); values.push(status_id); }
+    }
     // is_closed: map to issue_status.is_final boolean flag
     if (is_closed !== undefined && is_closed !== null) {
       where.push(`status_id IN (SELECT id FROM issue_status WHERE is_final = $${idx++})`);
       values.push(is_closed);
     }
-    if (assignee_id) { where.push(`assignee_id = $${idx++}`); values.push(assignee_id); }
-  if (is_active !== undefined) { where.push(`is_active = $${idx++}`); values.push(is_active); }
-    if (type_id) { where.push(`type_id = $${idx++}`); values.push(type_id); }
-    if (priority) { where.push(`priority = $${idx++}`); values.push(priority); }
+    // my_issue_user_id: return issues where user is author OR assignee
+    if (my_issue_user_id !== undefined && my_issue_user_id !== null) {
+      where.push(`(author_id = $${idx} OR assignee_id = $${idx})`);
+      values.push(my_issue_user_id);
+      idx++;
+    }
+    if (assignee_id !== undefined && assignee_id !== null) {
+      if (Array.isArray(assignee_id)) { where.push(`assignee_id = ANY($${idx}::int[])`); values.push(assignee_id); idx++; }
+      else { where.push(`assignee_id = $${idx++}`); values.push(assignee_id); }
+    }
+    if (type_id !== undefined && type_id !== null) {
+      if (Array.isArray(type_id)) { where.push(`type_id = ANY($${idx}::int[])`); values.push(type_id); idx++; }
+      else { where.push(`type_id = $${idx++}`); values.push(type_id); }
+    }
+    if (priority !== undefined && priority !== null) {
+      if (Array.isArray(priority)) { where.push(`priority = ANY($${idx})`); values.push(priority); idx++; }
+      else { where.push(`priority = $${idx++}`); values.push(priority); }
+    }
     if (estimated_hours !== undefined && estimated_hours !== null) { where.push(`estimated_hours = $${idx++}`); values.push(estimated_hours); }
-    if (author_id) { where.push(`author_id = $${idx++}`); values.push(author_id); }
+    if (author_id !== undefined && author_id !== null) {
+      if (Array.isArray(author_id)) { where.push(`author_id = ANY($${idx}::int[])`); values.push(author_id); idx++; }
+      else { where.push(`author_id = $${idx++}`); values.push(author_id); }
+    }
     if (search) { where.push(`(title ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     if (start_date_from) { where.push(`start_date >= $${idx++}`); values.push(start_date_from); }
     if (start_date_to) { where.push(`start_date <= $${idx++}`); values.push(start_date_to); }

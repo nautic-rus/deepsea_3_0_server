@@ -13,10 +13,42 @@ class IssuesController {
     try {
       const actor = req.user || null;
       const query = Object.assign({}, req.query || {});
-      // normalize boolean-like query params
-      if (query.is_active !== undefined) {
-        query.is_active = (query.is_active === 'true' || query.is_active === '1' || query.is_active === true);
+      // Support arrays for certain filter params: accept comma-separated strings or repeated query params
+      const multiParamsNum = ['project_id', 'status_id', 'assignee_id', 'author_id', 'type_id'];
+      const multiParamsStr = ['priority'];
+      for (const p of multiParamsNum) {
+        if (query[p] !== undefined && query[p] !== null) {
+          if (Array.isArray(query[p])) {
+            query[p] = query[p].map(v => Number(v));
+          } else if (String(query[p]).includes(',')) {
+            query[p] = String(query[p]).split(',').map(s => Number(s.trim()));
+          } else {
+            // keep single value as number
+            query[p] = Number(query[p]);
+          }
+        }
       }
+      for (const p of multiParamsStr) {
+        if (query[p] !== undefined && query[p] !== null) {
+          if (Array.isArray(query[p])) {
+            query[p] = query[p].map(v => String(v));
+          } else if (String(query[p]).includes(',')) {
+            query[p] = String(query[p]).split(',').map(s => s.trim());
+          } else {
+            query[p] = String(query[p]);
+          }
+        }
+      }
+      // support my_issue filter: if true, return issues where actor is author OR assignee
+      if (query.my_issue !== undefined && query.my_issue !== null) {
+        const val = query.my_issue === true || query.my_issue === 'true' || query.my_issue === '1';
+        if (val && actor && actor.id) {
+          query.my_issue_user_id = actor.id;
+        }
+        // remove original flag to avoid accidental propagation
+        delete query.my_issue;
+      }
+      // (is_active parameter removed)
       const rows = await IssuesService.listIssues(query, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }

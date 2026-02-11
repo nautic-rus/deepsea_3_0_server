@@ -2397,46 +2397,55 @@ paths:
           schema:
             type: boolean
           example: false
-        - name: is_active
-          in: query
-          description: Фильтр по активности задачи (true = активные, false = неактивные)
-          schema:
-            type: boolean
-          example: true
+        # is_active parameter removed for GET /api/issues
         - name: project_id
           in: query
+          description: ID проекта — можно передать несколько значений (через запятую или повторяя параметр)
           schema:
-            type: integer
-          example: 12
+            type: array
+            items:
+              type: integer
+          example: [12]
         - name: status_id
           in: query
+          description: ID статуса — можно передать несколько значений (через запятую или повторяя параметр)
           schema:
-            type: integer
-          example: 2
+            type: array
+            items:
+              type: integer
+          example: [2]
         - name: assignee_id
           in: query
-          description: ID пользователя, назначенного на задачу
+          description: ID пользователя, назначенного на задачу — можно передать несколько значений
           schema:
-            type: integer
-          example: 5
+            type: array
+            items:
+              type: integer
+          example: [5]
         - name: author_id
           in: query
-          description: ID автора/создателя задачи
+          description: ID автора/создателя задачи — можно передать несколько значений
           schema:
-            type: integer
-          example: 7
+            type: array
+            items:
+              type: integer
+          example: [7]
         - name: type_id
           in: query
-          description: ID типа задачи
+          description: ID типа задачи — можно передать несколько значений
           schema:
-            type: integer
-          example: 1
+            type: array
+            items:
+              type: integer
+          example: [1]
         - name: priority
           in: query
-          description: Приоритет (внутренний код)
+          description: Приоритет (внутренний код) — можно передать несколько значений (например low,medium)
           schema:
-            type: integer
-          example: 3
+            type: array
+            items:
+              type: string
+          example: ["medium"]
         - name: estimated_hours
           in: query
           description: Оценочные часы (точное совпадение)
@@ -2502,6 +2511,14 @@ paths:
           schema:
             type: string
           example: pump
+        - name: my_issue
+          in: query
+          description: >-
+            Вернуть только задачи, принадлежащие текущему пользователю (author OR assignee).
+            Значение: true/false
+          schema:
+            type: boolean
+          example: true
       responses:
         '200':
           description: Список задач
