@@ -43,12 +43,24 @@ class IssuesService {
   const projectIds = await Project.listAssignedProjectIds(actor.id);
 
     // If a specific project_id was requested, ensure user is assigned to it.
-    if (query.project_id) {
-      const pid = Number(query.project_id);
-      if (!projectIds.includes(pid)) {
+    if (query.project_id !== undefined && query.project_id !== null) {
+      // Normalize to an array of numeric ids
+      const requestedProjectIds = Array.isArray(query.project_id)
+        ? query.project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
+        : [Number(query.project_id)].filter(p => !Number.isNaN(p));
+
+      if (requestedProjectIds.length === 0) {
+        const err = new Error('Invalid project_id'); err.statusCode = 400; throw err;
+      }
+
+      // Verify the actor is assigned to every requested project
+      const notAssigned = requestedProjectIds.find(pid => !projectIds.includes(pid));
+      if (notAssigned !== undefined) {
         const err = new Error('Forbidden: user is not assigned to the requested project'); err.statusCode = 403; throw err;
       }
-      // pass through project_id as usual
+
+      // pass through project_id as number or array depending on how many were requested
+      query.project_id = requestedProjectIds.length === 1 ? requestedProjectIds[0] : requestedProjectIds;
       const rows = await Issue.list(query);
       await IssuesService.attachDisplayFieldsToList(rows);
       return rows;
