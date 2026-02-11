@@ -151,7 +151,39 @@ class IssuesService {
       if (i.type_id && i.status_id) {
         const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM issue_work_flow wf JOIN issue_status s ON s.id = wf.to_status_id WHERE wf.issue_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true ORDER BY s.order_index`;
         const res = await pool.query(q, [i.type_id, i.status_id]);
-        i.allowed_statuses = res.rows || [];
+        let allowed = res.rows || [];
+
+        // Check for 'blocks' links: if any linked issue (via relation_type='blocks') exists
+        // and is NOT in a final status (issue_status.is_final = true), then disallow
+        // any target statuses that have is_final = true for this issue.
+        try {
+          const EntityLink = require('../../db/models/EntityLink');
+          // find links where this issue is source or target and relation_type = 'blocks'
+          const srcLinks = await EntityLink.find({ source_type: 'issue', source_id: i.id, target_type: 'issue', relation_type: 'blocks' });
+          const tgtLinks = await EntityLink.find({ target_type: 'issue', target_id: i.id, source_type: 'issue', relation_type: 'blocks' });
+          const links = (srcLinks || []).concat(tgtLinks || []);
+          const otherIds = [];
+          for (const l of links) {
+            if (!l) continue;
+            if (Number(l.source_id) === Number(i.id) && l.target_id) otherIds.push(Number(l.target_id));
+            else if (Number(l.target_id) === Number(i.id) && l.source_id) otherIds.push(Number(l.source_id));
+          }
+          const uniqOther = [...new Set(otherIds.filter(Boolean))];
+          if (uniqOther.length > 0) {
+            const q2 = `SELECT i.id, s.is_final FROM issues i LEFT JOIN issue_status s ON s.id = i.status_id WHERE i.id = ANY($1::int[])`;
+            const res2 = await pool.query(q2, [uniqOther]);
+            const blockedNotFinal = (res2.rows || []).some(r => !r.is_final);
+            if (blockedNotFinal) {
+              // remove final statuses from allowed list
+              allowed = allowed.filter(s => !s.is_final);
+            }
+          }
+        } catch (e) {
+          // don't block the request on linkage lookup failure; log and continue
+          console.error('Failed to evaluate blocks links for allowed_statuses', e && e.message ? e.message : e);
+        }
+
+        i.allowed_statuses = allowed;
       } else {
         i.allowed_statuses = [];
       }
