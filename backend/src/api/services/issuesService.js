@@ -170,15 +170,16 @@ class IssuesService {
         // any target statuses that have is_final = true for this issue.
         try {
           const EntityLink = require('../../db/models/EntityLink');
-          // find links where this issue is source or target and relation_type = 'blocks'
-          const srcLinks = await EntityLink.find({ source_type: 'issue', source_id: i.id, target_type: 'issue', relation_type: 'blocks' });
-          const tgtLinks = await EntityLink.find({ target_type: 'issue', target_id: i.id, source_type: 'issue', relation_type: 'blocks' });
-          const links = (srcLinks || []).concat(tgtLinks || []);
+          // Only consider 'blocks' links where some OTHER issue blocks THIS issue.
+          // Semantically: relation_type='blocks' means active (source) blocks passive (target).
+          // So if this issue is the passive (passive_id = i.id), then the active issues
+          // are blocking it and should be checked. Links where this issue is the
+          // active (it blocks others) must NOT block this issue.
+          const blockingLinks = await EntityLink.find({ passive_type: 'issue', passive_id: i.id, active_type: 'issue', relation_type: 'blocks' });
           const otherIds = [];
-          for (const l of links) {
+          for (const l of (blockingLinks || [])) {
             if (!l) continue;
-            if (Number(l.source_id) === Number(i.id) && l.target_id) otherIds.push(Number(l.target_id));
-            else if (Number(l.target_id) === Number(i.id) && l.source_id) otherIds.push(Number(l.source_id));
+            if (l.active_id) otherIds.push(Number(l.active_id));
           }
           const uniqOther = [...new Set(otherIds.filter(Boolean))];
           if (uniqOther.length > 0) {

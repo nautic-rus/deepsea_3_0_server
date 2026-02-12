@@ -2,8 +2,8 @@ const EntityLinksService = require('../services/entityLinksService');
 
 class EntityLinksController {
   /**
-   * POST /api/links
-   * Body: { source_type, source_id, target_type, target_id, relation_type?, blocks_closure? }
+  * POST /api/links
+  * Body: { active_type, active_id, passive_type, passive_id, relation_type? }
    */
   static async create(req, res, next) {
     try {
@@ -14,8 +14,8 @@ class EntityLinksController {
   }
 
   /**
-   * GET /api/links - list/find links
-   * Supports query params: id, source_type, source_id, target_type, target_id, relation_type, created_by, blocks_closure
+  * GET /api/links - list/find links
+  * Supports query params: id, active_type, active_id, passive_type, passive_id, relation_type, created_by
    */
   static async list(req, res, next) {
     try {

@@ -7,31 +7,27 @@ servers:
   - url: ''
     description: Development server
 tags:
-  - name: links
-    description: Операции по созданию и удалению связей между сущностями (задачи, документы).
-components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-    cookieAuth:
-      type: apiKey
-      in: cookie
-      name: access_token
-      description: HttpOnly cookie named `access_token` (JWT). The API accepts either Bearer header or this cookie.
-  examples:
-    AccessTokenExample:
-      summary: Placeholder access JWT token
-      value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIn0.example
-    RefreshTokenExample:
+                active_type:
+                  type: string
+                  example: issue
+                active_id:
+                  type: integer
+                  example: 123
+                passive_type:
+                  type: string
+                  example: issue
+                passive_id:
+                  type: integer
+                  example: 456
+                relation_type:
+                  type: string
+                  example: blocks
       summary: Placeholder refresh JWT token
-      value: eyJhbGciOiJIUzI1NiIsInR5cCI6IlRSIn0.eyJzdWIiOjEsImV4cCI6MTYwMDAwMDAwMH0.example
-  parameters:
-    Authorization:
-      name: Authorization
-      in: header
-      description: Bearer auth header (use \"Bearer {{accessToken}}\" or paste a token)
+              active_type: issue
+              active_id: 123
+              passive_type: issue
+              passive_id: 456
+              relation_type: blocks
       required: true
       schema:
         type: string
@@ -499,22 +495,19 @@ components:
       properties:
         id:
           type: integer
-        source_type:
+        active_type:
           type: string
           example: issue
-        source_id:
+        active_id:
           type: integer
-        target_type:
+        passive_type:
           type: string
           example: issue
-        target_id:
+        passive_id:
           type: integer
         relation_type:
           type: string
           example: blocks
-        blocks_closure:
-          type: boolean
-          example: true
         created_by:
           type: integer
           nullable: true
@@ -1904,20 +1897,22 @@ paths:
           in: query
           schema:
             type: integer
-        - name: source_type
+        - name: active_type
           in: query
           schema:
             type: string
-        - name: source_id
+        - name: active_id
           in: query
           schema:
             type: integer
-        - name: target_type
+        - name: passive_type
           in: query
           schema:
             type: string
-        - name: target_id
+        - name: passive_id
           in: query
+          schema:
+            type: integer
           schema:
             type: integer
         - name: relation_type
@@ -1929,10 +1924,7 @@ paths:
           in: query
           schema:
             type: integer
-        - name: blocks_closure
-          in: query
-          schema:
-            type: boolean
+        
       responses:
         '200':
           description: Список связей
@@ -1952,8 +1944,7 @@ paths:
         - links
       summary: Создать связь между сущностями
       description: >-
-        Создаёт отношение между двумя сущностями (задачи, документы и др.). Установите `blocks_closure=true`, чтобы
-        пометить связь, блокирующую закрытие исходной сущности, пока целевая не перейдёт в финальный статус.
+        Создаёт отношение между двумя сущностями (задачи, документы и др.).
       security:
         - bearerAuth: []
       x-permissions:
@@ -1965,36 +1956,32 @@ paths:
             schema:
               type: object
               required:
-                - source_type
-                - source_id
-                - target_type
-                - target_id
+                - active_type
+                - active_id
+                - passive_type
+                - passive_id
               properties:
-                source_type:
+                active_type:
                   type: string
                   example: issue
-                source_id:
+                active_id:
                   type: integer
                   example: 123
-                target_type:
+                passive_type:
                   type: string
                   example: issue
-                target_id:
+                passive_id:
                   type: integer
                   example: 456
                 relation_type:
                   type: string
                   example: blocks
-                blocks_closure:
-                  type: boolean
-                  example: true
             example:
-              source_type: issue
-              source_id: 123
-              target_type: issue
-              target_id: 456
+              active_type: issue
+              active_id: 123
+              passive_type: issue
+              passive_id: 456
               relation_type: blocks
-              blocks_closure: true
       responses:
         '201':
           description: Создано

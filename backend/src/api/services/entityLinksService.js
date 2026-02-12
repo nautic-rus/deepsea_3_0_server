@@ -3,28 +3,45 @@ const { hasPermission } = require('./permissionChecker');
 
 class EntityLinksService {
   /**
-   * Create a new entity link.
-   * fields: { source_type, source_id, target_type, target_id, relation_type, blocks_closure }
+  * Create a new entity link.
+  * fields: { active_type, active_id, passive_type, passive_id, relation_type }
    */
   static async createLink(fields = {}, actor) {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, 'issues.create');
     if (!allowed) { const err = new Error('Forbidden: missing permission links.create'); err.statusCode = 403; throw err; }
 
-    if (!fields || !fields.source_type || !fields.target_type || !fields.source_id || !fields.target_id) {
+    if (!fields || !fields.active_type || !fields.passive_type || !fields.active_id || !fields.passive_id) {
       const err = new Error('Missing required fields'); err.statusCode = 400; throw err;
     }
 
     // Basic normalization
     const payload = {
-      source_type: String(fields.source_type),
-      source_id: Number(fields.source_id),
-      target_type: String(fields.target_type),
-      target_id: Number(fields.target_id),
+      active_type: String(fields.active_type),
+      active_id: Number(fields.active_id),
+      passive_type: String(fields.passive_type),
+      passive_id: Number(fields.passive_id),
       relation_type: fields.relation_type ? String(fields.relation_type) : 'relates',
-      blocks_closure: !!fields.blocks_closure,
       created_by: actor.id
     };
+
+    // Prevent duplicate links between the same two entities regardless of order.
+    // Note: we consider the pair (type+id) unordered — if any existing link
+    // connects these two entities in either direction, treat as duplicate.
+    try {
+      const existsA = await EntityLink.find({ active_type: payload.active_type, active_id: payload.active_id, passive_type: payload.passive_type, passive_id: payload.passive_id });
+      const existsB = await EntityLink.find({ active_type: payload.passive_type, active_id: payload.passive_id, passive_type: payload.active_type, passive_id: payload.active_id });
+      if ((existsA && existsA.length > 0) || (existsB && existsB.length > 0)) {
+        const err = new Error('Conflict: link between these entities already exists');
+        err.statusCode = 409;
+        throw err;
+      }
+    } catch (e) {
+      // If the lookup fails for some reason, propagate error (it will be handled by caller)
+      if (e && e.statusCode === 409) throw e;
+      // otherwise continue to creation (but log) - defensive: rethrow to avoid silent creation
+      throw e;
+    }
 
     const created = await EntityLink.create(payload);
     return created;
@@ -45,8 +62,8 @@ class EntityLinksService {
   }
 
   /**
-   * List / find links according to provided filters.
-   * Accepts filters: id, source_type, source_id, target_type, target_id, relation_type, created_by, blocks_closure
+  * List / find links according to provided filters.
+  * Accepts filters: id, active_type, active_id, passive_type, passive_id, relation_type, created_by
    */
   static async listLinks(query = {}, actor) {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
@@ -54,8 +71,7 @@ class EntityLinksService {
     if (!allowed) { const err = new Error('Forbidden: missing permission links.view'); err.statusCode = 403; throw err; }
 
     const filters = {};
-    const mapNum = ['id', 'source_id', 'target_id', 'created_by'];
-    const mapBool = ['blocks_closure'];
+    const mapNum = ['id', 'active_id', 'passive_id', 'created_by'];
 
     for (const k of Object.keys(query || {})) {
       if (query[k] === undefined || query[k] === null || query[k] === '') continue;
@@ -63,10 +79,7 @@ class EntityLinksService {
         // support comma-separated lists
         if (String(query[k]).includes(',')) filters[k] = String(query[k]).split(',').map(v => Number(v));
         else filters[k] = Number(query[k]);
-      } else if (mapBool.includes(k)) {
-        const v = String(query[k]).toLowerCase();
-        filters[k] = (v === 'true' || v === '1');
-      } else if (k === 'relation_type' || k === 'source_type' || k === 'target_type') {
+      } else if (k === 'relation_type' || k === 'active_type' || k === 'passive_type') {
         if (String(query[k]).includes(',')) filters[k] = String(query[k]).split(',').map(s => String(s));
         else filters[k] = String(query[k]);
       }

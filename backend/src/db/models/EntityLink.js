@@ -1,13 +1,13 @@
 const pool = require('../connection');
 
 const EntityLink = {
-  async create({ source_type, source_id, target_type, target_id, relation_type = 'relates', blocks_closure = false, created_by = null }) {
+  async create({ active_type, active_id, passive_type, passive_id, relation_type = 'relates', created_by = null }) {
     const sql = `
-      INSERT INTO entity_links (source_type, source_id, target_type, target_id, relation_type, blocks_closure, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      INSERT INTO entity_links (active_type, active_id, passive_type, passive_id, relation_type, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6)
       RETURNING *
     `;
-    const { rows } = await pool.query(sql, [source_type, source_id, target_type, target_id, relation_type, blocks_closure, created_by]);
+    const { rows } = await pool.query(sql, [active_type, active_id, passive_type, passive_id, relation_type, created_by]);
     return rows[0];
   },
 
@@ -16,13 +16,13 @@ const EntityLink = {
     return rows[0] || null;
   },
 
-  async listForSource(source_type, source_id) {
-    const { rows } = await pool.query('SELECT * FROM entity_links WHERE source_type = $1 AND source_id = $2 ORDER BY created_at DESC', [source_type, source_id]);
+  async listForActive(active_type, active_id) {
+    const { rows } = await pool.query('SELECT * FROM entity_links WHERE active_type = $1 AND active_id = $2 ORDER BY created_at DESC', [active_type, active_id]);
     return rows;
   },
 
-  async listForTarget(target_type, target_id) {
-    const { rows } = await pool.query('SELECT * FROM entity_links WHERE target_type = $1 AND target_id = $2 ORDER BY created_at DESC', [target_type, target_id]);
+  async listForPassive(passive_type, passive_id) {
+    const { rows } = await pool.query('SELECT * FROM entity_links WHERE passive_type = $1 AND passive_id = $2 ORDER BY created_at DESC', [passive_type, passive_id]);
     return rows;
   },
 
@@ -34,8 +34,8 @@ const EntityLink = {
   /**
    * Универсальный поиск по таблице entity_links.
    *
-   * Поддерживаемые фильтры: id, source_type, source_id, target_type, target_id,
-   * relation_type, created_by, blocks_closure.
+  * Поддерживаемые фильтры: id, active_type, active_id, passive_type, passive_id,
+  * relation_type, created_by.
    * Если значение фильтра — массив, будет использовано "= ANY($n)" для поиска по множеству значений.
    * Возвращает массив строк, отсортированных по created_at DESC.
    *
@@ -43,7 +43,7 @@ const EntityLink = {
    * @returns {Promise<Array<Object>>}
    */
   async find(filters = {}) {
-    const allowed = ['id', 'source_type', 'source_id', 'target_type', 'target_id', 'relation_type', 'created_by', 'blocks_closure'];
+  const allowed = ['id', 'active_type', 'active_id', 'passive_type', 'passive_id', 'relation_type', 'created_by'];
     const where = [];
     const params = [];
     let idx = 1;

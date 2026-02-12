@@ -404,7 +404,7 @@
 ## 15. Связи между сущностями (links)
 
 ### POST /api/links
-**Описание:** Создает связь между двумя сущностями (например, задача → задача, документ → задача или документ → документ). Поле `blocks_closure` отмечает связь, которая блокирует закрытие исходной сущности, пока целевая сущность не перейдет в финальный статус.
+**Описание:** Создает связь между двумя сущностями (например, задача → задача, документ → задача или документ → документ).
 
 **Требования:**
 - Разрешение: `links.create`
@@ -412,12 +412,11 @@
 **Тело запроса:**
 ```json
 {
-  "source_type": "issue",
-  "source_id": 123,
-  "target_type": "issue",
-  "target_id": 456,
-  "relation_type": "blocks",
-  "blocks_closure": true
+  "active_type": "issue",
+  "active_id": 123,
+  "passive_type": "issue",
+  "passive_id": 456,
+  "relation_type": "blocks"
 }
 ```
 
@@ -425,12 +424,11 @@
 ```json
 {
   "id": 1,
-  "source_type": "issue",
-  "source_id": 123,
-  "target_type": "issue",
-  "target_id": 456,
+  "active_type": "issue",
+  "active_id": 123,
+  "passive_type": "issue",
+  "passive_id": 456,
   "relation_type": "blocks",
-  "blocks_closure": true,
   "created_by": 5,
   "created_at": "2026-01-19T12:00:00Z"
 }
