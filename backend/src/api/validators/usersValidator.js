@@ -21,11 +21,13 @@ function validateCreateUser(req, res, next) {
 
   const errors = [];
 
-  // Обязательные поля
-  if (!username || typeof username !== 'string' || username.trim().length === 0) {
-    errors.push('Username is required');
-  } else if (username.length > 100) {
-    errors.push('Username must be 100 characters or less');
+  // Username is optional when creating a user; if provided, validate it
+  if (username !== undefined && username !== null) {
+    if (typeof username !== 'string' || username.trim().length === 0) {
+      errors.push('Username must be a non-empty string when provided');
+    } else if (username.length > 100) {
+      errors.push('Username must be 100 characters or less');
+    }
   }
 
   if (!email || typeof email !== 'string' || email.trim().length === 0) {

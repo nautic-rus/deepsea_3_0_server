@@ -1060,7 +1060,6 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "username",
                   "email",
                   "phone"
                 ],
@@ -1069,7 +1068,7 @@
                     "type": "string",
                     "maxLength": 100,
                     "example": "john_doe",
-                    "description": "Уникальное имя пользователя"
+                    "description": "Уникальное имя пользователя. Если не указано, будет автоматически взято из части email до символа @ (алиас) и при необходимости дополнено числовым суффиксом для обеспечения уникальности."
                   },
                   "email": {
                     "type": "string",
@@ -1122,9 +1121,9 @@
               "example": {
                 "username": "",
                 "email": "",
-                "phone": "",
-                "password": ""
-              }
+                "phone": ""
+              },
+              "description": "Password is optional: if omitted a secure password will be generated and sent to the user's email"
             }
           }
         },

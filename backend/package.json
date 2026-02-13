@@ -4,7 +4,7 @@
   "description": "Backend API for DeepSea 3.0",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node --use-system-ca src/server.js",
     "dev": "nodemon src/server.js"
   },
   "keywords": [],
@@ -30,4 +30,5 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   }
+
 }

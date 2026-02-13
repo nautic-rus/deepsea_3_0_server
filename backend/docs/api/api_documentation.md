@@ -211,10 +211,10 @@
 **Запрос:**
 ```json
 {
-  "username": "string",
+  "username": "string",  # optional — if omitted, username will be derived from the email alias
   "email": "string",
   "phone": "string",
-  "password": "string",
+  # password is optional; if omitted a secure password will be generated and sent to the user's email
   "first_name": "string",
   "last_name": "string",
   "middle_name": "string",

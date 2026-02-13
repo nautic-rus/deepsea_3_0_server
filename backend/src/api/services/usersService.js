@@ -18,7 +18,8 @@ class UsersService {
    * Создать нового пользователя
    */
   static async createUser(userData, actor) {
-    const {
+    // Allow overriding username/password later if needed
+    let {
       username,
       email,
       phone,
@@ -31,6 +32,32 @@ class UsersService {
       is_active,
       is_verified
     } = userData;
+
+    // Helper: generate a strong password with required character classes
+    function generateStrongPassword(length = 16) {
+      const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      const lower = 'abcdefghijklmnopqrstuvwxyz';
+      const digits = '0123456789';
+      const symbols = '!@#$%^&*()-_=+[]{};:,.<>?';
+      const all = upper + lower + digits + symbols;
+
+      // Ensure at least one char from each set
+      const rnd = (chars) => chars[Math.floor(crypto.randomBytes(1)[0] / 256 * chars.length)];
+      const required = [rnd(upper), rnd(lower), rnd(digits), rnd(symbols)];
+
+      const rest = [];
+      for (let i = 0; i < length - required.length; i++) {
+        rest.push(rnd(all));
+      }
+
+      const passwordArray = required.concat(rest);
+      // Shuffle
+      for (let i = passwordArray.length - 1; i > 0; i--) {
+        const j = Math.floor(crypto.randomBytes(1)[0] / 256 * (i + 1));
+        const tmp = passwordArray[i]; passwordArray[i] = passwordArray[j]; passwordArray[j] = tmp;
+      }
+      return passwordArray.join('');
+    }
 
     // Проверка прав: требуется разрешение 'users.create'
   const requiredPermission = 'users.create';
@@ -48,12 +75,32 @@ class UsersService {
       throw err;
     }
 
-    // Проверить уникальность username
-    const existingUserByUsername = await User.findByUsername(username);
-    if (existingUserByUsername) {
-      const error = new Error('Username already exists');
-      error.statusCode = 409;
-      throw error;
+
+    // If username is not provided, derive it from the email local-part (alias)
+    if ((!username || username.toString().trim().length === 0) && email) {
+      const alias = String(email).split('@')[0] || 'user';
+      // sanitize: allow alnum, dot, underscore and dash
+      const base = alias.replace(/[^A-Za-z0-9._-]/g, '').slice(0, 90) || 'user';
+      let candidate = base;
+      let suffix = 0;
+      // ensure uniqueness by appending numeric suffix if needed
+      while (await User.findByUsername(candidate)) {
+        suffix += 1;
+        const suffixStr = String(suffix);
+        const maxBaseLen = 100 - suffixStr.length;
+        candidate = (base.slice(0, Math.max(1, maxBaseLen))) + suffixStr;
+      }
+      username = candidate;
+    }
+
+    // Проверить уникальность username (if present now)
+    if (username) {
+      const existingUserByUsername = await User.findByUsername(username);
+      if (existingUserByUsername) {
+        const error = new Error('Username already exists');
+        error.statusCode = 409;
+        throw error;
+      }
     }
 
     // Проверить уникальность email
@@ -72,11 +119,10 @@ class UsersService {
       throw error;
     }
 
-    // Если пароль не передан — сгенерируем временный пароль
+    // Если пароль не передан — сгенерируем надёжный временный пароль
     let plainPassword = password;
     if (!plainPassword) {
-      // generate alphanumeric password of length 12
-      plainPassword = crypto.randomBytes(16).toString('base64').replace(/[^A-Za-z0-9]/g, '').slice(0, 12);
+      plainPassword = generateStrongPassword(16);
     }
 
     // Хешировать пароль

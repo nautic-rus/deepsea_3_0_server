@@ -732,10 +732,9 @@ paths:
         required: true
         content:
           application/json:
-            schema:
+              schema:
               type: object
               required:
-                - username
                 - email
                 - phone
               properties:
@@ -743,7 +742,10 @@ paths:
                   type: string
                   maxLength: 100
                   example: john_doe
-                  description: Уникальное имя пользователя
+                  description: |
+                    Уникальное имя пользователя. Если не указано, будет автоматически
+                    взято из части email до символа `@` (алиас) и при необходимости
+                    дополнено числовым суффиксом для обеспечения уникальности.
                 email:
                   type: string
                   format: email
@@ -787,7 +789,7 @@ paths:
               username: ''
               email: ''
               phone: ''
-              password: ''
+              # Password is optional: if omitted a secure password will be generated and sent to the user's email
       responses:
         '201':
           description: User created successfully
