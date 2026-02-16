@@ -6,20 +6,21 @@
 	<meta name="viewport" content="width=device-width,initial-scale=1">
 	<title>Новая задача в {{project.name}}</title>
 	<style>
-		body { margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color:#f4f6f8; color:#333; }
-		.wrapper { width:100%; background-color:#f4f6f8; padding:30px 0; }
-		.container { max-width:600px; margin:0 auto; background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(18,35,63,0.08); }
-		.header { padding:20px 24px; background: linear-gradient(90deg,#0b67b2 0%, #0d9bd8 100%); color:#fff; display:flex; align-items:center; }
-		.logo { height:44px; margin-right:12px; }
-		.company-name { font-size:18px; font-weight:700; }
-		.content { padding:28px 24px; }
-		h1 { font-size:20px; margin:0 0 12px 0; color:#102a43; }
-		p { margin:0 0 14px 0; line-height:1.5; color:#34455a; }
-		.button { display:inline-block; padding:12px 20px; background:#0b67b2; color:#fff; text-decoration:none; border-radius:6px; font-weight:600; }
-		.meta { font-size:13px; color:#667085; margin-top:8px; }
-		.footer { padding:18px 24px; font-size:12px; color:#8893a6; text-align:center; background:#fbfdff; }
-		.small { font-size:12px; color:#94a3b8; }
-		@media (max-width:420px) { .container { margin:0 10px; } .header { padding:16px; } .content { padding:18px; } }
+	  /* Simple corporate responsive email styles */
+	  body { margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color:#f4f6f8; color:#333; }
+	  .wrapper { width:100%; background-color:#f4f6f8; padding:30px 0; }
+	  .container { max-width:600px; margin:0 auto; background:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(18,35,63,0.08); }
+	  .header { padding:20px 24px; background: #2171f2; color:#fff; display:flex; align-items:center; }
+	  .logo { height:44px; margin-right:12px; }
+	  .company-name { font-size:18px; font-weight:700; }
+	  .content { padding:28px 24px; }
+	  h1 { font-size:20px; margin:0 0 12px 0; color:#102a43; }
+	  p { margin:0 0 14px 0; line-height:1.5; color:#34455a; }
+	  .button { display:inline-block; padding:12px 20px; background:#2171f2; color:#fff; text-decoration:none; border-radius:6px; font-weight:600; }
+	  .meta { font-size:13px; color:#667085; margin-top:8px; }
+	  .footer { padding:18px 24px; font-size:12px; color:#8893a6; text-align:center; background:#fbfdff; }
+	  .small { font-size:12px; color:#94a3b8; }
+	  @media (max-width:420px) { .container { margin:0 10px; } .header { padding:16px; } .content { padding:18px; } }
 	</style>
 </head>
 <body>
@@ -27,7 +28,6 @@
 		<div class="container">
 			<div class="header">
 				<img src="{{company.logo_url}}" alt="{{company.name}}" class="logo" onerror="this.style.display='none'" />
-				<div class="company-name">Deep Sea 3.0</div>
 			</div>
 
 			<div class="content">
