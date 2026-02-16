@@ -91,11 +91,10 @@ class PagesService {
         }
         if (children.length) out.children = children;
       }
-      // If main_menu flag is present on nodes, only include nodes that are marked mainMenu
-      // or have allowed children. This ensures pages without main_menu won't appear in main menu.
-      if (typeof node.mainMenu !== 'undefined') {
-        if (!node.mainMenu && !(out.children && out.children.length)) return null;
-      }
+      // Note: we no longer exclude pages based on the `main_menu` flag here.
+      // The `mainMenu` property is informational for clients (to render main menu)
+      // but the /api/user/pages endpoint should return all pages the user has
+      // permission to access regardless of that flag.
 
       return out;
     }
