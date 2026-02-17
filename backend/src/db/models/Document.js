@@ -10,6 +10,7 @@ class Document {
       specialization_id,
       directory_id,
       status_id,
+      assigne_to,
       created_by,
       is_active,
       created_before,
@@ -33,7 +34,8 @@ class Document {
     if (specialization_id !== undefined) { where.push(`specialization_id = $${idx++}`); values.push(specialization_id); }
     if (directory_id !== undefined) { where.push(`directory_id = $${idx++}`); values.push(directory_id); }
     if (status_id !== undefined) { where.push(`status_id = $${idx++}`); values.push(status_id); }
-    if (created_by !== undefined) { where.push(`created_by = $${idx++}`); values.push(created_by); }
+  if (created_by !== undefined) { where.push(`created_by = $${idx++}`); values.push(created_by); }
+  if (assigne_to !== undefined) { where.push(`assigne_to = $${idx++}`); values.push(assigne_to); }
     if (is_active !== undefined) { where.push(`is_active = $${idx++}`); values.push(is_active); }
 
     // created_at range
@@ -54,21 +56,21 @@ class Document {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, created_by, created_at, is_active FROM documents ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
+  const q = `SELECT id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, assigne_to, created_by, created_at, is_active FROM documents ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
     values.push(limit, offset);
     const res = await pool.query(q, values);
     return res.rows;
   }
 
   static async findById(id) {
-    const q = `SELECT id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, created_by, created_at FROM documents WHERE id = $1 LIMIT 1`;
+    const q = `SELECT id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, assigne_to, created_by, created_at FROM documents WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
 
   static async create(fields) {
-    const q = `INSERT INTO documents (title, description, project_id, stage_id, specialization_id, directory_id, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, created_by, created_at`;
-    const vals = [fields.title, fields.description, fields.project_id, fields.stage_id, fields.specialization_id, fields.directory_id, fields.created_by];
+    const q = `INSERT INTO documents (title, description, project_id, stage_id, specialization_id, directory_id, assigne_to, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, assigne_to, created_by, created_at`;
+    const vals = [fields.title, fields.description, fields.project_id, fields.stage_id, fields.specialization_id, fields.directory_id, fields.assigne_to || null, fields.created_by];
     const res = await pool.query(q, vals);
     return res.rows[0];
   }
@@ -77,11 +79,11 @@ class Document {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['title','description','stage_id','specialization_id','directory_id','status_id'].forEach((k) => {
+    ['title','description','stage_id','specialization_id','directory_id','status_id','assigne_to'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Document.findById(id);
-    const q = `UPDATE documents SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, created_by, created_at`;
+    const q = `UPDATE documents SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, assigne_to, created_by, created_at`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;

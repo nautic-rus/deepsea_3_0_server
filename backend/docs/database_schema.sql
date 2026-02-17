@@ -344,6 +344,7 @@ CREATE TABLE documents (
     status_id INTEGER REFERENCES document_status(id) ON DELETE SET NULL,
     specialization_id INTEGER REFERENCES specializations(id) ON DELETE SET NULL,
     directory_id INTEGER REFERENCES document_directories(id) ON DELETE SET NULL,
+    assigne_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

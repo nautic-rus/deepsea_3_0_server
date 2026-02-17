@@ -1,4 +1,5 @@
 const Document = require('../../db/models/Document');
+const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 const HistoryService = require('./historyService');
 const DocumentMessage = require('../../db/models/DocumentMessage');
@@ -20,7 +21,11 @@ class DocumentsService {
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
     // If actor has global view permission, return all matches per query.
     const canViewAll = await hasPermission(actor, 'documents.view_all');
-    if (canViewAll) return await Document.list(query);
+    if (canViewAll) {
+      const rows = await Document.list(query);
+      await DocumentsService.attachDisplayFieldsToList(rows);
+      return rows;
+    }
 
     // Otherwise restrict results to projects the actor is assigned to.
   const Project = require('../../db/models/Project');
@@ -32,7 +37,77 @@ class DocumentsService {
     if (query.project_id && !allowedProjectIds.includes(Number(query.project_id))) return [];
 
     // Pass allowedProjectIds to Document.list to enforce project restriction.
-    return await Document.list(query, allowedProjectIds);
+    const rows = await Document.list(query, allowedProjectIds);
+    await DocumentsService.attachDisplayFieldsToList(rows);
+    return rows;
+  }
+
+  /**
+   * Attach display-friendly fields to documents list.
+   * Adds: project_name, stage_name, stage_date, status_name, specialization_name, created_name
+   */
+  static async attachDisplayFieldsToList(docs) {
+    if (!docs || !Array.isArray(docs) || docs.length === 0) return;
+    try {
+      const projectIds = [...new Set(docs.filter(d => d.project_id).map(d => d.project_id))];
+      const stageIds = [...new Set(docs.filter(d => d.stage_id).map(d => d.stage_id))];
+  const statusIds = [...new Set(docs.filter(d => d.status_id).map(d => d.status_id))];
+  const specIds = [...new Set(docs.filter(d => d.specialization_id).map(d => d.specialization_id))];
+  const creatorIds = [...new Set(docs.filter(d => d.created_by).map(d => d.created_by))];
+  const assigneeIds = [...new Set(docs.filter(d => d.assigne_to).map(d => d.assigne_to))];
+
+      const qProjects = projectIds.length ? pool.query(`SELECT id, name FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
+      const qStages = stageIds.length ? pool.query(`SELECT id, name, end_date FROM stages WHERE id = ANY($1::int[])`, [stageIds]) : Promise.resolve({ rows: [] });
+      const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM issue_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
+      const qSpecs = specIds.length ? pool.query(`SELECT id, name FROM specializations WHERE id = ANY($1::int[])`, [specIds]) : Promise.resolve({ rows: [] });
+
+  // Fetch users for both creators and assignees (merge ids)
+  const userIds = [...new Set([...(creatorIds || []), ...(assigneeIds || [])].map(n => Number(n)).filter(n => !Number.isNaN(n)))];
+  const qUsers = userIds.length ? pool.query(`SELECT id, username, first_name, last_name, middle_name, email, avatar_id FROM users WHERE id = ANY($1::int[])`, [userIds]) : Promise.resolve({ rows: [] });
+
+      const [projectsRes, stagesRes, statusesRes, specsRes, usersRes] = await Promise.all([qProjects, qStages, qStatuses, qSpecs, qUsers]);
+
+      const projectMap = new Map((projectsRes.rows || []).map(r => [r.id, r]));
+      const stageMap = new Map((stagesRes.rows || []).map(r => [r.id, r]));
+      const statusMap = new Map((statusesRes.rows || []).map(r => [r.id, r]));
+      const specMap = new Map((specsRes.rows || []).map(r => [r.id, r]));
+      const userMap = new Map((usersRes.rows || []).map(r => [r.id, r]));
+
+      const mkUserDisplay = (u) => {
+        if (!u) return null;
+        const parts = [];
+        if (u.last_name) parts.push(u.last_name);
+        if (u.first_name) parts.push(u.first_name);
+        if (u.middle_name) parts.push(u.middle_name);
+        const byName = parts.length ? parts.join(' ') : null;
+        return byName || u.username || u.email || null;
+      };
+
+      for (const it of docs) {
+        const proj = it.project_id ? projectMap.get(it.project_id) : null;
+        it.project_name = proj ? proj.name || null : null;
+
+        const st = it.stage_id ? stageMap.get(it.stage_id) : null;
+        it.stage_name = st ? st.name : null;
+        it.stage_date = st ? st.end_date : null;
+
+        const stat = it.status_id ? statusMap.get(it.status_id) : null;
+        it.status_name = stat ? stat.name : null;
+
+        const sp = it.specialization_id ? specMap.get(it.specialization_id) : null;
+        it.specialization_name = sp ? sp.name : null;
+
+  const creator = it.created_by ? userMap.get(it.created_by) : null;
+  it.created_name = mkUserDisplay(creator);
+  it.created_avatar_id = creator && creator.avatar_id ? creator.avatar_id : null;
+
+  const assignee = it.assigne_to ? userMap.get(it.assigne_to) : null;
+  it.assigne_name = mkUserDisplay(assignee);
+  it.assigne_avatar_id = assignee && assignee.avatar_id ? assignee.avatar_id : null;
+      }
+    } catch (e) {
+      console.error('Failed to attach display fields to documents list', e && e.message ? e.message : e);
+    }
   }
 
   static async getDocumentById(id, actor) {
