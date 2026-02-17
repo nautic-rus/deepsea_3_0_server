@@ -301,6 +301,7 @@ CREATE TABLE specializations (
     name VARCHAR(255) NOT NULL UNIQUE,
     code VARCHAR(100) NOT NULL UNIQUE,
     description TEXT,
+    project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
     order_index INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

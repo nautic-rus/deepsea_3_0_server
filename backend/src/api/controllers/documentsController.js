@@ -145,6 +145,52 @@ class DocumentsController {
       res.json({ message: 'Document deleted' });
     } catch (err) { next(err); }
   }
+
+  /**
+   * GET /api/documents/directories - list document directories
+   */
+  static async listDirectories(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await DocumentsService.listDirectories(actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * POST /api/documents/directories - create a new directory
+   */
+  static async createDirectory(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const created = await DocumentsService.createDirectory(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * PUT /api/documents/directories/:id - update directory
+   */
+  static async updateDirectory(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const updated = await DocumentsService.updateDirectory(Number(id), req.body || {}, actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * DELETE /api/documents/directories/:id - delete directory
+   */
+  static async deleteDirectory(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      await DocumentsService.deleteDirectory(Number(id), actor);
+      res.json({ message: 'Directory deleted' });
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = DocumentsController;

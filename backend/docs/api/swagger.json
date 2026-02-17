@@ -16,6 +16,11 @@
       "name": "links",
       "description": "Операции по созданию и удалению связей между сущностями (задачи, документы)."
     }
+    ,
+    {
+      "name": "documents",
+      "description": "Операции по работе с документами и их директориями"
+    }
   ],
   "components": {
     "securitySchemes": {
@@ -523,6 +528,16 @@
             "type": "string",
             "format": "date-time"
           }
+        }
+      },
+      "DocumentDirectory": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "parent_id": { "type": "integer", "nullable": true },
+          "order_index": { "type": "integer", "nullable": true },
+          "is_active": { "type": "boolean", "nullable": true }
         }
       },
       "ProjectAssignment": {
@@ -4822,6 +4837,131 @@
           "404": {
             "description": "Document or storage item not found"
           }
+        }
+      }
+    },
+    "/api/documents/directories": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Список директорий документов",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DocumentDirectory"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission documents.view"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Создать директорию документов",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "parent_id": { "type": "integer", "nullable": true },
+                  "order_index": { "type": "integer", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocumentDirectory" }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.create" }
+        }
+      }
+    },
+    "/api/documents/directories/{id}": {
+      "put": {
+        "tags": ["documents"],
+        "summary": "Обновить директорию документов",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.update"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID директории" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "parent_id": { "type": "integer", "nullable": true },
+                  "order_index": { "type": "integer", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DocumentDirectory" } } } },
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.update" },
+          "404": { "description": "Directory not found" }
+        }
+      },
+      "delete": {
+        "tags": ["documents"],
+        "summary": "Удалить директорию документов",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.delete"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID директории" }],
+        "responses": {
+          "200": { "description": "OK" },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.delete" },
+          "404": { "description": "Directory not found" }
         }
       }
     },

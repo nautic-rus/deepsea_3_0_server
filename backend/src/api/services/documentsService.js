@@ -258,6 +258,74 @@ class DocumentsService {
     if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
     return await DocumentStorage.listByDocument(Number(id), opts);
   }
+
+  /**
+   * List document directories (flat list). Requires documents.view permission.
+   */
+  static async listDirectories(actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    const DocumentDirectory = require('../../db/models/DocumentDirectory');
+    // If user has global view permission or can view all projects, return all directories
+    const canViewAll = await hasPermission(actor, 'documents.view_all');
+    const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
+    if (canViewAll || canViewAllProjects) return await DocumentDirectory.list();
+
+    // Otherwise restrict directories to those without a project or belonging to projects
+    // the actor is assigned to.
+    const Project = require('../../db/models/Project');
+    const allowedProjectIds = await Project.listAssignedProjectIds(actor.id);
+    const rows = await DocumentDirectory.list();
+    if (!allowedProjectIds || allowedProjectIds.length === 0) {
+      // return only global (project_id IS NULL) directories
+      return rows.filter(r => r.project_id === null || r.project_id === undefined);
+    }
+    const allowedSet = new Set(allowedProjectIds.map(n => Number(n)));
+    return rows.filter(r => (r.project_id === null || r.project_id === undefined) || allowedSet.has(Number(r.project_id)));
+  }
+
+  static async createDirectory(fields, actor) {
+    const requiredPermission = 'documents.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.create'); err.statusCode = 403; throw err; }
+    if (!fields || !fields.name) { const err = new Error('Missing required field: name'); err.statusCode = 400; throw err; }
+    const DocumentDirectory = require('../../db/models/DocumentDirectory');
+    // attach creator metadata
+    fields.created_by = actor.id;
+    fields.updated_by = actor.id;
+    const created = await DocumentDirectory.create(fields);
+    return created;
+  }
+
+  static async updateDirectory(id, fields, actor) {
+    const requiredPermission = 'documents.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const DocumentDirectory = require('../../db/models/DocumentDirectory');
+    // attach updater metadata
+    (fields = fields || {}).updated_by = actor.id;
+    const updated = await DocumentDirectory.update(Number(id), fields);
+    if (!updated) { const err = new Error('Directory not found'); err.statusCode = 404; throw err; }
+    return updated;
+  }
+
+  static async deleteDirectory(id, actor) {
+    const requiredPermission = 'documents.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const DocumentDirectory = require('../../db/models/DocumentDirectory');
+    // attempt to mark as deleted; record updater if possible
+  const ok = await DocumentDirectory.softDelete(Number(id), actor.id);
+    if (!ok) { const err = new Error('Directory not found'); err.statusCode = 404; throw err; }
+    return { success: true };
+  }
 }
 
 module.exports = DocumentsService;

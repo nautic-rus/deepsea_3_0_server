@@ -173,6 +173,16 @@ router.get('/issues/:id/history', authMiddleware, issueHistoryController.list);
 // ===== Documents routes =====
 // GET /api/documents
 router.get('/documents', authMiddleware, documentsController.list);
+// Document directories routes must be registered before '/documents/:id' to avoid
+// Express treating 'directories' as an :id parameter. Register them here.
+// GET /api/documents/directories - list document directories
+router.get('/documents/directories', authMiddleware, documentsController.listDirectories);
+// POST /api/documents/directories - create
+router.post('/documents/directories', authMiddleware, documentsController.createDirectory);
+// PUT /api/documents/directories/:id - update
+router.put('/documents/directories/:id', authMiddleware, documentsController.updateDirectory);
+// DELETE /api/documents/directories/:id - delete
+router.delete('/documents/directories/:id', authMiddleware, documentsController.deleteDirectory);
 // GET /api/documents/:id
 router.get('/documents/:id', authMiddleware, documentsController.get);
 // POST /api/documents
@@ -194,6 +204,7 @@ router.post('/documents/:id/files/local', authMiddleware, _upload.single('file')
 router.delete('/documents/:id/files/:storage_id', authMiddleware, documentsController.detachFile);
 // GET /api/documents/:id/files - list files attached to document
 router.get('/documents/:id/files', authMiddleware, documentsController.listFiles);
+// (document directories routes registered earlier)
 
 // ===== Entity links routes =====
 // POST /api/links - create a link between entities
