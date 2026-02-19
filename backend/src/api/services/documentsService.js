@@ -59,7 +59,7 @@ class DocumentsService {
 
       const qProjects = projectIds.length ? pool.query(`SELECT id, name FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
       const qStages = stageIds.length ? pool.query(`SELECT id, name, end_date FROM stages WHERE id = ANY($1::int[])`, [stageIds]) : Promise.resolve({ rows: [] });
-      const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM issue_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
+  const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM document_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
   const qSpecs = specIds.length ? pool.query(`SELECT id, name FROM specializations WHERE id = ANY($1::int[])`, [specIds]) : Promise.resolve({ rows: [] });
   const qTypes = typeIds.length ? pool.query(`SELECT id, name, code FROM document_type WHERE id = ANY($1::int[])`, [typeIds]) : Promise.resolve({ rows: [] });
 
