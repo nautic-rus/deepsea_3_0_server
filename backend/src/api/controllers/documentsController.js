@@ -42,8 +42,8 @@ class DocumentsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { content } = req.body || {};
-      const created = await DocumentsService.addDocumentMessage(Number(id), content, actor);
+      const { content, parent_id = null } = req.body || {};
+      const created = await DocumentsService.addDocumentMessage(Number(id), content, actor, parent_id);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }

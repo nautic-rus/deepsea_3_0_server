@@ -284,11 +284,11 @@ class DocumentsService {
    * @param {string} content - message content
    * @param {Object} actor - user performing the action
    */
-  static async addDocumentMessage(id, content, actor) {
+  static async addDocumentMessage(id, content, actor, parent_id = null) {
     const requiredPermission = 'documents.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission documents.comment'); err.statusCode = 403; throw err; }
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
     const existing = await Document.findById(Number(id));
@@ -304,7 +304,7 @@ class DocumentsService {
 
     if (!content || String(content).trim().length === 0) { const err = new Error('Empty content'); err.statusCode = 400; throw err; }
 
-    const created = await DocumentMessage.create({ document_id: Number(id), user_id: actor.id, content: String(content) });
+    const created = await DocumentMessage.create({ document_id: Number(id), user_id: actor.id, content: String(content), parent_id: parent_id ? Number(parent_id) : null });
 
     // Record history
     (async () => {
@@ -419,7 +419,22 @@ class DocumentsService {
       if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
     }
     const { limit = 100, offset = 0 } = opts || {};
-    return await DocumentMessage.listByDocument(Number(id), { limit: Number(limit), offset: Number(offset) });
+    const messages = await DocumentMessage.listByDocument(Number(id), { limit: Number(limit), offset: Number(offset) });
+    if (!messages || messages.length === 0) return [];
+
+    // Enrich messages with user display info (full_name, email, url_avatar)
+    const userIds = [...new Set(messages.map(m => m.user_id).filter(Boolean))];
+    let usersMap = new Map();
+    if (userIds.length) {
+      const res = await pool.query(`SELECT id, email, phone, avatar_id, first_name, last_name, middle_name, username FROM users WHERE id = ANY($1::int[])`, [userIds]);
+      usersMap = new Map((res.rows || []).map(u => [u.id, u]));
+    }
+
+    return messages.map(m => {
+      const u = usersMap.get(m.user_id) || null;
+      const fullName = u ? [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ') : null;
+      return Object.assign({}, m, { user: u ? { id: u.id, full_name: fullName || u.username || u.email, email: u.email, phone: u.phone, avatar_id: u.avatar_id } : null });
+    });
   }
 
   /**
