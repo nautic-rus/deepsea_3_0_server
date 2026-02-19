@@ -51,7 +51,8 @@ class DocumentsService {
     try {
       const projectIds = [...new Set(docs.filter(d => d.project_id).map(d => d.project_id))];
       const stageIds = [...new Set(docs.filter(d => d.stage_id).map(d => d.stage_id))];
-  const statusIds = [...new Set(docs.filter(d => d.status_id).map(d => d.status_id))];
+    const statusIds = [...new Set(docs.filter(d => d.status_id).map(d => d.status_id))];
+  const typeIds = [...new Set(docs.filter(d => d.type_id).map(d => d.type_id))];
   const specIds = [...new Set(docs.filter(d => d.specialization_id).map(d => d.specialization_id))];
   const creatorIds = [...new Set(docs.filter(d => d.created_by).map(d => d.created_by))];
   const assigneeIds = [...new Set(docs.filter(d => d.assigne_to).map(d => d.assigne_to))];
@@ -59,18 +60,20 @@ class DocumentsService {
       const qProjects = projectIds.length ? pool.query(`SELECT id, name FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
       const qStages = stageIds.length ? pool.query(`SELECT id, name, end_date FROM stages WHERE id = ANY($1::int[])`, [stageIds]) : Promise.resolve({ rows: [] });
       const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM issue_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
-      const qSpecs = specIds.length ? pool.query(`SELECT id, name FROM specializations WHERE id = ANY($1::int[])`, [specIds]) : Promise.resolve({ rows: [] });
+  const qSpecs = specIds.length ? pool.query(`SELECT id, name FROM specializations WHERE id = ANY($1::int[])`, [specIds]) : Promise.resolve({ rows: [] });
+  const qTypes = typeIds.length ? pool.query(`SELECT id, name, code FROM document_type WHERE id = ANY($1::int[])`, [typeIds]) : Promise.resolve({ rows: [] });
 
   // Fetch users for both creators and assignees (merge ids)
   const userIds = [...new Set([...(creatorIds || []), ...(assigneeIds || [])].map(n => Number(n)).filter(n => !Number.isNaN(n)))];
   const qUsers = userIds.length ? pool.query(`SELECT id, username, first_name, last_name, middle_name, email, avatar_id FROM users WHERE id = ANY($1::int[])`, [userIds]) : Promise.resolve({ rows: [] });
 
-      const [projectsRes, stagesRes, statusesRes, specsRes, usersRes] = await Promise.all([qProjects, qStages, qStatuses, qSpecs, qUsers]);
+  const [projectsRes, stagesRes, statusesRes, specsRes, usersRes, typesRes] = await Promise.all([qProjects, qStages, qStatuses, qSpecs, qUsers, qTypes]);
 
       const projectMap = new Map((projectsRes.rows || []).map(r => [r.id, r]));
       const stageMap = new Map((stagesRes.rows || []).map(r => [r.id, r]));
       const statusMap = new Map((statusesRes.rows || []).map(r => [r.id, r]));
-      const specMap = new Map((specsRes.rows || []).map(r => [r.id, r]));
+  const specMap = new Map((specsRes.rows || []).map(r => [r.id, r]));
+  const typeMap = new Map((typesRes.rows || []).map(r => [r.id, r]));
       const userMap = new Map((usersRes.rows || []).map(r => [r.id, r]));
 
       const mkUserDisplay = (u) => {
@@ -94,8 +97,12 @@ class DocumentsService {
         const stat = it.status_id ? statusMap.get(it.status_id) : null;
         it.status_name = stat ? stat.name : null;
 
-        const sp = it.specialization_id ? specMap.get(it.specialization_id) : null;
-        it.specialization_name = sp ? sp.name : null;
+  const sp = it.specialization_id ? specMap.get(it.specialization_id) : null;
+  it.specialization_name = sp ? sp.name : null;
+
+  const tp = it.type_id ? typeMap.get(it.type_id) : null;
+  it.type_name = tp ? tp.name : null;
+  it.type_code = tp ? tp.code : null;
 
   const creator = it.created_by ? userMap.get(it.created_by) : null;
   it.created_name = mkUserDisplay(creator);
@@ -124,6 +131,61 @@ class DocumentsService {
       const Project = require('../../db/models/Project');
       const assigned = await Project.isUserAssigned(d.project_id, actor.id);
       if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
+    // Attach display-friendly fields (same as for listDocuments)
+    // Compute allowed next statuses according to document_work_flow for this document
+    try {
+      if (d.status_id) {
+        // If document has a type, prefer workflows defined for that type. Otherwise
+        // fall back to global workflows (document_type_id IS NULL).
+        let res;
+        if (d.type_id) {
+          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true ORDER BY s.order_index`;
+          res = await pool.query(q, [d.type_id, d.status_id]);
+        } else {
+          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id IS NULL AND wf.from_status_id = $1 AND wf.is_active = true ORDER BY s.order_index`;
+          res = await pool.query(q, [d.status_id]);
+        }
+        let allowedStatuses = res.rows || [];
+
+        // Check for 'blocks' links similar to issues: if any linked document that blocks
+        // this document is NOT in a final status, then disallow transitions that are final.
+        try {
+          const EntityLink = require('../../db/models/EntityLink');
+          const blockingLinks = await EntityLink.find({ passive_type: 'document', passive_id: d.id, active_type: 'document', relation_type: 'blocks' });
+          const otherIds = [];
+          for (const l of (blockingLinks || [])) {
+            if (!l) continue;
+            if (l.active_id) otherIds.push(Number(l.active_id));
+          }
+          const uniqOther = [...new Set(otherIds.filter(Boolean))];
+          if (uniqOther.length > 0) {
+            const q2 = `SELECT doc.id, s.is_final FROM documents doc LEFT JOIN document_status s ON s.id = doc.status_id WHERE doc.id = ANY($1::int[])`;
+            const res2 = await pool.query(q2, [uniqOther]);
+            const blockedNotFinal = (res2.rows || []).some(r => !r.is_final);
+            if (blockedNotFinal) {
+              allowedStatuses = allowedStatuses.filter(s => !s.is_final);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to evaluate blocks links for allowed_document_statuses', e && e.message ? e.message : e);
+        }
+
+        d.allowed_statuses = allowedStatuses;
+      } else {
+        d.allowed_statuses = [];
+      }
+    } catch (e) {
+      console.error('Failed to load allowed document statuses', e && e.message ? e.message : e);
+      d.allowed_statuses = [];
+    }
+
+    // Attach display-friendly fields (same as for listDocuments)
+    try {
+      await DocumentsService.attachDisplayFieldsToList([d]);
+    } catch (e) {
+      // attachDisplayFieldsToList handles its own errors, but be defensive
+      console.error('Failed to attach display fields to document', e && e.message ? e.message : e);
     }
     return d;
   }
@@ -223,7 +285,7 @@ class DocumentsService {
    * @param {Object} actor - user performing the action
    */
   static async addDocumentMessage(id, content, actor) {
-    const requiredPermission = 'documents.comment';
+    const requiredPermission = 'documents.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.comment'); err.statusCode = 403; throw err; }
@@ -267,7 +329,7 @@ class DocumentsService {
     return created;
   }
 
-  static async attachFileToDocument(id, storageId, actor) {
+  static async attachFileToDocument(id, storageId, actor, metadata = {}) {
     const requiredPermission = 'documents.update';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
@@ -287,7 +349,11 @@ class DocumentsService {
       if (!isAssigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
     }
 
-    const attached = await DocumentStorage.attach({ document_id: Number(id), storage_id: Number(storageId) });
+  // Prepare metadata to pass to DocumentStorage.attach
+  const attachPayload = Object.assign({ document_id: Number(id), storage_id: Number(storageId) }, metadata);
+  // Ensure user_id is set to actor by default
+  if (!attachPayload.user_id && actor && actor.id) attachPayload.user_id = actor.id;
+  const attached = await DocumentStorage.attach(attachPayload);
     (async () => {
       try {
         await HistoryService.addDocumentHistory(Number(id), actor, 'file_attached', { before: {}, after: { storage_id: storageId } });
@@ -335,6 +401,28 @@ class DocumentsService {
   }
 
   /**
+   * List messages for a document
+   */
+  static async listDocumentMessages(id, opts = {}, actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const existing = await Document.findById(Number(id));
+    if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+    // Ensure actor is assigned to project unless they have view_all
+    const canViewAll = await hasPermission(actor, 'documents.view_all');
+    if (!canViewAll && existing.project_id) {
+      const Project = require('../../db/models/Project');
+      const assigned = await Project.isUserAssigned(existing.project_id, actor.id);
+      if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
+    const { limit = 100, offset = 0 } = opts || {};
+    return await DocumentMessage.listByDocument(Number(id), { limit: Number(limit), offset: Number(offset) });
+  }
+
+  /**
    * List document directories (flat list). Requires documents.view permission.
    */
   static async listDirectories(actor) {
@@ -359,6 +447,208 @@ class DocumentsService {
     }
     const allowedSet = new Set(allowedProjectIds.map(n => Number(n)));
     return rows.filter(r => (r.project_id === null || r.project_id === undefined) || allowedSet.has(Number(r.project_id)));
+  }
+
+  /**
+   * List all document types
+   * Requires permission: documents.view
+   */
+  static async listTypes(actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    const res = await pool.query('SELECT * FROM document_type ORDER BY COALESCE(order_index, 0), id');
+    return res.rows || [];
+  }
+
+  static async getTypeById(id, actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const res = await pool.query('SELECT * FROM document_type WHERE id = $1 LIMIT 1', [Number(id)]);
+    return res.rows[0] || null;
+  }
+
+  static async createType(fields, actor) {
+    const requiredPermission = 'documents.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.create'); err.statusCode = 403; throw err; }
+    if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
+    const q = `INSERT INTO document_type (name, code, description, icon, color, order_index) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`;
+    const vals = [fields.name, fields.code, fields.description || null, fields.icon || null, fields.color || null, fields.order_index || 0];
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async updateType(id, fields, actor) {
+    const requiredPermission = 'documents.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const parts = [];
+    const vals = [];
+    let idx = 1;
+    ['name','code','description','icon','color','order_index'].forEach((k) => {
+      if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
+    });
+    if (parts.length === 0) {
+      const r = await pool.query('SELECT * FROM document_type WHERE id = $1 LIMIT 1', [Number(id)]);
+      return r.rows[0] || null;
+    }
+    const q = `UPDATE document_type SET ${parts.join(', ')} WHERE id = $${idx} RETURNING *`;
+    vals.push(Number(id));
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async deleteType(id, actor) {
+    const requiredPermission = 'documents.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    // try to delete; ensure no dependent records will break (ON DELETE CASCADE configured for document_work_flow)
+    const res = await pool.query('DELETE FROM document_type WHERE id = $1 RETURNING id', [Number(id)]);
+    return res.rowCount > 0;
+  }
+
+  /**
+   * List all documents_storage_type rows
+   * Requires permission: documents.view
+   */
+  static async listStorageTypes(actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    const res = await pool.query('SELECT * FROM documents_storage_type ORDER BY name, id');
+    return res.rows || [];
+  }
+
+  static async getStorageTypeById(id, actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const res = await pool.query('SELECT * FROM documents_storage_type WHERE id = $1 LIMIT 1', [Number(id)]);
+    return res.rows[0] || null;
+  }
+
+  static async createStorageType(fields, actor) {
+    const requiredPermission = 'documents.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.create'); err.statusCode = 403; throw err; }
+    if (!fields || !fields.name) { const err = new Error('Missing required field: name'); err.statusCode = 400; throw err; }
+    const q = `INSERT INTO documents_storage_type (name, code, description) VALUES ($1,$2,$3) RETURNING *`;
+    const vals = [fields.name, fields.code || null, fields.description || null];
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async updateStorageType(id, fields, actor) {
+    const requiredPermission = 'documents.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const parts = [];
+    const vals = [];
+    let idx = 1;
+    ['name','code','description'].forEach((k) => {
+      if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
+    });
+    if (parts.length === 0) {
+      const r = await pool.query('SELECT * FROM documents_storage_type WHERE id = $1 LIMIT 1', [Number(id)]);
+      return r.rows[0] || null;
+    }
+    const q = `UPDATE documents_storage_type SET ${parts.join(', ')} WHERE id = $${idx} RETURNING *`;
+    vals.push(Number(id));
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async deleteStorageType(id, actor) {
+    const requiredPermission = 'documents.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const res = await pool.query('DELETE FROM documents_storage_type WHERE id = $1 RETURNING id', [Number(id)]);
+    return res.rowCount > 0;
+  }
+
+  /**
+   * List all document statuses
+   * Requires permission: documents.view
+   */
+  static async listStatuses(actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    const res = await pool.query('SELECT * FROM document_status ORDER BY COALESCE(order_index, 0), id');
+    return res.rows || [];
+  }
+
+  static async getStatusById(id, actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const res = await pool.query('SELECT * FROM document_status WHERE id = $1 LIMIT 1', [Number(id)]);
+    return res.rows[0] || null;
+  }
+
+  static async createStatus(fields, actor) {
+    const requiredPermission = 'documents.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.create'); err.statusCode = 403; throw err; }
+    if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
+    const q = `INSERT INTO document_status (name, code, description, color, is_initial, is_final, order_index) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`;
+    const vals = [fields.name, fields.code, fields.description || null, fields.color || null, !!fields.is_initial, !!fields.is_final, fields.order_index || 0];
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async updateStatus(id, fields, actor) {
+    const requiredPermission = 'documents.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const parts = [];
+    const vals = [];
+    let idx = 1;
+    ['name','code','description','color','is_initial','is_final','order_index'].forEach((k) => {
+      if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
+    });
+    if (parts.length === 0) {
+      const r = await pool.query('SELECT * FROM document_status WHERE id = $1 LIMIT 1', [Number(id)]);
+      return r.rows[0] || null;
+    }
+    const q = `UPDATE document_status SET ${parts.join(', ')} WHERE id = $${idx} RETURNING *`;
+    vals.push(Number(id));
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async deleteStatus(id, actor) {
+    const requiredPermission = 'documents.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const res = await pool.query('DELETE FROM document_status WHERE id = $1 RETURNING id', [Number(id)]);
+    return res.rowCount > 0;
   }
 
   static async createDirectory(fields, actor) {

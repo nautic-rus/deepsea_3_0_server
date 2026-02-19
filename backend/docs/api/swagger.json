@@ -21,6 +21,11 @@
       "name": "documents",
       "description": "Операции по работе с документами и их директориями"
     }
+      ,
+      {
+        "name": "specializations",
+        "description": "CRUD для специальностей / специализаций документов"
+      }
   ],
   "components": {
     "securitySchemes": {
@@ -70,7 +75,6 @@
             "items": {
               "type": "string"
             }
-          }
         }
       },
       "User": {
@@ -506,6 +510,11 @@
             "type": "string",
             "nullable": true
           },
+          "code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Document number/code"
+          },
           "project_id": {
             "type": "integer"
           },
@@ -584,6 +593,35 @@
             "type": "boolean",
             "nullable": true
           }
+        }
+      },
+      "DocumentStatus": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "code": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "color": { "type": "string", "nullable": true },
+          "is_initial": { "type": "boolean", "nullable": true },
+          "is_final": { "type": "boolean", "nullable": true },
+          "order_index": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true },
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "DocumentType": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "code": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "icon": { "type": "string", "nullable": true },
+          "color": { "type": "string", "nullable": true },
+          "order_index": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true },
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true }
         }
       },
       "HistoryEntry": {
@@ -792,6 +830,50 @@
             "type": "string",
             "format": "date-time"
           }
+        }
+      },
+      "DocumentStorageType": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "code": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DocumentFile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "document_id": { "type": "integer" },
+          "storage_id": { "type": "integer" },
+          "type_id": { "type": "integer", "nullable": true },
+          "rev": { "type": "integer", "nullable": true },
+          "user_id": { "type": "integer", "nullable": true },
+          "archive": { "type": "boolean" },
+          "archive_data": { "type": "string", "format": "date-time", "nullable": true },
+          "bucket_name": { "type": "string", "nullable": true },
+          "object_key": { "type": "string", "nullable": true },
+          "file_name": { "type": "string", "nullable": true },
+          "file_size": { "type": "integer", "nullable": true },
+          "mime_type": { "type": "string", "nullable": true },
+          "storage_type": { "type": "string", "nullable": true },
+          "uploaded_by": { "type": "integer", "nullable": true },
+          "storage_created_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      }
+      },
+      "Specialization": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "code": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "order_index": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true },
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true }
         }
       }
     }
@@ -3101,6 +3183,162 @@
         }
       }
     },
+    "/api/specializations": {
+      "get": {
+        "tags": [
+          "specializations"
+        ],
+        "summary": "Получить список специализаций",
+        "description": "Возвращает список специализаций (specializations). Требуется разрешение users.view.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "users.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Specialization"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      },
+      "post": {
+        "tags": [
+          "specializations"
+        ],
+        "summary": "Создать специализацию",
+        "description": "Создание новой специализации. Требуется разрешение users.create.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "users.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name","code"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "code": { "type": "string" },
+                  "description": { "type": "string", "nullable": true },
+                  "order_index": { "type": "integer", "nullable": true }
+                }
+              },
+              "example": { "name": "Mechanical", "code": "mech", "description": "Mechanical specialization", "order_index": 10 }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/Specialization" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/specializations/{id}": {
+      "get": {
+        "tags": ["specializations"],
+        "summary": "Получить специализацию по ID",
+        "description": "Возвращает одну специализацию по её ID. Требуется разрешение users.view.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["users.view"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Specialization" } } } },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission users.view" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "put": {
+        "tags": ["specializations"],
+        "summary": "Обновить специализацию",
+        "description": "Обновляет существующую специализацию. Требуется разрешение users.update.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["users.update"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "code": { "type": "string" },
+                  "description": { "type": "string", "nullable": true },
+                  "order_index": { "type": "integer", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Specialization" } } } } } },
+          "400": { "description": "Invalid id or payload" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission users.update" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "tags": ["specializations"],
+        "summary": "Удалить специализацию",
+        "description": "Удаляет специализацию. Требуется разрешение users.delete.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["users.delete"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "Deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } } } } },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission users.delete" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
     "/api/projects": {
       "get": {
         "tags": [
@@ -4294,6 +4532,154 @@
         "parameters": []
       }
     },
+    "/api/document_statuses": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Список статусов документов",
+        "description": "Возвращает список всех записей из таблицы `document_status` со всеми атрибутами. Требуется разрешение documents.view.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DocumentStatus"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      },
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Создать статус документа",
+        "description": "Создаёт новую запись в таблице `document_status`. Требуется разрешение documents.create.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name","code"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "code": { "type": "string" },
+                  "description": { "type": "string", "nullable": true },
+                  "color": { "type": "string", "nullable": true },
+                  "is_initial": { "type": "boolean" },
+                  "is_final": { "type": "boolean" },
+                  "order_index": { "type": "integer" }
+                }
+              },
+              "example": { "name": "Подготовка", "code": "preparation", "is_initial": true }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocumentStatus" }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.create" }
+        }
+      }
+    },
+    "/api/document_types": {
+      "get": {
+        "tags": ["documents"],
+        "summary": "Список типов документов",
+        "description": "Возвращает список всех записей из таблицы `document_type` со всеми атрибутами. Требуется разрешение documents.view.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.view"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/DocumentType" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      },
+      "post": {
+        "tags": ["documents"],
+        "summary": "Создать тип документа",
+        "description": "Создаёт новую запись в таблице `document_type`. Требуется разрешение documents.create.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.create"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name","code"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "code": { "type": "string" },
+                  "description": { "type": "string", "nullable": true },
+                  "icon": { "type": "string", "nullable": true },
+                  "color": { "type": "string", "nullable": true },
+                  "order_index": { "type": "integer" }
+                }
+              },
+              "example": { "name": "Чертеж", "code": "drawing" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DocumentType" } } } },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.create" }
+        }
+      }
+    },
     "/api/issues/{id}/messages": {
       "get": {
         "tags": [
@@ -4431,6 +4817,74 @@
         }
       }
     },
+    "/api/document_statuses/{id}": {
+      "get": {
+        "tags": ["documents"],
+        "summary": "Получить статус документа по id",
+        "description": "Возвращает запись из `document_status` по идентификатору. Требуется разрешение documents.view.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.view"],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID статуса" }
+        ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DocumentStatus" } } } },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.view" },
+          "404": { "description": "Status not found" }
+        }
+      },
+    "/api/document_types/{id}": {
+      "get": {
+        "tags": ["documents"],
+        "summary": "Получить тип документа по id",
+        "description": "Возвращает запись из `document_type` по идентификатору. Требуется разрешение documents.view.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.view"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "description": "ID типа" } ],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DocumentType" } } } }, "400": { "description": "Invalid id" }, "401": { "description": "Authentication required" }, "403": { "description": "Forbidden - missing permission documents.view" }, "404": { "description": "Type not found" } }
+      },
+      "put": {
+        "tags": ["documents"],
+        "summary": "Обновить тип документа",
+        "description": "Обновляет существующую запись document_type. Требуется разрешение documents.update.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.update"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "code": { "type": "string" }, "description": { "type": "string" }, "icon": { "type": "string" }, "color": { "type": "string" }, "order_index": { "type": "integer" } } } } } },
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DocumentType" } } } }, "400": { "description": "Invalid id or payload" }, "401": { "description": "Authentication required" }, "403": { "description": "Forbidden - missing permission documents.update" }, "404": { "description": "Type not found" } }
+      },
+      "delete": {
+        "tags": ["documents"],
+        "summary": "Удалить тип документа",
+        "description": "Удаляет запись document_type. Требуется разрешение documents.delete.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.delete"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "OK" }, "400": { "description": "Invalid id" }, "401": { "description": "Authentication required" }, "403": { "description": "Forbidden - missing permission documents.delete" }, "404": { "description": "Type not found" } }
+      }
+    },
+      "put": {
+        "tags": ["documents"],
+        "summary": "Обновить статус документа",
+        "description": "Обновляет существующую запись document_status. Требуется разрешение documents.update.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.update"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "code": { "type": "string" }, "description": { "type": "string" }, "color": { "type": "string" }, "is_initial": { "type": "boolean" }, "is_final": { "type": "boolean" }, "order_index": { "type": "integer" } } } } } },
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DocumentStatus" } } } }, "400": { "description": "Invalid id or payload" }, "401": { "description": "Authentication required" }, "403": { "description": "Forbidden - missing permission documents.update" }, "404": { "description": "Status not found" } }
+      },
+      "delete": {
+        "tags": ["documents"],
+        "summary": "Удалить статус документа",
+        "description": "Удаляет запись document_status (soft/hard depends on DB). Требуется разрешение documents.delete.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.delete"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "OK" }, "400": { "description": "Invalid id" }, "401": { "description": "Authentication required" }, "403": { "description": "Forbidden - missing permission documents.delete" }, "404": { "description": "Status not found" } }
+      }
+    },
     "/api/issues/{id}/files": {
       "post": {
         "tags": [
@@ -4462,13 +4916,25 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "storage_id"
-                ],
+                "required": ["storage_id"],
                 "properties": {
-                  "storage_id": {
-                    "type": "integer"
-                  }
+                  "storage_id": { "type": "integer" },
+                  "type_id": { "type": "integer", "description": "Optional documents_storage_type id" },
+                  "rev": { "type": "integer", "description": "Optional revision/version number" },
+                  "archive": { "type": "boolean", "description": "Mark this attachment as archived" },
+                  "archive_data": { "type": "string", "format": "date-time", "description": "Archive timestamp (ISO)" }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "type_id": { "type": "integer" },
+                  "rev": { "type": "integer" },
+                  "archive": { "type": "boolean" },
+                  "archive_data": { "type": "string", "format": "date-time" }
                 }
               }
             }
@@ -4480,7 +4946,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StorageRef"
+                  "$ref": "#/components/schemas/DocumentFile"
                 }
               }
             }
@@ -4531,7 +4997,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/StorageRef"
+                    "$ref": "#/components/schemas/DocumentFile"
                   }
                 }
               }
@@ -4606,6 +5072,82 @@
       }
     },
     "/api/documents/{id}/messages": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Список сообщений документа",
+        "description": "Возвращает список сообщений (комментариев) документа. Требуется разрешение documents.view.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID документа"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Limit results",
+            "example": 100
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Pagination offset",
+            "example": 0
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DocumentMessage"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission documents.view"
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        }
+      },
       "post": {
         "tags": [
           "documents"
@@ -4920,6 +5462,91 @@
         }
       }
     },
+    "/api/document_storage_types": {
+      "get": {
+        "tags": ["documents"],
+        "summary": "Список типов хранения для документов",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.view"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/DocumentStorageType" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["documents"],
+        "summary": "Создать тип хранения документов",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.create"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "code": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DocumentStorageType" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/document_storage_types/{id}": {
+      "get": {
+        "tags": ["documents"],
+        "summary": "Получить тип хранения по id",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.view"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DocumentStorageType" } } } }, "404": { "description": "Not found" } }
+      },
+      "put": {
+        "tags": ["documents"],
+        "summary": "Обновить тип хранения",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.update"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "code": { "type": "string" }, "description": { "type": "string" } } } } } },
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DocumentStorageType" } } } } }
+      },
+      "delete": {
+        "tags": ["documents"],
+        "summary": "Удалить тип хранения",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["documents.delete"],
+        "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+      }
+    },
     "/api/documents/directories/{id}": {
       "put": {
         "tags": ["documents"],
@@ -5149,7 +5776,8 @@
               "example": {
                 "title": "",
                 "description": "",
-                "project_id": 0
+                "project_id": 0,
+                "code": ""
               }
             }
           }
@@ -5239,7 +5867,8 @@
               "example": {
                 "title": "",
                 "description": "",
-                "stage_id": 0
+                "stage_id": 0,
+                "code": ""
               }
             }
           }

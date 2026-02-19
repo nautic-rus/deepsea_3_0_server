@@ -443,6 +443,101 @@ class IssuesService {
     return res.rows || [];
   }
 
+  /**
+   * Create a new issue status
+   * Requires permission: issues.create
+   */
+  static async createStatus(fields, actor) {
+    const requiredPermission = 'issues.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.create'); err.statusCode = 403; throw err; }
+    if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
+    const q = `INSERT INTO issue_status (name, code, description, color, is_initial, is_final, order_index) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`;
+    const vals = [fields.name, fields.code, fields.description || null, fields.color || null, !!fields.is_initial, !!fields.is_final, fields.order_index || 0];
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async updateStatus(id, fields, actor) {
+    const requiredPermission = 'issues.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const parts = [];
+    const vals = [];
+    let idx = 1;
+    ['name','code','description','color','is_initial','is_final','order_index'].forEach((k) => {
+      if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
+    });
+    if (parts.length === 0) {
+      const r = await pool.query('SELECT * FROM issue_status WHERE id = $1 LIMIT 1', [Number(id)]);
+      return r.rows[0] || null;
+    }
+    const q = `UPDATE issue_status SET ${parts.join(', ')} WHERE id = $${idx} RETURNING *`;
+    vals.push(Number(id));
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async deleteStatus(id, actor) {
+    const requiredPermission = 'issues.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const res = await pool.query('DELETE FROM issue_status WHERE id = $1 RETURNING id', [Number(id)]);
+    return res.rowCount > 0;
+  }
+
+  /**
+   * Create/update/delete issue types
+   */
+  static async createType(fields, actor) {
+    const requiredPermission = 'issues.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.create'); err.statusCode = 403; throw err; }
+    if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
+    const q = `INSERT INTO issue_type (name, code, description, color, order_index) VALUES ($1,$2,$3,$4,$5) RETURNING *`;
+    const vals = [fields.name, fields.code, fields.description || null, fields.color || null, fields.order_index || 0];
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async updateType(id, fields, actor) {
+    const requiredPermission = 'issues.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const parts = [];
+    const vals = [];
+    let idx = 1;
+    ['name','code','description','color','order_index'].forEach((k) => {
+      if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
+    });
+    if (parts.length === 0) {
+      const r = await pool.query('SELECT * FROM issue_type WHERE id = $1 LIMIT 1', [Number(id)]);
+      return r.rows[0] || null;
+    }
+    const q = `UPDATE issue_type SET ${parts.join(', ')} WHERE id = $${idx} RETURNING *`;
+    vals.push(Number(id));
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async deleteType(id, actor) {
+    const requiredPermission = 'issues.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const res = await pool.query('DELETE FROM issue_type WHERE id = $1 RETURNING id', [Number(id)]);
+    return res.rowCount > 0;
+  }
+
   
 
   /**

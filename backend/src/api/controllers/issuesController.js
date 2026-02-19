@@ -66,6 +66,42 @@ class IssuesController {
   }
 
   /**
+   * POST /api/issue_statuses - create a new issue status
+   */
+  static async createStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const created = await IssuesService.createStatus(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * PUT /api/issue_statuses/:id - update issue status
+   */
+  static async updateStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const updated = await IssuesService.updateStatus(Number(id), req.body || {}, actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * DELETE /api/issue_statuses/:id - delete issue status
+   */
+  static async deleteStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const ok = await IssuesService.deleteStatus(Number(id), actor);
+      if (!ok) { const err = new Error('Status not found'); err.statusCode = 404; throw err; }
+      res.json({ message: 'Status deleted' });
+    } catch (err) { next(err); }
+  }
+
+  /**
    * GET /api/issue_types - list all issue types
    */
   static async listTypes(req, res, next) {
@@ -101,6 +137,42 @@ class IssuesController {
       const row = (rows || []).find(r => Number(r.id) === Number(id));
       if (!row) { const err = new Error('Type not found'); err.statusCode = 404; throw err; }
       res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * POST /api/issue_types - create a new issue type
+   */
+  static async createType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const created = await IssuesService.createType(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * PUT /api/issue_types/:id - update issue type
+   */
+  static async updateType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const updated = await IssuesService.updateType(Number(id), req.body || {}, actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * DELETE /api/issue_types/:id - delete issue type
+   */
+  static async deleteType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const ok = await IssuesService.deleteType(Number(id), actor);
+      if (!ok) { const err = new Error('Type not found'); err.statusCode = 404; throw err; }
+      res.json({ message: 'Type deleted' });
     } catch (err) { next(err); }
   }
 

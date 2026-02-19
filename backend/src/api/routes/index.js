@@ -13,6 +13,7 @@ const rolesController = require('../controllers/rolesController');
 const projectsController = require('../controllers/projectsController');
 const issuesController = require('../controllers/issuesController');
 const documentsController = require('../controllers/documentsController');
+const specializationsController = require('../controllers/specializationsController');
 const issueHistoryController = require('../controllers/issueHistoryController');
 const documentHistoryController = require('../controllers/documentHistoryController');
 const materialsController = require('../controllers/materialsController');
@@ -140,10 +141,18 @@ router.get('/issues', authMiddleware, issuesController.list);
 router.get('/issue_statuses', authMiddleware, issuesController.listStatuses);
 // GET /api/issue_statuses/:id - get single issue status
 router.get('/issue_statuses/:id', authMiddleware, issuesController.getStatus);
+// Issue statuses CRUD
+router.post('/issue_statuses', authMiddleware, issuesController.createStatus);
+router.put('/issue_statuses/:id', authMiddleware, issuesController.updateStatus);
+router.delete('/issue_statuses/:id', authMiddleware, issuesController.deleteStatus);
 // GET /api/issue_types - list available issue types
 router.get('/issue_types', authMiddleware, issuesController.listTypes);
 // GET /api/issue_types/:id - get single issue type
 router.get('/issue_types/:id', authMiddleware, issuesController.getType);
+// Issue types CRUD
+router.post('/issue_types', authMiddleware, issuesController.createType);
+router.put('/issue_types/:id', authMiddleware, issuesController.updateType);
+router.delete('/issue_types/:id', authMiddleware, issuesController.deleteType);
 // GET /api/issues/:id
 router.get('/issues/:id', authMiddleware, issuesController.get);
 // POST /api/issues
@@ -183,6 +192,24 @@ router.post('/documents/directories', authMiddleware, documentsController.create
 router.put('/documents/directories/:id', authMiddleware, documentsController.updateDirectory);
 // DELETE /api/documents/directories/:id - delete
 router.delete('/documents/directories/:id', authMiddleware, documentsController.deleteDirectory);
+// Document types
+router.get('/document_types', authMiddleware, documentsController.listTypes);
+router.get('/document_types/:id', authMiddleware, documentsController.getType);
+router.post('/document_types', authMiddleware, documentsController.createType);
+router.put('/document_types/:id', authMiddleware, documentsController.updateType);
+router.delete('/document_types/:id', authMiddleware, documentsController.deleteType);
+// Document statuses (CRUD)
+router.get('/document_statuses', authMiddleware, documentsController.listStatuses);
+router.get('/document_statuses/:id', authMiddleware, documentsController.getStatus);
+router.post('/document_statuses', authMiddleware, documentsController.createStatus);
+router.put('/document_statuses/:id', authMiddleware, documentsController.updateStatus);
+router.delete('/document_statuses/:id', authMiddleware, documentsController.deleteStatus);
+// Document storage types (CRUD)
+router.get('/document_storage_types', authMiddleware, documentsController.listStorageTypes);
+router.get('/document_storage_types/:id', authMiddleware, documentsController.getStorageType);
+router.post('/document_storage_types', authMiddleware, documentsController.createStorageType);
+router.put('/document_storage_types/:id', authMiddleware, documentsController.updateStorageType);
+router.delete('/document_storage_types/:id', authMiddleware, documentsController.deleteStorageType);
 // GET /api/documents/:id
 router.get('/documents/:id', authMiddleware, documentsController.get);
 // POST /api/documents
@@ -195,6 +222,8 @@ router.delete('/documents/:id', authMiddleware, documentsController.delete);
 router.get('/documents/:id/history', authMiddleware, documentHistoryController.list);
 // POST /api/documents/:id/messages - add comment/message to a document
 router.post('/documents/:id/messages', authMiddleware, documentsController.addMessage);
+// GET /api/documents/:id/messages - list messages for a document
+router.get('/documents/:id/messages', authMiddleware, documentsController.listMessages);
 // POST /api/documents/:id/files - attach file to document
 // POST /api/documents/:id/files - attach file to document (supports multipart field 'file' or JSON { storage_id })
 router.post('/documents/:id/files', authMiddleware, _upload.single('file'), documentsController.attachFile);
@@ -204,6 +233,12 @@ router.post('/documents/:id/files/local', authMiddleware, _upload.single('file')
 router.delete('/documents/:id/files/:storage_id', authMiddleware, documentsController.detachFile);
 // GET /api/documents/:id/files - list files attached to document
 router.get('/documents/:id/files', authMiddleware, documentsController.listFiles);
+// Specializations (CRUD)
+router.get('/specializations', authMiddleware, specializationsController.list);
+router.get('/specializations/:id', authMiddleware, specializationsController.get);
+router.post('/specializations', authMiddleware, specializationsController.create);
+router.put('/specializations/:id', authMiddleware, specializationsController.update);
+router.delete('/specializations/:id', authMiddleware, specializationsController.delete);
 // (document directories routes registered earlier)
 
 // ===== Entity links routes =====

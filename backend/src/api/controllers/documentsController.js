@@ -49,6 +49,19 @@ class DocumentsController {
   }
 
   /**
+   * GET /api/documents/:id/messages - list messages for a document
+   */
+  static async listMessages(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { limit = 100, offset = 0 } = req.query || {};
+      const rows = await DocumentsService.listDocumentMessages(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
    * POST /api/documents/:id/files - attach existing storage item to document
    * Body: { storage_id: number }
    */
@@ -59,12 +72,25 @@ class DocumentsController {
       if (req.file) {
         const StorageService = require('../services/storageService');
         const createdStorage = await StorageService.uploadAndCreate(req.file, actor, req.body || {});
-        const created = await DocumentsService.attachFileToDocument(Number(id), Number(createdStorage.id), actor);
+        // Build metadata from request body if provided
+        const metadata = {
+          type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
+          rev: req.body && req.body.rev ? Number(req.body.rev) : undefined,
+          archive: req.body && typeof req.body.archive !== 'undefined' ? (req.body.archive === 'true' || req.body.archive === true) : undefined,
+          archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined
+        };
+        const created = await DocumentsService.attachFileToDocument(Number(id), Number(createdStorage.id), actor, metadata);
         res.status(201).json({ data: created });
         return;
       }
       const { storage_id } = req.body || {};
-      const created = await DocumentsService.attachFileToDocument(Number(id), Number(storage_id), actor);
+      const metadata = {
+        type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
+        rev: req.body && req.body.rev ? Number(req.body.rev) : undefined,
+        archive: req.body && typeof req.body.archive !== 'undefined' ? (req.body.archive === 'true' || req.body.archive === true) : undefined,
+        archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined
+      };
+      const created = await DocumentsService.attachFileToDocument(Number(id), Number(storage_id), actor, metadata);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }
@@ -80,7 +106,13 @@ class DocumentsController {
       if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
       const StorageService = require('../services/storageService');
       const createdStorage = await StorageService.uploadToLocalAndCreate(req.file, actor, req.body || {});
-      const created = await DocumentsService.attachFileToDocument(Number(id), Number(createdStorage.id), actor);
+      const metadata = {
+        type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
+        rev: req.body && req.body.rev ? Number(req.body.rev) : undefined,
+        archive: req.body && typeof req.body.archive !== 'undefined' ? (req.body.archive === 'true' || req.body.archive === true) : undefined,
+        archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined
+      };
+      const created = await DocumentsService.attachFileToDocument(Number(id), Number(createdStorage.id), actor, metadata);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }
@@ -154,6 +186,186 @@ class DocumentsController {
       const actor = req.user || null;
       const rows = await DocumentsService.listDirectories(actor);
       res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/document_types - list document types
+   */
+  static async listTypes(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await DocumentsService.listTypes(actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/document_types/:id - get single document type
+   */
+  static async getType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const row = await DocumentsService.getTypeById(id, actor);
+      if (!row) { const err = new Error('Type not found'); err.statusCode = 404; throw err; }
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * POST /api/document_types - create a new document type
+   */
+  static async createType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const created = await DocumentsService.createType(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * PUT /api/document_types/:id - update document type
+   */
+  static async updateType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const updated = await DocumentsService.updateType(Number(id), req.body || {}, actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * DELETE /api/document_types/:id - delete document type
+   */
+  static async deleteType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const ok = await DocumentsService.deleteType(Number(id), actor);
+      if (!ok) { const err = new Error('Type not found'); err.statusCode = 404; throw err; }
+      res.json({ message: 'Type deleted' });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/document_statuses - list document statuses
+   */
+  static async listStatuses(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await DocumentsService.listStatuses(actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/document_statuses/:id - get single document status
+   */
+  static async getStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const row = await DocumentsService.getStatusById(id, actor);
+      if (!row) { const err = new Error('Status not found'); err.statusCode = 404; throw err; }
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * POST /api/document_statuses - create a new document status
+   */
+  static async createStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const created = await DocumentsService.createStatus(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * PUT /api/document_statuses/:id - update document status
+   */
+  static async updateStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const updated = await DocumentsService.updateStatus(Number(id), req.body || {}, actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * DELETE /api/document_statuses/:id - delete document status
+   */
+  static async deleteStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const ok = await DocumentsService.deleteStatus(Number(id), actor);
+      if (!ok) { const err = new Error('Status not found'); err.statusCode = 404; throw err; }
+      res.json({ message: 'Status deleted' });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/document_storage_types - list storage types for documents
+   */
+  static async listStorageTypes(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await DocumentsService.listStorageTypes(actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/document_storage_types/:id - get single storage type
+   */
+  static async getStorageType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const row = await DocumentsService.getStorageTypeById(id, actor);
+      if (!row) { const err = new Error('Storage type not found'); err.statusCode = 404; throw err; }
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * POST /api/document_storage_types - create a new storage type
+   */
+  static async createStorageType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const created = await DocumentsService.createStorageType(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * PUT /api/document_storage_types/:id - update storage type
+   */
+  static async updateStorageType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const updated = await DocumentsService.updateStorageType(Number(id), req.body || {}, actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * DELETE /api/document_storage_types/:id - delete storage type
+   */
+  static async deleteStorageType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const ok = await DocumentsService.deleteStorageType(Number(id), actor);
+      if (!ok) { const err = new Error('Storage type not found'); err.statusCode = 404; throw err; }
+      res.json({ message: 'Storage type deleted' });
     } catch (err) { next(err); }
   }
 

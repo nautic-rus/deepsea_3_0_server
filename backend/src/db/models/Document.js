@@ -7,6 +7,7 @@ class Document {
       id,
       project_id,
       stage_id,
+      type_id,
       specialization_id,
       directory_id,
       status_id,
@@ -32,7 +33,25 @@ class Document {
     if (project_id !== undefined) { where.push(`project_id = $${idx++}`); values.push(project_id); }
     if (stage_id !== undefined) { where.push(`stage_id = $${idx++}`); values.push(stage_id); }
     if (specialization_id !== undefined) { where.push(`specialization_id = $${idx++}`); values.push(specialization_id); }
-    if (directory_id !== undefined) { where.push(`directory_id = $${idx++}`); values.push(directory_id); }
+    if (directory_id !== undefined) {
+      // If a directory_id filter is provided, include documents in that directory
+      // and in all its descendant directories (recursive). Use a recursive CTE
+      // to collect descendant ids from document_directories.parent_id.
+      try {
+        const dirsRes = await pool.query(`WITH RECURSIVE d AS (SELECT id FROM document_directories WHERE id = $1 UNION ALL SELECT dd.id FROM document_directories dd JOIN d ON dd.parent_id = d.id) SELECT id FROM d`, [Number(directory_id)]);
+        const dirIds = (dirsRes.rows || []).map(r => r.id).filter(n => n !== undefined && n !== null);
+        if (!dirIds || dirIds.length === 0) {
+          // No such directory -> return empty result set early
+          return [];
+        }
+        where.push(`directory_id = ANY($${idx++})`);
+        values.push(dirIds);
+      } catch (e) {
+        // If document_directories table is missing or other error, fall back to exact match
+        where.push(`directory_id = $${idx++}`);
+        values.push(directory_id);
+      }
+    }
     if (status_id !== undefined) { where.push(`status_id = $${idx++}`); values.push(status_id); }
   if (created_by !== undefined) { where.push(`created_by = $${idx++}`); values.push(created_by); }
   if (assigne_to !== undefined) { where.push(`assigne_to = $${idx++}`); values.push(assigne_to); }
@@ -56,21 +75,21 @@ class Document {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const q = `SELECT id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, assigne_to, created_by, created_at, is_active FROM documents ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
+  const q = `SELECT id, title, description, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, created_at, code FROM documents ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
     values.push(limit, offset);
     const res = await pool.query(q, values);
     return res.rows;
   }
 
   static async findById(id) {
-    const q = `SELECT id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, assigne_to, created_by, created_at FROM documents WHERE id = $1 LIMIT 1`;
+    const q = `SELECT id, title, description, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, created_at, code FROM documents WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
 
   static async create(fields) {
-    const q = `INSERT INTO documents (title, description, project_id, stage_id, specialization_id, directory_id, assigne_to, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, assigne_to, created_by, created_at`;
-    const vals = [fields.title, fields.description, fields.project_id, fields.stage_id, fields.specialization_id, fields.directory_id, fields.assigne_to || null, fields.created_by];
+    const q = `INSERT INTO documents (title, description, project_id, stage_id, type_id, specialization_id, directory_id, assigne_to, created_by, code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, title, description, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, created_at, code`;
+    const vals = [fields.title, fields.description, fields.project_id, fields.stage_id, fields.type_id || null, fields.specialization_id, fields.directory_id, fields.assigne_to || null, fields.created_by, fields.code || null];
     const res = await pool.query(q, vals);
     return res.rows[0];
   }
@@ -79,11 +98,11 @@ class Document {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['title','description','stage_id','specialization_id','directory_id','status_id','assigne_to'].forEach((k) => {
+    ['title','description','stage_id','type_id','specialization_id','directory_id','status_id','assigne_to','code'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Document.findById(id);
-    const q = `UPDATE documents SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, title, description, project_id, stage_id, status_id, specialization_id, directory_id, assigne_to, created_by, created_at`;
+    const q = `UPDATE documents SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, title, description, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, created_at, code`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;
