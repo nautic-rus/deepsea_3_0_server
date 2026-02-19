@@ -294,13 +294,7 @@ class IssuesService {
     // author_id default to actor.id if not provided (API field name). Stored in DB as reporter_id.
     if (!fields.author_id) fields.author_id = actor.id;
     const created = await Issue.create(fields);
-
-    // Add history record for creation (fire-and-forget) - save per-field values
-    (async () => {
-      try {
-        await HistoryService.addIssueHistory(created.id, actor, 'created', { before: {}, after: created });
-      } catch (e) { console.error('Failed to write issue history for created issue', e && e.message ? e.message : e); }
-    })();
+    // Intentionally do not write a history entry for issue creation per request.
 
     // Fire-and-forget: notify users who subscribed to 'issue_created' (project-specific or global)
     (async () => {
@@ -681,12 +675,7 @@ class IssuesService {
 
   const created = await IssueMessage.create({ issue_id: Number(id), user_id: actor.id, content: String(content), parent_id: parent_id ? Number(parent_id) : null });
 
-    // History: simple entry for comment
-    (async () => {
-      try {
-        await HistoryService.addIssueHistory(Number(id), actor, 'commented', { before: {}, after: { comment: created.content } });
-      } catch (e) { console.error('Failed to write issue history for comment', e && e.message ? e.message : e); }
-    })();
+    // Intentionally not recording a history entry for comment creation per request.
 
     // Notify issue participants (assignee, author) by creating user_notifications
     (async () => {

@@ -210,12 +210,7 @@ class DocumentsService {
 
     if (!fields.created_by) fields.created_by = actor.id;
     const created = await Document.create(fields);
-    // Record creation in history (fire-and-forget) - write per-field entries
-    (async () => {
-      try {
-        await HistoryService.addDocumentHistory(created.id, actor, 'created', { before: {}, after: created });
-      } catch (e) { console.error('Failed to write document history for creation', e && e.message ? e.message : e); }
-    })();
+    // Intentionally do not write a history entry for document creation per request.
     return created;
   }
 
@@ -306,12 +301,7 @@ class DocumentsService {
 
     const created = await DocumentMessage.create({ document_id: Number(id), user_id: actor.id, content: String(content), parent_id: parent_id ? Number(parent_id) : null });
 
-    // Record history
-    (async () => {
-      try {
-        await HistoryService.addDocumentHistory(Number(id), actor, 'commented', { before: {}, after: { comment: created.content } });
-      } catch (e) { console.error('Failed to write document history for comment', e && e.message ? e.message : e); }
-    })();
+    // Intentionally not recording a history entry for comment creation per request.
 
     // Notify document author/owner if present
     (async () => {

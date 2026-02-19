@@ -98,7 +98,7 @@ class Document {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['title','description','stage_id','type_id','specialization_id','directory_id','status_id','assigne_to','code'].forEach((k) => {
+    ['title','description','project_id','stage_id','type_id','specialization_id','directory_id','status_id','assigne_to','code'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Document.findById(id);
