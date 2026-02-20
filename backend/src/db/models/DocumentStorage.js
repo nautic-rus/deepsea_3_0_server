@@ -35,9 +35,14 @@ class DocumentStorage {
 
   static async listByDocument(documentId, { limit = 100, offset = 0 } = {}) {
     const q = `SELECT s.id AS id, s.document_id, s.storage_id, s.type_id, s.rev, s.user_id, s.archive, s.archive_data,
-        st.bucket_name, st.object_key, st.storage_type, st.uploaded_by, st.created_at AS storage_created_at
+        st.bucket_name, st.object_key, st.storage_type, st.uploaded_by, st.created_at AS storage_created_at,
+        st.file_name, st.file_size, st.mime_type,
+        dst.name AS type_name,
+        u.username AS user_username, u.first_name AS user_first_name, u.last_name AS user_last_name, u.middle_name AS user_middle_name, u.email AS user_email, u.avatar_id AS user_avatar_id
       FROM documents_storage s
       JOIN storage st ON st.id = s.storage_id
+      LEFT JOIN documents_storage_type dst ON dst.id = s.type_id
+      LEFT JOIN users u ON u.id = s.user_id
       WHERE s.document_id = $1
       ORDER BY s.id DESC
       LIMIT $2 OFFSET $3`;

@@ -87,7 +87,7 @@ class IssuesService {
       const statusIds = [...new Set(issues.filter(i => i.status_id).map(i => i.status_id))];
       const typeIds = [...new Set(issues.filter(i => i.type_id).map(i => i.type_id))];
 
-      const qProjects = projectIds.length ? pool.query(`SELECT id, name FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
+  const qProjects = projectIds.length ? pool.query(`SELECT id, name, code FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
   const qUsers = (assigneeIds.length || authorIds.length) ? pool.query(`SELECT id, username, first_name, last_name, middle_name, email, avatar_id FROM users WHERE id = ANY($1::int[])`, [[...new Set([...assigneeIds, ...authorIds])]]) : Promise.resolve({ rows: [] });
       const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM issue_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
       const qTypes = typeIds.length ? pool.query(`SELECT id, name, code FROM issue_type WHERE id = ANY($1::int[])`, [typeIds]) : Promise.resolve({ rows: [] });
@@ -110,8 +110,9 @@ class IssuesService {
       };
 
       for (const it of issues) {
-        const proj = it.project_id ? projectMap.get(it.project_id) : null;
-        it.project_name = proj ? proj.name || null : null;
+  const proj = it.project_id ? projectMap.get(it.project_id) : null;
+  it.project_name = proj ? proj.name || null : null;
+  it.project_code = proj ? proj.code || null : null;
   const assignee = it.assignee_id ? userMap.get(it.assignee_id) : null;
   const author = it.author_id ? userMap.get(it.author_id) : null;
   it.assignee_name = mkUserDisplay(assignee);
@@ -227,7 +228,8 @@ class IssuesService {
 
       const [projectRow, assigneeRow, authorRow, statusRes, typeRes] = await Promise.all([...lookups, qStatus, qType]);
 
-      i.project_name = projectRow ? projectRow.name || null : null;
+  i.project_name = projectRow ? projectRow.name || null : null;
+  i.project_code = projectRow ? projectRow.code || null : null;
 
       const mkUserDisplay = (u) => {
         if (!u) return null;

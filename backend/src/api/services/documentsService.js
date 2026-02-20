@@ -57,7 +57,7 @@ class DocumentsService {
   const creatorIds = [...new Set(docs.filter(d => d.created_by).map(d => d.created_by))];
   const assigneeIds = [...new Set(docs.filter(d => d.assigne_to).map(d => d.assigne_to))];
 
-      const qProjects = projectIds.length ? pool.query(`SELECT id, name FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
+  const qProjects = projectIds.length ? pool.query(`SELECT id, name, code FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
       const qStages = stageIds.length ? pool.query(`SELECT id, name, end_date FROM stages WHERE id = ANY($1::int[])`, [stageIds]) : Promise.resolve({ rows: [] });
   const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM document_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
   const qSpecs = specIds.length ? pool.query(`SELECT id, name FROM specializations WHERE id = ANY($1::int[])`, [specIds]) : Promise.resolve({ rows: [] });
@@ -87,15 +87,17 @@ class DocumentsService {
       };
 
       for (const it of docs) {
-        const proj = it.project_id ? projectMap.get(it.project_id) : null;
-        it.project_name = proj ? proj.name || null : null;
+  const proj = it.project_id ? projectMap.get(it.project_id) : null;
+  it.project_name = proj ? proj.name || null : null;
+  it.project_code = proj ? proj.code || null : null;
 
         const st = it.stage_id ? stageMap.get(it.stage_id) : null;
         it.stage_name = st ? st.name : null;
         it.stage_date = st ? st.end_date : null;
 
-        const stat = it.status_id ? statusMap.get(it.status_id) : null;
-        it.status_name = stat ? stat.name : null;
+  const stat = it.status_id ? statusMap.get(it.status_id) : null;
+  it.status_name = stat ? stat.name : null;
+  it.status_code = stat ? stat.code : null;
 
   const sp = it.specialization_id ? specMap.get(it.specialization_id) : null;
   it.specialization_name = sp ? sp.name : null;
@@ -387,7 +389,28 @@ class DocumentsService {
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
     const existing = await Document.findById(Number(id));
     if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
-    return await DocumentStorage.listByDocument(Number(id), opts);
+    const rows = await DocumentStorage.listByDocument(Number(id), opts);
+    if (!rows || rows.length === 0) return [];
+
+    // Normalize/shape rows: include file_name, type_name and nested user info
+    return rows.map((r) => {
+      const fullNameParts = [r.user_last_name, r.user_first_name, r.user_middle_name].filter(Boolean);
+      const fullName = fullNameParts.length ? fullNameParts.join(' ') : (r.user_username || r.user_email || null);
+      const user = r.user_id ? { id: r.user_id, full_name: fullName, username: r.user_username || null, email: r.user_email || null, avatar_id: r.user_avatar_id || null } : null;
+
+      // Build output object
+      const out = Object.assign({}, r, {
+        file_name: r.file_name || null,
+        mime_type: r.mime_type || null,
+        file_size: r.file_size || null,
+        type_name: r.type_name || null,
+        user: user
+      });
+
+      // Remove raw user_* fields
+      delete out.user_username; delete out.user_first_name; delete out.user_last_name; delete out.user_middle_name; delete out.user_email; delete out.user_avatar_id;
+      return out;
+    });
   }
 
   /**
