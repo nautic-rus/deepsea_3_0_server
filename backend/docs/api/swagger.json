@@ -5276,6 +5276,68 @@
           }
         }
       },
+      "put": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Обновить метаданные прикреплённого файла документа",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID документа"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "storage_id"
+                ],
+                "properties": {
+                  "storage_id": { "type": "integer" },
+                  "type_id": { "type": "integer", "nullable": true },
+                  "rev": { "type": "integer", "nullable": true },
+                  "archive": { "type": "boolean" },
+                  "archive_data": { "type": "string", "nullable": true },
+                  "user_id": { "type": "integer", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageRef"
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid input or ids" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission documents.update" },
+          "404": { "description": "Document or attached storage item not found" }
+        }
+      },
       "get": {
         "tags": [
           "documents"
@@ -7242,7 +7304,39 @@
         }
       }
     },
-    "/api/statements": {
+      "/api/storage/download": {
+        "post": {
+          "tags": ["storage"],
+          "summary": "Скачать несколько файлов в одном ZIP-архиве",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["storage.view"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["ids"],
+                  "properties": {
+                    "ids": { "type": "array", "items": { "type": "integer" } },
+                    "filename": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "ZIP archive stream (binary)",
+              "content": { "application/zip": { "schema": { "type": "string", "format": "binary" } } }
+            },
+            "400": { "description": "Invalid input" },
+            "401": { "description": "Authentication required" },
+            "403": { "description": "Forbidden - missing permission storage.view" }
+          }
+        }
+      },
+      "/api/statements": {
       "get": {
         "tags": [
           "statements"
