@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const storageConfig = require('../../config/storage');
 const archiver = require('archiver');
-const Storage = require('../../db/models/Storage');
+// ...existing code...
 
 /**
  * StorageService
