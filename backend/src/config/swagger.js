@@ -97,8 +97,17 @@ const swaggerOptions = {
   ],
 };
 
-// Генерируем спецификацию из JSDoc (опционально, можно использовать существующий swagger.json)
-const swaggerSpecFromJsdoc = swaggerJsdoc(swaggerOptions);
+// Генерация спецификации из JSDoc отложена: выполняем только по запросу или в fallback,
+// чтобы избежать ошибок при require() (например, если glob-пути не подходят в окружении).
+function generateSwaggerFromJsdoc() {
+  try {
+    return swaggerJsdoc(swaggerOptions);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to generate swagger spec from JSDoc (deferred):', e && e.message ? e.message : e);
+    return {};
+  }
+}
 
 // Теперь загрузим основную спецификацию (статическую) с возможностью падения
 // на сгенерированную из JSDoc, но делаем это после того как swaggerOptions
@@ -108,7 +117,8 @@ let swaggerSpec = loadSwaggerSpec();
 module.exports = {
   swaggerUi,
   swaggerSpec, // Используем существующий swagger.json
-  swaggerSpecFromJsdoc, // Альтернативная спецификация из JSDoc
+  // Альтернативная спецификация из JSDoc (генерируется отложенно):
+  generateSwaggerFromJsdoc,
   // Экспортируем загрузчик чтобы другие модули могли принудительно перечитать
   // спецификацию в рантайме, если это нужно (например для dev hot-reload).
   loadSwaggerSpec,
