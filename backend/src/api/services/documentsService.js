@@ -346,11 +346,7 @@ class DocumentsService {
   // Ensure user_id is set to actor by default
   if (!attachPayload.user_id && actor && actor.id) attachPayload.user_id = actor.id;
   const attached = await DocumentStorage.attach(attachPayload);
-    (async () => {
-      try {
-        await HistoryService.addDocumentHistory(Number(id), actor, 'file_attached', { before: {}, after: { storage_id: storageId } });
-      } catch (e) { console.error('Failed to write document history for file attach', e && e.message ? e.message : e); }
-    })();
+    // Do not record a history entry for file attachment per request.
     return attached;
   }
 
@@ -380,6 +376,36 @@ class DocumentsService {
       } catch (e) { console.error('Failed to run post-detach storage cleanup', e && e.message ? e.message : e); }
     })();
     return detached;
+  }
+
+  /**
+   * Update metadata for an attached file on a document.
+   * @param {number} id - document id
+   * @param {number} storageId - storage id
+   * @param {Object} metadata - metadata fields to update (type_id, rev, user_id, archive, archive_data)
+   * @param {Object} actor - user performing the action
+   */
+  static async updateFileMetadata(id, storageId, metadata = {}, actor) {
+    const requiredPermission = 'documents.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
+
+    const existing = await Document.findById(Number(id));
+    if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+
+    const canUpdateAll = await hasPermission(actor, 'documents.update_all');
+    const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
+    if (!canUpdateAll && !canViewAllProjects && existing.project_id) {
+      const Project = require('../../db/models/Project');
+      const isAssigned = await Project.isUserAssigned(existing.project_id, actor.id);
+      if (!isAssigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
+
+    // Delegate to DocumentStorage.updateMetadata
+    const updated = await DocumentStorage.updateMetadata({ document_id: Number(id), storage_id: Number(storageId), metadata });
+    return updated;
   }
 
   static async listDocumentFiles(id, opts = {}, actor) {

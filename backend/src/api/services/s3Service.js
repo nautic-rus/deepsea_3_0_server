@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { v4: uuidv4 } = require('uuid');
 
 // Configure S3 client via environment variables. These should be set in
@@ -44,6 +44,20 @@ class S3Service {
     const cmd = new DeleteObjectCommand({ Bucket: bucket, Key: key });
     await s3Client.send(cmd);
     return true;
+  }
+
+  /**
+   * Return a readable stream for an S3 object.
+   * @param {string} bucket
+   * @param {string} key
+   * @returns {stream.Readable}
+   */
+  static async getObjectStream({ bucket, key }) {
+    if (!bucket || !key) throw new Error('Missing bucket or key');
+    const cmd = new GetObjectCommand({ Bucket: bucket, Key: key });
+    const res = await s3Client.send(cmd);
+    // res.Body is a stream.Readable in Node.js
+    return res.Body;
   }
 }
 

@@ -96,6 +96,31 @@ class DocumentsController {
   }
 
   /**
+   * PUT /api/documents/:id/files - update metadata for an attached file
+   * Body: { storage_id: number, type_id?, rev?, archive?, archive_data?, user_id? }
+   */
+  static async updateFile(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { storage_id } = req.body || {};
+      if (!storage_id) { const err = new Error('Missing storage_id'); err.statusCode = 400; throw err; }
+
+      const metadata = {
+        type_id: typeof req.body.type_id !== 'undefined' ? (req.body.type_id === null ? null : Number(req.body.type_id)) : undefined,
+        rev: typeof req.body.rev !== 'undefined' ? (req.body.rev === null ? null : Number(req.body.rev)) : undefined,
+        archive: typeof req.body.archive !== 'undefined' ? (req.body.archive === true || req.body.archive === 'true') : undefined,
+        archive_data: typeof req.body.archive_data !== 'undefined' ? req.body.archive_data : undefined,
+        user_id: typeof req.body.user_id !== 'undefined' ? (req.body.user_id === null ? null : Number(req.body.user_id)) : undefined
+      };
+
+      const updated = await DocumentsService.updateFileMetadata(Number(id), Number(storage_id), metadata, actor);
+      if (!updated) { const err = new Error('Attached file not found'); err.statusCode = 404; throw err; }
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  /**
    * Attach a file uploaded to local storage and link it to a document.
    * Endpoint: POST /api/documents/:id/files/local
    */

@@ -126,6 +126,20 @@ class StorageController {
       const err = new Error('Unsupported storage type'); err.statusCode = 500; throw err;
     } catch (err) { next(err); }
   }
+
+  /**
+   * Download multiple storage items as a single ZIP archive.
+   * Endpoint: POST /api/storage/download
+   * Body: { ids: [1,2,3], filename?: 'archive.zip' }
+   */
+  static async downloadMultiple(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const { ids, filename } = req.body || {};
+      await StorageService.downloadMultipleAsZip(Array.isArray(ids) ? ids.map(Number) : [], actor, res, filename || 'files.zip');
+      // Note: response streaming handled by StorageService; do not send further JSON
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = StorageController;

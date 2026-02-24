@@ -227,6 +227,8 @@ router.get('/documents/:id/messages', authMiddleware, documentsController.listMe
 // POST /api/documents/:id/files - attach file to document
 // POST /api/documents/:id/files - attach file to document (supports multipart field 'file' or JSON { storage_id })
 router.post('/documents/:id/files', authMiddleware, _upload.single('file'), documentsController.attachFile);
+// PUT /api/documents/:id/files - update metadata for an attached file
+router.put('/documents/:id/files', authMiddleware, documentsController.updateFile);
 // POST /api/documents/:id/files/local - upload file to local storage and attach to document
 router.post('/documents/:id/files/local', authMiddleware, _upload.single('file'), documentsController.attachLocalFile);
 // DELETE /api/documents/:id/files/:storage_id - detach file from document
@@ -300,6 +302,8 @@ router.get('/storage', authMiddleware, storageController.list);
 router.get('/storage/:id', authMiddleware, storageController.get);
 // GET /api/storage/:id/download - download or stream the actual file
 router.get('/storage/:id/download', authMiddleware, storageController.download);
+// POST /api/storage/download - download multiple storage items as a ZIP
+router.post('/storage/download', authMiddleware, storageController.downloadMultiple);
 // POST /api/storage - (removed) create storage DB record was removed; use /storage/local or /storage/s3 instead
 // POST /api/storage/local - upload file to local storage
 router.post('/storage/local', authMiddleware, _upload.single('file'), storageController.uploadLocal);
