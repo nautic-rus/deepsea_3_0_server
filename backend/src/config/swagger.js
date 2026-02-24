@@ -30,8 +30,6 @@ function loadSwaggerSpec() {
   }
 }
 
-const swaggerSpec = loadSwaggerSpec();
-
 // Опции для swagger-jsdoc (для генерации документации из JSDoc комментариев)
 const swaggerOptions = {
   definition: {
@@ -64,6 +62,34 @@ const swaggerOptions = {
       },
     },
   },
+  // For compatibility with older versions of swagger-jsdoc which expect
+  // `swaggerDefinition` instead of `definition`, expose the same object.
+  swaggerDefinition: {
+    openapi: '3.0.3',
+    info: {
+      title: 'DeepSea 3.0 API',
+      version: '3.0.0',
+      description: 'API документация для системы DeepSea 3.0',
+      contact: {
+        name: 'API Support',
+      },
+    },
+    servers: [
+      {
+        url: 'http://localhost:3000',
+        description: 'Development server',
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
+  },
   // Пути к файлам с JSDoc комментариями
   apis: [
     path.join(__dirname, '../api/routes/**/*.js'),
@@ -73,6 +99,11 @@ const swaggerOptions = {
 
 // Генерируем спецификацию из JSDoc (опционально, можно использовать существующий swagger.json)
 const swaggerSpecFromJsdoc = swaggerJsdoc(swaggerOptions);
+
+// Теперь загрузим основную спецификацию (статическую) с возможностью падения
+// на сгенерированную из JSDoc, но делаем это после того как swaggerOptions
+// уже определены чтобы избежать ошибок вызова swaggerJsdoc с undefined.
+let swaggerSpec = loadSwaggerSpec();
 
 module.exports = {
   swaggerUi,
