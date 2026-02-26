@@ -126,7 +126,7 @@ class DocumentsService {
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const d = await Document.findById(Number(id));
-    if (!d) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+  if (!d || d.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
     // Ensure actor belongs to the document's project unless they have view_all
     const canViewAll = await hasPermission(actor, 'documents.view_all');
     if (!canViewAll) {
@@ -210,9 +210,98 @@ class DocumentsService {
       if (!assigned) { const err = new Error('Forbidden: user not assigned to target project'); err.statusCode = 403; throw err; }
     }
 
+    // If created_by isn't provided, set it to the actor
     if (!fields.created_by) fields.created_by = actor.id;
+
+    // Validate comment length to avoid DB errors (varchar(40)). If present,
+    // enforce max length 40.
+    if (typeof fields.comment !== 'undefined' && fields.comment !== null) {
+      if (String(fields.comment).length > 40) { const err = new Error('Field comment too long (max 40 chars)'); err.statusCode = 400; throw err; }
+      // Normalize empty string to undefined so DB default / nullable behavior is consistent
+      if (String(fields.comment).trim() === '') delete fields.comment;
+    }
+
+    // Do not send an explicit priority value to the DB when the client
+    // hasn't provided one (or provided an empty/null value). If we pass
+    // priority = null/'' the DB default will be overwritten with that
+    // value. Remove the key so the DB can apply its default.
+    if (typeof fields.priority === 'undefined' || fields.priority === null || String(fields.priority).trim() === '') {
+      delete fields.priority;
+    } else {
+      // Ensure numeric priority when it's present
+      const p = Number(fields.priority);
+      if (!Number.isNaN(p)) fields.priority = p;
+      else delete fields.priority; // invalid -> let DB default
+    }
+
     const created = await Document.create(fields);
     // Intentionally do not write a history entry for document creation per request.
+
+    // Fire-and-forget: notify users who subscribed to 'document_created' (project-specific or global)
+    (async () => {
+      try {
+        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+        const TemplateService = require('./notificationTemplateService');
+        const EmailService = require('./emailService');
+        const RocketChatService = require('./rocketChatService');
+
+        const recipients = await UserNotificationSetting.getRecipientsForEvent(created.project_id, 'document_created');
+        if (!recipients || recipients.length === 0) return;
+
+  const frontendRoot = process.env.FRONTEND_URL || '';
+  const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${created.project_id}/documents/${created.id}` : '';
+  // Include project.code when available so templates can render {{project.code}}
+  const context = { project: { id: created.project_id, code: (project && project.code) ? project.code : null }, document: created, actor: actor, documentUrl };
+
+        for (const r of recipients) {
+          try {
+            // Do not send notifications to the actor who performed the action
+            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
+              // skip sending/creating notifications for the actor
+              continue;
+            }
+            try {
+              const notifPayload = {
+                user_id: r.user_id,
+                event_code: 'document_created',
+                project_id: created.project_id,
+                data: { document: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              };
+              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
+            } catch (e) {
+              console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('document_created', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `New document: ${created.title}`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              } else {
+                console.warn('No Rocket.Chat mapping for user', r.user_id);
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('document_created', 'email', context);
+              const subject = rendered.subject || `New document ${created.title}`;
+              try {
+                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
+              } catch (mailErr) {
+                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
+              }
+            } else {
+              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
+            }
+          } catch (err) {
+            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
+          }
+        }
+      } catch (err) {
+        console.error('Error while processing notifications for document_created:', err && err.stack ? err.stack : err);
+      }
+    })();
+
     return created;
   }
 
@@ -225,14 +314,20 @@ class DocumentsService {
     // Ensure actor belongs to the document's project (unless they have elevated permission)
     const canUpdateAll = await hasPermission(actor, 'documents.update_all');
     const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
-    const existing = await Document.findById(Number(id));
-    if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+  const existing = await Document.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
     if (!canUpdateAll && !canViewAllProjects && existing.project_id) {
       const Project = require('../../db/models/Project');
       const isAssigned = await Project.isUserAssigned(existing.project_id, actor.id);
       if (!isAssigned && existing.project_id !== null && existing.project_id !== undefined && existing.project_id !== actor.id) {
         if (existing.project_id !== actor.id) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
       }
+    }
+
+    // Validate comment length before update to avoid DB errors (varchar(40)).
+    if (typeof fields.comment !== 'undefined' && fields.comment !== null) {
+      if (String(fields.comment).length > 40) { const err = new Error('Field comment too long (max 40 chars)'); err.statusCode = 400; throw err; }
+      if (String(fields.comment).trim() === '') delete fields.comment;
     }
 
     const updated = await Document.update(Number(id), fields);
@@ -243,6 +338,77 @@ class DocumentsService {
         await HistoryService.addDocumentHistory(Number(id), actor, 'updated', { before: existing, after: updated });
       } catch (e) { console.error('Failed to write document history for update', e && e.message ? e.message : e); }
     })();
+    // Fire-and-forget: notify users subscribed to 'document_updated'
+    (async () => {
+      try {
+        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+        const TemplateService = require('./notificationTemplateService');
+        const EmailService = require('./emailService');
+        const RocketChatService = require('./rocketChatService');
+
+        const recipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'document_updated');
+        if (!recipients || recipients.length === 0) return;
+
+        const frontendRoot = process.env.FRONTEND_URL || '';
+        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${updated.project_id}/documents/${updated.id}` : '';
+        // Try to fetch project to include its code in notification context
+        let _project = null;
+        try {
+          const Project = require('../../db/models/Project');
+          _project = await Project.findById(Number(updated.project_id));
+        } catch (e) {
+          _project = null;
+        }
+        const context = { project: { id: updated.project_id, code: (_project && _project.code) ? _project.code : null }, document: updated, actor: actor, documentUrl, changes: { before: existing, after: updated } };
+
+        for (const r of recipients) {
+          try {
+            // Do not send notifications to the actor who performed the action
+            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
+              continue;
+            }
+            try {
+              const notifPayload = {
+                user_id: r.user_id,
+                event_code: 'document_updated',
+                project_id: updated.project_id,
+                data: { document: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              };
+              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
+            } catch (e) {
+              console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('document_updated', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `Document updated: ${updated.title}`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              } else {
+                console.warn('No Rocket.Chat mapping for user', r.user_id);
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('document_updated', 'email', context);
+              const subject = rendered.subject || `Document updated ${updated.title}`;
+              try {
+                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
+              } catch (mailErr) {
+                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
+              }
+            } else {
+              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
+            }
+          } catch (err) {
+            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
+          }
+        }
+      } catch (err) {
+        console.error('Error while processing notifications for document_updated:', err && err.stack ? err.stack : err);
+      }
+    })();
+
     return updated;
   }
 
@@ -255,8 +421,8 @@ class DocumentsService {
     // Ensure actor is assigned to the document's project unless they have elevated permission
     const canDeleteAll = await hasPermission(actor, 'documents.delete_all');
     const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
-    const existing = await Document.findById(Number(id));
-    if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+  const existing = await Document.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
     if (!canDeleteAll && !canViewAllProjects && existing.project_id) {
       const Project = require('../../db/models/Project');
       const isAssigned = await Project.isUserAssigned(existing.project_id, actor.id);
@@ -288,8 +454,8 @@ class DocumentsService {
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
-    const existing = await Document.findById(Number(id));
-    if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+  const existing = await Document.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
 
     // Ensure actor is assigned to project unless they have view_all
     const canViewAll = await hasPermission(actor, 'documents.view_all');
@@ -305,7 +471,7 @@ class DocumentsService {
 
     // Intentionally not recording a history entry for comment creation per request.
 
-    // Notify document author/owner if present
+    // Notify document author/owner if present (center notification)
     (async () => {
       try {
         const recipients = [];
@@ -318,6 +484,72 @@ class DocumentsService {
       } catch (e) { console.error('Failed to enqueue notifications for document comment', e && e.message ? e.message : e); }
     })();
 
+    // Also notify subscribers according to user notification settings (email/rocket)
+    (async () => {
+      try {
+        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+        const TemplateService = require('./notificationTemplateService');
+        const EmailService = require('./emailService');
+        const RocketChatService = require('./rocketChatService');
+
+        const recipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'comment_added');
+        if (!recipients || recipients.length === 0) return;
+
+  const frontendRoot = process.env.FRONTEND_URL || '';
+  const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${existing.project_id}/documents/${existing.id}` : '';
+  // Include project.code when possible
+  let _projForComment = null;
+  try { const Project = require('../../db/models/Project'); _projForComment = await Project.findById(Number(existing.project_id)); } catch (e) { _projForComment = null; }
+  const context = { project: { id: existing.project_id, code: (_projForComment && _projForComment.code) ? _projForComment.code : null }, targetType: 'document', targetId: existing.id, targetTitle: existing.title, targetUrl, actor: actor, message: created };
+
+        for (const r of recipients) {
+          try {
+            // Do not send notifications to the actor who performed the action
+            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
+              continue;
+            }
+            try {
+              const notifPayload = {
+                user_id: r.user_id,
+                event_code: 'comment_added',
+                project_id: existing.project_id,
+                data: { document_id: existing.id, message: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              };
+              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
+            } catch (e) {
+              console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('comment_added', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `${existing.title}: new comment`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              } else {
+                console.warn('No Rocket.Chat mapping for user', r.user_id);
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('comment_added', 'email', context);
+              const subject = rendered.subject || `New comment on document ${existing.title}`;
+              try {
+                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
+              } catch (mailErr) {
+                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
+              }
+            } else {
+              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
+            }
+          } catch (err) {
+            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
+          }
+        }
+      } catch (err) {
+        console.error('Error while processing notifications for document comment_added:', err && err.stack ? err.stack : err);
+      }
+    })();
+
     return created;
   }
 
@@ -328,8 +560,8 @@ class DocumentsService {
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
 
-    const existing = await Document.findById(Number(id));
-    if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+  const existing = await Document.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
     const storageItem = await Storage.findById(Number(storageId));
     if (!storageItem) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
 
@@ -347,6 +579,80 @@ class DocumentsService {
   if (!attachPayload.user_id && actor && actor.id) attachPayload.user_id = actor.id;
   const attached = await DocumentStorage.attach(attachPayload);
     // Do not record a history entry for file attachment per request.
+    // Fire-and-forget: notify subscribers of 'document_uploaded'
+    (async () => {
+      try {
+        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+        const TemplateService = require('./notificationTemplateService');
+        const EmailService = require('./emailService');
+        const RocketChatService = require('./rocketChatService');
+
+        const recipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'document_uploaded');
+        if (!recipients || recipients.length === 0) return;
+
+  const frontendRoot = process.env.FRONTEND_URL || '';
+  const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${existing.project_id}/documents/${existing.id}` : '';
+  // Include project.code for templates
+  let _projForAttach = null;
+  try { const Project = require('../../db/models/Project'); _projForAttach = await Project.findById(Number(existing.project_id)); } catch (e) { _projForAttach = null; }
+  // Include storage info in context so templates can render file_name and other metadata.
+  const context = {
+    project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) ? _projForAttach.code : null },
+    document: existing,
+    actor: actor,
+    documentUrl,
+    storage: attached,
+    storage_item: storageItem
+  };
+
+        for (const r of recipients) {
+          try {
+            // Do not send notifications to the actor who performed the action
+            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
+              continue;
+            }
+            try {
+              const notifPayload = {
+                user_id: r.user_id,
+                event_code: 'document_uploaded',
+                project_id: existing.project_id,
+                data: { document: existing, storage: attached, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              };
+              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
+            } catch (e) {
+              console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('document_uploaded', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `Document uploaded: ${existing.title}`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              } else {
+                console.warn('No Rocket.Chat mapping for user', r.user_id);
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('document_uploaded', 'email', context);
+              const subject = rendered.subject || `Document uploaded ${existing.title}`;
+              try {
+                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
+              } catch (mailErr) {
+                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
+              }
+            } else {
+              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
+            }
+          } catch (err) {
+            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
+          }
+        }
+      } catch (err) {
+        console.error('Error while processing notifications for document_uploaded:', err && err.stack ? err.stack : err);
+      }
+    })();
+
     return attached;
   }
 
@@ -356,8 +662,8 @@ class DocumentsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
-    const existing = await Document.findById(Number(id));
-    if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+  const existing = await Document.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
     const detached = await DocumentStorage.detach({ document_id: Number(id), storage_id: Number(storageId) });
     (async () => {
       try {

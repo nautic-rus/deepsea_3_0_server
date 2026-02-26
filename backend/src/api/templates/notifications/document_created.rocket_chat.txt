@@ -1,0 +1,14 @@
+:white_check_mark: New document created!
+
+*Project: *{{project.code}}
+*Number: *{{document.code}}
+*Document: *{{document.title}}
+*Creator: *{{actor.full_name}}
+
+{{document.description}}
+
+{{documentUrl}}
+
+_This is an automated notification from {{company.name}}._
+
+

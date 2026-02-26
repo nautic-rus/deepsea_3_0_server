@@ -1,0 +1,9 @@
+Добро пожаловать в {{company.name}} — аккаунт создан
+
+Пользователь: {{user.username}} ({{user.email}})
+Имя: {{user.first_name}} {{user.last_name}}
+
+Перейти: {{loginUrl}}
+
+Это автоматическое уведомление от DeepSea.
+

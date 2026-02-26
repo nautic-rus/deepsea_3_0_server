@@ -5,7 +5,7 @@ const fs = require('fs');
 const uploadsDir = process.env.LOCAL_UPLOADS_DIR ? path.resolve(process.cwd(), process.env.LOCAL_UPLOADS_DIR) : path.resolve(process.cwd(), 'backend', 'uploads');
 
 // URL mount path for serving uploads from the Express app
-const mountPath = process.env.LOCAL_UPLOADS_MOUNT_PATH || '/backend/uploads';
+const mountPath = process.env.LOCAL_UPLOADS_MOUNT_PATH;
 
 // Ensure uploads directory exists
 try {

@@ -56,37 +56,85 @@ class NotificationTemplateService {
 
   // Render templates for given event and method. Returns { text, html, subject }
   static async render(event, method, context = {}) {
-    // Try filesystem templates first
-    const textTpl = await NotificationTemplateService._loadTemplateFile(event, method, 'txt');
-    const htmlTpl = await NotificationTemplateService._loadTemplateFile(event, method, 'html');
+    // Try filesystem templates first. For email we prefer HTML and do not use plain .txt files
+    let textTpl = null;
+    let htmlTpl = null;
+    if (method === 'email') {
+      htmlTpl = await NotificationTemplateService._loadTemplateFile(event, method, 'html');
+      // intentionally do not load textTpl for email to enforce HTML templates for mail
+    } else {
+      textTpl = await NotificationTemplateService._loadTemplateFile(event, method, 'txt');
+      htmlTpl = await NotificationTemplateService._loadTemplateFile(event, method, 'html');
+    }
 
-    // Defaults
+    // Defaults: use a generic fallback per method. Do not assume 'issue' fields for unknown events.
+    // Include event name in context so defaults/templates can reference it as {{event}}.
+    const ctx = Object.assign({ event }, context || {});
+    // Provide a generic `url` field for fallbacks: prefer common names used in contexts
+    if (!ctx.url) ctx.url = ctx.documentUrl || ctx.issueUrl || ctx.targetUrl || '';
+    // Inject common company/support/front-end values from environment if templates expect them
+    if (!ctx.company) ctx.company = {
+      name: process.env.COMPANY_NAME || 'Deep Sea',
+      logo_url: process.env.COMPANY_LOGO_URL || '',
+      address: process.env.COMPANY_ADDRESS || ''
+    };
+    if (!ctx.support_email) ctx.support_email = process.env.SUPPORT_EMAIL || '';
+    // loginUrl is commonly used in user-created/password templates
+    if (!ctx.loginUrl && process.env.FRONTEND_URL) ctx.loginUrl = `${process.env.FRONTEND_URL.replace(/\/$/, '')}/login`;
+    // Ensure actor.full_name exists for templates expecting ФИО
+    if (ctx.actor && !ctx.actor.full_name) {
+      try {
+        const a = ctx.actor || {};
+        const parts = [];
+        if (a.last_name) parts.push(a.last_name);
+        if (a.first_name) parts.push(a.first_name);
+        if (a.middle_name) parts.push(a.middle_name);
+        const byName = parts.length ? parts.join(' ') : null;
+        ctx.actor.full_name = byName || a.username || a.email || '';
+      } catch (e) {
+        ctx.actor.full_name = ctx.actor.email || '';
+      }
+    }
     const defaults = {
       rocket_chat: {
-        text: `{{project.name}}: New issue #{{issue.id}} - {{issue.title}}\n{{issue.description}}\n{{issueUrl}}`
+        text: `{{project.code}}: {{event}}`
       },
       email: {
-        subject: `New issue #{{issue.id}} in {{project.name}}: {{issue.title}}`,
-        text: `Project: {{project.name}}\nIssue: #{{issue.id}} - {{issue.title}}\n\n{{issue.description}}\n\nLink: {{issueUrl}}`,
-        html: `<p><strong>Project:</strong> {{project.name}}</p><p><strong>Issue:</strong> #{{issue.id}} - {{issue.title}}</p><p>{{issue.description}}</p><p><a href="{{issueUrl}}">Open in app</a></p>`
+        subject: `{{event}} in {{project.code}}`,
+        text: `Project: {{project.code}}\n\n{{event}}\n\nLink: {{url}}`,
+        html: `<p><strong>Project:</strong> {{project.code}}</p><p>{{event}}</p><p><a href="{{url}}">Open in app</a></p>`
       }
     };
 
     const result = { text: null, html: null, subject: null };
 
-    if (textTpl) result.text = NotificationTemplateService._renderString(textTpl, context);
-    if (htmlTpl) result.html = NotificationTemplateService._renderString(htmlTpl, context);
+  if (textTpl) result.text = NotificationTemplateService._renderString(textTpl, ctx);
+  if (htmlTpl) result.html = NotificationTemplateService._renderString(htmlTpl, ctx);
 
     if (!result.text && !result.html) {
       // use default fallback for this method
-      const def = defaults[method] || {};
-      if (def.subject) result.subject = NotificationTemplateService._renderString(def.subject, context);
-      if (def.text) result.text = NotificationTemplateService._renderString(def.text, context);
-      if (def.html) result.html = NotificationTemplateService._renderString(def.html, context);
+  const def = defaults[method] || {};
+  if (def.subject) result.subject = NotificationTemplateService._renderString(def.subject, ctx);
+  if (def.text) result.text = NotificationTemplateService._renderString(def.text, ctx);
+  if (def.html) result.html = NotificationTemplateService._renderString(def.html, ctx);
     } else {
-      // If we have text but no subject and method is email, try to synthesize subject from text
-      if (!result.subject && method === 'email' && result.text) {
-        // first line or truncated
+      // If method is email and we have HTML but no subject, try to synthesize subject from HTML <title> or <h1>
+      if (!result.subject && method === 'email') {
+        if (result.html) {
+          // Try to extract <title> or first <h1>
+          const titleMatch = result.html.match(/<title[^>]*>([^<]+)<\/title>/i);
+          const h1Match = result.html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+          const candidate = (titleMatch && titleMatch[1]) || (h1Match && h1Match[1]) || null;
+          if (candidate) result.subject = String(candidate).trim().slice(0, 120);
+        }
+        // If still no subject, try to synthesize from text if present (edge-case)
+  if (!result.subject && result.text) {
+          const firstLine = result.text.split('\n')[0] || '';
+          result.subject = firstLine.length > 0 ? firstLine.slice(0, 120) : `Notification: ${event}`;
+        }
+        if (!result.subject) result.subject = `Notification: ${event}`;
+      } else if (!result.subject && method === 'email' && result.text) {
+        // fallback: if somehow text exists for email, keep previous behavior
         const firstLine = result.text.split('\n')[0] || '';
         result.subject = firstLine.length > 0 ? firstLine.slice(0, 120) : `Notification: ${event}`;
       }

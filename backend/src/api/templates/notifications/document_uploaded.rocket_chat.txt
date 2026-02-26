@@ -1,0 +1,13 @@
+:white_check_mark: File uploaded to document!
+
+*Project: *{{project.code}}
+*Number: *{{document.code}}
+*Document: *{{document.title}}
+*Uploader: *{{actor.full_name}}
+
+File: {{storage && storage.file_name}}
+
+{{documentUrl}}
+
+_This is an automated notification from {{company.name}}._
+

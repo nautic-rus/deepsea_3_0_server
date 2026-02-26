@@ -18,6 +18,7 @@ class Document {
       created_after,
       title,
       description,
+      comment,
       priority,
       due_date,
       due_date_before,
@@ -72,7 +73,12 @@ class Document {
     }
   if (created_by !== undefined) { where.push(`created_by = $${idx++}`); values.push(created_by); }
   if (assigne_to !== undefined) { where.push(`assigne_to = $${idx++}`); values.push(assigne_to); }
-    if (is_active !== undefined) { where.push(`is_active = $${idx++}`); values.push(is_active); }
+    // By default only return active documents unless caller explicitly passes is_active
+    if (typeof is_active === 'undefined') {
+      where.push(`is_active = true`);
+    } else {
+      where.push(`is_active = $${idx++}`); values.push(is_active);
+    }
 
   // created_at range
   if (created_before) { where.push(`created_at <= $${idx++}`); values.push(created_before); }
@@ -87,9 +93,10 @@ class Document {
   if (estimated_hours_min !== undefined && estimated_hours_min !== null) { where.push(`estimated_hours >= $${idx++}`); values.push(estimated_hours_min); }
   if (estimated_hours_max !== undefined && estimated_hours_max !== null) { where.push(`estimated_hours <= $${idx++}`); values.push(estimated_hours_max); }
 
-    // Textual filters: title/description; use ILIKE for partial matches
-    if (title) { where.push(`title ILIKE $${idx++}`); values.push(`%${title}%`); }
-    if (description) { where.push(`description ILIKE $${idx++}`); values.push(`%${description}%`); }
+  // Textual filters: title/description/comment; use ILIKE for partial matches
+  if (title) { where.push(`title ILIKE $${idx++}`); values.push(`%${title}%`); }
+  if (description) { where.push(`description ILIKE $${idx++}`); values.push(`%${description}%`); }
+  if (comment) { where.push(`comment ILIKE $${idx++}`); values.push(`%${comment}%`); }
 
     // Generic search across title/description (preserves existing behaviour)
     if (search) { where.push(`(title ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
@@ -101,34 +108,50 @@ class Document {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const q = `SELECT id, title, description, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, created_at, code, priority, due_date, estimated_hours FROM documents ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
+  const q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours FROM documents ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
     values.push(limit, offset);
     const res = await pool.query(q, values);
     return res.rows;
   }
 
   static async findById(id) {
-  const q = `SELECT id, title, description, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, created_at, code, priority, due_date, estimated_hours FROM documents WHERE id = $1 LIMIT 1`;
+  const q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours FROM documents WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
 
   static async create(fields) {
-  const q = `INSERT INTO documents (title, description, project_id, stage_id, type_id, specialization_id, directory_id, assigne_to, created_by, code, priority, due_date, estimated_hours) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id, title, description, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, created_at, code, priority, due_date, estimated_hours`;
-  const vals = [fields.title, fields.description, fields.project_id, fields.stage_id, fields.type_id || null, fields.specialization_id, fields.directory_id, fields.assigne_to || null, fields.created_by, fields.code || null, fields.priority || null, fields.due_date || null, fields.estimated_hours || null];
-    const res = await pool.query(q, vals);
-    return res.rows[0];
+  // Build INSERT dynamically so that DB defaults (e.g. priority) are preserved
+  const allowedCols = ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','assigne_to','created_by','code','priority','due_date','estimated_hours'];
+  const cols = [];
+  const placeholders = [];
+  const values = [];
+  let idx = 1;
+  for (const c of allowedCols) {
+    if (fields[c] !== undefined) {
+      cols.push(c);
+      placeholders.push(`$${idx++}`);
+      // Normalize null-ish values for nullable columns
+      if (fields[c] === '' ) values.push(null);
+      else values.push(fields[c]);
+    }
+  }
+  // Ensure we have required columns
+  if (cols.length === 0) throw new Error('No fields provided for insert');
+  const q = `INSERT INTO documents (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours`;
+  const res = await pool.query(q, values);
+  return res.rows[0];
   }
 
   static async update(id, fields) {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['title','description','project_id','stage_id','type_id','specialization_id','directory_id','status_id','assigne_to','code','priority','due_date','estimated_hours'].forEach((k) => {
+  ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','status_id','assigne_to','code','priority','due_date','estimated_hours'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Document.findById(id);
-    const q = `UPDATE documents SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, title, description, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, created_at, code, priority, due_date, estimated_hours`;
+  const q = `UPDATE documents SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;

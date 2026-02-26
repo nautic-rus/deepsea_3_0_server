@@ -1,13 +1,14 @@
 
-DeepSea — Project: {{project.name}}
+:white_check_mark: Task assigned!
 
-Task assignment
-Task: #{{issue.id}} - {{issue.title}}
-Assigned by: {{actor.email}}
-Assignee: {{issue.assignee_id}}
+*Project: *{{project.code}}
+*Number: *#{{issue.id}}
+*Task: *{{issue.title}}
+*Assigned by: *{{actor.full_name}}
+*Assignee: *{{issue.assignee_name}}
 
 {{issue.description}}
 
-Open: {{issueUrl}}
+{{issueUrl}}
 
-This is an automated notification from DeepSea.
+_This is an automated notification from {{company.name}}._

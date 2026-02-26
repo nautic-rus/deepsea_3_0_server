@@ -1,12 +1,15 @@
-:white_check_mark: New issue created!
+
+:warning: Issue updated!
 
 *Project: *{{project.code}}
 *Number: *#{{issue.id}}
 *Issue: *{{issue.title}}
-*Creator: *{{actor.full_name}}
+*Updated by: *{{actor.full_name}}
 
-{{issue.description}}
+Changes:
+{{changes}}
 
 {{issueUrl}}
 
 _This is an automated notification from {{company.name}}._
+

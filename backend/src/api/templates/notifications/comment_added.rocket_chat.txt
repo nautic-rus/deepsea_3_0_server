@@ -1,0 +1,13 @@
+ :arrow_right: New comment added!
+
+*Project: *{{project.code}}
+*Object: *{{targetType}} #{{targetId}} — {{targetTitle}}
+*Author: *{{actor.full_name}}
+
+{{message.content}}
+
+{{targetUrl}}
+
+_This is an automated notification from {{company.name}}._
+
+

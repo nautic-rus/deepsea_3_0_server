@@ -1,11 +1,12 @@
 DeepSea — Project: {{project.name}}
 
-New issue
-Issue: #{{issue.id}} - {{issue.title}}
+New comment
+On: {{targetType}} #{{targetId}} - {{targetTitle}}
 Author: {{actor.email}}
 
-{{issue.description}}
+{{message.content}}
 
-Open: {{issueUrl}}
+Open: {{targetUrl}}
 
 This is an automated notification from DeepSea.
+

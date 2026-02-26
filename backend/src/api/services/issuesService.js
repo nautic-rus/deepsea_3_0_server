@@ -150,8 +150,8 @@ class IssuesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
-    const i = await Issue.findById(Number(id));
-    if (!i) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+  const i = await Issue.findById(Number(id));
+  if (!i || i.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
     // Ensure actor belongs to the issue's project unless they have view_all
     const canViewSingleAll = await hasPermission(actor, 'issues.view_all');
     if (!canViewSingleAll && i.project_id) {
@@ -394,8 +394,8 @@ class IssuesService {
     // Ensure actor belongs to the issue's project (unless elevated permission)
     const canUpdateAll = await hasPermission(actor, 'issues.update_all');
     const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
-    const existing = await Issue.findById(Number(id));
-    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+  const existing = await Issue.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
     if (!canUpdateAll && !canViewAllProjects && existing.project_id) {
       const Project = require('../../db/models/Project');
       const isAssigned = await Project.isUserAssigned(existing.project_id, actor.id);
@@ -410,6 +410,68 @@ class IssuesService {
         await HistoryService.addIssueHistory(Number(id), actor, 'updated', { before: existing, after: updated });
       } catch (e) { console.error('Failed to write issue history for update', e && e.message ? e.message : e); }
     })();
+    // Fire-and-forget: notify users subscribed to 'issue_updated'
+    (async () => {
+      try {
+        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+        const TemplateService = require('./notificationTemplateService');
+        const EmailService = require('./emailService');
+        const RocketChatService = require('./rocketChatService');
+
+        const recipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'issue_updated');
+        if (!recipients || recipients.length === 0) return;
+
+  const frontendRoot = process.env.FRONTEND_URL || '';
+  const issueUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${updated.project_id}/issues/${updated.id}` : '';
+  // Try to include project.code so templates can render {{project.code}}
+  let _project = null;
+  try { const Project = require('../../db/models/Project'); _project = await Project.findById(Number(updated.project_id)); } catch (e) { _project = null; }
+  const context = { project: { id: updated.project_id, code: (_project && _project.code) ? _project.code : null }, issue: updated, actor: actor, issueUrl, changes: { before: existing, after: updated } };
+
+        for (const r of recipients) {
+          try {
+            try {
+              const notifPayload = {
+                user_id: r.user_id,
+                event_code: 'issue_updated',
+                project_id: updated.project_id,
+                data: { issue: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              };
+              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
+            } catch (e) {
+              console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('issue_updated', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `Issue updated: ${updated.title}`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              } else {
+                console.warn('No Rocket.Chat mapping for user', r.user_id);
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('issue_updated', 'email', context);
+              const subject = rendered.subject || `Issue updated ${updated.title}`;
+              try {
+                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
+              } catch (mailErr) {
+                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
+              }
+            } else {
+              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
+            }
+          } catch (err) {
+            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
+          }
+        }
+      } catch (err) {
+        console.error('Error while processing notifications for issue_updated:', err && err.stack ? err.stack : err);
+      }
+    })();
+
     return updated;
   }
 
@@ -551,8 +613,8 @@ class IssuesService {
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
-    const existing = await Issue.findById(Number(id));
-    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+  const existing = await Issue.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
 
     // Ensure actor belongs to the issue's project (unless elevated permission)
     const canUpdateAll = await hasPermission(actor, 'issues.update_all');
@@ -662,8 +724,8 @@ class IssuesService {
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
-    const existing = await Issue.findById(Number(id));
-    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+  const existing = await Issue.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
 
     // Ensure actor is assigned to project unless they have view_all
     const canViewAll = await hasPermission(actor, 'issues.view_all');
@@ -709,8 +771,8 @@ class IssuesService {
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
 
-    const existing = await Issue.findById(Number(id));
-    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+  const existing = await Issue.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
     const storageItem = await Storage.findById(Number(storageId));
     if (!storageItem) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
 
@@ -741,8 +803,8 @@ class IssuesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
-    const existing = await Issue.findById(Number(id));
-    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+  const existing = await Issue.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
     const detached = await IssueStorage.detach({ issue_id: Number(id), storage_id: Number(storageId) });
     (async () => {
       try {
@@ -773,8 +835,8 @@ class IssuesService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
-    const existing = await Issue.findById(Number(id));
-    if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+  const existing = await Issue.findById(Number(id));
+  if (!existing || existing.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
     return await IssueStorage.listByIssue(Number(id), opts);
   }
 

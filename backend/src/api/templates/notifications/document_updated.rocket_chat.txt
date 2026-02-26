@@ -1,0 +1,14 @@
+:white_check_mark: Document updated!
+
+*Project: *{{project.code}}
+*Number: *{{document.code}}
+*Document: *{{document.title}}
+*Updated by: *{{actor.full_name}}
+
+Changes:
+{{changes}}
+
+{{documentUrl}}
+
+_This is an automated notification from {{company.name}}._
+
