@@ -2,7 +2,7 @@ const StorageService = require('../services/storageService');
 const multer = require('multer');
 
 // Use memory storage: file will be available as buffer on req.file
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 
 /**
  * StorageController
