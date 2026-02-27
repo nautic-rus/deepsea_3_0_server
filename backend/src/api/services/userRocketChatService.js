@@ -16,7 +16,7 @@ class UserRocketChatService {
     const existing = await UserRocketChat.findByUserId(userId);
     if (existing) {
       const updated = await UserRocketChat.updateByUserId(userId, data);
-      return updated;
+      return updated; 
     }
 
     // create new

@@ -1,15 +1,15 @@
 
-:warning: Issue updated!
+:warning: Задача обновлена!
 
-*Project: *{{project.code}}
-*Number: *#{{issue.id}}
-*Issue: *{{issue.title}}
-*Updated by: *{{actor.full_name}}
+*Проект: *{{project.code}}
+*Номер: *#{{issue.id}}
+*Наименование: *{{issue.title}}
+*Обновил: *{{actor.full_name}}
 
-Changes:
+*Изменения:*
 {{changes}}
 
 {{issueUrl}}
 
-_This is an automated notification from {{company.name}}._
+_Это автоматическое уведомление от {{company.name}}._
 

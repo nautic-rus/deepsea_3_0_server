@@ -1,13 +1,14 @@
-:white_check_mark: File uploaded to document!
+:white_check_mark: Файл добавлен к документу!
 
-*Project: *{{project.code}}
-*Number: *{{document.code}}
-*Document: *{{document.title}}
-*Uploader: *{{actor.full_name}}
+*Проект: *{{project.code}}
+*Номер: *{{document.code}}
+*Документ: *{{document.title}}
+*Загрузил: *{{actor.full_name}}
 
-File: {{storage && storage.file_name}}
+*Файл(ы):*
+{{storage_file_list}}
 
 {{documentUrl}}
 
-_This is an automated notification from {{company.name}}._
+_Это автоматическое уведомление от {{company.name}}._
 

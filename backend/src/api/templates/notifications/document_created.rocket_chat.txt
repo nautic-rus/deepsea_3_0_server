@@ -1,14 +1,12 @@
-:white_check_mark: New document created!
+:white_check_mark: Документ создан!
 
-*Project: *{{project.code}}
-*Number: *{{document.code}}
-*Document: *{{document.title}}
-*Creator: *{{actor.full_name}}
-
-{{document.description}}
+*Проект: *{{project.code}}
+*Номер: *{{document.code}}
+*Наименование: *{{document.title}}
+*Создал: *{{actor.full_name}}
 
 {{documentUrl}}
 
-_This is an automated notification from {{company.name}}._
+_Это автоматическое уведомление от {{company.name}}._
 
 

@@ -1,12 +1,13 @@
-:white_check_mark: New issue created!
+:white_check_mark: Задача создана!
 
-*Project: *{{project.code}}
-*Number: *#{{issue.id}}
-*Issue: *{{issue.title}}
-*Creator: *{{actor.full_name}}
+*Проект: *{{project.code}}
+*Номер: *#{{issue.id}}
+*Наимеовнаие: *{{issue.title}}
+*Создал: *{{actor.full_name}}
 
+*Описание:*
 {{issue.description}}
 
 {{issueUrl}}
 
-_This is an automated notification from {{company.name}}._
+_Это автоматическое уведомление от {{company.name}}._

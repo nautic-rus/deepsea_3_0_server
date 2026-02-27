@@ -1,14 +1,15 @@
 
-:white_check_mark: Task assigned!
+:white_check_mark: Задача назначена!
 
-*Project: *{{project.code}}
-*Number: *#{{issue.id}}
-*Task: *{{issue.title}}
-*Assigned by: *{{actor.full_name}}
-*Assignee: *{{issue.assignee_name}}
+*Проект: *{{project.code}}
+*Номер: *#{{issue.id}}
+*Наименование: *{{issue.title}}
+*Назначил: *{{actor.full_name}}
+*Исполнитель: *{{issue.assignee_name}}
 
+*Описание:*
 {{issue.description}}
 
 {{issueUrl}}
 
-_This is an automated notification from {{company.name}}._
+_Это автоматическое уведомление от {{company.name}}._

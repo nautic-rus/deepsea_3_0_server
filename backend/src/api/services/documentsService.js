@@ -249,7 +249,7 @@ class DocumentsService {
         if (!recipients || recipients.length === 0) return;
 
   const frontendRoot = process.env.FRONTEND_URL || '';
-  const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${created.project_id}/documents/${created.id}` : '';
+  const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${created.id}` : '';
   // Include project.code when available so templates can render {{project.code}}
   const context = { project: { id: created.project_id, code: (project && project.code) ? project.code : null }, document: created, actor: actor, documentUrl };
 
@@ -350,7 +350,7 @@ class DocumentsService {
         if (!recipients || recipients.length === 0) return;
 
         const frontendRoot = process.env.FRONTEND_URL || '';
-        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${updated.project_id}/documents/${updated.id}` : '';
+        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${updated.id}` : '';
         // Try to fetch project to include its code in notification context
         let _project = null;
         try {
@@ -496,11 +496,11 @@ class DocumentsService {
         if (!recipients || recipients.length === 0) return;
 
   const frontendRoot = process.env.FRONTEND_URL || '';
-  const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${existing.project_id}/documents/${existing.id}` : '';
+  const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
   // Include project.code when possible
   let _projForComment = null;
   try { const Project = require('../../db/models/Project'); _projForComment = await Project.findById(Number(existing.project_id)); } catch (e) { _projForComment = null; }
-  const context = { project: { id: existing.project_id, code: (_projForComment && _projForComment.code) ? _projForComment.code : null }, targetType: 'document', targetId: existing.id, targetTitle: existing.title, targetUrl, actor: actor, message: created };
+  const context = { project: { id: existing.project_id, code: (_projForComment && _projForComment.code) ? _projForComment.code : null }, targetType: 'Document', targetId: existing.id, targetTitle: existing.title, targetUrl, actor: actor, message: created };
 
         for (const r of recipients) {
           try {
@@ -562,9 +562,14 @@ class DocumentsService {
 
   const existing = await Document.findById(Number(id));
   if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
-    const storageItem = await Storage.findById(Number(storageId));
-    if (!storageItem) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
-
+    // support single storageId or array of storageIds (bulk attach)
+    const storageIds = Array.isArray(storageId) ? storageId.map(Number) : [Number(storageId)];
+    const storageItems = [];
+    for (const sid of storageIds) {
+      const si = await Storage.findById(Number(sid));
+      if (!si) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
+      storageItems.push(si);
+    }
     const canUpdateAll = await hasPermission(actor, 'documents.update_all');
     const canViewAllProjects = await hasPermission(actor, 'projects.view_all');
     if (!canUpdateAll && !canViewAllProjects && existing.project_id) {
@@ -577,7 +582,13 @@ class DocumentsService {
   const attachPayload = Object.assign({ document_id: Number(id), storage_id: Number(storageId) }, metadata);
   // Ensure user_id is set to actor by default
   if (!attachPayload.user_id && actor && actor.id) attachPayload.user_id = actor.id;
-  const attached = await DocumentStorage.attach(attachPayload);
+  // Attach one or many storage entries to the document
+  const attachedArr = [];
+  for (const sid of storageIds) {
+    const payload = Object.assign({}, attachPayload, { storage_id: Number(sid) });
+    const attached = await DocumentStorage.attach(payload);
+    if (attached) attachedArr.push(attached);
+  }
     // Do not record a history entry for file attachment per request.
     // Fire-and-forget: notify subscribers of 'document_uploaded'
     (async () => {
@@ -591,18 +602,23 @@ class DocumentsService {
         if (!recipients || recipients.length === 0) return;
 
   const frontendRoot = process.env.FRONTEND_URL || '';
-  const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${existing.project_id}/documents/${existing.id}` : '';
+  const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
   // Include project.code for templates
   let _projForAttach = null;
   try { const Project = require('../../db/models/Project'); _projForAttach = await Project.findById(Number(existing.project_id)); } catch (e) { _projForAttach = null; }
   // Include storage info in context so templates can render file_name and other metadata.
+  // Provide `storage_items` (array), `storage_item` (first item for backward compat),
+  // and `storage_file_list` (joined string) so templates (which are simple replacements)
+  // can show one or many filenames.
+  const storage_item = storageItems[0] || null;
   const context = {
     project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) ? _projForAttach.code : null },
     document: existing,
     actor: actor,
     documentUrl,
-    storage: attached,
-    storage_item: storageItem
+    storage_items: storageItems,
+    storage_item: storage_item,
+    storage_file_list: storageItems.map(s => s.file_name).join('\n')
   };
 
         for (const r of recipients) {

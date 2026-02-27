@@ -95,6 +95,179 @@ class NotificationTemplateService {
         ctx.actor.full_name = ctx.actor.email || '';
       }
     }
+    // If `changes` is provided as an object with `before` and `after`,
+    // convert it into a readable multi-line string so simple templates
+    // (which only support {{key}} replacement) can present history records
+    // instead of dumping raw JSON.
+    if (ctx.changes && typeof ctx.changes === 'object' && (ctx.changes.before || ctx.changes.after)) {
+      try {
+        const before = ctx.changes.before || {};
+        const after = ctx.changes.after || {};
+          // Only consider keys that are present in `after` (partial updates will include
+          // only changed fields). Also ignore timestamp-like fields (created_at/updated_at)
+          const afterKeys = Object.keys(after || {});
+          const isTimestamp = k => /(^|_)updated_at$|(^|_)created_at$|_at$/i.test(k);
+          const keys = afterKeys.filter(k => !isTimestamp(k));
+          // keep only keys that actually changed
+          const diffKeys = keys.filter(k => {
+            const a = before[k];
+            const b = after[k];
+            try {
+              return JSON.stringify(a) !== JSON.stringify(b);
+            } catch (e) {
+              return String(a) !== String(b);
+            }
+          });
+        if (diffKeys.length === 0) {
+          ctx.changes = 'No changes';
+        } else {
+          // Resolve id -> name lookups for known fields to present friendly values
+          const pool = require('../../db/connection');
+          const isIssue = String(event || '').toLowerCase().includes('issue');
+          const isDocument = String(event || '').toLowerCase().includes('document');
+
+          const projectIds = [];
+          const statusIds = [];
+          const typeIds = [];
+          const userIds = [];
+          const stageIds = [];
+          const specIds = [];
+          const dirIds = [];
+
+          for (const k of diffKeys) {
+            // collect IDs from both before and after so we can resolve old and new values
+            const vals = [before[k], after[k]];
+            for (const val of vals) {
+              if (val === undefined || val === null) continue;
+              if (k === 'project_id') projectIds.push(Number(val));
+              else if (k === 'status_id') statusIds.push(Number(val));
+              else if (k === 'type_id') typeIds.push(Number(val));
+              else if (k === 'assignee_id' || k === 'assigne_to' || k === 'author_id' || k === 'created_by') userIds.push(Number(val));
+              else if (k === 'stage_id') stageIds.push(Number(val));
+              else if (k === 'specialization_id') specIds.push(Number(val));
+              else if (k === 'directory_id') dirIds.push(Number(val));
+            }
+          }
+
+          const queries = [];
+          queries.push(projectIds.length ? pool.query('SELECT id, name, code FROM projects WHERE id = ANY($1::int[])', [projectIds]) : Promise.resolve({ rows: [] }));
+          // status table depends on event context
+          if (statusIds.length) {
+            const tbl = isIssue ? 'issue_status' : (isDocument ? 'document_status' : 'issue_status');
+            queries.push(pool.query(`SELECT id, name, code FROM ${tbl} WHERE id = ANY($1::int[])`, [statusIds]));
+          } else queries.push(Promise.resolve({ rows: [] }));
+          if (typeIds.length) {
+            const ttable = isIssue ? 'issue_type' : (isDocument ? 'document_type' : 'issue_type');
+            queries.push(pool.query(`SELECT id, name, code FROM ${ttable} WHERE id = ANY($1::int[])`, [typeIds]));
+          } else queries.push(Promise.resolve({ rows: [] }));
+          queries.push(userIds.length ? pool.query('SELECT id, username, first_name, last_name, middle_name, email FROM users WHERE id = ANY($1::int[])', [userIds]) : Promise.resolve({ rows: [] }));
+          queries.push(stageIds.length ? pool.query('SELECT id, name, end_date FROM stages WHERE id = ANY($1::int[])', [stageIds]) : Promise.resolve({ rows: [] }));
+          queries.push(specIds.length ? pool.query('SELECT id, name FROM specializations WHERE id = ANY($1::int[])', [specIds]) : Promise.resolve({ rows: [] }));
+          queries.push(dirIds.length ? pool.query('SELECT id, name FROM document_directories WHERE id = ANY($1::int[])', [dirIds]) : Promise.resolve({ rows: [] }));
+
+          const [projRes, statusRes, typeRes, usersRes, stagesRes, specsRes, dirsRes] = await Promise.all(queries);
+
+          const projectMap = new Map((projRes.rows || []).map(r => [r.id, r]));
+          const statusMap = new Map((statusRes.rows || []).map(r => [r.id, r]));
+          const typeMap = new Map((typeRes.rows || []).map(r => [r.id, r]));
+          const userMap = new Map((usersRes.rows || []).map(r => [r.id, r]));
+          const stageMap = new Map((stagesRes.rows || []).map(r => [r.id, r]));
+          const specMap = new Map((specsRes.rows || []).map(r => [r.id, r]));
+          const dirMap = new Map((dirsRes.rows || []).map(r => [r.id, r]));
+
+          const mkUserDisplay = (u) => {
+            if (!u) return '';
+            const parts = [];
+            if (u.last_name) parts.push(u.last_name);
+            if (u.first_name) parts.push(u.first_name);
+            if (u.middle_name) parts.push(u.middle_name);
+            const byName = parts.length ? parts.join(' ') : null;
+            return byName || u.username || u.email || '';
+          };
+
+          const lines = diffKeys.map(k => {
+            const a = before[k];
+            const b = after[k];
+            let pretty = k.replace(/_/g, ' ').replace(/(^|\s)\S/g, s => s.toUpperCase());
+            // remove trailing ' Id' for nicer labels (e.g. 'Status Id' -> 'Status')
+            pretty = pretty.replace(/\s+Id$/i, '');
+            const resolveVal = (key, v, objBefore, objAfter) => {
+              // prefer explicit values; if missing, try to resolve via maps; then fall back
+              if (v === undefined || v === null || v === '') {
+                // try to read enriched display fields from before/after objects
+                try {
+                  if (key === 'project_id') {
+                    return (objBefore && objBefore.project_name) || (objBefore && objBefore.project_code) || (objAfter && objAfter.project_name) || (objAfter && objAfter.project_code) || '';
+                  }
+                  if (key === 'status_id') {
+                    return (objBefore && objBefore.status_name) || (objBefore && objBefore.status_code) || (objAfter && objAfter.status_name) || (objAfter && objAfter.status_code) || '';
+                  }
+                  if (key === 'type_id') {
+                    return (objBefore && objBefore.type_name) || (objBefore && objBefore.type_code) || (objAfter && objAfter.type_name) || (objAfter && objAfter.type_code) || '';
+                  }
+                  if (key === 'assignee_id' || key === 'assigne_to') {
+                    return (objBefore && objBefore.assignee_name) || (objAfter && objAfter.assignee_name) || '';
+                  }
+                  if (key === 'author_id' || key === 'created_by') {
+                    return (objBefore && objBefore.author_name) || (objAfter && objAfter.author_name) || (objBefore && objBefore.created_name) || (objAfter && objAfter.created_name) || '';
+                  }
+                  if (key === 'stage_id') {
+                    return (objBefore && objBefore.stage_name) || (objAfter && objAfter.stage_name) || '';
+                  }
+                  if (key === 'specialization_id') {
+                    return (objBefore && objBefore.specialization_name) || (objAfter && objAfter.specialization_name) || '';
+                  }
+                  if (key === 'directory_id') {
+                    return (objBefore && objBefore.directory_name) || (objAfter && objAfter.directory_name) || '';
+                  }
+                } catch (e) {
+                  // ignore and continue to attempts below
+                }
+              }
+              try {
+                if (key === 'project_id') {
+                  const p = projectMap.get(Number(v));
+                  if (p) return p.name || p.code || String(v);
+                }
+                if (key === 'status_id') {
+                  const s = statusMap.get(Number(v));
+                  if (s) return s.name || s.code || String(v);
+                }
+                if (key === 'type_id') {
+                  const t = typeMap.get(Number(v));
+                  if (t) return t.name || t.code || String(v);
+                }
+                if (key === 'assignee_id' || key === 'assigne_to' || key === 'author_id' || key === 'created_by') {
+                  const u = userMap.get(Number(v));
+                  if (u) return mkUserDisplay(u) || String(v);
+                }
+                if (key === 'stage_id') {
+                  const s = stageMap.get(Number(v));
+                  if (s) return s.name || String(v);
+                }
+                if (key === 'specialization_id') {
+                  const sp = specMap.get(Number(v));
+                  if (sp) return sp.name || String(v);
+                }
+                if (key === 'directory_id') {
+                  const d = dirMap.get(Number(v));
+                  if (d) return d.name || String(v);
+                }
+                // default stringify
+                if (typeof v === 'object') return JSON.stringify(v);
+                return String(v === undefined || v === null ? '' : v);
+              } catch (e) {
+                return String(v === undefined || v === null ? '' : v);
+              }
+            };
+            return `${pretty}: ${resolveVal(k, a, before, after)} → ${resolveVal(k, b, before, after)}`;
+          });
+          ctx.changes = lines.join('\n');
+        }
+      } catch (e) {
+        // on any error, fall back to original behavior (JSON stringification in _renderString)
+      }
+    }
     const defaults = {
       rocket_chat: {
         text: `{{project.code}}: {{event}}`

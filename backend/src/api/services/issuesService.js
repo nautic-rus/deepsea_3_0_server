@@ -312,8 +312,8 @@ class IssuesService {
         if (verbose) console.log('Notification recipients for issue_created:', recipients.map(r => ({ user_id: r.user_id, method: r.method_code, rc_username: r.rc_username, email: r.email })));
 
         const projectName = project.name || `#${created.project_id}`;
-        const frontendRoot = process.env.FRONTEND_URL || '';
-        const issueUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${created.project_id}/issues/${created.id}` : '';
+  const frontendRoot = process.env.FRONTEND_URL || '';
+  const issueUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/issues/${created.id}` : '';
 
         const context = {
           project: project,
@@ -422,7 +422,7 @@ class IssuesService {
         if (!recipients || recipients.length === 0) return;
 
   const frontendRoot = process.env.FRONTEND_URL || '';
-  const issueUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${updated.project_id}/issues/${updated.id}` : '';
+  const issueUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/issues/${updated.id}` : '';
   // Try to include project.code so templates can render {{project.code}}
   let _project = null;
   try { const Project = require('../../db/models/Project'); _project = await Project.findById(Number(updated.project_id)); } catch (e) { _project = null; }
@@ -663,8 +663,8 @@ class IssuesService {
 
         const projectModel = require('../../db/models/Project');
         const project = await projectModel.findById(projectId);
-        const frontendRoot = process.env.FRONTEND_URL || '';
-        const issueUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/projects/${projectId}/issues/${updated.id}` : '';
+  const frontendRoot = process.env.FRONTEND_URL || '';
+  const issueUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/issues/${updated.id}` : '';
 
         const context = { project, issue: updated, actor, issueUrl, prevAssignee };
         const verbose = process.env.NOTIFICATION_VERBOSE === 'true';
@@ -753,6 +753,72 @@ class IssuesService {
           } catch (e) { console.error('Failed to create user notification for comment', e && e.message ? e.message : e); }
         }
       } catch (e) { console.error('Failed to enqueue notifications for issue comment', e && e.message ? e.message : e); }
+    })();
+
+    // Also notify subscribers according to user notification settings (email/rocket)
+    (async () => {
+      try {
+        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+        const TemplateService = require('./notificationTemplateService');
+        const EmailService = require('./emailService');
+        const RocketChatService = require('./rocketChatService');
+
+        const recipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'comment_added');
+        if (!recipients || recipients.length === 0) return;
+
+  const frontendRoot = process.env.FRONTEND_URL || '';
+  const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/issues/${existing.id}` : '';
+        // Include project.code when possible
+        let _projForComment = null;
+        try { const Project = require('../../db/models/Project'); _projForComment = await Project.findById(Number(existing.project_id)); } catch (e) { _projForComment = null; }
+  const context = { project: { id: existing.project_id, code: (_projForComment && _projForComment.code) ? _projForComment.code : null }, targetType: 'Issue', targetId: existing.id, targetTitle: existing.title, targetUrl, actor: actor, message: created };
+
+        for (const r of recipients) {
+          try {
+            // Do not send notifications to the actor who performed the action
+            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
+              continue;
+            }
+            try {
+              const notifPayload = {
+                user_id: r.user_id,
+                event_code: 'comment_added',
+                project_id: existing.project_id,
+                data: { issue_id: existing.id, message: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              };
+              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
+            } catch (e) {
+              console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('comment_added', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `${existing.title}: new comment`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              } else {
+                console.warn('No Rocket.Chat mapping for user', r.user_id);
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('comment_added', 'email', context);
+              const subject = rendered.subject || `New comment on issue ${existing.title}`;
+              try {
+                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
+              } catch (mailErr) {
+                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
+              }
+            } else {
+              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
+            }
+          } catch (err) {
+            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
+          }
+        }
+      } catch (err) {
+        console.error('Error while processing notifications for issue comment_added:', err && err.stack ? err.stack : err);
+      }
     })();
 
     return created;

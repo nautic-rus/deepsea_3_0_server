@@ -1,13 +1,13 @@
- :arrow_right: New comment added!
+ :arrow_right: Новый комментарий!
 
-*Project: *{{project.code}}
-*Object: *{{targetType}} #{{targetId}} — {{targetTitle}}
-*Author: *{{actor.full_name}}
+*Проект: *{{project.code}}
+*Объект: *{{targetType}} #{{targetId}} {{document.code}} — {{targetTitle}}
+*Автор: *{{actor.full_name}}
 
 {{message.content}}
 
 {{targetUrl}}
 
-_This is an automated notification from {{company.name}}._
+_Это автоматическое уведомление от {{company.name}}._
 
 

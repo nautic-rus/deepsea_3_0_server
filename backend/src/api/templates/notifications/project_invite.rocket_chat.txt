@@ -1,12 +1,10 @@
 
-:white_check_mark: Project invitation!
+:white_check_mark: Приглашение в проект!
 
-*Project: *{{project.code}}
-*Invited by: *{{actor.full_name}}
-
-Message: {{invite && invite.message}}
+*Проект: *{{project.code}}
+*Пригласил: *{{actor.full_name}}
 
 {{projectUrl}}
 
-_This is an automated notification from {{company.name}}._
+_Это автоматическое уведомление от {{company.name}}._
 

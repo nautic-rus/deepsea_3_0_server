@@ -1,14 +1,14 @@
-:white_check_mark: Document updated!
+:warning: Документ обновлён!
 
-*Project: *{{project.code}}
-*Number: *{{document.code}}
-*Document: *{{document.title}}
-*Updated by: *{{actor.full_name}}
+*Проект: *{{project.code}}
+*Номер: *{{document.code}}
+*Наимнование: *{{document.title}}
+*Обновил: *{{actor.full_name}}
 
-Changes:
+*Изменения:*
 {{changes}}
 
 {{documentUrl}}
 
-_This is an automated notification from {{company.name}}._
+_Это автоматическое уведомление от {{company.name}}._
 
