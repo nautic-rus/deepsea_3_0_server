@@ -632,7 +632,8 @@ class DocumentsService {
                 user_id: r.user_id,
                 event_code: 'document_uploaded',
                 project_id: existing.project_id,
-                data: { document: existing, storage: attached, via: r.method_code || null, recipient: { user_id: r.user_id } }
+                // Provide storage info: single object when one file attached, or array when multiple
+                data: { document: existing, storage: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr, via: r.method_code || null, recipient: { user_id: r.user_id } }
               };
               UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
             } catch (e) {
@@ -669,7 +670,10 @@ class DocumentsService {
       }
     })();
 
-    return attached;
+  // Return attached items. If single item was attached, return the object for
+  // backward compatibility; otherwise return the array of attached objects.
+  if (!attachedArr || attachedArr.length === 0) return null;
+  return attachedArr.length === 1 ? attachedArr[0] : attachedArr;
   }
 
   static async detachFileFromDocument(id, storageId, actor) {
