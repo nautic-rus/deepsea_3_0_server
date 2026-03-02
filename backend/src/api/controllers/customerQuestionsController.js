@@ -5,6 +5,9 @@ class CustomerQuestionsController {
     try {
       const actor = req.user || null;
       const query = Object.assign({}, req.query || {});
+      // document_id and project_id filters removed; service will ignore them
+      delete query.document_id;
+      delete query.project_id;
       const rows = await CustomerQuestionsService.listCustomerQuestions(query, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
