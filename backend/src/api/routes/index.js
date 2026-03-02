@@ -13,6 +13,7 @@ const rolesController = require('../controllers/rolesController');
 const projectsController = require('../controllers/projectsController');
 const issuesController = require('../controllers/issuesController');
 const documentsController = require('../controllers/documentsController');
+const documentWorkFlowsController = require('../controllers/documentWorkFlowsController');
 const specializationsController = require('../controllers/specializationsController');
 const issueHistoryController = require('../controllers/issueHistoryController');
 const documentHistoryController = require('../controllers/documentHistoryController');
@@ -27,12 +28,16 @@ const _upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20
 const statementsController = require('../controllers/statementsController');
 const permissionsController = require('../controllers/permissionsController');
 const userPagesController = require('../controllers/userPagesController');
+const pagesController = require('../controllers/pagesController');
+const pagePermissionsController = require('../controllers/pagePermissionsController');
+const jobTitlesController = require('../controllers/jobTitlesController');
 const userProjectsController = require('../controllers/userProjectsController');
 const userRocketChatController = require('../controllers/userRocketChatController');
 const userNotificationSettingsController = require('../controllers/userNotificationSettingsController');
 const userNotificationsController = require('../controllers/userNotificationsController');
 const entityLinksController = require('../controllers/entityLinksController');
 const auditLogsController = require('../controllers/auditLogsController');
+const customerQuestionsController = require('../controllers/customerQuestionsController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -179,6 +184,18 @@ router.get('/issues/:id/files', authMiddleware, issuesController.listFiles);
 // GET /api/issues/:id/history - issue timeline/history
 router.get('/issues/:id/history', authMiddleware, issueHistoryController.list);
 
+// ===== Customer questions routes =====
+router.get('/customer_questions', authMiddleware, customerQuestionsController.list);
+router.get('/customer_questions/:id', authMiddleware, customerQuestionsController.get);
+router.post('/customer_questions', authMiddleware, customerQuestionsController.create);
+router.put('/customer_questions/:id', authMiddleware, customerQuestionsController.update);
+router.delete('/customer_questions/:id', authMiddleware, customerQuestionsController.delete);
+// files attached to customer question
+router.post('/customer_questions/:id/files', authMiddleware, _upload.single('file'), customerQuestionsController.attachFile);
+router.post('/customer_questions/:id/files/local', authMiddleware, _upload.single('file'), customerQuestionsController.attachLocalFile);
+router.delete('/customer_questions/:id/files/:storage_id', authMiddleware, customerQuestionsController.detachFile);
+router.get('/customer_questions/:id/files', authMiddleware, customerQuestionsController.listFiles);
+
 // ===== Documents routes =====
 // GET /api/documents
 router.get('/documents', authMiddleware, documentsController.list);
@@ -204,6 +221,12 @@ router.get('/document_statuses/:id', authMiddleware, documentsController.getStat
 router.post('/document_statuses', authMiddleware, documentsController.createStatus);
 router.put('/document_statuses/:id', authMiddleware, documentsController.updateStatus);
 router.delete('/document_statuses/:id', authMiddleware, documentsController.deleteStatus);
+// Document work flows (CRUD)
+router.get('/document_work_flows', authMiddleware, documentWorkFlowsController.list);
+router.get('/document_work_flows/:id', authMiddleware, documentWorkFlowsController.get);
+router.post('/document_work_flows', authMiddleware, documentWorkFlowsController.create);
+router.put('/document_work_flows/:id', authMiddleware, documentWorkFlowsController.update);
+router.delete('/document_work_flows/:id', authMiddleware, documentWorkFlowsController.delete);
 // Document storage types (CRUD)
 router.get('/document_storage_types', authMiddleware, documentsController.listStorageTypes);
 router.get('/document_storage_types/:id', authMiddleware, documentsController.getStorageType);
@@ -328,6 +351,23 @@ router.post('/permissions', authMiddleware, permissionsController.create);
 router.put('/permissions/:id', authMiddleware, permissionsController.update);
 // DELETE /api/permissions/:id - remove permission
 router.delete('/permissions/:id', authMiddleware, permissionsController.delete);
+
+// ===== Job titles routes =====
+router.get('/job_titles', authMiddleware, jobTitlesController.list);
+router.post('/job_titles', authMiddleware, jobTitlesController.create);
+router.put('/job_titles/:id', authMiddleware, jobTitlesController.update);
+router.delete('/job_titles/:id', authMiddleware, jobTitlesController.delete);
+
+// ===== Pages (admin) routes =====
+router.get('/pages', authMiddleware, pagesController.list);
+router.post('/pages', authMiddleware, pagesController.create);
+router.put('/pages/:id', authMiddleware, pagesController.update);
+router.delete('/pages/:id', authMiddleware, pagesController.delete);
+
+// ===== Page permissions routes =====
+router.get('/page_permissions', authMiddleware, pagePermissionsController.list);
+router.post('/page_permissions', authMiddleware, pagePermissionsController.create);
+router.delete('/page_permissions/:id', authMiddleware, pagePermissionsController.delete);
 
 // ===== Audit routes =====
 // GET /api/audit_logs - list audit entries (filters: actor_id, entity, entity_id, limit, offset)

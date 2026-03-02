@@ -29,12 +29,40 @@
       "description": "Операции по работе с документами и их директориями"
     },
     {
+      "name": "document_statuses",
+      "description": "CRUD для статусов документов (document_status)"
+    },
+    {
+      "name": "document_types",
+      "description": "CRUD для типов документов (document_type)"
+    },
+    {
+      "name": "document_work_flow",
+      "description": "Операции по настройке переходов статусов документов (document_work_flow)"
+    },
+    {
+      "name": "document_storage_types",
+      "description": "Типы хранилищ документов (documents_storage_type)"
+    },
+    {
       "name": "equipment",
       "description": ""
     },
     {
       "name": "issues",
       "description": ""
+    },
+    {
+      "name": "issue_statuses",
+      "description": "CRUD для статусов задач (issue_status)"
+    },
+    {
+      "name": "issue_types",
+      "description": "CRUD для типов задач (issue_type)"
+    },
+    {
+      "name": "issue_work_flow",
+      "description": "Операции по настройке переходов статусов задач (issue_work_flow)"
     },
     {
       "name": "links",
@@ -975,7 +1003,104 @@
               "type": "string",
               "nullable": true
             },
+            "project_id": {
+              "type": "integer",
+              "nullable": true,
+              "description": "ID проекта (null = глобальный)"
+            },
             "created_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "DocumentWorkFlow": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer"
+            },
+            "project_id": {
+              "type": "integer",
+              "nullable": true,
+              "description": "ID проекта (null = глобальный переход)"
+            },
+            "from_status_id": {
+              "type": "integer",
+              "description": "ID начального статуса документа"
+            },
+            "to_status_id": {
+              "type": "integer",
+              "description": "ID целевого статуса документа"
+            },
+            "name": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": {
+              "type": "string",
+              "nullable": true
+            },
+            "required_permission": {
+              "type": "string",
+              "nullable": true
+            },
+            "is_active": {
+              "type": "boolean"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updated_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "IssueWorkFlow": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer"
+            },
+            "project_id": {
+              "type": "integer",
+              "nullable": true,
+              "description": "ID проекта (null = глобальный переход)"
+            },
+            "issue_type_id": {
+              "type": "integer",
+              "description": "ID типа задачи"
+            },
+            "from_status_id": {
+              "type": "integer",
+              "description": "ID начального статуса задачи"
+            },
+            "to_status_id": {
+              "type": "integer",
+              "description": "ID целевого статуса задачи"
+            },
+            "name": {
+              "type": "string",
+              "nullable": true
+            },
+            "description": {
+              "type": "string",
+              "nullable": true
+            },
+            "required_permission": {
+              "type": "string",
+              "nullable": true
+            },
+            "is_active": {
+              "type": "boolean"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "updated_at": {
               "type": "string",
               "format": "date-time"
             }
@@ -4838,7 +4963,7 @@
     "/api/issue_statuses": {
       "get": {
         "tags": [
-          "issues"
+          "issue_statuses"
         ],
         "summary": "Список статусов задач",
         "description": "Возвращает список всех записей из таблицы `issue_status` со всеми атрибутами. Требуется разрешение issues.view.",
@@ -4871,12 +4996,88 @@
           }
         },
         "parameters": []
+      },
+      "post": {
+        "tags": [
+          "issue_statuses"
+        ],
+        "summary": "Создать статус задачи",
+        "description": "Создаёт новую запись в таблице `issue_status`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "code"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "is_final": {
+                    "type": "boolean"
+                  },
+                  "order_index": {
+                    "type": "integer"
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              },
+              "example": {
+                "name": "В работе",
+                "code": "in_progress"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
       }
     },
     "/api/document_statuses": {
       "get": {
         "tags": [
-          "documents"
+          "document_statuses"
         ],
         "summary": "Список статусов документов",
         "description": "Возвращает список всех записей из таблицы `document_status` со всеми атрибутами. Требуется разрешение documents.view.",
@@ -4912,7 +5113,7 @@
       },
       "post": {
         "tags": [
-          "documents"
+          "document_statuses"
         ],
         "summary": "Создать статус документа",
         "description": "Создаёт новую запись в таблице `document_status`. Требуется разрешение documents.create.",
@@ -4994,7 +5195,7 @@
     "/api/document_types": {
       "get": {
         "tags": [
-          "documents"
+          "document_types"
         ],
         "summary": "Список типов документов",
         "description": "Возвращает список всех записей из таблицы `document_type` со всеми атрибутами. Требуется разрешение documents.view.",
@@ -5030,7 +5231,7 @@
       },
       "post": {
         "tags": [
-          "documents"
+          "document_types"
         ],
         "summary": "Создать тип документа",
         "description": "Создаёт новую запись в таблице `document_type`. Требуется разрешение documents.create.",
@@ -5246,7 +5447,7 @@
     "/api/document_statuses/{id}": {
       "get": {
         "tags": [
-          "documents"
+          "document_statuses"
         ],
         "summary": "Получить статус документа по id",
         "description": "Возвращает запись из `document_status` по идентификатору. Требуется разрешение documents.view.",
@@ -5294,182 +5495,9 @@
           }
         }
       },
-      "/api/document_types/{id}": {
-        "get": {
-          "tags": [
-            "documents"
-          ],
-          "summary": "Получить тип документа по id",
-          "description": "Возвращает запись из `document_type` по идентификатору. Требуется разрешение documents.view.",
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ],
-          "x-permissions": [
-            "documents.view"
-          ],
-          "parameters": [
-            {
-              "in": "path",
-              "name": "id",
-              "required": true,
-              "schema": {
-                "type": "integer"
-              },
-              "description": "ID типа"
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "OK",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/DocumentType"
-                  }
-                }
-              }
-            },
-            "400": {
-              "description": "Invalid id"
-            },
-            "401": {
-              "description": "Authentication required"
-            },
-            "403": {
-              "description": "Forbidden - missing permission documents.view"
-            },
-            "404": {
-              "description": "Type not found"
-            }
-          }
-        },
-        "put": {
-          "tags": [
-            "documents"
-          ],
-          "summary": "Обновить тип документа",
-          "description": "Обновляет существующую запись document_type. Требуется разрешение documents.update.",
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ],
-          "x-permissions": [
-            "documents.update"
-          ],
-          "parameters": [
-            {
-              "in": "path",
-              "name": "id",
-              "required": true,
-              "schema": {
-                "type": "integer"
-              }
-            }
-          ],
-          "requestBody": {
-            "required": true,
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "code": {
-                      "type": "string"
-                    },
-                    "description": {
-                      "type": "string"
-                    },
-                    "icon": {
-                      "type": "string"
-                    },
-                    "color": {
-                      "type": "string"
-                    },
-                    "order_index": {
-                      "type": "integer"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "responses": {
-            "200": {
-              "description": "OK",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/DocumentType"
-                  }
-                }
-              }
-            },
-            "400": {
-              "description": "Invalid id or payload"
-            },
-            "401": {
-              "description": "Authentication required"
-            },
-            "403": {
-              "description": "Forbidden - missing permission documents.update"
-            },
-            "404": {
-              "description": "Type not found"
-            }
-          }
-        },
-        "delete": {
-          "tags": [
-            "documents"
-          ],
-          "summary": "Удалить тип документа",
-          "description": "Удаляет запись document_type. Требуется разрешение documents.delete.",
-          "security": [
-            {
-              "bearerAuth": []
-            }
-          ],
-          "x-permissions": [
-            "documents.delete"
-          ],
-          "parameters": [
-            {
-              "in": "path",
-              "name": "id",
-              "required": true,
-              "schema": {
-                "type": "integer"
-              }
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "OK"
-            },
-            "400": {
-              "description": "Invalid id"
-            },
-            "401": {
-              "description": "Authentication required"
-            },
-            "403": {
-              "description": "Forbidden - missing permission documents.delete"
-            },
-            "404": {
-              "description": "Type not found"
-            }
-          }
-        }
-      },
       "put": {
         "tags": [
-          "documents"
+          "document_statuses"
         ],
         "summary": "Обновить статус документа",
         "description": "Обновляет существующую запись document_status. Требуется разрешение documents.update.",
@@ -5551,7 +5579,7 @@
       },
       "delete": {
         "tags": [
-          "documents"
+          "document_statuses"
         ],
         "summary": "Удалить статус документа",
         "description": "Удаляет запись document_status (soft/hard depends on DB). Требуется разрешение documents.delete.",
@@ -5588,6 +5616,300 @@
           },
           "404": {
             "description": "Status not found"
+          }
+        }
+      }
+    },
+    "/api/document_types/{id}": {
+      "get": {
+        "tags": [
+          "document_types"
+        ],
+        "summary": "Получить тип документа по id",
+        "description": "Возвращает запись из `document_type` по идентификатору.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID типа"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentType"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Type not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "document_types"
+        ],
+        "summary": "Обновить тип документа",
+        "description": "Обновляет существующую запись document_type.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "icon": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "order_index": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentType"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id or payload"
+          },
+          "404": {
+            "description": "Type not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "document_types"
+        ],
+        "summary": "Удалить тип документа",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Type not found"
+          }
+        }
+      }
+    },
+    "/api/issue_statuses/{id}": {
+      "get": {
+        "tags": [
+          "issue_statuses"
+        ],
+        "summary": "Получить статус задачи по id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "issue_statuses"
+        ],
+        "summary": "Обновить статус задачи",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "is_final": {
+                    "type": "boolean"
+                  },
+                  "order_index": {
+                    "type": "integer"
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "issue_statuses"
+        ],
+        "summary": "Удалить статус задачи",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
           }
         }
       }
@@ -6305,7 +6627,7 @@
     "/api/document_storage_types": {
       "get": {
         "tags": [
-          "documents"
+          "document_storage_types"
         ],
         "summary": "Список типов хранения для документов",
         "security": [
@@ -6339,7 +6661,7 @@
       },
       "post": {
         "tags": [
-          "documents"
+          "document_storage_types"
         ],
         "summary": "Создать тип хранения документов",
         "security": [
@@ -6391,7 +6713,7 @@
     "/api/document_storage_types/{id}": {
       "get": {
         "tags": [
-          "documents"
+          "document_storage_types"
         ],
         "summary": "Получить тип хранения по id",
         "security": [
@@ -6430,7 +6752,7 @@
       },
       "put": {
         "tags": [
-          "documents"
+          "document_storage_types"
         ],
         "summary": "Обновить тип хранения",
         "security": [
@@ -6487,7 +6809,7 @@
       },
       "delete": {
         "tags": [
-          "documents"
+          "document_storage_types"
         ],
         "summary": "Удалить тип хранения",
         "security": [
@@ -8514,7 +8836,7 @@
     "/api/issue_types": {
       "get": {
         "tags": [
-          "issues"
+          "issue_types"
         ],
         "summary": "Список типов задач",
         "description": "Возвращает список всех записей из таблицы `issue_type` со всеми атрибутами. Требуется разрешение issues.view.",
@@ -8547,12 +8869,93 @@
           }
         },
         "parameters": []
+      },
+      "post": {
+        "tags": [
+          "issue_types"
+        ],
+        "summary": "Создать тип задачи",
+        "description": "Создаёт новую запись в таблице `issue_type`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "code"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "icon": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "color": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "order_index": {
+                    "type": "integer"
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              },
+              "example": {
+                "name": "Баг",
+                "code": "bug"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueType"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
       }
     },
     "/api/issue_types/{id}": {
       "get": {
         "tags": [
-          "issues"
+          "issue_types"
         ],
         "summary": "Получить тип задачи по id",
         "description": "Возвращает запись из `issue_type` по идентификатору. Требуется разрешение issues.view.",
@@ -8584,6 +8987,114 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "issue_types"
+        ],
+        "summary": "Обновить тип задачи",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "icon": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  },
+                  "order_index": {
+                    "type": "integer"
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueType"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "issue_types"
+        ],
+        "summary": "Удалить тип задачи",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           },
           "404": {
             "description": "Not found"
@@ -8848,6 +9359,1303 @@
           "404": {
             "description": "Notification not found"
           }
+        }
+      }
+    },
+    "/api/document_work_flows": {
+      "get": {
+        "tags": [
+          "document_work_flow"
+        ],
+        "summary": "Список переходов статусов документов",
+        "description": "Возвращает список записей document_work_flow. Можно фильтровать по project_id.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Фильтр по проекту"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DocumentWorkFlow"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "document_work_flow"
+        ],
+        "summary": "Создать переход статуса документа",
+        "description": "Создаёт новую запись в document_work_flow.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "from_status_id",
+                  "to_status_id"
+                ],
+                "properties": {
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "from_status_id": {
+                    "type": "integer"
+                  },
+                  "to_status_id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "required_permission": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentWorkFlow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/document_work_flows/{id}": {
+      "get": {
+        "tags": [
+          "document_work_flow"
+        ],
+        "summary": "Получить переход по id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentWorkFlow"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "document_work_flow"
+        ],
+        "summary": "Обновить переход статуса документа",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "from_status_id": {
+                    "type": "integer"
+                  },
+                  "to_status_id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "required_permission": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentWorkFlow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "document_work_flow"
+        ],
+        "summary": "Удалить переход статуса документа",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/issue_work_flows": {
+      "get": {
+        "tags": [
+          "issue_work_flow"
+        ],
+        "summary": "Список переходов статусов задач",
+        "description": "Возвращает список записей issue_work_flow. Можно фильтровать по project_id и issue_type_id.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.view"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Фильтр по проекту"
+          },
+          {
+            "in": "query",
+            "name": "issue_type_id",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Фильтр по типу задачи"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/IssueWorkFlow"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "issue_work_flow"
+        ],
+        "summary": "Создать переход статуса задачи",
+        "description": "Создаёт новую запись в issue_work_flow.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "issue_type_id",
+                  "from_status_id",
+                  "to_status_id"
+                ],
+                "properties": {
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "issue_type_id": {
+                    "type": "integer"
+                  },
+                  "from_status_id": {
+                    "type": "integer"
+                  },
+                  "to_status_id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "required_permission": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueWorkFlow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/issue_work_flows/{id}": {
+      "get": {
+        "tags": [
+          "issue_work_flow"
+        ],
+        "summary": "Получить переход задачи по id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueWorkFlow"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "issue_work_flow"
+        ],
+        "summary": "Обновить переход статуса задачи",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "issue_type_id": {
+                    "type": "integer"
+                  },
+                  "from_status_id": {
+                    "type": "integer"
+                  },
+                  "to_status_id": {
+                    "type": "integer"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "required_permission": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssueWorkFlow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "issue_work_flow"
+        ],
+        "summary": "Удалить переход статуса задачи",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/job_titles": {
+      "get": {
+        "tags": [
+          "job_titles"
+        ],
+        "summary": "Список должностей",
+        "description": "Возвращает список всех должностей (id, name). Требуется разрешение job_titles.view.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "job_titles.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "job_titles"
+        ],
+        "summary": "Создать должность",
+        "description": "Создает новую запись в таблице `job_title`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "job_titles.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/job_titles/{id}": {
+      "put": {
+        "tags": [
+          "job_titles"
+        ],
+        "summary": "Обновить должность",
+        "description": "Обновляет запись должности по id.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "job_titles.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "job_titles"
+        ],
+        "summary": "Удалить должность",
+        "description": "Удаляет запись должности.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "job_titles.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/pages": {
+      "get": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Список страниц (admin view)",
+        "description": "Возвращает список страниц с агрегированными разрешениями.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "pages.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Создать страницу",
+        "description": "Создает новую страницу.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "pages.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "key"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "parent_id": {
+                    "type": "integer"
+                  },
+                  "icon": {
+                    "type": "string"
+                  },
+                  "order_index": {
+                    "type": "integer"
+                  },
+                  "main_menu": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/pages/{id}": {
+      "put": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Обновить страницу",
+        "description": "Обновляет страницу по id.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "pages.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "parent_id": {
+                    "type": "integer"
+                  },
+                  "icon": {
+                    "type": "string"
+                  },
+                  "order_index": {
+                    "type": "integer"
+                  },
+                  "main_menu": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "pages"
+        ],
+        "summary": "Удалить страницу",
+        "description": "Удаляет страницу.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "pages.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/page_permissions": {
+      "get": {
+        "tags": [
+          "page_permissions"
+        ],
+        "summary": "Список разрешений для страниц",
+        "description": "Возвращает список записей из таблицы `page_permissions`. Можно фильтровать по page_id.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "page_permissions.view"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page_id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "page_permissions"
+        ],
+        "summary": "Привязать разрешение к странице",
+        "description": "Создает запись в `page_permissions`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "page_permissions.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "page_id",
+                  "permission_id"
+                ],
+                "properties": {
+                  "page_id": {
+                    "type": "integer"
+                  },
+                  "permission_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/page_permissions/{id}": {
+      "delete": {
+        "tags": [
+          "page_permissions"
+        ],
+        "summary": "Удалить привязку разрешения к странице",
+        "description": "Удаляет запись из `page_permissions`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "page_permissions.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
+    }
+    ,
+    "/api/customer_questions": {
+      "get": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "List customer questions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.view"
+        ],
+        "parameters": [
+          { "name": "project_id", "in": "query", "description": "Filter by project id", "required": false, "schema": { "type": "integer" } },
+          { "name": "document_id", "in": "query", "description": "Filter by document id", "required": false, "schema": { "type": "integer" } },
+          { "name": "status", "in": "query", "description": "Filter by status", "required": false, "schema": { "type": "string" } },
+          { "name": "priority", "in": "query", "description": "Filter by priority", "required": false, "schema": { "type": "string" } },
+          { "name": "asked_by", "in": "query", "description": "Filter by asker user id", "required": false, "schema": { "type": "integer" } },
+          { "name": "answered_by", "in": "query", "description": "Filter by answerer user id", "required": false, "schema": { "type": "integer" } },
+          { "name": "search", "in": "query", "description": "Full-text search in question/answer text", "required": false, "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "description": "Page number for pagination (1-based)", "required": false, "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "description": "Page size for pagination", "required": false, "schema": { "type": "integer", "default": 50 } },
+          { "name": "asked_at_from", "in": "query", "description": "Filter asked_at from (inclusive)", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "asked_at_to", "in": "query", "description": "Filter asked_at to (inclusive)", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "answered_at_from", "in": "query", "description": "Filter answered_at from (inclusive)", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "answered_at_to", "in": "query", "description": "Filter answered_at to (inclusive)", "required": false, "schema": { "type": "string", "format": "date-time" } },
+          { "name": "due_date_from", "in": "query", "description": "Filter due_date from (inclusive)", "required": false, "schema": { "type": "string", "format": "date" } },
+          { "name": "due_date_to", "in": "query", "description": "Filter due_date to (inclusive)", "required": false, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Issue"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "Create customer question",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Issue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer_questions/{id}": {
+      "get": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "Get customer question",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "Update customer question",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Issue"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "Delete customer question",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/customer_questions/{id}/files": {
+      "post": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "Attach file to customer question",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["storage_id"],
+                "properties": {
+                  "storage_id": { "type": "integer" }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attached",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageRef" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "List files attached to customer question",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/StorageRef" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer_questions/{id}/files/{storage_id}": {
+      "delete": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "Detach file from customer question",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.update"
+        ],
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } },
+          { "in": "path", "name": "storage_id", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": { "description": "Detached" },
+          "404": { "description": "Not found" }
         }
       }
     }

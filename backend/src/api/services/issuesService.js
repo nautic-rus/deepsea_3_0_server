@@ -162,8 +162,8 @@ class IssuesService {
     // Compute allowed next statuses according to issue_work_flow for this issue's type
     try {
       if (i.type_id && i.status_id) {
-        const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM issue_work_flow wf JOIN issue_status s ON s.id = wf.to_status_id WHERE wf.issue_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true ORDER BY s.order_index`;
-        const res = await pool.query(q, [i.type_id, i.status_id]);
+        const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM issue_work_flow wf JOIN issue_status s ON s.id = wf.to_status_id WHERE wf.issue_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true AND (wf.project_id IS NULL OR wf.project_id = $3) ORDER BY s.order_index`;
+        const res = await pool.query(q, [i.type_id, i.status_id, i.project_id]);
         let allowed = res.rows || [];
 
         // Check for 'blocks' links: if any linked issue (via relation_type='blocks') exists
@@ -479,12 +479,19 @@ class IssuesService {
    * List all issue statuses (reads full rows from issue_status table).
    * Requires permission: issues.view
    */
-  static async listStatuses(actor) {
+  static async listStatuses(actor, projectId) {
     const requiredPermission = 'issues.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
-    const res = await pool.query('SELECT * FROM issue_status ORDER BY COALESCE(order_index, 0), id');
+    // Default: return all when no project filter provided
+    let res;
+    if (typeof projectId !== 'undefined') {
+      const q = 'SELECT * FROM issue_status WHERE (project_id IS NULL OR project_id = $1) ORDER BY COALESCE(order_index, 0), id';
+      res = await pool.query(q, [projectId]);
+    } else {
+      res = await pool.query('SELECT * FROM issue_status ORDER BY COALESCE(order_index, 0), id');
+    }
     return res.rows || [];
   }
 
@@ -492,12 +499,18 @@ class IssuesService {
    * List all issue types (reads full rows from issue_type table).
    * Requires permission: issues.view
    */
-  static async listTypes(actor) {
+  static async listTypes(actor, projectId) {
     const requiredPermission = 'issues.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
-    const res = await pool.query('SELECT * FROM issue_type ORDER BY COALESCE(order_index, 0), id');
+    let res;
+    if (typeof projectId !== 'undefined') {
+      const q = 'SELECT * FROM issue_type WHERE (project_id IS NULL OR project_id = $1) ORDER BY COALESCE(order_index, 0), id';
+      res = await pool.query(q, [projectId]);
+    } else {
+      res = await pool.query('SELECT * FROM issue_type ORDER BY COALESCE(order_index, 0), id');
+    }
     return res.rows || [];
   }
 
@@ -511,8 +524,10 @@ class IssuesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
-    const q = `INSERT INTO issue_status (name, code, description, color, is_initial, is_final, order_index) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`;
+    const cols = ['name','code','description','color','is_initial','is_final','order_index'];
     const vals = [fields.name, fields.code, fields.description || null, fields.color || null, !!fields.is_initial, !!fields.is_final, fields.order_index || 0];
+    if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
+    const q = `INSERT INTO issue_status (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
     const res = await pool.query(q, vals);
     return res.rows[0] || null;
   }
@@ -526,7 +541,7 @@ class IssuesService {
     const parts = [];
     const vals = [];
     let idx = 1;
-    ['name','code','description','color','is_initial','is_final','order_index'].forEach((k) => {
+    ['name','code','description','color','is_initial','is_final','order_index','project_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
     });
     if (parts.length === 0) {
@@ -558,8 +573,10 @@ class IssuesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
-    const q = `INSERT INTO issue_type (name, code, description, color, order_index) VALUES ($1,$2,$3,$4,$5) RETURNING *`;
+    const cols = ['name','code','description','color','order_index'];
     const vals = [fields.name, fields.code, fields.description || null, fields.color || null, fields.order_index || 0];
+    if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
+    const q = `INSERT INTO issue_type (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
     const res = await pool.query(q, vals);
     return res.rows[0] || null;
   }
@@ -573,7 +590,7 @@ class IssuesService {
     const parts = [];
     const vals = [];
     let idx = 1;
-    ['name','code','description','color','order_index'].forEach((k) => {
+    ['name','code','description','color','order_index','project_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
     });
     if (parts.length === 0) {

@@ -15,7 +15,10 @@ class Department {
       SELECT d.id,
              d.name,
              d.manager_id,
-             TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_name
+              TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_full_name,
+              u.avatar_id AS manager_avatar_id,
+              d.created_at,
+              d.updated_at
       FROM department d
       LEFT JOIN users u ON d.manager_id = u.id
       ORDER BY d.id ASC
@@ -43,7 +46,7 @@ class Department {
     }
     if (sets.length === 0) {
       const res = await pool.query(
-        `SELECT d.id, d.name, d.description, d.manager_id, TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_name, d.created_at, d.updated_at
+            `SELECT d.id, d.name, d.description, d.manager_id, TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_full_name, u.avatar_id AS manager_avatar_id, d.created_at, d.updated_at
          FROM department d
          LEFT JOIN users u ON d.manager_id = u.id
          WHERE d.id = $1`,
@@ -56,7 +59,7 @@ class Department {
     const updateQuery = `UPDATE department SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx}`;
     await pool.query(updateQuery, params);
     const res = await pool.query(
-      `SELECT d.id, d.name, d.description, d.manager_id, TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_name, d.created_at, d.updated_at
+            `SELECT d.id, d.name, d.description, d.manager_id, TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_full_name, u.avatar_id AS manager_avatar_id, d.created_at, d.updated_at
        FROM department d
        LEFT JOIN users u ON d.manager_id = u.id
        WHERE d.id = $1`,

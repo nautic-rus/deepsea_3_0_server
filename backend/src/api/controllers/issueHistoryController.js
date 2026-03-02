@@ -15,7 +15,8 @@ class IssueHistoryController {
       // Reuse IssuesService.getIssueById to enforce permissions
       const IssuesService = require('../services/issuesService');
       await IssuesService.getIssueById(issueId, actor);
-      const rows = await IssueHistory.listByIssue(issueId);
+      let rows = await IssueHistory.listByIssue(issueId);
+      rows = (rows || []).filter(r => !/^updated[_\s]?at$/i.test(String(r.field_name)));
       if (!rows || rows.length === 0) return res.json([]);
 
       const parseVal = (v) => {

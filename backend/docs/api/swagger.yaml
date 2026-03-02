@@ -6,32 +6,9 @@ info:
 servers:
   - url: ''
     description: Development server
-tags:
-                active_type:
-                  type: string
-                  example: issue
-                active_id:
-                  type: integer
-                  example: 123
-                passive_type:
-                  type: string
-                  example: issue
-                passive_id:
-                  type: integer
-                  example: 456
-                relation_type:
-                  type: string
-                  example: blocks
-      summary: Placeholder refresh JWT token
-              active_type: issue
-              active_id: 123
-              passive_type: issue
-              passive_id: 456
-              relation_type: blocks
-      required: true
-      schema:
-        type: string
-      example: Bearer {{accessToken}}
+tags: []
+components:
+  
   schemas:
     Error:
       type: object
@@ -542,6 +519,38 @@ tags:
           type: string
           format: date-time
 paths:
+  /api/job_titles:
+    get:
+      tags:
+        - job_titles
+      summary: List job titles
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      tags:
+        - job_titles
+      summary: Create job title
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Created
+  
   /api/auth/login:
     post:
       tags:
@@ -732,7 +741,7 @@ paths:
         required: true
         content:
           application/json:
-              schema:
+            schema:
               type: object
               required:
                 - email
@@ -1049,8 +1058,7 @@ paths:
           description: Invalid user id or bad payload
         '401':
           description: Authentication required
-        '403':
-          description: Forbidden - missing permission users.update
+        
         '404':
           description: User not found
     delete:
@@ -1164,8 +1172,7 @@ paths:
           description: Invalid user id or bad payload
         '401':
           description: Authentication required
-        '403':
-          description: Forbidden - missing permission users.update
+        
         '404':
           description: User not found
     delete:
@@ -1913,8 +1920,6 @@ paths:
             type: string
         - name: passive_id
           in: query
-          schema:
-            type: integer
           schema:
             type: integer
         - name: relation_type
@@ -4321,9 +4326,7 @@ paths:
         '401':
           description: Authentication required
         '403':
-          description: Forbidden - missing permission storage.view
-        '403':
-          description: Forbidden - missing permission users.update
+          description: Forbidden - missing permission storage.view or users.update
         '404':
           description: User not found
   /api/issue_types:
@@ -4534,3 +4537,341 @@ paths:
           description: Forbidden
         '404':
           description: Notification not found
+
+  /api/job_titles:
+    get:
+      tags:
+        - job_titles
+      summary: Список должностей
+      description: Возвращает список всех должностей (id, name). Требуется разрешение job_titles.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - job_titles.view
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+    post:
+      tags:
+        - job_titles
+      summary: Создать должность
+      description: Создает новую запись в таблице `job_title`. Требуется разрешение job_titles.create.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - job_titles.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+  /api/job_titles/{id}:
+    put:
+      tags:
+        - job_titles
+      summary: Обновить должность
+      description: Обновляет запись должности по id. Требуется разрешение job_titles.update.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - job_titles.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+    delete:
+      tags:
+        - job_titles
+      summary: Удалить должность
+      description: Удаляет запись должности (soft-delete if supported). Требуется разрешение job_titles.delete.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - job_titles.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+
+  /api/pages:
+    get:
+      tags:
+        - pages
+      summary: Список страниц (admin view)
+      description: Возвращает список страниц с агрегированными разрешениями. Требуется разрешение pages.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - pages.view
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        key:
+                          type: string
+                        path:
+                          type: string
+                        parent_id:
+                          type: integer
+                        icon:
+                          type: string
+                        order_index:
+                          type: integer
+                        permissions:
+                          type: array
+                          items:
+                            type: string
+    post:
+      tags:
+        - pages
+      summary: Создать страницу
+      description: Создает новую страницу в таблице `pages`. Требуется разрешение pages.create.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - pages.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - key
+              properties:
+                key:
+                  type: string
+                path:
+                  type: string
+                parent_id:
+                  type: integer
+                icon:
+                  type: string
+                order_index:
+                  type: integer
+                main_menu:
+                  type: boolean
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+    put:
+      tags:
+        - pages
+      summary: Обновить страницу
+      description: Обновляет страницу по id. Требуется разрешение pages.update.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - pages.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                key:
+                  type: string
+                path:
+                  type: string
+                parent_id:
+                  type: integer
+                icon:
+                  type: string
+                order_index:
+                  type: integer
+                main_menu:
+                  type: boolean
+      responses:
+        '200':
+          description: OK
+    delete:
+      tags:
+        - pages
+      summary: Удалить страницу
+      description: Удаляет страницу (soft-delete if supported). Требуется разрешение pages.delete.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - pages.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
+
+  /api/page_permissions:
+    get:
+      tags:
+        - page_permissions
+      summary: Список разрешений для страниц
+      description: Возвращает список записей из таблицы `page_permissions`. Можно фильтровать по page_id. Требуется разрешение page_permissions.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - page_permissions.view
+      parameters:
+        - in: query
+          name: page_id
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        page_id:
+                          type: integer
+                        permission_id:
+                          type: integer
+                        permission_code:
+                          type: string
+    post:
+      tags:
+        - page_permissions
+      summary: Привязать разрешение к странице
+      description: Создает запись в `page_permissions`. Требуется разрешение page_permissions.create.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - page_permissions.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - page_id
+                - permission_id
+              properties:
+                page_id:
+                  type: integer
+                permission_id:
+                  type: integer
+      responses:
+        '201':
+          description: Created
+    delete:
+      tags:
+        - page_permissions
+      summary: Удалить привязку разрешения к странице
+      description: Удаляет запись из `page_permissions`. Требуется разрешение page_permissions.delete.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - page_permissions.delete
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted

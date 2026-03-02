@@ -43,6 +43,13 @@ class Permission {
     return res.rows;
   }
 
+  static async findById(id) {
+    if (!id) return null;
+    const q = `SELECT id, name, code, description, created_at, updated_at FROM permissions WHERE id = $1 LIMIT 1`;
+    const res = await pool.query(q, [id]);
+    return res.rows[0] || null;
+  }
+
   /**
    * Create a new permission. Returns the created row.
    * Ensures code is unique (throws if a permission with same code exists).

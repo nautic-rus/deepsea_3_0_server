@@ -1,9 +1,9 @@
-const JobTitlesService = require('../services/jobTitlesService');
+const PagesService = require('../services/pagesService');
 
 exports.list = async (req, res, next) => {
   try {
     const actor = req.user;
-    const rows = await JobTitlesService.listJobTitles(actor);
+    const rows = await PagesService.listPages(actor);
     res.json({ data: rows });
   } catch (err) { next(err); }
 };
@@ -11,8 +11,7 @@ exports.list = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const actor = req.user;
-    const { name } = req.body || {};
-    const created = await JobTitlesService.createJobTitle(name, actor);
+    const created = await PagesService.createPage(req.body || {}, actor);
     res.status(201).json({ data: created });
   } catch (err) { next(err); }
 };
@@ -21,8 +20,7 @@ exports.update = async (req, res, next) => {
   try {
     const actor = req.user;
     const id = parseInt(req.params.id, 10);
-    const fields = req.body || {};
-    const updated = await JobTitlesService.updateJobTitle(id, fields, actor);
+    const updated = await PagesService.updatePage(id, req.body || {}, actor);
     res.json({ data: updated });
   } catch (err) { next(err); }
 };
@@ -31,7 +29,7 @@ exports.delete = async (req, res, next) => {
   try {
     const actor = req.user;
     const id = parseInt(req.params.id, 10);
-    await JobTitlesService.deleteJobTitle(id, actor);
-    res.json({ message: 'Job title deleted' });
+    await PagesService.deletePage(id, actor);
+    res.json({ message: 'Page deleted' });
   } catch (err) { next(err); }
 };

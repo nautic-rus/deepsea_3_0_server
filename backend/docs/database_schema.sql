@@ -169,6 +169,7 @@ CREATE TABLE projects (
 -- Таблица статусов задач
 CREATE TABLE issue_status (
     id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL UNIQUE,
     code VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
@@ -183,6 +184,7 @@ CREATE TABLE issue_status (
 -- Таблица типов задач
 CREATE TABLE issue_type (
     id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL UNIQUE,
     code VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
@@ -196,6 +198,7 @@ CREATE TABLE issue_type (
 -- Таблица workflow для задач (переходы между статусами)
 CREATE TABLE issue_work_flow (
     id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
     issue_type_id INTEGER NOT NULL REFERENCES issue_type(id) ON DELETE CASCADE,
     from_status_id INTEGER NOT NULL REFERENCES issue_status(id) ON DELETE CASCADE,
     to_status_id INTEGER NOT NULL REFERENCES issue_status(id) ON DELETE CASCADE,
@@ -205,7 +208,7 @@ CREATE TABLE issue_work_flow (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(issue_type_id, from_status_id, to_status_id)
+    UNIQUE(project_id, issue_type_id, from_status_id, to_status_id)
 );
 
 -- Таблица задач/проблем (issues)
@@ -242,6 +245,7 @@ CREATE TABLE issue_history (
 -- Таблица статусов документов
 CREATE TABLE document_status (
     id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL UNIQUE,
     code VARCHAR(50) NOT NULL UNIQUE,
     description TEXT,
@@ -256,6 +260,7 @@ CREATE TABLE document_status (
 -- Таблица workflow для документов (переходы между статусами)
 CREATE TABLE document_work_flow (
     id SERIAL PRIMARY KEY,
+    project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
     from_status_id INTEGER NOT NULL REFERENCES document_status(id) ON DELETE CASCADE,
     to_status_id INTEGER NOT NULL REFERENCES document_status(id) ON DELETE CASCADE,
     name VARCHAR(255),
@@ -264,7 +269,7 @@ CREATE TABLE document_work_flow (
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(from_status_id, to_status_id)
+    UNIQUE(project_id, from_status_id, to_status_id)
 );
 
 -- Таблица статусов вопросов от заказчика

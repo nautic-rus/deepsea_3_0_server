@@ -13,7 +13,8 @@ class DocumentHistoryController {
       // Reuse DocumentsService.getDocumentById to enforce permissions
       const DocumentsService = require('../services/documentsService');
       await DocumentsService.getDocumentById(documentId, actor);
-      const rows = await DocumentHistory.listByDocument(documentId);
+      let rows = await DocumentHistory.listByDocument(documentId);
+      rows = (rows || []).filter(r => !/^updated[_\s]?at$/i.test(String(r.field_name)));
       if (!rows || rows.length === 0) return res.json([]);
 
       // Enrich history entries with user info (from changed_by)

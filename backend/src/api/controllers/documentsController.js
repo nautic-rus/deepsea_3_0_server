@@ -220,7 +220,8 @@ class DocumentsController {
   static async listTypes(req, res, next) {
     try {
       const actor = req.user || null;
-      const rows = await DocumentsService.listTypes(actor);
+      const projectId = req.query && req.query.project_id ? Number(req.query.project_id) : undefined;
+      const rows = await DocumentsService.listTypes(actor, projectId);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
@@ -280,7 +281,8 @@ class DocumentsController {
   static async listStatuses(req, res, next) {
     try {
       const actor = req.user || null;
-      const rows = await DocumentsService.listStatuses(actor);
+      const projectId = req.query && req.query.project_id ? Number(req.query.project_id) : undefined;
+      const rows = await DocumentsService.listStatuses(actor, projectId);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
@@ -340,7 +342,8 @@ class DocumentsController {
   static async listStorageTypes(req, res, next) {
     try {
       const actor = req.user || null;
-      const rows = await DocumentsService.listStorageTypes(actor);
+      const projectId = req.query && req.query.project_id ? Number(req.query.project_id) : undefined;
+      const rows = await DocumentsService.listStorageTypes(actor, projectId);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }

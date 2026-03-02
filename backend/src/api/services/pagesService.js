@@ -119,6 +119,48 @@ class PagesService {
     }
     return false;
   }
+
+  // Admin CRUD methods for pages
+  static async createPage(fields = {}, actor) {
+    const requiredPermission = 'pages.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission pages.create'); err.statusCode = 403; throw err; }
+    if (!fields || !fields.key) { const err = new Error('Missing page key'); err.statusCode = 400; throw err; }
+    const created = await Page.create(fields);
+    return created;
+  }
+
+  static async updatePage(id, fields = {}, actor) {
+    const requiredPermission = 'pages.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission pages.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const updated = await Page.update(Number(id), fields);
+    if (!updated) { const err = new Error('Page not found'); err.statusCode = 404; throw err; }
+    return updated;
+  }
+
+  static async deletePage(id, actor) {
+    const requiredPermission = 'pages.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission pages.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const ok = await Page.softDelete(Number(id));
+    if (!ok) { const err = new Error('Page not found'); err.statusCode = 404; throw err; }
+    return { success: true };
+  }
+
+  static async listPages(actor) {
+    const requiredPermission = 'pages.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission pages.view'); err.statusCode = 403; throw err; }
+    // Return raw rows with aggregated permissions for admin UI
+    return Page.listAllWithPermissions();
+  }
 }
 
 module.exports = PagesService;

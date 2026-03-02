@@ -142,11 +142,11 @@ class DocumentsService {
         // fall back to global workflows (document_type_id IS NULL).
         let res;
         if (d.type_id) {
-          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true ORDER BY s.order_index`;
-          res = await pool.query(q, [d.type_id, d.status_id]);
+          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true AND (wf.project_id IS NULL OR wf.project_id = $3) ORDER BY s.order_index`;
+          res = await pool.query(q, [d.type_id, d.status_id, d.project_id]);
         } else {
-          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id IS NULL AND wf.from_status_id = $1 AND wf.is_active = true ORDER BY s.order_index`;
-          res = await pool.query(q, [d.status_id]);
+          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id IS NULL AND wf.from_status_id = $1 AND wf.is_active = true AND (wf.project_id IS NULL OR wf.project_id = $2) ORDER BY s.order_index`;
+          res = await pool.query(q, [d.status_id, d.project_id]);
         }
         let allowedStatuses = res.rows || [];
 
@@ -833,12 +833,18 @@ class DocumentsService {
    * List all document types
    * Requires permission: documents.view
    */
-  static async listTypes(actor) {
+  static async listTypes(actor, projectId) {
     const requiredPermission = 'documents.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
-    const res = await pool.query('SELECT * FROM document_type ORDER BY COALESCE(order_index, 0), id');
+    let res;
+    if (typeof projectId !== 'undefined') {
+      const q = 'SELECT * FROM document_type WHERE (project_id IS NULL OR project_id = $1) ORDER BY COALESCE(order_index, 0), id';
+      res = await pool.query(q, [projectId]);
+    } else {
+      res = await pool.query('SELECT * FROM document_type ORDER BY COALESCE(order_index, 0), id');
+    }
     return res.rows || [];
   }
 
@@ -858,8 +864,12 @@ class DocumentsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
-    const q = `INSERT INTO document_type (name, code, description, icon, color, order_index) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`;
+    const cols = ['name','code','description','icon','color','order_index'];
     const vals = [fields.name, fields.code, fields.description || null, fields.icon || null, fields.color || null, fields.order_index || 0];
+    if (fields.project_id !== undefined && fields.project_id !== null) {
+      cols.push('project_id'); vals.push(Number(fields.project_id));
+    }
+    const q = `INSERT INTO document_type (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
     const res = await pool.query(q, vals);
     return res.rows[0] || null;
   }
@@ -873,7 +883,7 @@ class DocumentsService {
     const parts = [];
     const vals = [];
     let idx = 1;
-    ['name','code','description','icon','color','order_index'].forEach((k) => {
+    ['name','code','description','icon','color','order_index','project_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
     });
     if (parts.length === 0) {
@@ -901,12 +911,18 @@ class DocumentsService {
    * List all documents_storage_type rows
    * Requires permission: documents.view
    */
-  static async listStorageTypes(actor) {
+  static async listStorageTypes(actor, projectId) {
     const requiredPermission = 'documents.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
-    const res = await pool.query('SELECT * FROM documents_storage_type ORDER BY name, id');
+    let res;
+    if (typeof projectId !== 'undefined') {
+      const q = 'SELECT * FROM documents_storage_type WHERE (project_id IS NULL OR project_id = $1) ORDER BY name, id';
+      res = await pool.query(q, [projectId]);
+    } else {
+      res = await pool.query('SELECT * FROM documents_storage_type ORDER BY name, id');
+    }
     return res.rows || [];
   }
 
@@ -926,8 +942,10 @@ class DocumentsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.name) { const err = new Error('Missing required field: name'); err.statusCode = 400; throw err; }
-    const q = `INSERT INTO documents_storage_type (name, code, description) VALUES ($1,$2,$3) RETURNING *`;
+    const cols = ['name','code','description'];
     const vals = [fields.name, fields.code || null, fields.description || null];
+    if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
+    const q = `INSERT INTO documents_storage_type (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
     const res = await pool.query(q, vals);
     return res.rows[0] || null;
   }
@@ -941,7 +959,7 @@ class DocumentsService {
     const parts = [];
     const vals = [];
     let idx = 1;
-    ['name','code','description'].forEach((k) => {
+    ['name','code','description','project_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
     });
     if (parts.length === 0) {
@@ -968,12 +986,18 @@ class DocumentsService {
    * List all document statuses
    * Requires permission: documents.view
    */
-  static async listStatuses(actor) {
+  static async listStatuses(actor, projectId) {
     const requiredPermission = 'documents.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
-    const res = await pool.query('SELECT * FROM document_status ORDER BY COALESCE(order_index, 0), id');
+    let res;
+    if (typeof projectId !== 'undefined') {
+      const q = 'SELECT * FROM document_status WHERE (project_id IS NULL OR project_id = $1) ORDER BY COALESCE(order_index, 0), id';
+      res = await pool.query(q, [projectId]);
+    } else {
+      res = await pool.query('SELECT * FROM document_status ORDER BY COALESCE(order_index, 0), id');
+    }
     return res.rows || [];
   }
 
@@ -993,8 +1017,10 @@ class DocumentsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
-    const q = `INSERT INTO document_status (name, code, description, color, is_initial, is_final, order_index) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`;
+    const cols = ['name','code','description','color','is_initial','is_final','order_index'];
     const vals = [fields.name, fields.code, fields.description || null, fields.color || null, !!fields.is_initial, !!fields.is_final, fields.order_index || 0];
+    if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
+    const q = `INSERT INTO document_status (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
     const res = await pool.query(q, vals);
     return res.rows[0] || null;
   }
@@ -1008,7 +1034,7 @@ class DocumentsService {
     const parts = [];
     const vals = [];
     let idx = 1;
-    ['name','code','description','color','is_initial','is_final','order_index'].forEach((k) => {
+    ['name','code','description','color','is_initial','is_final','order_index','project_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
     });
     if (parts.length === 0) {
@@ -1066,8 +1092,39 @@ class DocumentsService {
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const DocumentDirectory = require('../../db/models/DocumentDirectory');
+    // Before deleting, ensure there are no child directories or documents attached
+    // Check for active child directories
+    try {
+      const childRes = await pool.query('SELECT id FROM document_directories WHERE parent_id = $1 AND (is_active IS NULL OR is_active = true) LIMIT 1', [Number(id)]);
+      if (childRes && childRes.rowCount > 0) { const err = new Error('Directory has child directories'); err.statusCode = 400; throw err; }
+    } catch (e) {
+      // If `is_active` column does not exist, retry without that condition.
+      if (e && e.message && e.message.toLowerCase().includes('is_active')) {
+        const childRes = await pool.query('SELECT id FROM document_directories WHERE parent_id = $1 LIMIT 1', [Number(id)]);
+        if (childRes && childRes.rowCount > 0) { const err = new Error('Directory has child directories'); err.statusCode = 400; throw err; }
+        // otherwise continue
+      } else {
+        // If the table doesn't exist or other error, rethrow
+        if (e && e.statusCode) throw e; // our own
+        throw e;
+      }
+    }
+    // Check for documents attached to this directory
+    try {
+      const docsRes = await pool.query('SELECT id FROM documents WHERE directory_id = $1 AND (is_active IS NULL OR is_active = true) LIMIT 1', [Number(id)]);
+      if (docsRes && docsRes.rowCount > 0) { const err = new Error('Directory contains documents'); err.statusCode = 400; throw err; }
+    } catch (e) {
+      // If `is_active` column does not exist on `documents`, retry without that condition.
+      if (e && e.message && e.message.toLowerCase().includes('is_active')) {
+        const docsRes = await pool.query('SELECT id FROM documents WHERE directory_id = $1 LIMIT 1', [Number(id)]);
+        if (docsRes && docsRes.rowCount > 0) { const err = new Error('Directory contains documents'); err.statusCode = 400; throw err; }
+      } else {
+        if (e && e.statusCode) throw e;
+        throw e;
+      }
+    }
     // attempt to mark as deleted; record updater if possible
-  const ok = await DocumentDirectory.softDelete(Number(id), actor.id);
+    const ok = await DocumentDirectory.softDelete(Number(id), actor.id);
     if (!ok) { const err = new Error('Directory not found'); err.statusCode = 404; throw err; }
     return { success: true };
   }

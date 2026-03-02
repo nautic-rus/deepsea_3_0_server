@@ -60,7 +60,8 @@ class IssuesController {
   static async listStatuses(req, res, next) {
     try {
       const actor = req.user || null;
-      const rows = await IssuesService.listStatuses(actor);
+      const projectId = req.query && req.query.project_id ? Number(req.query.project_id) : undefined;
+      const rows = await IssuesService.listStatuses(actor, projectId);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
@@ -107,7 +108,8 @@ class IssuesController {
   static async listTypes(req, res, next) {
     try {
       const actor = req.user || null;
-      const rows = await IssuesService.listTypes(actor);
+      const projectId = req.query && req.query.project_id ? Number(req.query.project_id) : undefined;
+      const rows = await IssuesService.listTypes(actor, projectId);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
@@ -119,7 +121,8 @@ class IssuesController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const rows = await IssuesService.listStatuses(actor);
+      const projectId = req.query && req.query.project_id ? Number(req.query.project_id) : undefined;
+      const rows = await IssuesService.listStatuses(actor, projectId);
       const row = (rows || []).find(r => Number(r.id) === Number(id));
       if (!row) { const err = new Error('Status not found'); err.statusCode = 404; throw err; }
       res.json(row);
@@ -133,7 +136,8 @@ class IssuesController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const rows = await IssuesService.listTypes(actor);
+      const projectId = req.query && req.query.project_id ? Number(req.query.project_id) : undefined;
+      const rows = await IssuesService.listTypes(actor, projectId);
       const row = (rows || []).find(r => Number(r.id) === Number(id));
       if (!row) { const err = new Error('Type not found'); err.statusCode = 404; throw err; }
       res.json(row);
