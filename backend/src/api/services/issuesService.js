@@ -305,8 +305,13 @@ class IssuesService {
         const TemplateService = require('./notificationTemplateService');
         const EmailService = require('./emailService');
 
-        const recipients = await UserNotificationSetting.getRecipientsForEvent(created.project_id, 'issue_created');
-        if (!recipients || recipients.length === 0) return;
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(created.project_id, 'issue_created');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Only notify participants (author + assignee) of this issue, excluding the actor
+        const participantIds = new Set([created.author_id, created.assignee_id].filter(Boolean).map(Number));
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
 
         const verbose = process.env.NOTIFICATION_VERBOSE === 'true';
         if (verbose) console.log('Notification recipients for issue_created:', recipients.map(r => ({ user_id: r.user_id, method: r.method_code, rc_username: r.rc_username, email: r.email })));
@@ -418,8 +423,13 @@ class IssuesService {
         const EmailService = require('./emailService');
         const RocketChatService = require('./rocketChatService');
 
-        const recipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'issue_updated');
-        if (!recipients || recipients.length === 0) return;
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'issue_updated');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Only notify participants (author + assignee) of this issue, excluding the actor
+        const participantIds = new Set([updated.author_id, updated.assignee_id, existing.author_id, existing.assignee_id].filter(Boolean).map(Number));
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
 
   const frontendRoot = process.env.FRONTEND_URL || '';
   const issueUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/issues/${updated.id}` : '';
@@ -780,8 +790,13 @@ class IssuesService {
         const EmailService = require('./emailService');
         const RocketChatService = require('./rocketChatService');
 
-        const recipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'comment_added');
-        if (!recipients || recipients.length === 0) return;
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'comment_added');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Only notify participants (author + assignee) of this issue, excluding the actor
+        const participantIds = new Set([existing.author_id, existing.assignee_id].filter(Boolean).map(Number));
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
 
   const frontendRoot = process.env.FRONTEND_URL || '';
   const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/issues/${existing.id}` : '';

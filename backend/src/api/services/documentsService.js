@@ -245,8 +245,13 @@ class DocumentsService {
         const EmailService = require('./emailService');
         const RocketChatService = require('./rocketChatService');
 
-        const recipients = await UserNotificationSetting.getRecipientsForEvent(created.project_id, 'document_created');
-        if (!recipients || recipients.length === 0) return;
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(created.project_id, 'document_created');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Only notify participants (author + assignee) of this document, excluding the actor
+        const participantIds = new Set([created.created_by, created.assigne_to].filter(Boolean).map(Number));
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
 
   const frontendRoot = process.env.FRONTEND_URL || '';
   const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${created.id}` : '';
@@ -346,8 +351,13 @@ class DocumentsService {
         const EmailService = require('./emailService');
         const RocketChatService = require('./rocketChatService');
 
-        const recipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'document_updated');
-        if (!recipients || recipients.length === 0) return;
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'document_updated');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Only notify participants (author + assignee) of this document, excluding the actor
+        const participantIds = new Set([updated.created_by, updated.assigne_to, existing.created_by, existing.assigne_to].filter(Boolean).map(Number));
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
 
         const frontendRoot = process.env.FRONTEND_URL || '';
         const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${updated.id}` : '';
@@ -492,8 +502,13 @@ class DocumentsService {
         const EmailService = require('./emailService');
         const RocketChatService = require('./rocketChatService');
 
-        const recipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'comment_added');
-        if (!recipients || recipients.length === 0) return;
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'comment_added');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Only notify participants (author + assignee) of this document, excluding the actor
+        const participantIds = new Set([existing.created_by, existing.assigne_to].filter(Boolean).map(Number));
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
 
   const frontendRoot = process.env.FRONTEND_URL || '';
   const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';

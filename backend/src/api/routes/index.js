@@ -38,6 +38,8 @@ const userNotificationsController = require('../controllers/userNotificationsCon
 const entityLinksController = require('../controllers/entityLinksController');
 const auditLogsController = require('../controllers/auditLogsController');
 const customerQuestionsController = require('../controllers/customerQuestionsController');
+const customerQuestionStatusesController = require('../controllers/customerQuestionStatusesController');
+const customerQuestionWorkFlowsController = require('../controllers/customerQuestionWorkFlowsController');
 const notificationEventsController = require('../controllers/notificationEventsController');
 const notificationMethodsController = require('../controllers/notificationMethodsController');
 
@@ -199,6 +201,20 @@ router.post('/customer_questions/:id/files', authMiddleware, _upload.single('fil
 router.post('/customer_questions/:id/files/local', authMiddleware, _upload.single('file'), customerQuestionsController.attachLocalFile);
 router.delete('/customer_questions/:id/files/:storage_id', authMiddleware, customerQuestionsController.detachFile);
 router.get('/customer_questions/:id/files', authMiddleware, customerQuestionsController.listFiles);
+
+// ===== Customer question statuses routes =====
+router.get('/customer_question_statuses', authMiddleware, customerQuestionStatusesController.list);
+router.get('/customer_question_statuses/:id', authMiddleware, customerQuestionStatusesController.get);
+router.post('/customer_question_statuses', authMiddleware, customerQuestionStatusesController.create);
+router.put('/customer_question_statuses/:id', authMiddleware, customerQuestionStatusesController.update);
+router.delete('/customer_question_statuses/:id', authMiddleware, customerQuestionStatusesController.delete);
+
+// ===== Customer question work flows routes =====
+router.get('/customer_question_work_flows', authMiddleware, customerQuestionWorkFlowsController.list);
+router.get('/customer_question_work_flows/:id', authMiddleware, customerQuestionWorkFlowsController.get);
+router.post('/customer_question_work_flows', authMiddleware, customerQuestionWorkFlowsController.create);
+router.put('/customer_question_work_flows/:id', authMiddleware, customerQuestionWorkFlowsController.update);
+router.delete('/customer_question_work_flows/:id', authMiddleware, customerQuestionWorkFlowsController.delete);
 
 // ===== Notification events/methods (admin) =====
 router.get('/notification_events', authMiddleware, notificationEventsController.list);

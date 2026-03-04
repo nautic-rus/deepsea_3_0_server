@@ -10,7 +10,7 @@ class CustomerQuestionWorkFlow {
     if (typeof to_status_id !== 'undefined' && to_status_id !== null) { parts.push(`wf.to_status_id = $${idx++}`); vals.push(to_status_id); }
     if (typeof project_id !== 'undefined') { parts.push(`(wf.project_id IS NULL OR wf.project_id = $${idx++})`); vals.push(project_id); }
     const where = parts.length ? `WHERE ${parts.join(' AND ')}` : '';
-    const q = `SELECT wf.* FROM customer_question_work_flow wf ${where} ORDER BY COALESCE(wf.order_index,0), wf.id`;
+    const q = `SELECT wf.* FROM customer_question_work_flow wf ${where} ORDER BY wf.id`;
     const res = await pool.query(q, vals);
     return res.rows || [];
   }
@@ -21,8 +21,8 @@ class CustomerQuestionWorkFlow {
   }
 
   static async create(fields) {
-    const cols = ['from_status_id','to_status_id','name','description','required_permission','is_active','order_index'];
-    const vals = [fields.from_status_id || null, fields.to_status_id || null, fields.name || null, fields.description || null, fields.required_permission || null, !!fields.is_active, fields.order_index || 0];
+    const cols = ['from_status_id','to_status_id','name','description','required_permission','is_active'];
+    const vals = [fields.from_status_id || null, fields.to_status_id || null, fields.name || null, fields.description || null, fields.required_permission || null, fields.is_active !== undefined ? !!fields.is_active : true];
     if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
     const q = `INSERT INTO customer_question_work_flow (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
     const res = await pool.query(q, vals);
@@ -33,7 +33,7 @@ class CustomerQuestionWorkFlow {
     const parts = [];
     const vals = [];
     let idx = 1;
-    ['from_status_id','to_status_id','name','description','required_permission','is_active','order_index','project_id'].forEach((k) => {
+    ['from_status_id','to_status_id','name','description','required_permission','is_active','project_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
     });
     if (parts.length === 0) return await CustomerQuestionWorkFlow.findById(id);
