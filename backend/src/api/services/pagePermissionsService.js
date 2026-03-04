@@ -35,9 +35,12 @@ class PagePermissionsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission page_permissions.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
-    const ok = await PagePermission.delete(Number(id));
-    if (!ok) { const err = new Error('Page permission not found'); err.statusCode = 404; throw err; }
-    return { success: true };
+    const pageId = Number(id);
+    // validate page exists
+    const page = await Page.findById(pageId);
+    if (!page) { const err = new Error('Page not found'); err.statusCode = 404; throw err; }
+    const deleted = await PagePermission.deleteByPage(pageId);
+    return { success: true, deleted };
   }
 }
 

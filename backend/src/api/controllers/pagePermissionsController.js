@@ -20,7 +20,7 @@ exports.delete = async (req, res, next) => {
   try {
     const actor = req.user;
     const id = parseInt(req.params.id, 10);
-    await PagePermissionsService.delete(id, actor);
-    res.json({ message: 'Page permission deleted' });
+    const result = await PagePermissionsService.delete(id, actor);
+    res.json({ message: 'Page permissions deleted for page', deleted: result.deleted });
   } catch (err) { next(err); }
 };

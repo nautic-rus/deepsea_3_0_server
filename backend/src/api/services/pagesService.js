@@ -58,18 +58,19 @@ class PagesService {
       // check permissions for this node
       let allowed = false;
       // ensure permissions is an array (DB may return different shapes in edge cases)
-      const perms = Array.isArray(node.permissions) ? node.permissions : (node.permissions ? [node.permissions] : []);
+        const perms = Array.isArray(node.permissions) ? node.permissions : (node.permissions ? [node.permissions] : []);
       if (!perms || perms.length === 0) {
         // If a page has no permissions assigned in page_permissions, deny by default.
         // This prevents returning all pages when page_permissions table is empty.
         allowed = false;
         if (debug) console.debug(`pagesService: page ${node.id} denied (no perms defined)`);
       } else {
-        for (const perm of perms) {
-          const ok = await hasPermission(user, perm);
-          if (debug) console.debug(`pagesService: checking perm='${perm}' for user=${user.id} => ${ok}`);
-          if (ok) { allowed = true; break; }
-        }
+          for (const perm of perms) {
+            const code = (perm && typeof perm === 'object') ? perm.code : perm;
+            const ok = await hasPermission(user, code);
+            if (debug) console.debug(`pagesService: checking perm='${code}' for user=${user.id} => ${ok}`);
+            if (ok) { allowed = true; break; }
+          }
         if (debug && !allowed) console.debug(`pagesService: page ${node.id} denied (no matching perms)`);
       }
       if (!allowed) return null;
@@ -83,6 +84,10 @@ class PagesService {
         order: node.order,
         icon: node.icon
       };
+        // expose permissions metadata for client where available
+        if (node.permissions && Array.isArray(node.permissions) && node.permissions.length > 0) {
+          out.permissions = node.permissions.map(p => (p && typeof p === 'object') ? p : { id: null, code: p, name: null });
+        }
       if (node.children && node.children.length > 0) {
         const children = [];
         for (const ch of node.children) {

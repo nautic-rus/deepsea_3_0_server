@@ -38,6 +38,8 @@ const userNotificationsController = require('../controllers/userNotificationsCon
 const entityLinksController = require('../controllers/entityLinksController');
 const auditLogsController = require('../controllers/auditLogsController');
 const customerQuestionsController = require('../controllers/customerQuestionsController');
+const notificationEventsController = require('../controllers/notificationEventsController');
+const notificationMethodsController = require('../controllers/notificationMethodsController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -65,6 +67,11 @@ router.post('/create_users', authMiddleware, validateCreateUser, usersController
 // GET /api/users (list)
 router.get('/users', authMiddleware, usersController.getUsers);
 
+// User notification settings (current user)
+router.get('/users/notification_settings', authMiddleware, userNotificationSettingsController.list);
+router.post('/users/notification_settings', authMiddleware, userNotificationSettingsController.upsert);
+router.delete('/users/notification_settings', authMiddleware, userNotificationSettingsController.remove);
+
 // GET /api/users/:id (single user)
 router.get('/users/:id', authMiddleware, usersController.getUser);
 
@@ -73,10 +80,7 @@ router.get('/users/:id/rocket_chat', authMiddleware, userRocketChatController.ge
 router.post('/users/:id/rocket_chat', authMiddleware, userRocketChatController.set);
 router.delete('/users/:id/rocket_chat', authMiddleware, userRocketChatController.remove);
 
-// User notification settings
-router.get('/users/:id/notification_settings', authMiddleware, userNotificationSettingsController.list);
-router.post('/users/:id/notification_settings', authMiddleware, userNotificationSettingsController.upsert);
-router.delete('/users/:id/notification_settings', authMiddleware, userNotificationSettingsController.remove);
+// (routes for notification_settings moved above to avoid conflicting with /users/:id)
 
 // User notification center endpoints
 router.get('/users/:id/notifications', authMiddleware, userNotificationsController.list);
@@ -195,6 +199,19 @@ router.post('/customer_questions/:id/files', authMiddleware, _upload.single('fil
 router.post('/customer_questions/:id/files/local', authMiddleware, _upload.single('file'), customerQuestionsController.attachLocalFile);
 router.delete('/customer_questions/:id/files/:storage_id', authMiddleware, customerQuestionsController.detachFile);
 router.get('/customer_questions/:id/files', authMiddleware, customerQuestionsController.listFiles);
+
+// ===== Notification events/methods (admin) =====
+router.get('/notification_events', authMiddleware, notificationEventsController.list);
+router.post('/notification_events', authMiddleware, notificationEventsController.create);
+router.get('/notification_events/:id', authMiddleware, notificationEventsController.get);
+router.put('/notification_events/:id', authMiddleware, notificationEventsController.update);
+router.delete('/notification_events/:id', authMiddleware, notificationEventsController.remove);
+
+router.get('/notification_methods', authMiddleware, notificationMethodsController.list);
+router.post('/notification_methods', authMiddleware, notificationMethodsController.create);
+router.get('/notification_methods/:id', authMiddleware, notificationMethodsController.get);
+router.put('/notification_methods/:id', authMiddleware, notificationMethodsController.update);
+router.delete('/notification_methods/:id', authMiddleware, notificationMethodsController.remove);
 
 // ===== Documents routes =====
 // GET /api/documents

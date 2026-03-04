@@ -14,6 +14,7 @@ class Department {
     const query = `
       SELECT d.id,
              d.name,
+             d.description,
              d.manager_id,
               TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')) AS manager_full_name,
               u.avatar_id AS manager_avatar_id,
@@ -27,8 +28,8 @@ class Department {
     return res.rows;
   }
 
-  static async create(name) {
-    const res = await pool.query('INSERT INTO department (name) VALUES ($1) RETURNING id, name', [name]);
+  static async create(name, description) {
+    const res = await pool.query('INSERT INTO department (name, description) VALUES ($1, $2) RETURNING id, name, description', [name, description]);
     return res.rows[0];
   }
 

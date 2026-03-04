@@ -25,10 +25,10 @@ class Page {
       const q = `
         SELECT p.id, p.key, p.path, p.key AS title_key, NULL::text AS title_en, p.parent_id, p.icon, p.order_index,
           p.main_menu AS main_menu,
-          COALESCE(array_agg(pp_code.code) FILTER (WHERE pp_code.code IS NOT NULL), ARRAY[]::text[]) AS permissions
+          COALESCE(json_agg(pp_code.perm) FILTER (WHERE pp_code.perm IS NOT NULL), '[]'::json) AS permissions
         FROM pages p
         LEFT JOIN (
-          SELECT pp.page_id, pr.code
+          SELECT pp.page_id, json_build_object('id', pr.id, 'code', pr.code, 'name', pr.name) AS perm
           FROM page_permissions pp
           JOIN permissions pr ON pp.permission_id = pr.id
         ) pp_code ON pp_code.page_id = p.id
@@ -42,10 +42,10 @@ class Page {
     // Fallback when main_menu column is absent
     const q = `
       SELECT p.id, p.key, p.path, p.key AS title_key, NULL::text AS title_en, p.parent_id, p.icon, p.order_index,
-        COALESCE(array_agg(pp_code.code) FILTER (WHERE pp_code.code IS NOT NULL), ARRAY[]::text[]) AS permissions
+        COALESCE(json_agg(pp_code.perm) FILTER (WHERE pp_code.perm IS NOT NULL), '[]'::json) AS permissions
       FROM pages p
       LEFT JOIN (
-        SELECT pp.page_id, pr.code
+        SELECT pp.page_id, json_build_object('id', pr.id, 'code', pr.code, 'name', pr.name) AS perm
         FROM page_permissions pp
         JOIN permissions pr ON pp.permission_id = pr.id
       ) pp_code ON pp_code.page_id = p.id

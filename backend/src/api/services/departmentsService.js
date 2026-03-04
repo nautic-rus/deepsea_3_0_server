@@ -18,13 +18,15 @@ class DepartmentsService {
     return Department.list();
   }
 
-  static async createDepartment(name, actor) {
+  static async createDepartment(name, description, actor) {
     const requiredPermission = 'departments.create';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission departments.create'); err.statusCode = 403; throw err; }
     if (!name || !name.trim()) { const err = new Error('Name required'); err.statusCode = 400; throw err; }
-    return Department.create(name.trim());
+    if (description !== undefined && description !== null && typeof description !== 'string') { const err = new Error('Invalid description'); err.statusCode = 400; throw err; }
+    const desc = (description && typeof description === 'string') ? description.trim() : null;
+    return Department.create(name.trim(), desc);
   }
 
   static async updateDepartment(id, fields, actor) {
