@@ -58,5 +58,14 @@ services:
       - 9093:9093
     restart: unless-stopped
 
+  backend:
+    build: .
+    container_name: deepsea-backend
+    ports:
+      - 3000:3000
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+
 volumes:
   grafana-storage:
