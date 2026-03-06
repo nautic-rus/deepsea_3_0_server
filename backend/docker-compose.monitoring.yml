@@ -18,7 +18,7 @@ services:
       - grafana-storage:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - 3000:3000
+      - 4000:3000
     depends_on:
       - prometheus
       - loki

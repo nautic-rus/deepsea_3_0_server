@@ -19,6 +19,7 @@ docker compose -f docker-compose.monitoring.yml up -d
 
 3) Доступы:
 - Grafana: http://localhost:3000  (admin / admin)
+- Grafana: http://localhost:4000  (admin / admin)
 - Prometheus: http://localhost:9090
 - Loki: http://localhost:3100
 
