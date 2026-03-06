@@ -877,7 +877,7 @@
         "allValue": null,
         "current": {},
         "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(nodejs_version_info, instance)",
+        "definition": "label_values(process_cpu_percent, instance)",
         "hide": 0,
         "includeAll": true,
         "label": "instance",
