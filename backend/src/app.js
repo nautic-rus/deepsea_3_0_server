@@ -13,6 +13,19 @@ const config = require('./config');
 const { swaggerUi, swaggerSpec } = require('./config/swagger');
 const storageConfig = require('./config/storage');
 
+// Prometheus client for metrics
+const client = require('prom-client');
+
+// Collect default metrics (CPU, memory, eventloop, etc.)
+client.collectDefaultMetrics({ timeout: 5000 });
+
+const httpRequestDurationMilliseconds = new client.Histogram({
+  name: 'http_request_duration_ms',
+  help: 'Duration of HTTP requests in ms',
+  labelNames: ['method', 'route', 'code'],
+  buckets: [50, 100, 200, 300, 400, 500, 1000]
+});
+
 const app = express();
 
 // Middleware
@@ -32,6 +45,31 @@ app.use(cookieParser());
 
 // Trust proxy для получения реального IP адреса
 app.set('trust proxy', true);
+
+// Middleware: observe request durations for Prometheus
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const route = req.route && req.route.path ? req.route.path : req.path;
+    const duration = Date.now() - start;
+    try {
+      httpRequestDurationMilliseconds.labels(req.method, route, res.statusCode).observe(duration);
+    } catch (e) {
+      // ignore metric errors
+    }
+  });
+  next();
+});
+
+// Metrics endpoint for Prometheus to scrape
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', client.register.contentType);
+    res.send(await client.register.metrics());
+  } catch (e) {
+    res.status(500).send(e.message);
+  }
+});
 
 // Функция для динамической загрузки swagger spec
 function getSwaggerSpec() {
