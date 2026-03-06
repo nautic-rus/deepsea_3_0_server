@@ -609,7 +609,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "${DS_PROMETHEUS}",
+      "datasource": "Prometheus",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -696,7 +696,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "${DS_PROMETHEUS}",
+      "datasource": "Prometheus",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -783,7 +783,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "${DS_PROMETHEUS}",
+      "datasource": "Prometheus",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -874,10 +874,10 @@
   "templating": {
     "list": [
       {
-        "allValue": null,
-        "current": {},
-        "datasource": "${DS_PROMETHEUS}",
-        "definition": "label_values(process_cpu_percent, instance)",
+          "allValue": ".*",
+          "current": {},
+          "datasource": "Prometheus",
+          "definition": "label_values(process_cpu_percent, instance)",
         "hide": 0,
         "includeAll": true,
         "label": "instance",
@@ -885,6 +885,7 @@
         "name": "instance",
         "options": [],
         "query": "label_values(nodejs_version_info, instance)",
+          "query": "label_values(process_cpu_percent, instance)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
