@@ -296,19 +296,19 @@
       "tableColumn": "__name__",
       "targets": [
         {
-          "expr": "sum(nodejs_version_info{instance=~\"$instance\"}) by (version)",
+          "expr": "max(process_start_time_seconds)",
           "format": "time_series",
           "instant": false,
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{version}}",
+          "legendFormat": "process",
           "refId": "A"
         }
       ],
       "thresholds": "",
       "timeFrom": null,
       "timeShift": null,
-      "title": "Node.js Version",
+      "title": "Process Start Time",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -318,7 +318,7 @@
           "value": "null"
         }
       ],
-      "valueName": "name"
+      "valueName": "current"
     },
     {
       "cacheTimeout": null,
@@ -510,6 +510,81 @@
         "align": false,
         "alignLevel": null
       }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "id": 20,
+      "legend": {
+        "show": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{code=~\"5..\"}[5m])) by (method, route)",
+          "format": "time_series",
+          "legendFormat": "{{method}} {{route}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "title": "5xx Error Rate (per route)",
+      "type": "graph"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "#299c46",
+        "rgba(237, 129, 40, 0.89)",
+        "#d44a3a"
+      ],
+      "datasource": "Prometheus",
+      "format": "short",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 12,
+        "y": 22
+      },
+      "id": 21,
+      "interval": "",
+      "links": [],
+      "mappingType": 1,
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "postfix": "",
+      "prefix": "",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{code=~\"5..\"}[1m]))",
+          "format": "time_series",
+          "instant": false,
+          "refId": "A"
+        }
+      ],
+      "title": "5xx Errors / sec",
+      "type": "singlestat",
+      "valueName": "current"
     },
     {
       "aliasColors": {},
@@ -865,6 +940,161 @@
         "alignLevel": null
       }
     }
+    ,
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "id": 30,
+      "legend": {
+        "show": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "paceLength": 10,
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_ms_bucket{instance=~\"$instance\"}[5m])) by (le, method, route))",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "P95 Latency (ms)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "ms",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fill": 1,
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "id": 31,
+      "legend": {
+        "show": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "paceLength": 10,
+      "percentage": false,
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{code=~\"5..\",instance=~\"$instance\"}[5m]))",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Error rate (5xx)",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    }
   ],
   "schemaVersion": 18,
   "style": "dark",
@@ -928,7 +1158,7 @@
     ]
   },
   "timezone": "",
-  "title": "NodeJS Application Dashboard",
+  "title": "DeepSea_v3 Backend Overview",
   "uid": "PTSqcpJWk",
   "version": 4
 }
