@@ -44,7 +44,6 @@ services:
     volumes:
       - ./logs:/var/log/deepsea:ro
       - ./monitoring/promtail/config.yml:/etc/promtail/config.yml:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
     restart: unless-stopped
 
   alertmanager:
@@ -56,15 +55,6 @@ services:
     command: --config.file=/etc/alertmanager/config.yml
     ports:
       - 9093:9093
-    restart: unless-stopped
-
-  backend:
-    build: .
-    container_name: deepsea-backend
-    ports:
-      - 3000:3000
-    environment:
-      - NODE_ENV=production
     restart: unless-stopped
 
 volumes:

@@ -32,3 +32,12 @@ groups:
           severity: warning
         annotations:
           summary: "High request rate across the application"
+
+      - alert: BackendDown
+        expr: up{job="deepsea-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend is down or not responding to /metrics"
+          description: "Prometheus target for deepsea-backend is down (instance={{ $labels.instance }})."
