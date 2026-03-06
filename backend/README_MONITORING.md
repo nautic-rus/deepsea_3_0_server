@@ -29,6 +29,13 @@ Alerting (Alertmanager + Rocket.Chat):
 - Alerts will mention users by username if your Rocket.Chat webhook/template is configured to do so; by default the webhook URL is a placeholder `https://rocket.chat/hooks/REPLACE_ME`.
 - The `HighRequestRate` threshold is set to 50 requests/sec. If you'd like a different threshold, tell me the preferred value and I'll update `monitoring/prometheus/alert_rules.yml`.
 
+Postgres monitoring:
+- Service: `postgres-exporter` available on container port `9187` and host port `9187`.
+- Prometheus job: `postgres` scrapes `postgres-exporter:9187`.
+- Default DSN used by exporter: `postgresql://postgres:230571Sp@host.docker.internal:3010/deepsea3?sslmode=disable`.
+	- If your Postgres is reachable at a different IP (for example `192.168.1.177`), edit `docker-compose.monitoring.yml` and update the `DATA_SOURCE_NAME` env for `postgres-exporter` accordingly.
+	- For improved security, consider creating a read-only monitoring user in Postgres and using its credentials here.
+
 4) Конфигурация:
 - Prometheus скрапит метрики с `host.docker.internal:3000/metrics` (порт сервера по-умолчанию `3000`).
 - Promtail читает логи из `./logs` внутри проекта и отправляет их в Loki.

@@ -34,6 +34,19 @@ const httpRequestsTotal = new client.Counter({
   labelNames: ['method', 'route', 'code']
 });
 
+// Additional metrics inspired by provided Koa snippet
+const nodeHttpTotalCount = new client.Counter({
+  name: 'nodejs_http_total_count',
+  help: 'total request number',
+  labelNames: ['method', 'path']
+});
+
+const nodeHttpTotalDuration = new client.Gauge({
+  name: 'nodejs_http_total_duration',
+  help: 'the last duration or response time of last request',
+  labelNames: ['method', 'path']
+});
+
 // Gauges for CPU% and Memory%
 const processCpuPercent = new client.Gauge({
   name: 'process_cpu_percent',
@@ -113,6 +126,14 @@ app.use((req, res, next) => {
     try {
       httpRequestDurationMilliseconds.labels(req.method, route, res.statusCode).observe(duration);
       httpRequestsTotal.labels(req.method, route, res.statusCode).inc();
+      // Koa-like per-route metrics: count and last-duration (ms)
+      try {
+        const pathLabel = route || req.path;
+        nodeHttpTotalCount.labels(req.method, pathLabel).inc();
+        nodeHttpTotalDuration.labels(req.method, pathLabel).set(duration);
+      } catch (err) {
+        // ignore per-route metric errors
+      }
     } catch (e) {
       // ignore metric errors
     }
