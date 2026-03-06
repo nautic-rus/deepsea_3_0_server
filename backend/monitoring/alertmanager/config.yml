@@ -1,0 +1,24 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: 'rocket_chat'
+
+receivers:
+  - name: 'rocket_chat'
+    slack_configs:
+      - api_url: 'https://rocket.nautic-rus.com/hooks/69aa89aac76054f64190960f/p4PcfYrA52rWRxBht9ZTQv6sESJ8MY6r7jZLtbdjsLofaeKz'
+        send_resolved: true
+        username: 'Alertmanager'
+        title: '{{ template "rocket.title" . }}'
+        title_link: '{{ template "rocket.title_link" . }}'
+        text: '{{ template "rocket.text" . }}'
+        color: '{{ if eq .Status "firing" }}#E24A4A{{ else }}#36a64f{{ end }}'
+
+templates:
+  - /etc/alertmanager/templates/rocket.tmpl
+
+# Notes:
+# - Replace the URL above with your Rocket.Chat incoming webhook URL.
+# - To mention specific users in Rocket.Chat, include their usernames in the message
+#   body configured on the Rocket.Chat side or use a custom webhook receiver.

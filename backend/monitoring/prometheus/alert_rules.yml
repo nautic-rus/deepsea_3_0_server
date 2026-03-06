@@ -1,0 +1,34 @@
+groups:
+  - name: deepsea-alerts
+    rules:
+      - alert: HighProcessCPU
+        expr: process_cpu_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High process CPU usage ({{ $value }}%)"
+
+      - alert: HighProcessMemory
+        expr: process_memory_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High process memory usage ({{ $value }}%)"
+
+      - alert: HighErrorRate
+        expr: sum(rate(http_requests_total{code=~"5.."}[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated HTTP 5xx error rate"
+
+      - alert: HighRequestRate
+        expr: sum(rate(http_requests_total[1m])) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request rate across the application"

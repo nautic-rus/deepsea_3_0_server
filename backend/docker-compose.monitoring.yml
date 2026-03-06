@@ -5,9 +5,12 @@ services:
     container_name: prometheus
     volumes:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
     ports:
       - 9090:9090
     restart: unless-stopped
+    depends_on:
+      - alertmanager
 
   grafana:
     image: grafana/grafana:latest
@@ -41,6 +44,17 @@ services:
     volumes:
       - ./logs:/var/log/deepsea:ro
       - ./monitoring/promtail/config.yml:/etc/promtail/config.yml:ro
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./monitoring/alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+      - ./monitoring/alertmanager/templates:/etc/alertmanager/templates:ro
+    command: --config.file=/etc/alertmanager/config.yml
+    ports:
+      - 9093:9093
     restart: unless-stopped
 
 volumes:

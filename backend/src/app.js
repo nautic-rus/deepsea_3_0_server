@@ -15,6 +15,7 @@ const storageConfig = require('./config/storage');
 
 // Prometheus client for metrics
 const client = require('prom-client');
+const os = require('os');
 
 // Collect default metrics (CPU, memory, eventloop, etc.)
 client.collectDefaultMetrics({ timeout: 5000 });
@@ -25,6 +26,63 @@ const httpRequestDurationMilliseconds = new client.Histogram({
   labelNames: ['method', 'route', 'code'],
   buckets: [50, 100, 200, 300, 400, 500, 1000]
 });
+
+// Counter for total requests (useful for request rate)
+const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'code']
+});
+
+// Gauges for CPU% and Memory%
+const processCpuPercent = new client.Gauge({
+  name: 'process_cpu_percent',
+  help: 'Process CPU usage percent (0-100)'
+});
+
+const processMemoryPercent = new client.Gauge({
+  name: 'process_memory_percent',
+  help: 'Process memory usage percent (0-100)'
+});
+
+// Helper to compute CPU percentage for the Node process
+let lastUsage = process.cpuUsage();
+let lastTime = Date.now();
+function updateCpuMemoryMetrics() {
+  try {
+    const curUsage = process.cpuUsage();
+    const curTime = Date.now();
+    const elapsedMicros = (curTime - lastTime) * 1000; // ms -> µs
+    const userDiff = curUsage.user - lastUsage.user;
+    const systemDiff = curUsage.system - lastUsage.system;
+    const totalProcessMicros = userDiff + systemDiff;
+
+    // number of logical CPUs
+    const cpuCount = os.cpus().length || 1;
+
+    // CPU percent = (process CPU time / elapsed time) / cpuCount * 100
+    const cpuPercent = Math.min(100, (totalProcessMicros / elapsedMicros) / cpuCount * 100);
+    if (!Number.isNaN(cpuPercent) && Number.isFinite(cpuPercent)) {
+      processCpuPercent.set(cpuPercent);
+    }
+
+    const mem = process.memoryUsage();
+    const totalMem = os.totalmem() || 1;
+    const memPercent = Math.min(100, (mem.rss / totalMem) * 100);
+    if (!Number.isNaN(memPercent) && Number.isFinite(memPercent)) {
+      processMemoryPercent.set(memPercent);
+    }
+
+    lastUsage = curUsage;
+    lastTime = curTime;
+  } catch (e) {
+    // ignore metric calculation errors
+  }
+}
+
+// Update CPU/memory gauges every 5 seconds
+setInterval(updateCpuMemoryMetrics, 5000);
+updateCpuMemoryMetrics();
 
 const app = express();
 
@@ -54,6 +112,7 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     try {
       httpRequestDurationMilliseconds.labels(req.method, route, res.statusCode).observe(duration);
+      httpRequestsTotal.labels(req.method, route, res.statusCode).inc();
     } catch (e) {
       // ignore metric errors
     }

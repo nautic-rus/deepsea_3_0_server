@@ -1,0 +1,21 @@
+{{/*
+  Templates for Alertmanager -> Rocket.Chat (Slack-compatible webhook)
+  This template produces a short title and a text body that mentions users.
+*/}}
+
+{{ define "rocket.title" }}[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}{{ end }}
+
+{{ define "rocket.title_link" }}{{ "" }}{{ end }}
+
+{{ define "rocket.text" }}
+@dulanova @spiridovich
+
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Status:* {{ .Status }}
+*Instance:* {{ .Labels.instance }}
+*Summary:* {{ .Annotations.summary }}
+*Starts:* {{ .StartsAt }}
+
+{{ end }}
+{{ end }}

@@ -23,6 +23,12 @@ docker compose -f docker-compose.monitoring.yml up -d
 - Prometheus: http://localhost:9090
 - Loki: http://localhost:3100
 
+Alerting (Alertmanager + Rocket.Chat):
+- Alertmanager: http://localhost:9093
+- To enable notifications to Rocket.Chat, edit `monitoring/alertmanager/config.yml` and set your incoming webhook URL at `webhook_configs.url`.
+- Alerts will mention users by username if your Rocket.Chat webhook/template is configured to do so; by default the webhook URL is a placeholder `https://rocket.chat/hooks/REPLACE_ME`.
+- The `HighRequestRate` threshold is set to 50 requests/sec. If you'd like a different threshold, tell me the preferred value and I'll update `monitoring/prometheus/alert_rules.yml`.
+
 4) Конфигурация:
 - Prometheus скрапит метрики с `host.docker.internal:3000/metrics` (порт сервера по-умолчанию `3000`).
 - Promtail читает логи из `./logs` внутри проекта и отправляет их в Loki.
