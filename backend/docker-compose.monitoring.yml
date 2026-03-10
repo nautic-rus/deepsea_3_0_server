@@ -33,6 +33,8 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./monitoring/loki/config.yaml:/etc/loki/local-config.yaml:ro
+      - ./monitoring/loki/wal:/wal
+      - ./monitoring/loki/index:/loki/index
     ports:
       - 3100:3100
     restart: unless-stopped
