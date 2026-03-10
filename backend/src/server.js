@@ -1,10 +1,11 @@
-/**
- * Точка входа сервера
- */
+
 
 // Загрузка переменных окружения (use repository `env` file so server and scripts behave the same)
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', 'env') });
+
+// Initialize file logger early so console output is captured
+require('./utils/logger');
 
 const app = require('./app');
 const config = require('./config');
