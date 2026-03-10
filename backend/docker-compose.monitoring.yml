@@ -45,7 +45,7 @@ services:
     container_name: promtail
     command: -config.file=/etc/promtail/config.yml
     volumes:
-      - /Users/spiridovich/Documents/GitHub/deepsea_3_0_server/backend/logs:/var/log/deepsea:ro
+      - /home/spiridovich/deepsea_3_0_server/backend/logs:/var/log/deepsea:ro
       - ./monitoring/promtail/config.yml:/etc/promtail/config.yml:ro
     restart: unless-stopped
 
