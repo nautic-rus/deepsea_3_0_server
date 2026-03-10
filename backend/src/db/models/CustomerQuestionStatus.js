@@ -1,12 +1,7 @@
 const pool = require('../connection');
 
 class CustomerQuestionStatus {
-  static async list(projectId) {
-    if (typeof projectId !== 'undefined') {
-      const q = 'SELECT * FROM customer_question_status WHERE (project_id IS NULL OR project_id = $1) ORDER BY COALESCE(order_index,0), id';
-      const res = await pool.query(q, [projectId]);
-      return res.rows || [];
-    }
+  static async list() {
     const res = await pool.query('SELECT * FROM customer_question_status ORDER BY COALESCE(order_index,0), id');
     return res.rows || [];
   }
@@ -19,7 +14,6 @@ class CustomerQuestionStatus {
   static async create(fields) {
     const cols = ['name','code','description','color','is_initial','is_final','order_index'];
     const vals = [fields.name, fields.code || null, fields.description || null, fields.color || null, !!fields.is_initial, !!fields.is_final, fields.order_index || 0];
-    if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
     const q = `INSERT INTO customer_question_status (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
     const res = await pool.query(q, vals);
     return res.rows[0] || null;
@@ -29,7 +23,7 @@ class CustomerQuestionStatus {
     const parts = [];
     const vals = [];
     let idx = 1;
-    ['name','code','description','color','is_initial','is_final','order_index','project_id'].forEach((k) => {
+    ['name','code','description','color','is_initial','is_final','order_index'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
     });
     if (parts.length === 0) return await CustomerQuestionStatus.findById(id);

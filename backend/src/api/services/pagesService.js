@@ -35,6 +35,7 @@ class PagesService {
         icon: r.icon,
         permissions: r.permissions || [],
         mainMenu: !!r.main_menu,
+        status: typeof r.status === 'undefined' ? true : !!r.status,
         parentId: r.parent_id,
         children: []
       });
@@ -55,6 +56,8 @@ class PagesService {
   const allowedPages = [];
   const debug = process.env.DEBUG_PAGES === '1';
     async function filterAndSanitize(node) {
+      // exclude pages that are explicitly disabled via `status` flag
+      if (node.status === false) return null;
       // check permissions for this node
       let allowed = false;
       // ensure permissions is an array (DB may return different shapes in edge cases)
@@ -81,13 +84,11 @@ class PagesService {
         // titleKey removed from API payload per request
         title: node.title || undefined,
         mainMenu: node.mainMenu,
+        status: node.status,
         order: node.order,
         icon: node.icon
       };
-        // expose permissions metadata for client where available
-        if (node.permissions && Array.isArray(node.permissions) && node.permissions.length > 0) {
-          out.permissions = node.permissions.map(p => (p && typeof p === 'object') ? p : { id: null, code: p, name: null });
-        }
+        // Do not expose permission metadata to end-user pages endpoint
       if (node.children && node.children.length > 0) {
         const children = [];
         for (const ch of node.children) {

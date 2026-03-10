@@ -1,0 +1,9 @@
+BEGIN;
+
+ALTER TABLE IF EXISTS issue_status DROP COLUMN IF EXISTS project_id;
+ALTER TABLE IF EXISTS issue_type DROP COLUMN IF EXISTS project_id;
+ALTER TABLE IF EXISTS document_status DROP COLUMN IF EXISTS project_id;
+ALTER TABLE IF EXISTS document_type DROP COLUMN IF EXISTS project_id;
+ALTER TABLE IF EXISTS customer_question_status DROP COLUMN IF EXISTS project_id;
+
+COMMIT;

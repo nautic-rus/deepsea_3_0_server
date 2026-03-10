@@ -5,9 +5,9 @@
 const pool = require('../connection');
 
 class NotificationEvent {
-  static async create({ code, name, description = null }) {
-    const query = `INSERT INTO public.notification_events (code, name, description) VALUES ($1, $2, $3) RETURNING *`;
-    const res = await pool.query(query, [code, name, description]);
+  static async create({ code, name, description = null, status = true }) {
+    const query = `INSERT INTO public.notification_events (code, name, description, status) VALUES ($1, $2, $3, $4) RETURNING *`;
+    const res = await pool.query(query, [code, name, description, status]);
     return res.rows[0];
   }
 

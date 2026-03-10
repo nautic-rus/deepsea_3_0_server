@@ -570,6 +570,16 @@ class IssuesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    // Prevent deletion if status is used in issues or workflows
+    const usedInIssues = await pool.query('SELECT 1 FROM issues WHERE status_id = $1 LIMIT 1', [Number(id)]);
+    if (usedInIssues.rowCount > 0) {
+      const err = new Error('Cannot delete status: it is referenced by existing issues'); err.statusCode = 400; throw err;
+    }
+    const usedInWF = await pool.query('SELECT 1 FROM issue_work_flow WHERE from_status_id = $1 OR to_status_id = $1 LIMIT 1', [Number(id)]);
+    if (usedInWF.rowCount > 0) {
+      const err = new Error('Cannot delete status: it is used in issue_work_flow'); err.statusCode = 400; throw err;
+    }
+
     const res = await pool.query('DELETE FROM issue_status WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }
@@ -619,6 +629,16 @@ class IssuesService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    // Prevent deletion if type is used in issues or workflows
+    const usedInIssues = await pool.query('SELECT 1 FROM issues WHERE type_id = $1 LIMIT 1', [Number(id)]);
+    if (usedInIssues.rowCount > 0) {
+      const err = new Error('Cannot delete type: it is referenced by existing issues'); err.statusCode = 400; throw err;
+    }
+    const usedInWF = await pool.query('SELECT 1 FROM issue_work_flow WHERE issue_type_id = $1 LIMIT 1', [Number(id)]);
+    if (usedInWF.rowCount > 0) {
+      const err = new Error('Cannot delete type: it is used in issue_work_flow'); err.statusCode = 400; throw err;
+    }
+
     const res = await pool.query('DELETE FROM issue_type WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }

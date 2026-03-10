@@ -26,7 +26,7 @@ class NotificationEventsService {
     const allowed = await hasPermission(actor, required);
     if (!allowed) { const err = new Error('Forbidden: missing permission ' + required); err.statusCode = 403; throw err; }
     if (!data || !data.code) { const err = new Error('code required'); err.statusCode = 400; throw err; }
-    return NotificationEvent.create({ code: data.code, name: data.name || null, description: data.description || null });
+    return NotificationEvent.create({ code: data.code, name: data.name || null, description: data.description || null, status: typeof data.status === 'undefined' ? true : !!data.status });
   }
 
   static async update(id, data, actor) {
@@ -43,6 +43,7 @@ class NotificationEventsService {
     if (data.code !== undefined) { fields.push(`code = $${idx++}`); params.push(data.code); }
     if (data.name !== undefined) { fields.push(`name = $${idx++}`); params.push(data.name); }
     if (data.description !== undefined) { fields.push(`description = $${idx++}`); params.push(data.description); }
+    if (data.status !== undefined) { fields.push(`status = $${idx++}`); params.push(!!data.status); }
     if (fields.length === 0) return existing;
     params.push(id);
     const pool = require('../../db/connection');

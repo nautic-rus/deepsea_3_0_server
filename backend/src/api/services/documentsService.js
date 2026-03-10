@@ -917,7 +917,16 @@ class DocumentsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
-    // try to delete; ensure no dependent records will break (ON DELETE CASCADE configured for document_work_flow)
+    // Prevent deletion if type is used in documents or workflows
+    const usedInDocs = await pool.query('SELECT 1 FROM documents WHERE document_type_id = $1 LIMIT 1', [Number(id)]);
+    if (usedInDocs.rowCount > 0) {
+      const err = new Error('Cannot delete document type: it is referenced by existing documents'); err.statusCode = 400; throw err;
+    }
+    const usedInWF = await pool.query('SELECT 1 FROM document_work_flow WHERE document_type_id = $1 LIMIT 1', [Number(id)]);
+    if (usedInWF.rowCount > 0) {
+      const err = new Error('Cannot delete document type: it is used in document_work_flow'); err.statusCode = 400; throw err;
+    }
+
     const res = await pool.query('DELETE FROM document_type WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }
@@ -993,6 +1002,12 @@ class DocumentsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    // Prevent deletion if storage type is used in documents_storage
+    const usedInDocsStorage = await pool.query('SELECT 1 FROM documents_storage WHERE type_id = $1 LIMIT 1', [Number(id)]);
+    if (usedInDocsStorage.rowCount > 0) {
+      const err = new Error('Cannot delete storage type: it is referenced by existing document storage entries'); err.statusCode = 400; throw err;
+    }
+
     const res = await pool.query('DELETE FROM documents_storage_type WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }
@@ -1068,6 +1083,16 @@ class DocumentsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    // Prevent deletion if status is used in documents or workflows
+    const usedInDocs = await pool.query('SELECT 1 FROM documents WHERE status_id = $1 LIMIT 1', [Number(id)]);
+    if (usedInDocs.rowCount > 0) {
+      const err = new Error('Cannot delete document status: it is referenced by existing documents'); err.statusCode = 400; throw err;
+    }
+    const usedInWF = await pool.query('SELECT 1 FROM document_work_flow WHERE from_status_id = $1 OR to_status_id = $1 LIMIT 1', [Number(id)]);
+    if (usedInWF.rowCount > 0) {
+      const err = new Error('Cannot delete document status: it is used in document_work_flow'); err.statusCode = 400; throw err;
+    }
+
     const res = await pool.query('DELETE FROM document_status WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }

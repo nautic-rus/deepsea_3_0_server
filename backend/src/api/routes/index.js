@@ -40,6 +40,7 @@ const auditLogsController = require('../controllers/auditLogsController');
 const customerQuestionsController = require('../controllers/customerQuestionsController');
 const customerQuestionStatusesController = require('../controllers/customerQuestionStatusesController');
 const customerQuestionWorkFlowsController = require('../controllers/customerQuestionWorkFlowsController');
+const issueWorkFlowsController = require('../controllers/issueWorkFlowsController');
 const notificationEventsController = require('../controllers/notificationEventsController');
 const notificationMethodsController = require('../controllers/notificationMethodsController');
 
@@ -65,6 +66,7 @@ router.post('/auth/reset_password', authController.resetPassword);
 // ===== Users routes =====
 // POST /api/create_users
 router.post('/create_users', authMiddleware, validateCreateUser, usersController.createUser);
+	router.post('/users/invite', authMiddleware, usersController.inviteUsers);
 
 // GET /api/users (list)
 router.get('/users', authMiddleware, usersController.getUsers);
@@ -96,6 +98,7 @@ router.put('/users/:id', authMiddleware, usersController.updateUser);
 router.delete('/users/:id', authMiddleware, usersController.deleteUser);
 // POST /api/users/:id/avatar - upload avatar (multipart field 'file')
 router.post('/users/:id/avatar', authMiddleware, _upload.single('file'), usersController.uploadAvatar);
+	router.post('/users/password_reset', authMiddleware, usersController.sendPasswordResets);
 
 // ===== Departments routes =====
 // GET /api/departments
@@ -215,6 +218,13 @@ router.get('/customer_question_work_flows/:id', authMiddleware, customerQuestion
 router.post('/customer_question_work_flows', authMiddleware, customerQuestionWorkFlowsController.create);
 router.put('/customer_question_work_flows/:id', authMiddleware, customerQuestionWorkFlowsController.update);
 router.delete('/customer_question_work_flows/:id', authMiddleware, customerQuestionWorkFlowsController.delete);
+
+// ===== Issue work flows routes =====
+router.get('/issue_work_flows', authMiddleware, issueWorkFlowsController.list);
+router.get('/issue_work_flows/:id', authMiddleware, issueWorkFlowsController.get);
+router.post('/issue_work_flows', authMiddleware, issueWorkFlowsController.create);
+router.put('/issue_work_flows/:id', authMiddleware, issueWorkFlowsController.update);
+router.delete('/issue_work_flows/:id', authMiddleware, issueWorkFlowsController.delete);
 
 // ===== Notification events/methods (admin) =====
 router.get('/notification_events', authMiddleware, notificationEventsController.list);
