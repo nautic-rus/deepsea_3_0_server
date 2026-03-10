@@ -16,4 +16,4 @@ scrape_configs:
           job: deepsea
           container: "deepsea"
           stream: "app"
-          __path__: /home/spiridovich/deepsea_3_0_server/backend/logs/*.log
+          __path__: /home/spiridovich/deepsea_3_0_server/backend/logs/app.log
