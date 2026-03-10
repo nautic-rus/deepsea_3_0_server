@@ -24,6 +24,8 @@ limits_config:
   enforce_metric_name: false
 
 ingester:
+  wal:
+    dir: /wal
   lifecycler:
     ring:
       kvstore:
