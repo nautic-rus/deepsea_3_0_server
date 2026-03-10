@@ -28,18 +28,8 @@ ingester:
     dir: /wal
   lifecycler:
     ring:
-      # For single-node setups set replication_factor to 1 so the ring
-      # does not require multiple healthy instances.
-      replication_factor: 1
       kvstore:
         store: inmemory
-
-# Distributor settings for single-node (avoid default replication > 1)
-distributor:
-  ring:
-    replication_factor: 1
-    kvstore:
-      store: inmemory
 
 ruler:
   alertmanager_url: http://localhost:9093
