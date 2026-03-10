@@ -31,7 +31,7 @@ services:
     image: grafana/loki:2.8.1
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
-      user: "10001:10001"
+    user: "10001:10001"
     volumes:
       - ./monitoring/loki/config.yaml:/etc/loki/local-config.yaml:ro
       - loki-wal:/wal
