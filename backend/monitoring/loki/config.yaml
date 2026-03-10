@@ -1,8 +1,11 @@
 auth_enabled: false
 
+# Server settings
 server:
+  http_listen_address: 0.0.0.0
   http_listen_port: 3100
 
+# Storage backend (local filesystem + boltdb)
 storage_config:
   boltdb:
     directory: /loki/index
@@ -17,20 +20,14 @@ schema_config:
         prefix: index_
         period: 24h
 
-chunk_target_size: 1048576
-
 limits_config:
   enforce_metric_name: false
 
 ingester:
   lifecycler:
-    address: 127.0.0.1
     ring:
       kvstore:
         store: inmemory
-
-server:
-  http_listen_port: 3100
 
 ruler:
   alertmanager_url: http://localhost:9093
