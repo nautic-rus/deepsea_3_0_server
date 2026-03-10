@@ -38,7 +38,6 @@ services:
     ports:
       - 3100:3100
     restart: unless-stopped
-    user: "0"
 
   promtail:
     image: grafana/promtail:2.8.1
