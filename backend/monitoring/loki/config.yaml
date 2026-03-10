@@ -28,6 +28,7 @@ ingester:
     dir: /wal
   lifecycler:
     ring:
+      replication_factor: 1
       kvstore:
         store: inmemory
 
