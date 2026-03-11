@@ -26,8 +26,8 @@ class DocumentWorkFlow {
   }
 
   static async create(fields) {
-    const cols = ['document_type_id','from_status_id','to_status_id','is_active','order_index'];
-    const vals = [fields.document_type_id || null, fields.from_status_id || null, fields.to_status_id || null, !!fields.is_active, fields.order_index || 0];
+    const cols = ['document_type_id','from_status_id','to_status_id','is_active'];
+    const vals = [fields.document_type_id || null, fields.from_status_id || null, fields.to_status_id || null, !!fields.is_active];
     if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
     const q = `INSERT INTO document_work_flow (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
     const res = await pool.query(q, vals);
@@ -38,7 +38,7 @@ class DocumentWorkFlow {
     const parts = [];
     const vals = [];
     let idx = 1;
-    ['document_type_id','from_status_id','to_status_id','is_active','order_index','project_id'].forEach((k) => {
+    ['document_type_id','from_status_id','to_status_id','is_active','project_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
     });
     if (parts.length === 0) return await DocumentWorkFlow.findById(id);
