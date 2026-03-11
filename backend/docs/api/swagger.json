@@ -231,15 +231,6 @@
             "type": "integer",
             "nullable": true
           },
-          "asked_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "answered_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
           "due_date": {
             "type": "string",
             "format": "date",
@@ -991,6 +982,20 @@
             "type": "string",
             "format": "date-time"
           }
+        }
+      },
+      "CustomerQuestionType": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "code": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "color": { "type": "string", "nullable": true },
+          "order_index": { "type": "integer", "nullable": true },
+          "project_id": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
         }
       },
       "IssueWorkFlow": {
@@ -2837,9 +2842,9 @@
             }
           },
           {
-            "name": "asked_at_from",
+            "name": "created_at_from",
             "in": "query",
-            "description": "Filter asked_at from (inclusive)",
+            "description": "Filter created_at from (inclusive)",
             "required": false,
             "schema": {
               "type": "string",
@@ -2847,35 +2852,16 @@
             }
           },
           {
-            "name": "asked_at_to",
+            "name": "created_at_to",
             "in": "query",
-            "description": "Filter asked_at to (inclusive)",
+            "description": "Filter created_at to (inclusive)",
             "required": false,
             "schema": {
               "type": "string",
               "format": "date-time"
             }
           },
-          {
-            "name": "answered_at_from",
-            "in": "query",
-            "description": "Filter answered_at from (inclusive)",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "answered_at_to",
-            "in": "query",
-            "description": "Filter answered_at to (inclusive)",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
+          
           {
             "name": "due_date_from",
             "in": "query",
@@ -2931,7 +2917,10 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Issue"
+                "$ref": "#/components/schemas/CustomerQuestion"
+              },
+              "example": {
+                "question_text": "Опишите ваш вопрос кратко и ясно"
               }
             }
           }
@@ -2942,7 +2931,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Issue"
+                  "$ref": "#/components/schemas/CustomerQuestion"
                 }
               }
             }
@@ -6144,6 +6133,103 @@
             "description": "Not found"
           }
         }
+      }
+    },
+    "/api/customer_question_types": {
+      "get": {
+        "tags": [
+          "customer_question_types"
+        ],
+        "summary": "Список типов вопросов от заказчика",
+        "description": "Возвращает список всех записей customer_question_type. Требуется разрешение customer_questions.view.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "customer_questions.view" ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/CustomerQuestionType" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": []
+      },
+      "post": {
+        "tags": [ "customer_question_types" ],
+        "summary": "Создать тип вопроса от заказчика",
+        "description": "Создаёт новую запись в таблице `customer_question_type`.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "customer_questions.create" ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [ "name", "code" ],
+                "properties": {
+                  "name": { "type": "string" },
+                  "code": { "type": "string" },
+                  "description": { "type": "string", "nullable": true },
+                  "color": { "type": "string", "nullable": true },
+                  "order_index": { "type": "integer" },
+                  "project_id": { "type": "integer", "nullable": true }
+                }
+              },
+              "example": { "name": "Вопрос по продукту", "code": "product_question" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerQuestionType" } } }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/customer_question_types/{id}": {
+      "get": {
+        "tags": [ "customer_question_types" ],
+        "summary": "Получить тип вопроса по id",
+        "description": "Возвращает запись customer_question_type по идентификатору. Требуется разрешение customer_questions.view.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "customer_questions.view" ],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerQuestionType" } } } }, "404": { "description": "Not found" } }
+      },
+      "put": {
+        "tags": [ "customer_question_types" ],
+        "summary": "Обновить тип вопроса",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "customer_questions.update" ],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "code": { "type": "string" }, "description": { "type": "string" }, "color": { "type": "string" }, "order_index": { "type": "integer" } } } } }
+        },
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CustomerQuestionType" } } } }, "400": { "description": "Validation error" }, "404": { "description": "Not found" } }
+      },
+      "delete": {
+        "tags": [ "customer_question_types" ],
+        "summary": "Удалить тип вопроса",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "customer_questions.delete" ],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
       }
     },
     "/api/issue_work_flows": {

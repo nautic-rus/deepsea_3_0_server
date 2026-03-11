@@ -204,6 +204,12 @@ router.post('/customer_questions/:id/files', authMiddleware, _upload.single('fil
 router.post('/customer_questions/:id/files/local', authMiddleware, _upload.single('file'), customerQuestionsController.attachLocalFile);
 router.delete('/customer_questions/:id/files/:storage_id', authMiddleware, customerQuestionsController.detachFile);
 router.get('/customer_questions/:id/files', authMiddleware, customerQuestionsController.listFiles);
+// ===== Customer question types routes =====
+router.get('/customer_question_types', authMiddleware, customerQuestionsController.listTypes);
+router.get('/customer_question_types/:id', authMiddleware, customerQuestionsController.getType);
+router.post('/customer_question_types', authMiddleware, customerQuestionsController.createType);
+router.put('/customer_question_types/:id', authMiddleware, customerQuestionsController.updateType);
+router.delete('/customer_question_types/:id', authMiddleware, customerQuestionsController.deleteType);
 
 // ===== Customer question statuses routes =====
 router.get('/customer_question_statuses', authMiddleware, customerQuestionStatusesController.list);

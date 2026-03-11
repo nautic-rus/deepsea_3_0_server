@@ -97,6 +97,55 @@ class CustomerQuestionsController {
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
+
+  // Types CRUD (customer_question_type)
+  static async listTypes(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const projectId = req.query && req.query.project_id ? Number(req.query.project_id) : undefined;
+      const rows = await CustomerQuestionsService.listTypes(actor, projectId);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  static async getType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const projectId = req.query && req.query.project_id ? Number(req.query.project_id) : undefined;
+      const rows = await CustomerQuestionsService.listTypes(actor, projectId);
+      const row = (rows || []).find(r => Number(r.id) === Number(id));
+      if (!row) { const err = new Error('Type not found'); err.statusCode = 404; throw err; }
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  static async createType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const created = await CustomerQuestionsService.createType(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  static async updateType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const updated = await CustomerQuestionsService.updateType(Number(id), req.body || {}, actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  static async deleteType(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const ok = await CustomerQuestionsService.deleteType(Number(id), actor);
+      if (!ok) { const err = new Error('Type not found'); err.statusCode = 404; throw err; }
+      res.json({ message: 'Type deleted' });
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = CustomerQuestionsController;
