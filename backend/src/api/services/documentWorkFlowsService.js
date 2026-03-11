@@ -3,11 +3,16 @@ const { hasPermission } = require('./permissionChecker');
 const pool = require('../../db/connection');
 
 class DocumentWorkFlowsService {
-  static async list(actor, opts = {}) {
+  static async list(query, actor) {
     const requiredPermission = 'documents.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    const opts = {};
+    if (query.project_id !== undefined) opts.project_id = Number(query.project_id);
+    if (query.document_type_id !== undefined) opts.document_type_id = Number(query.document_type_id);
+    if (query.from_status_id !== undefined) opts.from_status_id = Number(query.from_status_id);
+    if (query.to_status_id !== undefined) opts.to_status_id = Number(query.to_status_id);
     const rows = await DocumentWorkFlow.list(opts);
     if (!rows || rows.length === 0) return rows;
 
@@ -34,12 +39,15 @@ class DocumentWorkFlowsService {
     const typeMap = new Map((typesRes.rows || []).map(r => [r.id, r]));
     const projectMap = new Map((projectsRes.rows || []).map(r => [r.id, r]));
 
-    return rows.map(r => Object.assign({}, r, {
-      from_status: r.from_status_id ? fromMap.get(r.from_status_id) || null : null,
-      to_status: r.to_status_id ? toMap.get(r.to_status_id) || null : null,
-      document_type: r.document_type_id ? typeMap.get(r.document_type_id) || null : null,
-      project: r.project_id ? projectMap.get(r.project_id) || null : null
-    }));
+    return rows.map(r => {
+      const out = Object.assign({}, r);
+      delete out.document_type_id;
+      out.from_status = r.from_status_id ? fromMap.get(r.from_status_id) || null : null;
+      out.to_status = r.to_status_id ? toMap.get(r.to_status_id) || null : null;
+      out.document_type = r.document_type_id ? typeMap.get(r.document_type_id) || null : null;
+      out.project = r.project_id ? projectMap.get(r.project_id) || null : null;
+      return out;
+    });
   }
 
   static async get(id, actor) {
@@ -57,12 +65,13 @@ class DocumentWorkFlowsService {
     const qProj = row.project_id ? pool.query('SELECT id, name, code FROM projects WHERE id = $1 LIMIT 1', [row.project_id]) : Promise.resolve({ rows: [] });
 
     const [fromRes, toRes, typeRes, projRes] = await Promise.all([qFrom, qTo, qType, qProj]);
-    return Object.assign({}, row, {
-      from_status: fromRes.rows[0] || null,
-      to_status: toRes.rows[0] || null,
-      document_type: typeRes.rows[0] || null,
-      project: projRes.rows[0] || null
-    });
+    const out = Object.assign({}, row);
+    delete out.document_type_id;
+    out.from_status = fromRes.rows[0] || null;
+    out.to_status = toRes.rows[0] || null;
+    out.document_type = typeRes.rows[0] || null;
+    out.project = projRes.rows[0] || null;
+    return out;
   }
 
   static async create(fields, actor) {

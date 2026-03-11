@@ -12,33 +12,42 @@ class CustomerQuestionWorkFlowsService {
     if (query.project_id !== undefined) opts.project_id = Number(query.project_id);
     if (query.from_status_id !== undefined) opts.from_status_id = Number(query.from_status_id);
     if (query.to_status_id !== undefined) opts.to_status_id = Number(query.to_status_id);
+    if (query.customer_question_type_id !== undefined) opts.customer_question_type_id = Number(query.customer_question_type_id);
     const rows = await CustomerQuestionWorkFlow.list(opts);
     if (!rows || rows.length === 0) return rows;
 
     const fromStatusIds = new Set();
     const toStatusIds = new Set();
     const projectIds = new Set();
+    const typeIds = new Set();
     for (const r of rows) {
       if (r.from_status_id) fromStatusIds.add(r.from_status_id);
       if (r.to_status_id) toStatusIds.add(r.to_status_id);
       if (r.project_id) projectIds.add(r.project_id);
+      if (r.customer_question_type_id) typeIds.add(r.customer_question_type_id);
     }
 
     const queries = [];
     queries.push(fromStatusIds.size ? pool.query('SELECT * FROM customer_question_status WHERE id = ANY($1::int[])', [[...fromStatusIds]]) : Promise.resolve({ rows: [] }));
     queries.push(toStatusIds.size ? pool.query('SELECT * FROM customer_question_status WHERE id = ANY($1::int[])', [[...toStatusIds]]) : Promise.resolve({ rows: [] }));
     queries.push(projectIds.size ? pool.query('SELECT id, name, code FROM projects WHERE id = ANY($1::int[])', [[...projectIds]]) : Promise.resolve({ rows: [] }));
+    queries.push(typeIds.size ? pool.query('SELECT * FROM customer_question_type WHERE id = ANY($1::int[])', [[...typeIds]]) : Promise.resolve({ rows: [] }));
 
-    const [fromRes, toRes, projectsRes] = await Promise.all(queries);
+    const [fromRes, toRes, projectsRes, typesRes] = await Promise.all(queries);
     const fromMap = new Map((fromRes.rows || []).map(r => [r.id, r]));
     const toMap = new Map((toRes.rows || []).map(r => [r.id, r]));
     const projectMap = new Map((projectsRes.rows || []).map(r => [r.id, r]));
+    const typeMap = new Map((typesRes.rows || []).map(r => [r.id, r]));
 
-    return rows.map(r => Object.assign({}, r, {
-      from_status: r.from_status_id ? fromMap.get(r.from_status_id) || null : null,
-      to_status: r.to_status_id ? toMap.get(r.to_status_id) || null : null,
-      project: r.project_id ? projectMap.get(r.project_id) || null : null
-    }));
+    return rows.map(r => {
+      const out = Object.assign({}, r);
+      delete out.customer_question_type_id;
+      out.from_status = r.from_status_id ? fromMap.get(r.from_status_id) || null : null;
+      out.to_status = r.to_status_id ? toMap.get(r.to_status_id) || null : null;
+      out.project = r.project_id ? projectMap.get(r.project_id) || null : null;
+      out.customer_question_type = r.customer_question_type_id ? typeMap.get(r.customer_question_type_id) || null : null;
+      return out;
+    });
   }
 
   static async getById(id, actor) {
@@ -54,12 +63,16 @@ class CustomerQuestionWorkFlowsService {
     const qTo = row.to_status_id ? pool.query('SELECT * FROM customer_question_status WHERE id = $1 LIMIT 1', [row.to_status_id]) : Promise.resolve({ rows: [] });
     const qProj = row.project_id ? pool.query('SELECT id, name, code FROM projects WHERE id = $1 LIMIT 1', [row.project_id]) : Promise.resolve({ rows: [] });
 
-    const [fromRes, toRes, projRes] = await Promise.all([qFrom, qTo, qProj]);
-    return Object.assign({}, row, {
-      from_status: fromRes.rows[0] || null,
-      to_status: toRes.rows[0] || null,
-      project: projRes.rows[0] || null
-    });
+    const qType = row.customer_question_type_id ? pool.query('SELECT * FROM customer_question_type WHERE id = $1 LIMIT 1', [row.customer_question_type_id]) : Promise.resolve({ rows: [] });
+
+    const [fromRes, toRes, projRes, typeRes] = await Promise.all([qFrom, qTo, qProj, qType]);
+    const out = Object.assign({}, row);
+    delete out.customer_question_type_id;
+    out.from_status = fromRes.rows[0] || null;
+    out.to_status = toRes.rows[0] || null;
+    out.project = projRes.rows[0] || null;
+    out.customer_question_type = typeRes.rows[0] || null;
+    return out;
   }
 
   static async create(fields, actor) {

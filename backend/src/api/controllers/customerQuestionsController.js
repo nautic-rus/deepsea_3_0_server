@@ -5,9 +5,8 @@ class CustomerQuestionsController {
     try {
       const actor = req.user || null;
       const query = Object.assign({}, req.query || {});
-      // document_id and project_id filters removed; service will ignore them
+      // document_id filter is removed; allow project_id to be passed through
       delete query.document_id;
-      delete query.project_id;
       const rows = await CustomerQuestionsService.listCustomerQuestions(query, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
@@ -18,7 +17,7 @@ class CustomerQuestionsController {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
       const row = await CustomerQuestionsService.getCustomerQuestionById(id, actor);
-      res.json(row);
+      res.json({ data: row });
     } catch (err) { next(err); }
   }
 

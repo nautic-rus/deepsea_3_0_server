@@ -14,15 +14,14 @@ exports.get = async (req, res, next) => {
     const actor = req.user || null;
     const id = parseInt(req.params.id, 10);
     const row = await IssueWorkFlowsService.getById(id, actor);
-    res.json(row);
+    res.json({ data: row });
   } catch (err) { next(err); }
 };
 
 exports.create = async (req, res, next) => {
   try {
     const actor = req.user || null;
-    const IssueWorkFlow = require('../../db/models/IssueWorkFlow');
-    const created = await IssueWorkFlow.create(req.body || {});
+    const created = await IssueWorkFlowsService.create(req.body || {}, actor);
     res.status(201).json({ data: created });
   } catch (err) { next(err); }
 };
@@ -31,8 +30,7 @@ exports.update = async (req, res, next) => {
   try {
     const actor = req.user || null;
     const id = parseInt(req.params.id, 10);
-    const IssueWorkFlow = require('../../db/models/IssueWorkFlow');
-    const updated = await IssueWorkFlow.update(Number(id), req.body || {});
+    const updated = await IssueWorkFlowsService.update(id, req.body || {}, actor);
     res.json({ data: updated });
   } catch (err) { next(err); }
 };
@@ -41,8 +39,7 @@ exports.delete = async (req, res, next) => {
   try {
     const actor = req.user || null;
     const id = parseInt(req.params.id, 10);
-    const IssueWorkFlow = require('../../db/models/IssueWorkFlow');
-    await IssueWorkFlow.delete(Number(id));
+    await IssueWorkFlowsService.delete(id, actor);
     res.json({ message: 'Deleted' });
   } catch (err) { next(err); }
 };

@@ -14,7 +14,7 @@ exports.get = async (req, res, next) => {
     const actor = req.user || null;
     const id = parseInt(req.params.id, 10);
     const row = await CustomerQuestionWorkFlowsService.getById(id, actor);
-    res.json(row);
+    res.json({ data: row });
   } catch (err) { next(err); }
 };
 

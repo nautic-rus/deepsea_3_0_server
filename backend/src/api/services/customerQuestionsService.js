@@ -89,17 +89,59 @@ class CustomerQuestionsService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const q = await CustomerQuestion.findById(Number(id));
     if (!q) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
+
+    // Extract ids from nested objects (model returns grouped objects, not flat fields)
+    const statusId = q.status ? q.status.id : null;
+    const typeId = q.type ? q.type.id : null;
+    const projectId = q.project ? q.project.id : null;
+
     // Fetch available statuses via work flow transitions from current status
     try {
-      const wfSql = `SELECT cs.id, cs.name, cs.code, cs.description, wf.id AS workflow_id, wf.name AS workflow_name, wf.description AS workflow_description
-                     FROM customer_question_work_flow wf
-                     JOIN customer_question_status cs ON wf.to_status_id = cs.id
-                     WHERE wf.from_status_id = $1
-                       AND (wf.customer_question_type_id IS NULL OR wf.customer_question_type_id = $2)
-                       AND (wf.is_active IS NULL OR wf.is_active = true)
-                     ORDER BY wf.id`;
-      const wfRes = await require('../../db/connection').query(wfSql, [q.status_id, q.type_id]);
-      q.available_statuses = wfRes.rows || [];
+      if (statusId) {
+        const wfSql = `SELECT cs.id, cs.name, cs.code, cs.description,
+                       wf.id AS workflow_id, wf.name AS workflow_name, wf.description AS workflow_description
+                       FROM customer_question_work_flow wf
+                       JOIN customer_question_status cs ON wf.to_status_id = cs.id
+                       WHERE wf.from_status_id = $1
+                         AND (wf.customer_question_type_id IS NULL OR wf.customer_question_type_id = $2)
+                         AND (wf.project_id IS NULL OR wf.project_id = $3)
+                         AND (wf.is_active IS NULL OR wf.is_active = true)
+                       ORDER BY wf.id`;
+        const wfRes = await require('../../db/connection').query(wfSql, [statusId, typeId, projectId]);
+        let available = wfRes.rows || [];
+
+        // Check for blocking relations (same logic as issues):
+        // if another customer_question blocks this one and is not in a final status,
+        // disallow transitions to final statuses.
+        try {
+          const EntityLink = require('../../db/models/EntityLink');
+          const blockingLinks = await EntityLink.find({
+            passive_type: 'customer_question',
+            passive_id: Number(id),
+            active_type: 'customer_question',
+            relation_type: 'blocks'
+          });
+          const otherIds = [...new Set((blockingLinks || []).filter(l => l && l.active_id).map(l => Number(l.active_id)))];
+          if (otherIds.length > 0) {
+            const q2 = `SELECT cq.id, cs.is_final
+                         FROM customer_questions cq
+                         LEFT JOIN customer_question_status cs ON cs.id = cq.status_id
+                         WHERE cq.id = ANY($1::int[])`;
+            const res2 = await require('../../db/connection').query(q2, [otherIds]);
+            const hasBlockerNotFinal = (res2.rows || []).some(r => !r.is_final);
+            if (hasBlockerNotFinal) {
+              // remove final statuses from available list
+              available = available.filter(s => !s.is_final);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to evaluate blocks links for customer_question available_statuses', e && e.message ? e.message : e);
+        }
+
+        q.available_statuses = available;
+      } else {
+        q.available_statuses = [];
+      }
     } catch (e) {
       // If work flow table/columns are missing or error occurs, return question without available_statuses
       q.available_statuses = [];

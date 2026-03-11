@@ -11,6 +11,8 @@ class IssueWorkFlowsService {
     const opts = {};
     if (query.project_id !== undefined) opts.project_id = Number(query.project_id);
     if (query.issue_type_id !== undefined) opts.issue_type_id = Number(query.issue_type_id);
+    if (query.from_status_id !== undefined) opts.from_status_id = Number(query.from_status_id);
+    if (query.to_status_id !== undefined) opts.to_status_id = Number(query.to_status_id);
     const rows = await IssueWorkFlow.list(opts);
     if (!rows || rows.length === 0) return rows;
 
@@ -37,12 +39,15 @@ class IssueWorkFlowsService {
     const typeMap = new Map((typesRes.rows || []).map(r => [r.id, r]));
     const projectMap = new Map((projectsRes.rows || []).map(r => [r.id, r]));
 
-    return rows.map(r => Object.assign({}, r, {
-      from_status: r.from_status_id ? fromMap.get(r.from_status_id) || null : null,
-      to_status: r.to_status_id ? toMap.get(r.to_status_id) || null : null,
-      issue_type: r.issue_type_id ? typeMap.get(r.issue_type_id) || null : null,
-      project: r.project_id ? projectMap.get(r.project_id) || null : null
-    }));
+    return rows.map(r => {
+      const out = Object.assign({}, r);
+      delete out.issue_type_id;
+      out.from_status = r.from_status_id ? fromMap.get(r.from_status_id) || null : null;
+      out.to_status = r.to_status_id ? toMap.get(r.to_status_id) || null : null;
+      out.issue_type = r.issue_type_id ? typeMap.get(r.issue_type_id) || null : null;
+      out.project = r.project_id ? projectMap.get(r.project_id) || null : null;
+      return out;
+    });
   }
 
   static async getById(id, actor) {
@@ -60,12 +65,45 @@ class IssueWorkFlowsService {
     const qProj = row.project_id ? pool.query('SELECT id, name, code FROM projects WHERE id = $1 LIMIT 1', [row.project_id]) : Promise.resolve({ rows: [] });
 
     const [fromRes, toRes, typeRes, projRes] = await Promise.all([qFrom, qTo, qType, qProj]);
-    return Object.assign({}, row, {
-      from_status: fromRes.rows[0] || null,
-      to_status: toRes.rows[0] || null,
-      issue_type: typeRes.rows[0] || null,
-      project: projRes.rows[0] || null
-    });
+    const out = Object.assign({}, row);
+    delete out.issue_type_id;
+    out.from_status = fromRes.rows[0] || null;
+    out.to_status = toRes.rows[0] || null;
+    out.issue_type = typeRes.rows[0] || null;
+    out.project = projRes.rows[0] || null;
+    return out;
+  }
+
+  static async create(fields, actor) {
+    const requiredPermission = 'issues.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.create'); err.statusCode = 403; throw err; }
+    if (!fields.from_status_id) { const err = new Error('from_status_id required'); err.statusCode = 400; throw err; }
+    if (!fields.to_status_id) { const err = new Error('to_status_id required'); err.statusCode = 400; throw err; }
+    return IssueWorkFlow.create(fields);
+  }
+
+  static async update(id, fields, actor) {
+    const requiredPermission = 'issues.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const updated = await IssueWorkFlow.update(Number(id), fields);
+    if (!updated) { const err = new Error('Issue work flow not found'); err.statusCode = 404; throw err; }
+    return updated;
+  }
+
+  static async delete(id, actor) {
+    const requiredPermission = 'issues.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const ok = await IssueWorkFlow.delete(Number(id));
+    if (!ok) { const err = new Error('Issue work flow not found'); err.statusCode = 404; throw err; }
+    return { success: true };
   }
 }
 

@@ -210,47 +210,38 @@
       "CustomerQuestion": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "question_text": {
-            "type": "string"
-          },
-          "answer_text": {
-            "type": "string",
-            "nullable": true
-          },
-          "priority": {
-            "type": "string",
-            "nullable": true
-          },
+          "id": { "type": "integer" },
+          "question_title": { "type": "string", "nullable": true },
+          "question_text": { "type": "string" },
+          "answer_text": { "type": "string", "nullable": true },
+          "priority": { "type": "string", "nullable": true },
+          "due_date": { "type": "string", "format": "date", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "project_id": { "type": "integer", "nullable": true },
+          "project": { "$ref": "#/components/schemas/Project", "nullable": true },
+          "type_id": { "type": "integer", "nullable": true },
+          "type": { "$ref": "#/components/schemas/CustomerQuestionType", "nullable": true },
+          "status": { "$ref": "#/components/schemas/CustomerQuestionStatus", "nullable": true },
           "asked_by": {
-            "type": "integer"
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "integer" },
+              "full_name": { "type": "string" },
+              "avatar_id": { "type": "integer", "nullable": true }
+            }
           },
           "answered_by": {
-            "type": "integer",
-            "nullable": true
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "integer" },
+              "full_name": { "type": "string" },
+              "avatar_id": { "type": "integer", "nullable": true }
+            }
           },
-          "due_date": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
-          },
-          "status_id": {
-            "type": "integer",
-            "nullable": true
-          },
-          "status": {
-            "$ref": "#/components/schemas/CustomerQuestionStatus"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
+          "available_statuses": { "type": "array", "items": { "$ref": "#/components/schemas/CustomerQuestionStatus" } }
         }
       },
       "CustomerQuestionStatus": {
@@ -317,6 +308,10 @@
           },
           "to_status": {
             "$ref": "#/components/schemas/CustomerQuestionStatus",
+            "nullable": true
+          },
+          "customer_question_type": {
+            "$ref": "#/components/schemas/CustomerQuestionType",
             "nullable": true
           },
           "name": {
@@ -2465,7 +2460,20 @@
         "x-permissions": [
           "customer_questions.view"
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "schema": { "type": "integer" },
+            "description": "Фильтр по проекту"
+          },
+          {
+            "in": "query",
+            "name": "customer_question_type_id",
+            "schema": { "type": "integer" },
+            "description": "Фильтр по типу вопроса"
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -2891,7 +2899,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Issue"
+                    "$ref": "#/components/schemas/CustomerQuestion"
                   }
                 }
               }
@@ -2969,7 +2977,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Issue"
+                  "$ref": "#/components/schemas/CustomerQuestion"
                 }
               }
             }
@@ -3007,7 +3015,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Issue"
+                "$ref": "#/components/schemas/CustomerQuestion"
               }
             }
           }
@@ -3018,7 +3026,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Issue"
+                  "$ref": "#/components/schemas/CustomerQuestion"
                 }
               }
             }
@@ -4199,6 +4207,13 @@
               "type": "integer"
             },
             "description": "Фильтр по проекту"
+          }
+          ,
+          {
+            "in": "query",
+            "name": "document_type_id",
+            "schema": { "type": "integer" },
+            "description": "Фильтр по типу документа"
           }
         ],
         "responses": {
