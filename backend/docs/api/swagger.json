@@ -3178,6 +3178,24 @@
             }
           },
           {
+            "name": "my_question",
+            "in": "query",
+            "description": "If true, return questions where the authenticated user is asker or answerer",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "is_closed",
+            "in": "query",
+            "description": "Filter by closed status (maps to customer_question_status.is_final)",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
             "name": "search",
             "in": "query",
             "description": "Full-text search in question/answer text",
@@ -3507,6 +3525,54 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/customer_questions/{id}/history": {
+      "get": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "Get customer question history",
+        "description": "Returns timeline/history entries for a customer question. Requires customer_questions.view.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HistoryEntry"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         }
       }

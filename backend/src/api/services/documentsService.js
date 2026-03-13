@@ -307,6 +307,116 @@ class DocumentsService {
       }
     })();
 
+    // Fire-and-forget: notify project participants subscribed to 'document_created_in_project'
+    (async () => {
+      try {
+        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+        const TemplateService = require('./notificationTemplateService');
+        const EmailService = require('./emailService');
+        const RocketChatService = require('./rocketChatService');
+
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(created.project_id, 'document_created_in_project');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Get project participant ids (users assigned via user_roles)
+        const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [created.project_id]);
+        const participantIds = new Set((prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean));
+
+        // Keep only recipients who are project participants and not the actor
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
+
+        const frontendRoot = process.env.FRONTEND_URL || '';
+        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${created.id}` : '';
+        const context = { project: { id: created.project_id, code: (project && project.code) ? project.code : null }, document: created, actor: actor, documentUrl };
+
+        for (const r of recipients) {
+          try {
+            const notifPayload = {
+              user_id: r.user_id,
+              event_code: 'document_created_in_project',
+              project_id: created.project_id,
+              data: { document: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+            };
+            UserNotification.create(notifPayload).catch(() => {});
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('document_created_in_project', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `New document: ${created.title}`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('document_created_in_project', 'email', context);
+              const subject = rendered.subject || `New document ${created.title}`;
+              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (mailErr) { console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr); }
+            }
+          } catch (e) { console.error('Failed to send document_created_in_project notification', e && e.message ? e.message : e); }
+        }
+      } catch (err) { console.error('Error while processing notifications for document_created_in_project', err && err.stack ? err.stack : err); }
+    })();
+
+    // Fire-and-forget: notify project participants subscribed to 'document_uploaded_in_project'
+    (async () => {
+      try {
+        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+        const TemplateService = require('./notificationTemplateService');
+        const EmailService = require('./emailService');
+        const RocketChatService = require('./rocketChatService');
+
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'document_uploaded_in_project');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Get project participant ids (users assigned via user_roles)
+        const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [existing.project_id]);
+        const participantIds = new Set((prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean));
+
+        // Keep only recipients who are project participants and not the actor
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
+
+        const frontendRoot = process.env.FRONTEND_URL || '';
+        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
+        const context = {
+          project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) ? _projForAttach.code : null },
+          document: existing,
+          actor: actor,
+          documentUrl,
+          storage_items: storageItems,
+          storage_item: storage_item,
+          storage_file_list: storageItems.map(s => s.file_name).join('\n')
+        };
+
+        for (const r of recipients) {
+          try {
+            const notifPayload = {
+              user_id: r.user_id,
+              event_code: 'document_uploaded_in_project',
+              project_id: existing.project_id,
+              data: { document: existing, storage: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr, via: r.method_code || null, recipient: { user_id: r.user_id } }
+            };
+            UserNotification.create(notifPayload).catch(() => {});
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('document_uploaded_in_project', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `Document uploaded: ${existing.title}`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('document_uploaded_in_project', 'email', context);
+              const subject = rendered.subject || `Document uploaded ${existing.title}`;
+              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (mailErr) { console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr); }
+            }
+          } catch (e) { console.error('Failed to send document_uploaded_in_project notification', e && e.message ? e.message : e); }
+        }
+      } catch (err) { console.error('Error while processing notifications for document_uploaded_in_project', err && err.stack ? err.stack : err); }
+    })();
+
     return created;
   }
 
@@ -417,6 +527,57 @@ class DocumentsService {
       } catch (err) {
         console.error('Error while processing notifications for document_updated:', err && err.stack ? err.stack : err);
       }
+    })();
+
+    // Fire-and-forget: notify project participants subscribed to 'document_updated_in_project'
+    (async () => {
+      try {
+        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+        const TemplateService = require('./notificationTemplateService');
+        const EmailService = require('./emailService');
+        const RocketChatService = require('./rocketChatService');
+
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'document_updated_in_project');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Get project participant ids (users assigned via user_roles)
+        const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [updated.project_id]);
+        const participantIds = new Set((prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean));
+
+        // Keep only recipients who are project participants and not the actor
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
+
+        const frontendRoot = process.env.FRONTEND_URL || '';
+        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${updated.id}` : '';
+        const context = { project: { id: updated.project_id, code: (_project && _project.code) ? _project.code : null }, document: updated, actor: actor, documentUrl, changes: { before: existing, after: updated } };
+
+        for (const r of recipients) {
+          try {
+            const notifPayload = {
+              user_id: r.user_id,
+              event_code: 'document_updated_in_project',
+              project_id: updated.project_id,
+              data: { document: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+            };
+            UserNotification.create(notifPayload).catch(() => {});
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('document_updated_in_project', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `Document updated: ${updated.title}`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('document_updated_in_project', 'email', context);
+              const subject = rendered.subject || `Document updated ${updated.title}`;
+              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (mailErr) { console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr); }
+            }
+          } catch (e) { console.error('Failed to send document_updated_in_project notification', e && e.message ? e.message : e); }
+        }
+      } catch (err) { console.error('Error while processing notifications for document_updated_in_project', err && err.stack ? err.stack : err); }
     })();
 
     return updated;

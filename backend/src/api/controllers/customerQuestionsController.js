@@ -5,6 +5,15 @@ class CustomerQuestionsController {
     try {
       const actor = req.user || null;
       const query = Object.assign({}, req.query || {});
+      // support my_question filter: if true, return questions where actor is asked_by OR answered_by
+      if (query.my_question !== undefined && query.my_question !== null) {
+        const val = query.my_question === true || query.my_question === 'true' || query.my_question === '1';
+        if (val && actor && actor.id) {
+          query.my_question_user_id = actor.id;
+        }
+        // remove original flag to avoid accidental propagation
+        delete query.my_question;
+      }
       // document_id filter is removed; allow project_id to be passed through
       delete query.document_id;
       const rows = await CustomerQuestionsService.listCustomerQuestions(query, actor);

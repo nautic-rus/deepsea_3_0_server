@@ -1,0 +1,11 @@
+:white_check_mark: Документ создан!
+
+*Проект: *{{project.code}}
+*Номер: *{{document.code}}
+*Наименование: *{{document.title}}
+*Создал: *{{actor.full_name}}
+
+{{documentUrl}}
+
+_Это автоматическое уведомление от {{company.name}}._
+

@@ -1,5 +1,6 @@
 const IssueHistory = require('../../db/models/IssueHistory');
 const DocumentHistory = require('../../db/models/DocumentHistory');
+const CustomerQuestionHistory = require('../../db/models/CustomerQuestionHistory');
 
 /**
  * HistoryService
@@ -65,6 +66,36 @@ class HistoryService {
     const payload = { document_id: documentId, actor_id: actorId, action, details };
     return DocumentHistory.create(payload);
   }
+
+  /**
+   * Add customer question history record.
+   * @param {number} questionId
+   * @param {Object|number} actor - actor object or actor id
+   * @param {string} action - short action code
+   * @param {Object|string|null} details - optional details
+   */
+  static async addCustomerQuestionHistory(questionId, actor, action, details = null) {
+    const actorId = (actor && typeof actor === 'object') ? (actor.id || actor.user_id || null) : actor;
+    if (details && typeof details === 'object' && details.before && details.after && typeof details.before === 'object' && typeof details.after === 'object') {
+      const before = details.before || {};
+      const after = details.after || {};
+      const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+      const writes = [];
+      for (const k of keys) {
+        const bv = before[k];
+        const av = after[k];
+        const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
+        const avStr = av === undefined ? null : (typeof av === 'string' ? av : JSON.stringify(av));
+        if (bvStr === avStr) continue;
+        writes.push(CustomerQuestionHistory.create({ question_id: questionId, actor_id: actorId, action: k, details: { before: bv, after: av } }));
+      }
+      return Promise.all(writes);
+    }
+
+    const payload = { question_id: questionId, actor_id: actorId, action, details };
+    return CustomerQuestionHistory.create(payload);
+  }
+
 }
 
 module.exports = HistoryService;

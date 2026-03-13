@@ -2,7 +2,7 @@ const pool = require('../connection');
 
 class CustomerQuestion {
   static async list(filters = {}) {
-    const { status, priority, asked_by, answered_by, page = 1, limit = 50, search, created_at_from, created_at_to, due_date_from, due_date_to, project_id } = filters;
+    const { status, priority, asked_by, answered_by, my_question_user_id, is_closed, page = 1, limit = 50, search, created_at_from, created_at_to, due_date_from, due_date_to, project_id } = filters;
     const offset = (page - 1) * limit;
     const where = [];
     const values = [];
@@ -21,6 +21,17 @@ class CustomerQuestion {
     if (priority !== undefined && priority !== null) { where.push(`priority = $${idx++}`); values.push(priority); }
     if (asked_by !== undefined && asked_by !== null) { where.push(`asked_by = $${idx++}`); values.push(asked_by); }
     if (answered_by !== undefined && answered_by !== null) { where.push(`answered_by = $${idx++}`); values.push(answered_by); }
+    // my_question_user_id: user is either asked_by or answered_by
+    if (my_question_user_id !== undefined && my_question_user_id !== null) {
+      where.push(`(asked_by = $${idx} OR answered_by = $${idx})`);
+      values.push(my_question_user_id);
+      idx++;
+    }
+    // is_closed: map to customer_question_status.is_final boolean flag
+    if (is_closed !== undefined && is_closed !== null) {
+      where.push(`status_id IN (SELECT id FROM customer_question_status WHERE is_final = $${idx++})`);
+      values.push(is_closed);
+    }
     if (project_id !== undefined && project_id !== null) { where.push(`(cq.project_id IS NULL OR cq.project_id = $${idx++})`); values.push(project_id); }
     if (search) { where.push(`(question_text ILIKE $${idx} OR answer_text ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     if (created_at_from) { where.push(`cq.created_at >= $${idx++}`); values.push(created_at_from); }

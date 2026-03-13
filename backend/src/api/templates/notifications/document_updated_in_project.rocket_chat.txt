@@ -1,0 +1,14 @@
+:warning: Документ обновлён!
+
+*Проект: *{{project.code}}
+*Номер: *{{document.code}}
+*Наимнование: *{{document.title}}
+*Обновил: *{{actor.full_name}}
+
+*Изменения:*
+{{changes}}
+
+{{documentUrl}}
+
+_Это автоматическое уведомление от {{company.name}}._
+

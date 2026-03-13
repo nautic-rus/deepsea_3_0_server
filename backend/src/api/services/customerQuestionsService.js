@@ -3,6 +3,12 @@ const CustomerQuestion = require('../../db/models/CustomerQuestion');
 const CustomerQuestionStorage = require('../../db/models/CustomerQuestionStorage');
 const Storage = require('../../db/models/Storage');
 const { hasPermission } = require('./permissionChecker');
+const RocketChatService = require('./rocketChatService');
+const HistoryService = require('./historyService');
+const UserNotification = require('../../db/models/UserNotification');
+const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+const TemplateService = require('./notificationTemplateService');
+const EmailService = require('./emailService');
 
 
 
@@ -174,6 +180,52 @@ class CustomerQuestionsService {
       delete fields.status;
     }
     const created = await CustomerQuestion.create(fields);
+    // Fire-and-forget: notify project participants subscribed to 'question_created_in_project'
+    (async () => {
+      try {
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(created.project_id, 'question_created_in_project');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        // Get project participant ids (users assigned via user_roles)
+        const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [created.project_id]);
+        const participantIds = new Set((prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean));
+
+        // Keep only recipients who are project participants and not the actor
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
+
+        const frontendRoot = process.env.FRONTEND_URL || '';
+        const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${created.id}` : '';
+        const context = { project: { id: created.project_id, code: (created.project && created.project.code) ? created.project.code : null }, question: created, actor: actor, questionUrl };
+
+        for (const r of recipients) {
+          try {
+            const notifPayload = {
+              user_id: r.user_id,
+              event_code: 'question_created_in_project',
+              project_id: created.project_id,
+              data: { question: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+            };
+            UserNotification.create(notifPayload).catch(() => {});
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('question_created_in_project', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `New question in project ${created.project_id}`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('question_created_in_project', 'email', context);
+              const subject = rendered.subject || `New question in project ${created.project_id}`;
+              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (e) { console.error('Failed to send email', e && e.message ? e.message : e); }
+            }
+          } catch (e) { console.error('Failed to send question_created_in_project notification', e && e.message ? e.message : e); }
+        }
+      } catch (e) { console.error('Error while processing notifications for question_created_in_project', e && e.stack ? e.stack : e); }
+    })();
+
     return created;
   }
 
@@ -201,6 +253,91 @@ class CustomerQuestionsService {
       delete fields.status;
     }
     const updated = await CustomerQuestion.update(Number(id), fields);
+    if (!updated) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
+    // Record update in history (fire-and-forget)
+    (async () => {
+      try {
+        await HistoryService.addCustomerQuestionHistory(Number(id), actor, 'updated', { before: existing, after: updated });
+      } catch (e) { console.error('Failed to write customer question history for update', e && e.message ? e.message : e); }
+    })();
+
+    // Fire-and-forget: notify project participants for 'question_updated_in_project'
+    (async () => {
+      try {
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'question_updated_in_project');
+        if (!allRecipients || allRecipients.length === 0) return;
+        const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [updated.project_id]);
+        const participantIds = new Set((prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean));
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
+
+        const frontendRoot = process.env.FRONTEND_URL || '';
+        const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${updated.id}` : '';
+        const context = { project: { id: updated.project_id, code: (updated.project && updated.project.code) ? updated.project.code : null }, question: updated, actor: actor, questionUrl, changes: { before: existing, after: updated } };
+
+        for (const r of recipients) {
+          try {
+            const notifPayload = {
+              user_id: r.user_id,
+              event_code: 'question_updated_in_project',
+              project_id: updated.project_id,
+              data: { question: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+            };
+            UserNotification.create(notifPayload).catch(() => {});
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('question_updated_in_project', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `Question updated: ${updated.question_title || updated.id}`;
+              if (r.rc_username) await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              else if (r.rc_user_id) await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('question_updated_in_project', 'email', context);
+              const subject = rendered.subject || `Question updated ${updated.question_title || updated.id}`;
+              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (e) { console.error('Failed to send email', e && e.message ? e.message : e); }
+            }
+          } catch (e) { console.error('Failed to send question_updated_in_project notification', e && e.message ? e.message : e); }
+        }
+      } catch (e) { console.error('Error while processing notifications for question_updated_in_project', e && e.stack ? e.stack : e); }
+    })();
+
+    // Fire-and-forget: notify specific participants (asked_by/answered_by) for 'question_updated'
+    (async () => {
+      try {
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'question_updated');
+        if (!allRecipients || allRecipients.length === 0) return;
+        const participantIds = new Set([updated.asked_by, updated.answered_by, existing.asked_by, existing.answered_by].filter(Boolean).map(Number));
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
+
+        const frontendRoot = process.env.FRONTEND_URL || '';
+        const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${updated.id}` : '';
+        const context = { project: { id: updated.project_id, code: (updated.project && updated.project.code) ? updated.project.code : null }, question: updated, actor: actor, questionUrl, changes: { before: existing, after: updated } };
+
+        for (const r of recipients) {
+          try {
+            const notifPayload = {
+              user_id: r.user_id,
+              event_code: 'question_updated',
+              project_id: updated.project_id,
+              data: { question: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+            };
+            UserNotification.create(notifPayload).catch(() => {});
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('question_updated', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `Question updated: ${updated.question_title || updated.id}`;
+              if (r.rc_username) await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              else if (r.rc_user_id) await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('question_updated', 'email', context);
+              const subject = rendered.subject || `Question updated ${updated.question_title || updated.id}`;
+              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (e) { console.error('Failed to send email', e && e.message ? e.message : e); }
+            }
+          } catch (e) { console.error('Failed to send question_updated notification', e && e.message ? e.message : e); }
+        }
+      } catch (e) { console.error('Error while processing notifications for question_updated', e && e.stack ? e.stack : e); }
+    })();
+
     return updated;
   }
 

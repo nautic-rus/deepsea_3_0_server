@@ -17,6 +17,7 @@ const documentWorkFlowsController = require('../controllers/documentWorkFlowsCon
 const specializationsController = require('../controllers/specializationsController');
 const issueHistoryController = require('../controllers/issueHistoryController');
 const documentHistoryController = require('../controllers/documentHistoryController');
+const customerQuestionHistoryController = require('../controllers/customerQuestionHistoryController');
 const materialsController = require('../controllers/materialsController');
 const equipmentController = require('../controllers/equipmentController');
 const materialKitsController = require('../controllers/materialKitsController');
@@ -196,6 +197,7 @@ router.get('/issues/:id/history', authMiddleware, issueHistoryController.list);
 // ===== Customer questions routes =====
 router.get('/customer_questions', authMiddleware, customerQuestionsController.list);
 router.get('/customer_questions/:id', authMiddleware, customerQuestionsController.get);
+router.get('/customer_questions/:id/history', authMiddleware, customerQuestionHistoryController.list);
 router.post('/customer_questions', authMiddleware, customerQuestionsController.create);
 router.put('/customer_questions/:id', authMiddleware, customerQuestionsController.update);
 router.delete('/customer_questions/:id', authMiddleware, customerQuestionsController.delete);
