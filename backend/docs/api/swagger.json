@@ -12104,6 +12104,54 @@
         "parameters": []
       }
     },
+    "/api/update_profile": {
+      "put": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Update current user's profile",
+        "description": "Update profile fields for the currently authenticated user. Allows updating email, phone, first_name, last_name, middle_name, and rocket_login (rocket_login is applied to the Rocket.Chat mapping). Authentication required.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "phone": { "type": "string" },
+                  "first_name": { "type": "string" },
+                  "last_name": { "type": "string" },
+                  "middle_name": { "type": "string" },
+                  "rocket_login": { "type": "string", "nullable": true }
+                }
+              },
+              "example": {
+                "email": "user@example.com",
+                "phone": "+1234567890",
+                "first_name": "John",
+                "last_name": "Doe",
+                "middle_name": "M",
+                "rocket_login": "johndoe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profile updated" },
+          "400": { "description": "Bad request" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "User not found" },
+          "409": { "description": "Email or phone already exists" }
+        }
+      }
+    },
     "/api/users": {
       "get": {
         "tags": [
@@ -12347,30 +12395,19 @@
         }
       }
     },
-    "/api/users/{id}/avatar": {
+    "/api/users/avatar": {
       "post": {
         "tags": [
           "users"
         ],
-        "summary": "Upload user avatar (local storage)",
-        "description": "Upload avatar for a user. Accepts multipart/form-data with field 'file'. Stores file in local uploads and updates user's avatar_id (stores reference to a `storage` record).",
+        "summary": "Upload current user's avatar (local storage)",
+        "description": "Upload avatar for the currently authenticated user. Accepts multipart/form-data with field 'file'. Stores file in local uploads and updates user's avatar_id (stores reference to a `storage` record).",
         "security": [
           {
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "User ID",
-            "example": "{{id}}"
-          }
-        ],
+        "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
@@ -12416,7 +12453,7 @@
             "description": "Authentication required"
           },
           "403": {
-            "description": "Forbidden - missing permission users.update"
+            "description": "Forbidden"
           },
           "404": {
             "description": "User not found"

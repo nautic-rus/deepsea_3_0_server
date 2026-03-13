@@ -67,10 +67,12 @@ router.post('/auth/reset_password', authController.resetPassword);
 // ===== Users routes =====
 // POST /api/create_users
 router.post('/create_users', authMiddleware, validateCreateUser, usersController.createUser);
-	router.post('/users/invite', authMiddleware, usersController.inviteUsers);
+router.post('/users/invite', authMiddleware, usersController.inviteUsers);
 
 // GET /api/users (list)
 router.get('/users', authMiddleware, usersController.getUsers);
+// PUT /api/update_profile - update current user's profile
+router.put('/update_profile', authMiddleware, usersController.updateProfile);
 
 // User notification settings (current user)
 router.get('/users/notification_settings', authMiddleware, userNotificationSettingsController.list);
@@ -97,9 +99,9 @@ router.post('/users/:id/notifications/:notificationId/hide', authMiddleware, use
 router.put('/users/:id', authMiddleware, usersController.updateUser);
 // DELETE /api/users/:id (soft-delete)
 router.delete('/users/:id', authMiddleware, usersController.deleteUser);
-// POST /api/users/:id/avatar - upload avatar (multipart field 'file')
-router.post('/users/:id/avatar', authMiddleware, _upload.single('file'), usersController.uploadAvatar);
-	router.post('/users/password_reset', authMiddleware, usersController.sendPasswordResets);
+// POST /api/users/avatar - upload current user's avatar (multipart field 'file')
+router.post('/users/avatar', authMiddleware, _upload.single('file'), usersController.uploadAvatar);
+router.post('/users/password_reset', authMiddleware, usersController.sendPasswordResets);
 
 // ===== Departments routes =====
 // GET /api/departments

@@ -162,6 +162,41 @@ class UsersController {
   }
 
   /**
+   * Update current user's profile (email, phone, first_name, last_name, middle_name, rocket_login)
+   */
+  static async updateProfile(req, res, next) {
+    try {
+      const actor = req.user || null;
+      if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+
+      const body = req.body || {};
+      const allowedFields = ['email','phone','first_name','last_name','middle_name'];
+      const fields = {};
+      for (const k of allowedFields) {
+        if (Object.prototype.hasOwnProperty.call(body, k)) fields[k] = body[k];
+      }
+
+      const updated = await UsersService.updateProfile(Number(actor.id), fields, actor);
+
+      // handle rocket_login separately via UserRocketChatService
+      if (Object.prototype.hasOwnProperty.call(body, 'rocket_login')) {
+        const UserRocketChatService = require('../services/userRocketChatService');
+        const rc = body.rocket_login && String(body.rocket_login).trim();
+        if (!rc) {
+          // empty value -> delete mapping
+          await UserRocketChatService.deleteMapping(Number(actor.id));
+        } else {
+          await UserRocketChatService.setMapping(Number(actor.id), { rc_username: rc }, actor);
+        }
+      }
+
+      const UserModel = require('../../db/models/User');
+      const user = await UserModel.findById(Number(actor.id));
+      res.status(200).json({ user });
+    } catch (error) { next(error); }
+  }
+
+  /**
    * Update a user (partial update).
    */
   static async updateUser(req, res, next) {
@@ -182,33 +217,18 @@ class UsersController {
    */
   static async uploadAvatar(req, res, next) {
     try {
-      const id = parseInt(req.params.id, 10);
       const actor = req.user || null;
+      if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
       const file = req.file;
-      if (!file) {
-        const err = new Error('Missing file'); err.statusCode = 400; throw err;
-      }
+      if (!file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
 
       // Avatars are stored only in local storage (no S3 for avatars)
       const StorageService = require('../services/storageService');
       const createdStorage = await StorageService.uploadToLocalAndCreate(file, actor, {});
 
-  // Update user's avatar_id to the storage record id returned by storage.
-      // Allow self-upload without requiring users.update permission.
+      // Update current user's avatar_id to the storage record id returned by storage.
       const UserModel = require('../../db/models/User');
-      const { hasPermission } = require('../services/permissionChecker');
-
-      let updatedUser = null;
-      if (actor && actor.id && Number(actor.id) === Number(id)) {
-        // Owner uploads their own avatar — no users.update permission required
-        updatedUser = await UserModel.setAvatar(Number(id), createdStorage.id);
-      } else {
-        // Non-owner (admin) must have users.update permission
-        const allowed = await hasPermission(actor, 'users.update');
-        if (!allowed) { const err = new Error('Forbidden: missing permission users.update'); err.statusCode = 403; throw err; }
-        updatedUser = await UserModel.setAvatar(Number(id), createdStorage.id);
-      }
-
+      const updatedUser = await UserModel.setAvatar(Number(actor.id), createdStorage.id);
       if (!updatedUser) { const err = new Error('User not found'); err.statusCode = 404; throw err; }
 
       res.status(200).json({ user: updatedUser, storage: createdStorage });

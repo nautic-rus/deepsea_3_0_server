@@ -71,7 +71,7 @@ class User {
    * Set avatar URL for a user and return updated user record
    */
   static async setAvatar(id, url) {
-    const query = `UPDATE users SET avatar_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
+    const query = `UPDATE users SET avatar_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
     const res = await pool.query(query, [url || null, id]);
     if (res.rowCount === 0) return null;
     return await User.findById(id);

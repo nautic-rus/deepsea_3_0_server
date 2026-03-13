@@ -22,8 +22,9 @@ class CustomerQuestionWorkFlow {
   }
 
   static async create(fields) {
-    const cols = ['from_status_id','to_status_id','name','description','required_permission','is_active'];
-    const vals = [fields.from_status_id || null, fields.to_status_id || null, fields.name || null, fields.description || null, fields.required_permission || null, fields.is_active !== undefined ? !!fields.is_active : true];
+    const cols = ['from_status_id','to_status_id','name','description','required_permission'];
+    const vals = [fields.from_status_id || null, fields.to_status_id || null, fields.name || null, fields.description || null, fields.required_permission || null];
+    if (fields.is_active !== undefined && fields.is_active !== null) { cols.push('is_active'); vals.push(!!fields.is_active); }
     if (fields.customer_question_type_id !== undefined && fields.customer_question_type_id !== null) { cols.push('customer_question_type_id'); vals.push(Number(fields.customer_question_type_id)); }
     if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
     const q = `INSERT INTO customer_question_work_flow (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;

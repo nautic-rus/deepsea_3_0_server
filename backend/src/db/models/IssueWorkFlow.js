@@ -26,8 +26,9 @@ class IssueWorkFlow {
   }
 
   static async create(fields) {
-    const cols = ['issue_type_id','from_status_id','to_status_id','is_active'];
-    const vals = [fields.issue_type_id || null, fields.from_status_id || null, fields.to_status_id || null, !!fields.is_active];
+    const cols = ['issue_type_id','from_status_id','to_status_id'];
+    const vals = [fields.issue_type_id || null, fields.from_status_id || null, fields.to_status_id || null];
+    if (fields.is_active !== undefined && fields.is_active !== null) { cols.push('is_active'); vals.push(!!fields.is_active); }
     if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
     const q = `INSERT INTO issue_work_flow (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
     const res = await pool.query(q, vals);

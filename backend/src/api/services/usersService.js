@@ -324,6 +324,39 @@ UsersService.updateUser = async function (id, fields, actor) {
   return updated;
 };
 
+/**
+ * Update profile for the current user (no admin permission required)
+ * Allows updating: email, phone, first_name, last_name, middle_name
+ */
+UsersService.updateProfile = async function (id, fields, actor) {
+  if (!actor || !actor.id) {
+    const err = new Error('Authentication required'); err.statusCode = 401; throw err;
+  }
+  if (Number(actor.id) !== Number(id)) {
+    const err = new Error('Forbidden'); err.statusCode = 403; throw err;
+  }
+
+  // Prevent changing password via this endpoint
+  if (fields.password || fields.password_hash) {
+    const err = new Error('Password cannot be changed via this endpoint'); err.statusCode = 400; throw err;
+  }
+
+  // Validate uniqueness for email/phone
+  const User = require('../../db/models/User');
+  if (fields.email) {
+    const existing = await User.findByEmail(fields.email);
+    if (existing && existing.id !== Number(id)) { const err = new Error('Email already exists'); err.statusCode = 409; throw err; }
+  }
+  if (fields.phone) {
+    const existing = await User.findByPhone(fields.phone);
+    if (existing && existing.id !== Number(id)) { const err = new Error('Phone already exists'); err.statusCode = 409; throw err; }
+  }
+
+  const updated = await User.update(Number(id), fields);
+  if (!updated) { const err = new Error('User not found'); err.statusCode = 404; throw err; }
+  return updated;
+};
+
 // Soft-delete user
 UsersService.deleteUser = async function (id, actor) {
   const requiredPermission = 'users.delete';
