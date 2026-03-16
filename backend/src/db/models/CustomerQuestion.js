@@ -2,7 +2,7 @@ const pool = require('../connection');
 
 class CustomerQuestion {
   static async list(filters = {}) {
-    const { status, priority, asked_by, answered_by, my_question_user_id, is_closed, page = 1, limit = 50, search, created_at_from, created_at_to, due_date_from, due_date_to, project_id } = filters;
+    const { status, priority, asked_by, answered_by, my_question_user_id, is_closed, is_active, page = 1, limit = 50, search, created_at_from, created_at_to, due_date_from, due_date_to, project_id } = filters;
     const offset = (page - 1) * limit;
     const where = [];
     const values = [];
@@ -39,6 +39,12 @@ class CustomerQuestion {
     
     if (due_date_from) { where.push(`due_date >= $${idx++}`); values.push(due_date_from); }
     if (due_date_to) { where.push(`due_date <= $${idx++}`); values.push(due_date_to); }
+    // By default only return active customer questions unless caller explicitly passes is_active
+    if (typeof is_active === 'undefined') {
+      where.push(`cq.is_active = true`);
+    } else if (is_active !== undefined) {
+      where.push(`cq.is_active = $${idx++}`); values.push(is_active);
+    }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
         const q = `SELECT cq.id, cq.project_id, cq.question_title, cq.question_text, cq.answer_text, cq.priority,
            cq.asked_by,
@@ -164,11 +170,13 @@ class CustomerQuestion {
 
   static async softDelete(id) {
     try {
-      const res = await pool.query("UPDATE customer_questions SET updated_at = CURRENT_TIMESTAMP WHERE id = $1", [id]);
+      const q = `UPDATE customer_questions SET is_active = false WHERE id = $1`;
+      const res = await pool.query(q, [id]);
       if (res.rowCount > 0) return true;
-    } catch (e) {}
-    const del = await pool.query('DELETE FROM customer_questions WHERE id = $1', [id]);
-    return del.rowCount > 0;
+    } catch (err) {}
+    const q2 = `DELETE FROM customer_questions WHERE id = $1`;
+    const res2 = await pool.query(q2, [id]);
+    return res2.rowCount > 0;
   }
 }
 

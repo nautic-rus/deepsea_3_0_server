@@ -208,6 +208,9 @@ router.post('/customer_questions/:id/files', authMiddleware, _upload.single('fil
 router.post('/customer_questions/:id/files/local', authMiddleware, _upload.single('file'), customerQuestionsController.attachLocalFile);
 router.delete('/customer_questions/:id/files/:storage_id', authMiddleware, customerQuestionsController.detachFile);
 router.get('/customer_questions/:id/files', authMiddleware, customerQuestionsController.listFiles);
+// messages attached to customer question
+router.post('/customer_questions/:id/messages', authMiddleware, customerQuestionsController.addMessage);
+router.get('/customer_questions/:id/messages', authMiddleware, customerQuestionsController.listMessages);
 // ===== Customer question types routes =====
 router.get('/customer_question_types', authMiddleware, customerQuestionsController.listTypes);
 router.get('/customer_question_types/:id', authMiddleware, customerQuestionsController.getType);

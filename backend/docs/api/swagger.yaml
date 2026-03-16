@@ -552,6 +552,33 @@ tags: []
         author_name:
           type: string
           nullable: true
+    CustomerQuestionMessageCreate:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+        parent_id:
+          type: integer
+          nullable: true
+    CustomerQuestionMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer_question_id:
+          type: integer
+        content:
+          type: string
+        created_by:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        author_name:
+          type: string
+          nullable: true
     StorageRef:
       type: object
       properties:
@@ -3413,6 +3440,91 @@ paths:
           description: Forbidden - missing permission documents.comment
         '404':
           description: Document not found
+  /api/customer_questions/{id}/messages:
+    get:
+      tags:
+        - customer_questions
+      summary: Список сообщений вопроса
+      description: Возвращает список сообщений (комментариев) customer question. Требуется разрешение customer_questions.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - customer_questions.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID вопроса клиента
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: Limit results
+          example: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+          description: Pagination offset
+          example: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CustomerQuestionMessage'
+        '400':
+          description: Invalid id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission customer_questions.view
+        '404':
+          description: Customer question not found
+    post:
+      tags:
+        - customer_questions
+      summary: Добавить сообщение к вопросу клиента
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - customer_questions.comment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID вопроса клиента
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerQuestionMessageCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerQuestionMessage'
+        '400':
+          description: Invalid input or question id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission customer_questions.comment
+        '404':
+          description: Customer question not found
   /api/documents/{id}/files:
     post:
       tags:

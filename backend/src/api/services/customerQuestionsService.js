@@ -379,6 +379,124 @@ class CustomerQuestionsService {
     if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.view'); err.statusCode = 403; throw err; }
     return CustomerQuestionStorage.listByQuestion(Number(questionId), pager);
   }
+
+  /**
+   * Add a message/comment to a customer question.
+   * @param {number} questionId
+   * @param {string} content
+   * @param {Object} actor
+   */
+  static async addQuestionMessage(questionId, content, actor, parent_id = null) {
+    const requiredPermission = 'customer_questions.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.view'); err.statusCode = 403; throw err; }
+    if (!questionId || Number.isNaN(Number(questionId))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+
+    const existing = await CustomerQuestion.findById(Number(questionId));
+    if (!existing) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
+
+    if (!content || String(content).trim().length === 0) { const err = new Error('Empty content'); err.statusCode = 400; throw err; }
+
+    const CustomerQuestionMessage = require('../../db/models/CustomerQuestionMessage');
+    const created = await CustomerQuestionMessage.create({ customer_question_id: Number(questionId), user_id: actor.id, content: String(content), parent_id: parent_id ? Number(parent_id) : null });
+
+    // Notify participants (asked_by, answered_by) by creating user_notifications
+    (async () => {
+      try {
+        const recipients = [];
+        if (existing.answered_by && existing.answered_by !== actor.id) recipients.push(existing.answered_by);
+        if (existing.asked_by && existing.asked_by !== actor.id && existing.asked_by !== existing.answered_by) recipients.push(existing.asked_by);
+        for (const uid of recipients) {
+          try {
+            await UserNotification.create({ user_id: uid, event_code: 'comment_added', project_id: existing.project_id, data: { customer_question_id: existing.id, message: created } });
+          } catch (e) { console.error('Failed to create user notification for question comment', e && e.message ? e.message : e); }
+        }
+      } catch (e) { console.error('Failed to enqueue notifications for question comment', e && e.message ? e.message : e); }
+    })();
+
+    // Also notify subscribers according to user notification settings (email/rocket)
+    (async () => {
+      try {
+        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'comment_added');
+        if (!allRecipients || allRecipients.length === 0) return;
+
+        const participantIds = new Set([existing.asked_by, existing.answered_by].filter(Boolean).map(Number));
+        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
+        if (recipients.length === 0) return;
+
+        const frontendRoot = process.env.FRONTEND_URL || '';
+        const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${existing.id}` : '';
+        const context = { project: { id: existing.project_id, code: (existing.project && existing.project.code) ? existing.project.code : null }, targetType: 'CustomerQuestion', targetId: existing.id, targetTitle: existing.question_title || existing.id, targetUrl, actor: actor, message: created };
+
+        for (const r of recipients) {
+          try {
+            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) continue;
+            try {
+              const notifPayload = {
+                user_id: r.user_id,
+                event_code: 'comment_added',
+                project_id: existing.project_id,
+                data: { customer_question_id: existing.id, message: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              };
+              UserNotification.create(notifPayload).catch(() => {});
+            } catch (e) { console.error('Failed to queue user notification', e && e.message ? e.message : e); }
+
+            if (r.method_code === 'rocket_chat') {
+              const rendered = await TemplateService.render('comment_added', 'rocket_chat', context);
+              const textToSend = rendered.text || rendered.html || `${existing.question_title || existing.id}: new comment`;
+              if (r.rc_username) {
+                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
+              } else if (r.rc_user_id) {
+                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
+              } else {
+                console.warn('No Rocket.Chat mapping for user', r.user_id);
+              }
+            } else if (r.method_code === 'email') {
+              const rendered = await TemplateService.render('comment_added', 'email', context);
+              const subject = rendered.subject || `New comment on question ${existing.question_title || existing.id}`;
+              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (mailErr) { console.error('Failed to send email', mailErr && mailErr.message ? mailErr.message : mailErr); }
+            } else {
+              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
+            }
+          } catch (err) { console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err); }
+        }
+      } catch (err) { console.error('Error while processing notifications for question comment_added:', err && err.stack ? err.stack : err); }
+    })();
+
+    return created;
+  }
+
+  /**
+   * List messages for a customer question
+   */
+  static async listQuestionMessages(questionId, opts = {}, actor) {
+    const requiredPermission = 'customer_questions.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.view'); err.statusCode = 403; throw err; }
+    if (!questionId || Number.isNaN(Number(questionId))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+
+    const existing = await CustomerQuestion.findById(Number(questionId));
+    if (!existing) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
+
+    const CustomerQuestionMessage = require('../../db/models/CustomerQuestionMessage');
+    const messages = await CustomerQuestionMessage.listByQuestion(Number(questionId), opts);
+    if (!messages || messages.length === 0) return [];
+
+    const userIds = [...new Set(messages.map(m => m.user_id).filter(Boolean))];
+    let usersMap = new Map();
+    if (userIds.length) {
+      const res = await pool.query(`SELECT id, email, phone, avatar_id, first_name, last_name, middle_name, username FROM users WHERE id = ANY($1::int[])`, [userIds]);
+      usersMap = new Map((res.rows || []).map(u => [u.id, u]));
+    }
+
+    return messages.map(m => {
+      const u = usersMap.get(m.user_id) || null;
+      const fullName = u ? [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ') : null;
+      return Object.assign({}, m, { user: u ? { id: u.id, full_name: fullName || u.username || u.email, email: u.email, phone: u.phone, avatar_id: u.avatar_id } : null });
+    });
+  }
 }
 
 module.exports = CustomerQuestionsService;

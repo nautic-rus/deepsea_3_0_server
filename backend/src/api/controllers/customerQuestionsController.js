@@ -106,6 +106,28 @@ class CustomerQuestionsController {
     } catch (err) { next(err); }
   }
 
+  // Handle POST /api/customer_questions/:id/messages - add a message to a question
+  static async addMessage(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { content, parent_id = null } = req.body || {};
+      const created = await CustomerQuestionsService.addQuestionMessage(Number(id), content, actor, parent_id);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  // GET /api/customer_questions/:id/messages - list messages for a question
+  static async listMessages(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { limit = 100, offset = 0 } = req.query || {};
+      const rows = await CustomerQuestionsService.listQuestionMessages(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
   // Types CRUD (customer_question_type)
   static async listTypes(req, res, next) {
     try {
