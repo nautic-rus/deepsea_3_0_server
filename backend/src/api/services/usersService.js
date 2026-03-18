@@ -257,7 +257,8 @@ class UsersService {
 
     // Pagination
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 25, 1), 200);
+    // Allow arbitrary limit from client (minimum 1). Upper bound removed.
+    const limit = Math.max(parseInt(query.limit, 10) || 25, 1);
     const offset = (page - 1) * limit;
 
     // Search (username/email/phone)

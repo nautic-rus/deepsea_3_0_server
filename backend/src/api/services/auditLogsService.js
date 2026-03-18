@@ -31,7 +31,8 @@ class AuditLogsService {
       idx += 1;
     }
 
-    const limit = Math.min( (filters.limit ? Number(filters.limit) : 50), 1000 );
+    // Allow arbitrary limit from caller (minimum 1). Upper bound removed.
+    const limit = Math.max(filters.limit ? Number(filters.limit) : 50, 1);
     const offset = filters.offset ? Number(filters.offset) : 0;
 
     const q = `
