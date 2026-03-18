@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const cacheInvalidator = require('../../utils/cacheInvalidator');
 
 /**
  * Simple template renderer for notification messages.
@@ -14,6 +15,20 @@ const path = require('path');
 class NotificationTemplateService {
   static templatesCache = {};
 
+  // Subscribe to cache invalidation events and clear templates cache
+  static _subscribeInvalidation() {
+    try {
+      cacheInvalidator.on('invalidate', (entity) => {
+        // For now, clear templates cache on any entity change; can be refined
+        NotificationTemplateService.templatesCache = {};
+      });
+    } catch (e) {}
+  }
+
+
+
+// initialize subscription
+try { NotificationTemplateService._subscribeInvalidation(); } catch (e) {}
   // Safely resolve a dotted path from an object, e.g. 'issue.title'
   static _resolvePath(obj, pathStr) {
     if (!pathStr) return undefined;

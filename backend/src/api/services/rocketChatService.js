@@ -9,6 +9,7 @@
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
+const cacheInvalidator = require('../../utils/cacheInvalidator');
 
 class RocketChatService {
   /**
@@ -136,5 +137,12 @@ class RocketChatService {
 
 // Cache auth in-memory for the process lifetime
 RocketChatService._cachedAuth = null;
+
+// Clear cached auth on relevant DB changes
+try {
+  cacheInvalidator.on('invalidate', (entity) => {
+    RocketChatService._cachedAuth = null;
+  });
+} catch (e) {}
 
 module.exports = RocketChatService;

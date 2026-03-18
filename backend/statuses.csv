@@ -1,0 +1,30 @@
+status,translation,color
+ready to delivery,Готово к доставке,#e74c3c
+assign responsible,Назначить ответственного,#2ecc71
+rejected,Отклонено,#3498db
+closed,Закрыто,#9b59b6
+in work,В работе,#f1c40f
+send to rs,Отправить в RS,#e67e22
+check,Проверить,#1abc9c
+approved,Одобрено,#34495e
+assignedto,Назначено,#7f8c8d
+comments fixed,Комментарии исправлены,#c0392b
+not approved,Не одобрено,#27ae60
+published,Опубликовано,#2980b9
+recovery,Восстановление,#8e44ad
+new,Новое,#f39c12
+in rework,На доработке,#d35400
+resolved,Решено,#16a085
+hold,На удержании,#2c3e50
+send to approval,Отправить на согласование,#bdc3c7
+on reapproval,На повторном согласовании,#95a5a6
+send to owner,Отправить владельцу,#f7c6c7
+joined,Присоединено,#e84393
+checked,Проверено,#00b894
+delivered,Доставлено,#6c5ce7
+accepted,Принято,#ffeaa7
+cancel,Отменено,#ff7675
+approved with comments,Одобрено с комментариями,#74b9ff
+accept,Принять,#55efc4
+to publish,К публикации,#a29bfe
+paused,Приостановлено,#fd79a8

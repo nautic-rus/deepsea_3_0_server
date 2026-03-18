@@ -82,6 +82,7 @@ async function migrate() {
   log.info('Starting users migration...');
   let readCount = 0;
   let createdCount = 0;
+  let updatedCount = 0;
   let skippedCount = 0;
 
   try {
@@ -101,20 +102,103 @@ async function migrate() {
         continue;
       }
 
-      // 2. Проверяем дубликат по email в новой БД
-      const dup = await newPool.query('SELECT id FROM users WHERE email = $1', [email]);
-      if (dup.rowCount > 0) {
-        skippedCount++;
-        log.info(`Skip (exists): ${email}`);
-        continue;
-      }
-
-      // 3. Вставляем пользователя в новую БД
+      // Prepare fields
       const username   = row.login || email.split('@')[0];
       const firstName  = row.name || null;
       const lastName   = row.surname || null;
-      const phone      = row.phone || null;
       const isActive   = !parseRemoved(row.removed);
+
+      // 2. Проверяем существующего пользователя по email в новой БД
+      const dup = await newPool.query('SELECT id, phone FROM users WHERE email = $1', [email]);
+      if (dup.rowCount > 0) {
+        // Update existing user
+        const existing = dup.rows[0];
+        let phone = row.phone ? String(row.phone).trim() : (existing.phone ? String(existing.phone).trim() : null);
+        if (!phone) {
+          let attempts = 0;
+          while (!phone) {
+            attempts++;
+            if (attempts > 10000) {
+              log.error(`Failed to generate unique phone after ${attempts} attempts for ${email}`);
+              break;
+            }
+            const cand = '9' + String(crypto.randomInt(100000000, 1000000000));
+            try {
+              const exists = await newPool.query('SELECT id FROM users WHERE phone = $1 AND id <> $2', [cand, existing.id]);
+              if (exists.rowCount === 0) {
+                phone = cand;
+                log.info(`Assigned generated phone ${phone} for ${email}`);
+                break;
+              }
+            } catch (e) {
+              log.error('Phone uniqueness check error:', e && e.message ? e.message : e);
+            }
+          }
+        }
+
+        const updateUser = `UPDATE users SET username=$1, phone=$2, first_name=$3, last_name=$4, is_active=$5 WHERE id=$6`;
+        try {
+          await newPool.query(updateUser, [username, phone, firstName, lastName, isActive, existing.id]);
+          updatedCount++;
+          log.info(`Updated user id=${existing.id} email=${email}`);
+        } catch (errUpd) {
+          log.error(`Error updating user ${email}:`, errUpd && errUpd.message ? errUpd.message : errUpd);
+          skippedCount++;
+          continue;
+        }
+
+        // Rocket.Chat mapping for existing user (same logic as for new users)
+        const rc = row.rocket_login && String(row.rocket_login).trim();
+        if (rc) {
+          try {
+            const rcDup = await newPool.query(
+              'SELECT id, user_id FROM user_rocket_chat WHERE rc_username = $1', [rc]);
+            if (rcDup.rowCount > 0) {
+              const mapped = rcDup.rows[0];
+              if (mapped.user_id !== existing.id) {
+                log.warn(`RC username ${rc} already mapped to user ${mapped.user_id}, skipping mapping for ${existing.id}`);
+              }
+            } else {
+              await newPool.query(
+                'INSERT INTO user_rocket_chat (user_id, rc_username) VALUES ($1, $2)',
+                [existing.id, rc]);
+              log.info(`  ↳ Mapped RC: ${rc} for updated user ${existing.id}`);
+            }
+          } catch (errRc) {
+            log.error(`  ↳ RC mapping error for ${email}:`, errRc.message || errRc);
+          }
+        }
+
+        // proceed to next row
+        continue;
+      }
+
+      // 3. Вставляем нового пользователя в новую БД
+      let phone = row.phone ? String(row.phone).trim() : null;
+      // If phone is missing, generate a random unique phone-like number
+      if (!phone) {
+        let attempts = 0;
+        while (!phone) {
+          attempts++;
+          if (attempts > 10000) {
+            log.error(`Failed to generate unique phone after ${attempts} attempts for ${email}`);
+            break;
+          }
+          // Generate a 10-digit number starting with 9 (common mobile pattern)
+          const cand = '9' + String(crypto.randomInt(100000000, 1000000000));
+          try {
+            const exists = await newPool.query('SELECT id FROM users WHERE phone = $1', [cand]);
+            if (exists.rowCount === 0) {
+              phone = cand;
+              log.info(`Assigned generated phone ${phone} for ${email}`);
+              break;
+            }
+          } catch (e) {
+            log.error('Phone uniqueness check error:', e && e.message ? e.message : e);
+            // If check fails, still try a few more times
+          }
+        }
+      }
 
       const insertUser = `
         INSERT INTO users (username, email, phone, password_hash, first_name, last_name, is_active, is_verified)
@@ -159,7 +243,7 @@ async function migrate() {
       }
     }
 
-    log.info(`Migration finished. Read=${readCount} Created=${createdCount} Skipped=${skippedCount}`);
+    log.info(`Migration finished. Read=${readCount} Created=${createdCount} Updated=${updatedCount} Skipped=${skippedCount}`);
     if (createdCount > 0) {
       log.info(`Passwords saved to: ${csvPath}`);
     }
