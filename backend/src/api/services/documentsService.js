@@ -998,11 +998,39 @@ class DocumentsService {
     const allowedProjectIds = await Project.listAssignedProjectIds(actor.id);
     const rows = await DocumentDirectory.list();
     if (!allowedProjectIds || allowedProjectIds.length === 0) {
-      // return only global (project_id IS NULL) directories
+      // preserve previous behavior: when user has no projects, only return global directories
       return rows.filter(r => r.project_id === null || r.project_id === undefined);
     }
+
+    // Build set of project ids user is assigned to
     const allowedSet = new Set(allowedProjectIds.map(n => Number(n)));
-    return rows.filter(r => (r.project_id === null || r.project_id === undefined) || allowedSet.has(Number(r.project_id)));
+
+    // If user has assigned projects, include directories that are either directly
+    // bound to those projects OR are descendants (nested) of such directories.
+    // Build a parent -> children map to traverse the tree of directories.
+    const childrenMap = new Map();
+    for (const r of rows) {
+      const pid = r.parent_id === undefined ? null : r.parent_id;
+      if (!childrenMap.has(pid)) childrenMap.set(pid, []);
+      childrenMap.get(pid).push(r);
+    }
+
+    // Start from directories whose project_id is in allowedSet and collect all descendants
+    const rootIds = rows.filter(r => allowedSet.has(Number(r.project_id))).map(r => r.id);
+    const includedIds = new Set(rootIds);
+    const stack = [...rootIds];
+    while (stack.length) {
+      const cur = stack.pop();
+      const kids = childrenMap.get(cur) || [];
+      for (const c of kids) {
+        if (!includedIds.has(c.id)) {
+          includedIds.add(c.id);
+          stack.push(c.id);
+        }
+      }
+    }
+
+    return rows.filter(r => includedIds.has(r.id));
   }
 
   /**
