@@ -100,9 +100,6 @@ updateCpuMemoryMetrics();
 
 const app = express();
 
-// Disable Express-generated ETag for API responses to avoid conditional 304 responses
-app.disable('etag');
-
 // Middleware
 // Allow requests from any origin. This sets Access-Control-Allow-Origin: *
 // and permits common methods and headers used by the frontend.
@@ -186,13 +183,8 @@ app.get('/api-docs.json', (req, res) => {
   res.send(spec);
 });
 
-// API Routes — ensure responses are not cached by browsers/proxies and strip ETag
-app.use('/api', (req, res, next) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
-  // remove any ETag header if set by middleware or proxy upstream
-  try { res.removeHeader && res.removeHeader('ETag'); } catch (e) {}
-  next();
-}, apiRoutes);
+// API Routes
+app.use('/api', apiRoutes);
 
 // Admin endpoint: clear cache (protected by ADMIN_KEY header)
 app.post('/admin/cache/clear', (req, res) => {
