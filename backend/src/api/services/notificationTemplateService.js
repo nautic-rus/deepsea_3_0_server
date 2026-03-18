@@ -27,8 +27,7 @@ class NotificationTemplateService {
 
 
 
-// initialize subscription
-try { NotificationTemplateService._subscribeInvalidation(); } catch (e) {}
+
   // Safely resolve a dotted path from an object, e.g. 'issue.title'
   static _resolvePath(obj, pathStr) {
     if (!pathStr) return undefined;
@@ -331,5 +330,8 @@ try { NotificationTemplateService._subscribeInvalidation(); } catch (e) {}
     return result;
   }
 }
+
+// initialize subscription (do this after class is defined)
+try { NotificationTemplateService._subscribeInvalidation(); } catch (e) {}
 
 module.exports = NotificationTemplateService;
