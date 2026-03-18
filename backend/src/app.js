@@ -12,6 +12,7 @@ const errorHandler = require('./api/middleware/errorHandler');
 const config = require('./config');
 const { swaggerUi, swaggerSpec } = require('./config/swagger');
 const storageConfig = require('./config/storage');
+const cacheInvalidator = require('./utils/cacheInvalidator');
 
 // Prometheus client for metrics
 const client = require('prom-client');
@@ -99,6 +100,9 @@ updateCpuMemoryMetrics();
 
 const app = express();
 
+// Disable Express-generated ETag for API responses to avoid conditional 304 responses
+app.disable('etag');
+
 // Middleware
 // Allow requests from any origin. This sets Access-Control-Allow-Origin: *
 // and permits common methods and headers used by the frontend.
@@ -182,8 +186,28 @@ app.get('/api-docs.json', (req, res) => {
   res.send(spec);
 });
 
-// API Routes
-app.use('/api', apiRoutes);
+// API Routes — ensure responses are not cached by browsers/proxies and strip ETag
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  // remove any ETag header if set by middleware or proxy upstream
+  try { res.removeHeader && res.removeHeader('ETag'); } catch (e) {}
+  next();
+}, apiRoutes);
+
+// Admin endpoint: clear cache (protected by ADMIN_KEY header)
+app.post('/admin/cache/clear', (req, res) => {
+  const key = req.headers['x-admin-key'] || req.query.admin_key;
+  if (!process.env.ADMIN_KEY || key !== process.env.ADMIN_KEY) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const entity = req.body && req.body.entity ? String(req.body.entity).toLowerCase() : null;
+  if (entity) {
+    cacheInvalidator.invalidate(entity, { by: 'admin', ip: req.ip });
+    return res.json({ ok: true, invalidated: entity });
+  }
+  cacheInvalidator.invalidateAll({ by: 'admin', ip: req.ip });
+  return res.json({ ok: true, invalidated: 'all' });
+});
 
 // Serve local uploads (if any) — mount path and directory come from config/storage
 try {
