@@ -2,8 +2,8 @@ const pool = require('../connection');
 
 class Equipment {
   static async list(filters = {}) {
-    const { project_id, supplier_id, status, page = 1, limit = 50, search } = filters;
-    const offset = (page - 1) * limit;
+    const { project_id, supplier_id, status, page = 1, limit, search } = filters;
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
@@ -12,8 +12,14 @@ class Equipment {
     if (status) { where.push(`status = $${idx++}`); values.push(status); }
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT id, equipment_code, name, description, sfi_code_id, project_id, supplier_id, manufacturer, model, serial_number, installation_date, status, location, technical_specifications, created_by, created_at FROM equipment ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+    let q = `SELECT id, equipment_code, name, description, sfi_code_id, project_id, supplier_id, manufacturer, model, serial_number, installation_date, status, location, technical_specifications, created_by, created_at FROM equipment ${whereSql} ORDER BY id`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }

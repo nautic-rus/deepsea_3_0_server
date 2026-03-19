@@ -25,6 +25,13 @@ class EntityLinksService {
       created_by: actor.id
     };
 
+    // Prevent linking an entity to itself (same type and same id)
+    if (payload.active_type === payload.passive_type && payload.active_id === payload.passive_id) {
+      const err = new Error('Invalid link: cannot link an entity to itself');
+      err.statusCode = 400;
+      throw err;
+    }
+
     // Prevent duplicate links between the same two entities regardless of order.
     // Note: we consider the pair (type+id) unordered — if any existing link
     // connects these two entities in either direction, treat as duplicate.

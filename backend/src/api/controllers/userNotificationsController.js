@@ -13,7 +13,7 @@ class UserNotificationsController {
       }
 
       const options = {
-        limit: req.query.limit ? Number(req.query.limit) : 50,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
         offset: req.query.offset ? Number(req.query.offset) : 0,
         includeHidden: req.query.include_hidden === 'true' || req.query.includeHidden === 'true'
       };

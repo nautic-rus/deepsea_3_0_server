@@ -275,7 +275,7 @@ class User {
   /**
    * Вернуть список пользователей с пагинацией и поиском
    */
-  static async listUsers({ search = null, limit = 25, offset = 0 } = {}) {
+  static async listUsers({ search = null, limit, offset = 0 } = {}) {
     const params = [];
     let where = '';
     // Build WHERE clause with dynamic parameter positions
@@ -284,12 +284,17 @@ class User {
       where = `WHERE u.username ILIKE $1 OR u.email ILIKE $2 OR u.phone ILIKE $3`;
     }
 
-    // push limit and offset
-    params.push(limit, offset);
-
     // Note: join department and job_title to return textual names
-    const limitParamIndex = params.length - 1; // limit is second-last
-    const offsetParamIndex = params.length; // offset is last
+    let paging = '';
+    if (limit != null) {
+      params.push(limit, offset);
+      const limitParamIndex = params.length - 1;
+      const offsetParamIndex = params.length;
+      paging = `LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`;
+    } else if (offset) {
+      params.push(offset);
+      paging = `OFFSET $${params.length}`;
+    }
 
     const query = `
       SELECT u.id,
@@ -313,7 +318,7 @@ class User {
       LEFT JOIN job_title jt ON u.job_title_id = jt.id
       ${where}
       ORDER BY u.id ASC
-      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
+      ${paging}
     `;
     const res = await pool.query(query, params);
     return res.rows;

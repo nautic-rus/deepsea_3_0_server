@@ -2,8 +2,8 @@ const pool = require('../connection');
 
 class CustomerQuestion {
   static async list(filters = {}) {
-    const { status, priority, asked_by, answered_by, my_question_user_id, is_closed, is_active, page = 1, limit = 50, search, created_at_from, created_at_to, due_date_from, due_date_to, project_id } = filters;
-    const offset = (page - 1) * limit;
+    const { status, priority, asked_by, answered_by, my_question_user_id, is_closed, is_active, page = 1, limit, search, created_at_from, created_at_to, due_date_from, due_date_to, project_id } = filters;
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
@@ -46,7 +46,7 @@ class CustomerQuestion {
       where.push(`cq.is_active = $${idx++}`); values.push(is_active);
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-        const q = `SELECT cq.id, cq.project_id, cq.question_title, cq.question_text, cq.answer_text, cq.priority,
+        let q = `SELECT cq.id, cq.project_id, cq.question_title, cq.question_text, cq.answer_text, cq.priority,
            cq.asked_by,
            TRIM(COALESCE(ua.first_name,'') || ' ' || COALESCE(ua.last_name,'')) AS asked_by_full_name,
            ua.avatar_id AS asked_by_avatar_id,
@@ -64,9 +64,14 @@ class CustomerQuestion {
             LEFT JOIN users ua ON cq.asked_by = ua.id
             LEFT JOIN users ub ON cq.answered_by = ub.id
            ${whereSql}
-           ORDER BY cq.id DESC
-           LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+           ORDER BY cq.id DESC`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     const rows = res.rows || [];
     return rows.map(r => ({

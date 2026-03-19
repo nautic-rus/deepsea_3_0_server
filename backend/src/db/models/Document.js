@@ -28,10 +28,10 @@ class Document {
       estimated_hours_max,
       search,
       page = 1,
-      limit = 50,
+      limit,
     } = filters;
 
-    const offset = (page - 1) * limit;
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
@@ -108,8 +108,14 @@ class Document {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours FROM documents ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+  let q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours FROM documents ${whereSql} ORDER BY id`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }

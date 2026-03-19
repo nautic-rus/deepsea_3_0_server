@@ -91,7 +91,28 @@ class UserNotificationSetting {
    * Get notification recipients for a given event code and project.
    * Returns rows with: user_id, method_code, rc_username, rc_user_id, email
    */
-  static async getRecipientsForEvent(project_id, event_code) {
+  static async getRecipientsForEvent(project_id, event_code, opts = {}) {
+    // Special-case: project_invite notifications must be delivered
+    // regardless of user's settings. Caller may provide `opts.target_user_id`.
+    if (event_code === 'project_invite') {
+      const targetUserId = opts.target_user_id || opts.user_id || null;
+      if (!targetUserId) {
+        // no target specified — fallback to original behavior (no results)
+        return [];
+      }
+      // Return one row per enabled notification method for the target user,
+      // ignoring entries in user_notification_settings.
+      const q = `
+        SELECT $1::bigint AS user_id, nm.code AS method_code, urc.rc_username, urc.rc_user_id, u.email
+        FROM public.notification_methods nm
+        LEFT JOIN public.user_rocket_chat urc ON urc.user_id = $1::bigint
+        LEFT JOIN public.users u ON u.id = $1::bigint
+        WHERE nm.status = true
+      `;
+      const res = await pool.query(q, [targetUserId]);
+      return res.rows;
+    }
+
     const q = `
       SELECT uns.user_id, nm.code AS method_code, urc.rc_username, urc.rc_user_id, u.email
       FROM public.user_notification_settings uns

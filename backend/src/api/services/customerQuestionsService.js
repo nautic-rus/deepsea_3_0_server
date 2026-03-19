@@ -83,8 +83,31 @@ class CustomerQuestionsService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.view'); err.statusCode = 403; throw err; }
-    // Simple list: permissions already verified; project scoping removed
-    return CustomerQuestion.list(query);
+    // Enforce that the actor belongs to the project(s) requested.
+    const Project = require('../../db/models/Project');
+    const projectIds = await Project.listAssignedProjectIds(actor.id);
+
+    if (query.project_id !== undefined && query.project_id !== null) {
+      const requestedProjectIds = Array.isArray(query.project_id)
+        ? query.project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
+        : [Number(query.project_id)].filter(p => !Number.isNaN(p));
+
+      if (requestedProjectIds.length === 0) {
+        const err = new Error('Invalid project_id'); err.statusCode = 400; throw err;
+      }
+
+      const notAssigned = requestedProjectIds.find(pid => !projectIds.includes(pid));
+      if (notAssigned !== undefined) {
+        const err = new Error('Forbidden: user is not assigned to the requested project'); err.statusCode = 403; throw err;
+      }
+
+      query.project_id = requestedProjectIds.length === 1 ? requestedProjectIds[0] : requestedProjectIds;
+      return CustomerQuestion.list(query);
+    }
+
+    if (projectIds.length === 0) return [];
+    const filters = Object.assign({}, query, { allowed_project_ids: projectIds });
+    return CustomerQuestion.list(filters);
   }
 
   static async getCustomerQuestionById(id, actor) {
@@ -100,6 +123,13 @@ class CustomerQuestionsService {
     const statusId = q.status ? q.status.id : null;
     const typeId = q.type ? q.type.id : null;
     const projectId = q.project ? q.project.id : null;
+
+    // Ensure actor belongs to the question's project
+    if (projectId) {
+      const Project = require('../../db/models/Project');
+      const assigned = await Project.isUserAssigned(projectId, actor.id);
+      if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
 
     // Fetch available statuses via work flow transitions from current status
     try {
@@ -372,7 +402,7 @@ class CustomerQuestionsService {
     return { success: true };
   }
 
-  static async listQuestionFiles(questionId, pager = { limit: 100, offset: 0 }, actor) {
+  static async listQuestionFiles(questionId, pager = {}, actor) {
     const requiredPermission = 'customer_questions.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);

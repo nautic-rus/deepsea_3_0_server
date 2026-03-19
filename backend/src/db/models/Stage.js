@@ -2,16 +2,22 @@ const pool = require('../connection');
 
 class Stage {
   static async list(filters = {}) {
-    const { project_id, page = 1, limit = 50, search } = filters;
-    const offset = (page - 1) * limit;
+    const { project_id, page = 1, limit, search } = filters;
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
     if (project_id) { where.push(`project_id = $${idx++}`); values.push(project_id); }
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT id, project_id, name, code, description, end_date, order_index, created_at FROM stages ${whereSql} ORDER BY order_index ASC, id LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+    let q = `SELECT id, project_id, name, code, description, end_date, order_index, created_at FROM stages ${whereSql} ORDER BY order_index ASC, id`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }

@@ -14,8 +14,8 @@ class Issue {
    * @returns {Promise<Array<Object>>} Array of issue objects matching filters
    */
   static async list(filters = {}) {
-  const { project_id, status_id, assignee_id, type_id, priority, estimated_hours, author_id, my_issue_user_id, is_closed, is_active, page = 1, limit = 50, search, start_date_from, start_date_to, due_date_from, due_date_to, estimated_hours_min, estimated_hours_max, allowed_project_ids } = filters;
-    const offset = (page - 1) * limit;
+  const { project_id, status_id, assignee_id, type_id, priority, estimated_hours, author_id, my_issue_user_id, is_closed, is_active, page = 1, limit, search, start_date_from, start_date_to, due_date_from, due_date_to, estimated_hours_min, estimated_hours_max, allowed_project_ids } = filters;
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
@@ -71,8 +71,14 @@ class Issue {
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-  const q = `SELECT id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+  let q = `SELECT id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues ${whereSql} ORDER BY id`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }
@@ -118,7 +124,7 @@ class Issue {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Issue.findById(id);
-  const q = `UPDATE issues SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, created_at, updated_at`;
+  const q = `UPDATE issues SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;

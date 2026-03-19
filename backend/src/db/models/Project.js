@@ -1,8 +1,8 @@
 const pool = require('../connection');
 
 class Project {
-  static async list({ page = 1, limit = 50, search, owner_id, status } = {}) {
-    const offset = (page - 1) * limit;
+  static async list({ page = 1, limit, search, owner_id, status } = {}) {
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
@@ -10,21 +10,26 @@ class Project {
     if (status) { where.push(`status = $${idx++}`); values.push(status); }
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id, 
+    let q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id, 
       concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS owner_full_name, p.created_at
       FROM projects p
       LEFT JOIN users u ON u.id = p.owner_id
       ${whereSql}
-      ORDER BY p.id
-      LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+      ORDER BY p.id`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }
 
   // List projects that are assigned to a given user (via user_projects join table)
-  static async listForUser(userId, { page = 1, limit = 50, search, owner_id, status } = {}) {
-    const offset = (page - 1) * limit;
+  static async listForUser(userId, { page = 1, limit, search, owner_id, status } = {}) {
+    const offset = limit ? (page - 1) * limit : 0;
     // Build filters; membership is determined via user_roles entries
     const values = [userId];
     let idx = 2;
@@ -33,7 +38,7 @@ class Project {
     if (status) { where.push(`p.status = $${idx++}`); values.push(status); }
     if (search) { where.push(`(p.name ILIKE $${idx} OR p.description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id,
+    let q = `SELECT p.id, p.name, p.description, p.code, p.status, p.owner_id,
       concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS owner_full_name, p.created_at
       FROM projects p
       LEFT JOIN users u ON u.id = p.owner_id
@@ -41,9 +46,14 @@ class Project {
         SELECT DISTINCT project_id FROM user_roles WHERE user_id = $1
       ) t ON t.project_id = p.id
       ${whereSql}
-      ORDER BY p.id
-      LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+      ORDER BY p.id`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }

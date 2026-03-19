@@ -11,9 +11,17 @@ class CustomerQuestionMessage {
     return res.rows[0];
   }
 
-  static async listByQuestion(questionId, { limit = 100, offset = 0 } = {}) {
-    const q = `SELECT id, customer_question_id, user_id, content, parent_id, created_at FROM customer_question_messages WHERE customer_question_id = $1 ORDER BY id DESC LIMIT $2 OFFSET $3`;
-    const res = await pool.query(q, [questionId, limit, offset]);
+  static async listByQuestion(questionId, { limit, offset = 0 } = {}) {
+    let q = `SELECT id, customer_question_id, user_id, content, parent_id, created_at FROM customer_question_messages WHERE customer_question_id = $1 ORDER BY id DESC`;
+    const params = [questionId];
+    if (limit != null) {
+      params.push(limit, offset);
+      q += ` LIMIT $2 OFFSET $3`;
+    } else if (offset) {
+      params.push(offset);
+      q += ` OFFSET $2`;
+    }
+    const res = await pool.query(q, params);
     return res.rows;
   }
 }

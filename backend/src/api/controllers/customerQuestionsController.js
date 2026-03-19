@@ -100,8 +100,8 @@ class CustomerQuestionsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { limit = 100, offset = 0 } = req.query || {};
-      const rows = await CustomerQuestionsService.listQuestionFiles(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      const { limit, offset = 0 } = req.query || {};
+      const rows = await CustomerQuestionsService.listQuestionFiles(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) }, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
@@ -122,8 +122,8 @@ class CustomerQuestionsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { limit = 100, offset = 0 } = req.query || {};
-      const rows = await CustomerQuestionsService.listQuestionMessages(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      const { limit, offset = 0 } = req.query || {};
+      const rows = await CustomerQuestionsService.listQuestionMessages(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) }, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }

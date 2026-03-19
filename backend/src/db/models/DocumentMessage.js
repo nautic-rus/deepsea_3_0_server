@@ -18,9 +18,17 @@ class DocumentMessage {
   /**
    * List messages for a document. Returns parent_id for threading.
    */
-  static async listByDocument(documentId, { limit = 100, offset = 0 } = {}) {
-    const q = `SELECT id, document_id, user_id, content, parent_id, created_at FROM document_messages WHERE document_id = $1 ORDER BY id DESC LIMIT $2 OFFSET $3`;
-    const res = await pool.query(q, [documentId, limit, offset]);
+  static async listByDocument(documentId, { limit, offset = 0 } = {}) {
+    let q = `SELECT id, document_id, user_id, content, parent_id, created_at FROM document_messages WHERE document_id = $1 ORDER BY id DESC`;
+    const params = [documentId];
+    if (limit != null) {
+      params.push(limit, offset);
+      q += ` LIMIT $2 OFFSET $3`;
+    } else if (offset) {
+      params.push(offset);
+      q += ` OFFSET $2`;
+    }
+    const res = await pool.query(q, params);
     return res.rows;
   }
 }

@@ -959,8 +959,8 @@ class DocumentsService {
       const assigned = await Project.isUserAssigned(existing.project_id, actor.id);
       if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
     }
-    const { limit = 100, offset = 0 } = opts || {};
-    const messages = await DocumentMessage.listByDocument(Number(id), { limit: Number(limit), offset: Number(offset) });
+    const { limit, offset = 0 } = opts || {};
+    const messages = await DocumentMessage.listByDocument(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) });
     if (!messages || messages.length === 0) return [];
 
     // Enrich messages with user display info (full_name, email, url_avatar)

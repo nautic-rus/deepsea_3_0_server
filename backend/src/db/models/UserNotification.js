@@ -35,16 +35,23 @@ class UserNotification {
    * options: { limit=50, offset=0, includeHidden=false }
    */
   static async listForUser(userId, options = {}) {
-    const limit = Number(options.limit) || 50;
+    const limit = options.limit != null ? Number(options.limit) : undefined;
     const offset = Number(options.offset) || 0;
     const includeHidden = !!options.includeHidden;
 
-    const params = [userId, limit, offset];
+    const params = [userId];
     let query = `SELECT * FROM public.user_notifications WHERE user_id = $1`;
     if (!includeHidden) {
       query += ` AND is_hidden = false`;
     }
-    query += ` ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
+    query += ` ORDER BY created_at DESC`;
+    if (limit) {
+      params.push(limit, offset);
+      query += ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
+    } else if (offset) {
+      params.push(offset);
+      query += ` OFFSET $${params.length}`;
+    }
 
     const res = await pool.query(query, params);
     return res.rows;
