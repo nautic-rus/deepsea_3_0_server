@@ -49,3 +49,5 @@ Thumbs.db
 # Misc
 *.tgz
 *.log.*
+
+migratons_deepsea_2/
