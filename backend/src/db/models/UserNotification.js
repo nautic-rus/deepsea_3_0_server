@@ -12,7 +12,19 @@ class UserNotification {
    */
   static async create(data) {
     const { user_id, event_code = null, project_id = null, data: payload = null } = data;
-    const payloadParam = payload ? JSON.stringify(payload) : null;
+    // Remove unnecessary null fields (e.g. `via: null`) so DB doesn't store nulls
+    let sanitized = payload;
+    if (sanitized && typeof sanitized === 'object') {
+      try {
+        if (Object.prototype.hasOwnProperty.call(sanitized, 'via') && (sanitized.via === null || typeof sanitized.via === 'undefined')) {
+          delete sanitized.via;
+        }
+      } catch (e) {
+        // ignore sanitization errors and fall back to original payload
+        sanitized = payload;
+      }
+    }
+    const payloadParam = sanitized ? JSON.stringify(sanitized) : null;
 
     // Check for an existing identical notification to avoid duplicates
     const findQuery = `
