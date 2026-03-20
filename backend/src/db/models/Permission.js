@@ -2,6 +2,7 @@
  * Модель для операций с разрешениями (permissions)
  */
 const pool = require('../connection');
+const ProtectionService = require('../../api/services/protectionService');
 
 class Permission {
   /**
@@ -134,6 +135,8 @@ class Permission {
       const err = new Error('Invalid permission id'); err.statusCode = 400; throw err;
     }
 
+    // Application-level protection
+    await ProtectionService.assertNotProtected('permissions', Number(id));
     // Remove associations first to avoid FK constraint if present
     await pool.query('DELETE FROM role_permissions WHERE permission_id = $1', [id]);
 

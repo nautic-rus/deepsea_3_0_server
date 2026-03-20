@@ -3,6 +3,7 @@
  * Stores UI pages and their required permissions.
  */
 const pool = require('../connection');
+const ProtectionService = require('../../api/services/protectionService');
 
 class Page {
   /**
@@ -111,11 +112,13 @@ class Page {
 
   static async softDelete(id) {
     try {
+      await ProtectionService.assertNotProtected('pages', Number(id));
       const res = await pool.query("UPDATE pages SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id", [id]);
       if (res.rowCount > 0) return true;
     } catch (e) {
       // ignore and fallback to hard delete
     }
+    await ProtectionService.assertNotProtected('pages', Number(id));
     const del = await pool.query('DELETE FROM pages WHERE id = $1', [id]);
     return del.rowCount > 0;
   }

@@ -9,6 +9,7 @@ const UserNotification = require('../../db/models/UserNotification');
 const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
 const TemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
+const ProtectionService = require('./protectionService');
 
 
 
@@ -75,6 +76,7 @@ class CustomerQuestionsService {
     if (usedInQuestions.rowCount > 0) {
       const err = new Error('Cannot delete type: it is referenced by existing customer questions'); err.statusCode = 400; throw err;
     }
+    await ProtectionService.assertNotProtected('customer_question_type', Number(id));
     const res = await pool.query('DELETE FROM customer_question_type WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }

@@ -108,7 +108,7 @@ class Document {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  let q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours FROM documents ${whereSql} ORDER BY id`;
+  let q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id FROM documents ${whereSql} ORDER BY id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -121,14 +121,14 @@ class Document {
   }
 
   static async findById(id) {
-  const q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours FROM documents WHERE id = $1 LIMIT 1`;
+  const q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id FROM documents WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
 
   static async create(fields) {
   // Build INSERT dynamically so that DB defaults (e.g. priority) are preserved
-  const allowedCols = ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','assigne_to','created_by','code','priority','due_date','estimated_hours'];
+  const allowedCols = ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','assigne_to','created_by','code','priority','due_date','estimated_hours','sfi_code_id'];
   const cols = [];
   const placeholders = [];
   const values = [];
@@ -144,7 +144,7 @@ class Document {
   }
   // Ensure we have required columns
   if (cols.length === 0) throw new Error('No fields provided for insert');
-  const q = `INSERT INTO documents (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours`;
+  const q = `INSERT INTO documents (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id`;
   const res = await pool.query(q, values);
   return res.rows[0];
   }
@@ -153,11 +153,11 @@ class Document {
     const parts = [];
     const values = [];
     let idx = 1;
-  ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','status_id','assigne_to','code','priority','due_date','estimated_hours'].forEach((k) => {
+  ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','status_id','assigne_to','code','priority','due_date','estimated_hours','sfi_code_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Document.findById(id);
-  const q = `UPDATE documents SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours`;
+  const q = `UPDATE documents SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;

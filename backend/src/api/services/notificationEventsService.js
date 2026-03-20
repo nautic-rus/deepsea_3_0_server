@@ -1,4 +1,5 @@
 const NotificationEvent = require('../../db/models/NotificationEvent');
+const ProtectionService = require('./protectionService');
 const { hasPermission } = require('./permissionChecker');
 
 class NotificationEventsService {
@@ -58,6 +59,7 @@ class NotificationEventsService {
     const allowed = await hasPermission(actor, required);
     if (!allowed) { const err = new Error('Forbidden: missing permission ' + required); err.statusCode = 403; throw err; }
     const pool = require('../../db/connection');
+    await ProtectionService.assertNotProtected('notification_events', Number(id));
     const res = await pool.query('DELETE FROM public.notification_events WHERE id = $1', [Number(id)]);
     return res.rowCount > 0;
   }

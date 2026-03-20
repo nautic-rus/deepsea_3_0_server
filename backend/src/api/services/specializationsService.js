@@ -1,5 +1,6 @@
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
+const ProtectionService = require('./protectionService');
 
 class SpecializationsService {
   static async list(actor) {
@@ -61,6 +62,7 @@ class SpecializationsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission users.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    await ProtectionService.assertNotProtected('specializations', Number(id));
     const res = await pool.query('DELETE FROM specializations WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }

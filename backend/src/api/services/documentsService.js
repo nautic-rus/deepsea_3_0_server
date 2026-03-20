@@ -6,6 +6,7 @@ const DocumentMessage = require('../../db/models/DocumentMessage');
 const UserNotification = require('../../db/models/UserNotification');
 const DocumentStorage = require('../../db/models/DocumentStorage');
 const Storage = require('../../db/models/Storage');
+const ProtectionService = require('./protectionService');
 
 /**
  * DocumentsService
@@ -1103,6 +1104,7 @@ class DocumentsService {
       const err = new Error('Cannot delete document type: it is used in document_work_flow'); err.statusCode = 400; throw err;
     }
 
+    await ProtectionService.assertNotProtected('document_type', Number(id));
     const res = await pool.query('DELETE FROM document_type WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }
@@ -1269,6 +1271,7 @@ class DocumentsService {
       const err = new Error('Cannot delete document status: it is used in document_work_flow'); err.statusCode = 400; throw err;
     }
 
+    await ProtectionService.assertNotProtected('document_status', Number(id));
     const res = await pool.query('DELETE FROM document_status WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }

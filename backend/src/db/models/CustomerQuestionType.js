@@ -1,4 +1,5 @@
 const pool = require('../connection');
+const ProtectionService = require('../../api/services/protectionService');
 
 class CustomerQuestionType {
   static async list() {
@@ -35,6 +36,7 @@ class CustomerQuestionType {
   }
 
   static async delete(id) {
+    await ProtectionService.assertNotProtected('customer_question_type', Number(id));
     const res = await pool.query('DELETE FROM customer_question_type WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }

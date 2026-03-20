@@ -3,6 +3,7 @@ const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 const RocketChatService = require('./rocketChatService');
 const HistoryService = require('./historyService');
+const ProtectionService = require('./protectionService');
 const IssueMessage = require('../../db/models/IssueMessage');
 const UserNotification = require('../../db/models/UserNotification');
 const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
@@ -588,6 +589,7 @@ class IssuesService {
       const err = new Error('Cannot delete status: it is used in issue_work_flow'); err.statusCode = 400; throw err;
     }
 
+    await ProtectionService.assertNotProtected('issue_status', Number(id));
     const res = await pool.query('DELETE FROM issue_status WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }
@@ -647,6 +649,7 @@ class IssuesService {
       const err = new Error('Cannot delete type: it is used in issue_work_flow'); err.statusCode = 400; throw err;
     }
 
+    await ProtectionService.assertNotProtected('issue_type', Number(id));
     const res = await pool.query('DELETE FROM issue_type WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
   }

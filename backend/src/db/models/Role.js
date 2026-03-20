@@ -1,4 +1,5 @@
 const pool = require('../connection');
+const ProtectionService = require('../../api/services/protectionService');
 
 class Role {
   static async list() {
@@ -36,12 +37,14 @@ class Role {
   static async softDelete(id) {
     // Try soft-delete via is_active flag; if it fails, fallback to hard delete
     try {
+      await ProtectionService.assertNotProtected('roles', Number(id));
       const q = `UPDATE roles SET is_active = false WHERE id = $1`;
       const res = await pool.query(q, [id]);
       if (res.rowCount > 0) return true;
     } catch (err) {
       // ignore
     }
+    await ProtectionService.assertNotProtected('roles', Number(id));
     const q2 = `DELETE FROM roles WHERE id = $1`;
     const res2 = await pool.query(q2, [id]);
     return res2.rowCount > 0;
