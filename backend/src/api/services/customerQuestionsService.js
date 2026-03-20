@@ -431,21 +431,7 @@ class CustomerQuestionsService {
     const CustomerQuestionMessage = require('../../db/models/CustomerQuestionMessage');
     const created = await CustomerQuestionMessage.create({ customer_question_id: Number(questionId), user_id: actor.id, content: String(content), parent_id: parent_id ? Number(parent_id) : null });
 
-    // Notify participants (asked_by, answered_by) by creating user_notifications
-    (async () => {
-      try {
-        const recipients = [];
-        if (existing.answered_by && existing.answered_by !== actor.id) recipients.push(existing.answered_by);
-        if (existing.asked_by && existing.asked_by !== actor.id && existing.asked_by !== existing.answered_by) recipients.push(existing.asked_by);
-        for (const uid of recipients) {
-          try {
-            await UserNotification.create({ user_id: uid, event_code: 'comment_added', project_id: existing.project_id, data: { customer_question_id: existing.id, message: created } });
-          } catch (e) { console.error('Failed to create user notification for question comment', e && e.message ? e.message : e); }
-        }
-      } catch (e) { console.error('Failed to enqueue notifications for question comment', e && e.message ? e.message : e); }
-    })();
-
-    // Also notify subscribers according to user notification settings (email/rocket)
+    // Notify subscribers (email/rocket/center notification)
     (async () => {
       try {
         const allRecipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'comment_added');

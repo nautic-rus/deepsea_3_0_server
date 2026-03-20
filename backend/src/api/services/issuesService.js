@@ -441,11 +441,19 @@ class IssuesService {
         for (const r of recipients) {
           try {
             try {
+              // Build a compact diff of only the changed fields
+              const changes = {};
+              for (const key of Object.keys(updated)) {
+                if (['updated_at', 'created_at'].includes(key)) continue;
+                if (JSON.stringify(existing[key]) !== JSON.stringify(updated[key])) {
+                  changes[key] = { from: existing[key], to: updated[key] };
+                }
+              }
               const notifPayload = {
                 user_id: r.user_id,
                 event_code: 'issue_updated',
                 project_id: updated.project_id,
-                data: { issue: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+                data: { issue_id: updated.id, issue_title: updated.title, changes, via: r.method_code || null, recipient: { user_id: r.user_id } }
               };
               UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
             } catch (e) {
@@ -788,21 +796,7 @@ class IssuesService {
 
     // Intentionally not recording a history entry for comment creation per request.
 
-    // Notify issue participants (assignee, author) by creating user_notifications
-    (async () => {
-      try {
-        const recipients = [];
-        if (existing.assignee_id && existing.assignee_id !== actor.id) recipients.push(existing.assignee_id);
-        if (existing.author_id && existing.author_id !== actor.id && existing.author_id !== existing.assignee_id) recipients.push(existing.author_id);
-        for (const uid of recipients) {
-          try {
-            await UserNotification.create({ user_id: uid, event_code: 'comment_added', project_id: existing.project_id, data: { issue_id: existing.id, message: created } });
-          } catch (e) { console.error('Failed to create user notification for comment', e && e.message ? e.message : e); }
-        }
-      } catch (e) { console.error('Failed to enqueue notifications for issue comment', e && e.message ? e.message : e); }
-    })();
-
-    // Also notify subscribers according to user notification settings (email/rocket)
+    // Notify subscribers (email/rocket/center notification)
     (async () => {
       try {
         const UserNotificationSetting = require('../../db/models/UserNotificationSetting');

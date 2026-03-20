@@ -642,20 +642,7 @@ class DocumentsService {
 
     // Intentionally not recording a history entry for comment creation per request.
 
-    // Notify document author/owner if present (center notification)
-    (async () => {
-      try {
-        const recipients = [];
-        if (existing.created_by && existing.created_by !== actor.id) recipients.push(existing.created_by);
-        for (const uid of recipients) {
-          try {
-            await UserNotification.create({ user_id: uid, event_code: 'comment_added', project_id: existing.project_id, data: { document_id: existing.id, message: created } });
-          } catch (e) { console.error('Failed to create user notification for document comment', e && e.message ? e.message : e); }
-        }
-      } catch (e) { console.error('Failed to enqueue notifications for document comment', e && e.message ? e.message : e); }
-    })();
-
-    // Also notify subscribers according to user notification settings (email/rocket)
+    // Notify subscribers (email/rocket/center notification)
     (async () => {
       try {
         const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
