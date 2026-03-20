@@ -66,9 +66,40 @@ services:
     environment:
       # Default DSN using values from backend/env; adjust if your DB is reachable
       # from containers at a different host/IP. Example uses host.docker.internal.
-      - DATA_SOURCE_NAME=postgresql://postgres:230571Sp@192.168.1.177:5432/deepsea3?sslmode=disable
+      - DATA_SOURCE_NAME=postgresql://postgres:230571Sp@:5432/deepsea3?sslmode=disable
     ports:
       - 9187:9187
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: root
+    container_name: deepsea-backend
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount env file from repo so server loads the same configuration as local
+      - ./env:/usr/src/app/env:ro
+      - ./uploads:/usr/src/app/uploads
+      - ./logs:/usr/src/app/logs
+    restart: unless-stopped
+
+  watcher:
+    image: alpine:3.18
+    container_name: deepsea-watcher
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/workdir
+    working_dir: /workdir
+    command: >
+      sh -c "apk add --no-cache inotify-tools docker-cli >/dev/null 2>&1 || true; \
+      echo 'Starting watcher: watching ./uploads ./env ./src'; \
+      while inotifywait -r -e modify,create,delete ./uploads ./env ./src; do \
+        echo 'Change detected, recreating backend...'; \
+        docker compose -f docker-compose.yml up -d --build --force-recreate backend; \
+      done"
     restart: unless-stopped
 
 volumes:
