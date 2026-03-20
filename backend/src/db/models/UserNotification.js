@@ -12,12 +12,26 @@ class UserNotification {
    */
   static async create(data) {
     const { user_id, event_code = null, project_id = null, data: payload = null } = data;
+    const payloadParam = payload ? JSON.stringify(payload) : null;
+
+    // Check for an existing identical notification to avoid duplicates
+    const findQuery = `
+      SELECT * FROM public.user_notifications
+      WHERE user_id = $1
+        AND event_code IS NOT DISTINCT FROM $2
+        AND project_id IS NOT DISTINCT FROM $3
+        AND (data = $4::jsonb OR (data IS NULL AND $4 IS NULL))
+      LIMIT 1
+    `;
+    const found = await pool.query(findQuery, [user_id, event_code, project_id, payloadParam]);
+    if (found.rows && found.rows[0]) return found.rows[0];
+
     const query = `
       INSERT INTO public.user_notifications (user_id, event_code, project_id, data)
-      VALUES ($1, $2, $3, $4)
+      VALUES ($1, $2, $3, $4::jsonb)
       RETURNING *
     `;
-    const res = await pool.query(query, [user_id, event_code, project_id, payload ? JSON.stringify(payload) : null]);
+    const res = await pool.query(query, [user_id, event_code, project_id, payloadParam]);
     return res.rows[0];
   }
 

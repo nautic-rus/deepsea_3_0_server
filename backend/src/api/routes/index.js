@@ -449,6 +449,8 @@ router.get('/audit_logs', authMiddleware, auditLogsController.list);
 
 // ===== Time logs routes =====
 router.get('/time_logs', authMiddleware, timeLogsController.list);
+// GET /api/time_logs/me - list current user's time logs (no extra permissions required)
+router.get('/time_logs/me', authMiddleware, timeLogsController.listMine);
 router.get('/time_logs/:id', authMiddleware, timeLogsController.get);
 router.post('/time_logs', authMiddleware, timeLogsController.create);
 router.put('/time_logs/:id', authMiddleware, timeLogsController.update);

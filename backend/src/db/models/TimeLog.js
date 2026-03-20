@@ -7,10 +7,22 @@ class TimeLog {
     const where = [];
     const values = [];
     let idx = 1;
-    if (id !== undefined) { where.push(`id = $${idx++}`); values.push(id); }
-    if (issue_id !== undefined) { where.push(`issue_id = $${idx++}`); values.push(issue_id); }
-    if (user_id !== undefined) { where.push(`user_id = $${idx++}`); values.push(user_id); }
-    if (date) { where.push(`date = $${idx++}`); values.push(date); }
+    // id can be single or array
+    if (Array.isArray(id) && id.length) {
+      where.push(`id = ANY($${idx}::int[])`); values.push(id); idx++;
+    } else if (id !== undefined) { where.push(`id = $${idx++}`); values.push(id); }
+    // issue_id can be single or array
+    if (Array.isArray(issue_id) && issue_id.length) {
+      where.push(`issue_id = ANY($${idx}::int[])`); values.push(issue_id); idx++;
+    } else if (issue_id !== undefined) { where.push(`issue_id = $${idx++}`); values.push(issue_id); }
+    // user_id can be single or array
+    if (Array.isArray(user_id) && user_id.length) {
+      where.push(`user_id = ANY($${idx}::int[])`); values.push(user_id); idx++;
+    } else if (user_id !== undefined) { where.push(`user_id = $${idx++}`); values.push(user_id); }
+    // date can be single or array
+    if (Array.isArray(date) && date.length) {
+      where.push(`date = ANY($${idx}::date[])`); values.push(date); idx++;
+    } else if (date) { where.push(`date = $${idx++}`); values.push(date); }
     if (date_before) { where.push(`date <= $${idx++}`); values.push(date_before); }
     if (date_after) { where.push(`date >= $${idx++}`); values.push(date_after); }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';

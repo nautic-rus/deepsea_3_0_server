@@ -113,17 +113,15 @@ class UserNotificationSetting {
       return res.rows;
     }
 
+    // Ignore user settings and return all users (center notifications will be
+    // created for every user). We still include rocket chat / email fields so
+    // callers can attempt method-specific deliveries if desired.
     const q = `
-      SELECT uns.user_id, nm.code AS method_code, urc.rc_username, urc.rc_user_id, u.email
-      FROM public.user_notification_settings uns
-      JOIN public.notification_methods nm ON nm.id = uns.method_id AND nm.status = true
-      JOIN public.notification_events ne ON ne.id = uns.event_id AND ne.code = $2 AND ne.status = true
-      LEFT JOIN public.user_rocket_chat urc ON urc.user_id = uns.user_id
-      LEFT JOIN public.users u ON u.id = uns.user_id
-      WHERE uns.enabled = true
-        AND (uns.project_id IS NULL OR uns.project_id = $1)
+      SELECT u.id AS user_id, NULL::text AS method_code, urc.rc_username, urc.rc_user_id, u.email
+      FROM public.users u
+      LEFT JOIN public.user_rocket_chat urc ON urc.user_id = u.id
     `;
-    const res = await pool.query(q, [project_id, event_code]);
+    const res = await pool.query(q);
     return res.rows;
   }
 

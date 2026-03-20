@@ -13717,6 +13717,38 @@
         }
       }
     },
+    "/api/time_logs/me": {
+      "get": {
+        "tags": ["time_logs"],
+        "summary": "List current user's time logs",
+        "description": "Returns time logs for the authenticated user. No special permissions required.",
+        "security": [ { "bearerAuth": [] }, { "cookieAuth": [] } ],
+        "parameters": [
+          { "in": "query", "name": "project_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "issue_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "start_date", "schema": { "type": "string", "format": "date" }, "description": "Filter from date (inclusive)" },
+          { "in": "query", "name": "end_date", "schema": { "type": "string", "format": "date" }, "description": "Filter to date (inclusive)" },
+          { "in": "query", "name": "page", "schema": { "type": "integer", "default": 1 } },
+          { "in": "query", "name": "limit", "schema": { "type": "integer", "default": 50 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/TimeLog" } }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Authentication required" }
+        }
+      }
+    },
     "/api/time_logs/{id}": {
       "get": {
         "tags": ["time_logs"],
