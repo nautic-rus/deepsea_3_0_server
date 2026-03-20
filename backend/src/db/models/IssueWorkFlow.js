@@ -28,6 +28,9 @@ class IssueWorkFlow {
   static async create(fields) {
     const cols = ['issue_type_id','from_status_id','to_status_id'];
     const vals = [fields.issue_type_id || null, fields.from_status_id || null, fields.to_status_id || null];
+    if (fields.name !== undefined) { cols.push('name'); vals.push(fields.name || null); }
+    if (fields.description !== undefined) { cols.push('description'); vals.push(fields.description || null); }
+    if (fields.required_permission !== undefined) { cols.push('required_permission'); vals.push(fields.required_permission || null); }
     if (fields.is_active !== undefined && fields.is_active !== null) { cols.push('is_active'); vals.push(!!fields.is_active); }
     if (fields.project_id !== undefined && fields.project_id !== null) { cols.push('project_id'); vals.push(Number(fields.project_id)); }
     const q = `INSERT INTO issue_work_flow (${cols.join(',')}) VALUES (${cols.map((_,i)=>'$'+(i+1)).join(',')}) RETURNING *`;
@@ -39,7 +42,7 @@ class IssueWorkFlow {
     const parts = [];
     const vals = [];
     let idx = 1;
-    ['issue_type_id','from_status_id','to_status_id','is_active','project_id'].forEach((k) => {
+    ['issue_type_id','from_status_id','to_status_id','is_active','project_id','name','description','required_permission'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
     });
     if (parts.length === 0) return await IssueWorkFlow.findById(id);

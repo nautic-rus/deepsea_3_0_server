@@ -143,11 +143,11 @@ class DocumentsService {
         // fall back to global workflows (document_type_id IS NULL).
         let res;
         if (d.type_id) {
-          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true AND (wf.project_id IS NULL OR wf.project_id = $3) ORDER BY s.order_index`;
-          res = await pool.query(q, [d.type_id, d.status_id, d.project_id]);
+          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true AND (wf.project_id IS NULL OR wf.project_id = $3) AND (wf.required_permission IS NULL OR EXISTS (SELECT 1 FROM user_roles ur JOIN role_permissions rp ON ur.role_id = rp.role_id JOIN permissions p ON rp.permission_id = p.id WHERE ur.user_id = $4 AND p.code = wf.required_permission AND (ur.project_id IS NULL OR ur.project_id = $3))) ORDER BY s.order_index`;
+          res = await pool.query(q, [d.type_id, d.status_id, d.project_id, actor.id]);
         } else {
-          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id IS NULL AND wf.from_status_id = $1 AND wf.is_active = true AND (wf.project_id IS NULL OR wf.project_id = $2) ORDER BY s.order_index`;
-          res = await pool.query(q, [d.status_id, d.project_id]);
+          const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM document_work_flow wf JOIN document_status s ON s.id = wf.to_status_id WHERE wf.document_type_id IS NULL AND wf.from_status_id = $1 AND wf.is_active = true AND (wf.project_id IS NULL OR wf.project_id = $2) AND (wf.required_permission IS NULL OR EXISTS (SELECT 1 FROM user_roles ur JOIN role_permissions rp ON ur.role_id = rp.role_id JOIN permissions p ON rp.permission_id = p.id WHERE ur.user_id = $3 AND p.code = wf.required_permission AND (ur.project_id IS NULL OR ur.project_id = $2))) ORDER BY s.order_index`;
+          res = await pool.query(q, [d.status_id, d.project_id, actor.id]);
         }
         let allowedStatuses = res.rows || [];
 

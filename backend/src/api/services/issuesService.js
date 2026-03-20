@@ -163,8 +163,8 @@ class IssuesService {
     // Compute allowed next statuses according to issue_work_flow for this issue's type
     try {
       if (i.type_id && i.status_id) {
-        const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM issue_work_flow wf JOIN issue_status s ON s.id = wf.to_status_id WHERE wf.issue_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true AND (wf.project_id IS NULL OR wf.project_id = $3) ORDER BY s.order_index`;
-        const res = await pool.query(q, [i.type_id, i.status_id, i.project_id]);
+        const q = `SELECT s.id, s.name, s.code, s.color, s.is_final FROM issue_work_flow wf JOIN issue_status s ON s.id = wf.to_status_id WHERE wf.issue_type_id = $1 AND wf.from_status_id = $2 AND wf.is_active = true AND (wf.project_id IS NULL OR wf.project_id = $3) AND (wf.required_permission IS NULL OR EXISTS (SELECT 1 FROM user_roles ur JOIN role_permissions rp ON ur.role_id = rp.role_id JOIN permissions p ON rp.permission_id = p.id WHERE ur.user_id = $4 AND p.code = wf.required_permission AND (ur.project_id IS NULL OR ur.project_id = $3))) ORDER BY s.order_index`;
+        const res = await pool.query(q, [i.type_id, i.status_id, i.project_id, actor.id]);
         let allowed = res.rows || [];
 
         // Check for 'blocks' links: if any linked issue (via relation_type='blocks') exists

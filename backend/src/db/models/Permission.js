@@ -21,6 +21,25 @@ class Permission {
   }
 
   /**
+   * Проверить наличие разрешения у пользователя для конкретного проекта.
+   * Учитывает глобальные роли (project_id IS NULL) и роли привязанные к проекту.
+   */
+  static async hasPermissionForProject(userId, permissionCode, projectId) {
+    const query = `
+      SELECT 1 FROM user_roles ur
+      JOIN role_permissions rp ON ur.role_id = rp.role_id
+      JOIN permissions p ON rp.permission_id = p.id
+      WHERE ur.user_id = $1 AND p.code = $2
+        AND (ur.project_id IS NULL${projectId ? ' OR ur.project_id = $3' : ''})
+      LIMIT 1
+    `;
+    const params = [userId, permissionCode];
+    if (projectId) params.push(projectId);
+    const res = await pool.query(query, params);
+    return res.rowCount > 0;
+  }
+
+  /**
    * Список всех разрешений
    */
   static async list() {

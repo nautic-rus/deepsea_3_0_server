@@ -1,5 +1,5 @@
 const DocumentWorkFlow = require('../../db/models/DocumentWorkFlow');
-const { hasPermission } = require('./permissionChecker');
+const { hasPermission, hasPermissionForProject } = require('./permissionChecker');
 const pool = require('../../db/connection');
 
 class DocumentWorkFlowsService {
@@ -13,8 +13,27 @@ class DocumentWorkFlowsService {
     if (query.document_type_id !== undefined) opts.document_type_id = Number(query.document_type_id);
     if (query.from_status_id !== undefined) opts.from_status_id = Number(query.from_status_id);
     if (query.to_status_id !== undefined) opts.to_status_id = Number(query.to_status_id);
-    const rows = await DocumentWorkFlow.list(opts);
+    let rows = await DocumentWorkFlow.list(opts);
     if (!rows || rows.length === 0) return rows;
+
+    // Filter by required_permission: keep rows without required_permission,
+    // remove rows where user lacks the required permission for the workflow's project
+    const permCodes = [...new Set(rows.filter(r => r.required_permission).map(r => r.required_permission))];
+    if (permCodes.length > 0) {
+      const userPermsRes = await pool.query(`
+        SELECT DISTINCT p.code, ur.project_id
+        FROM user_roles ur
+        JOIN role_permissions rp ON ur.role_id = rp.role_id
+        JOIN permissions p ON rp.permission_id = p.id
+        WHERE ur.user_id = $1 AND p.code = ANY($2::text[])
+      `, [actor.id, permCodes]);
+      const userPerms = userPermsRes.rows;
+      rows = rows.filter(r => {
+        if (!r.required_permission) return true;
+        return userPerms.some(up => up.code === r.required_permission && (up.project_id === null || up.project_id === r.project_id));
+      });
+    }
+    if (rows.length === 0) return rows;
 
     const fromStatusIds = new Set();
     const toStatusIds = new Set();
@@ -58,6 +77,12 @@ class DocumentWorkFlowsService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const row = await DocumentWorkFlow.findById(Number(id));
     if (!row) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
+
+    // Check required_permission for this workflow
+    if (row.required_permission) {
+      const hasPerm = await hasPermissionForProject(actor, row.required_permission, row.project_id);
+      if (!hasPerm) { const err = new Error('Forbidden: missing required workflow permission'); err.statusCode = 403; throw err; }
+    }
 
     const qFrom = row.from_status_id ? pool.query('SELECT * FROM document_status WHERE id = $1 LIMIT 1', [row.from_status_id]) : Promise.resolve({ rows: [] });
     const qTo = row.to_status_id ? pool.query('SELECT * FROM document_status WHERE id = $1 LIMIT 1', [row.to_status_id]) : Promise.resolve({ rows: [] });

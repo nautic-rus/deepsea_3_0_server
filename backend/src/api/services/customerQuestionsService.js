@@ -144,8 +144,9 @@ class CustomerQuestionsService {
                          AND (wf.customer_question_type_id IS NULL OR wf.customer_question_type_id = $2)
                          AND (wf.project_id IS NULL OR wf.project_id = $3)
                          AND (wf.is_active IS NULL OR wf.is_active = true)
+                         AND (wf.required_permission IS NULL OR EXISTS (SELECT 1 FROM user_roles ur JOIN role_permissions rp ON ur.role_id = rp.role_id JOIN permissions p ON rp.permission_id = p.id WHERE ur.user_id = $4 AND p.code = wf.required_permission AND (ur.project_id IS NULL OR ur.project_id = $3)))
                        ORDER BY wf.id`;
-        const wfRes = await require('../../db/connection').query(wfSql, [statusId, typeId, projectId]);
+        const wfRes = await require('../../db/connection').query(wfSql, [statusId, typeId, projectId, actor.id]);
         let available = wfRes.rows || [];
 
         // Check for blocking relations (same logic as issues):
