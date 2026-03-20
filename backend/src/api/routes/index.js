@@ -46,6 +46,10 @@ const customerQuestionWorkFlowsController = require('../controllers/customerQues
 const issueWorkFlowsController = require('../controllers/issueWorkFlowsController');
 const notificationEventsController = require('../controllers/notificationEventsController');
 const notificationMethodsController = require('../controllers/notificationMethodsController');
+const wikiArticlesController = require('../controllers/wikiArticlesController');
+const wikiArticleStorageController = require('../controllers/wikiArticleStorageController');
+const wikiSectionsController = require('../controllers/wikiSectionsController');
+const timeLogsController = require('../controllers/timeLogsController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -442,6 +446,31 @@ router.delete('/page_permissions/:id', authMiddleware, pagePermissionsController
 // ===== Audit routes =====
 // GET /api/audit_logs - list audit entries (filters: actor_id, entity, entity_id, limit, offset)
 router.get('/audit_logs', authMiddleware, auditLogsController.list);
+
+// ===== Time logs routes =====
+router.get('/time_logs', authMiddleware, timeLogsController.list);
+router.get('/time_logs/:id', authMiddleware, timeLogsController.get);
+router.post('/time_logs', authMiddleware, timeLogsController.create);
+router.put('/time_logs/:id', authMiddleware, timeLogsController.update);
+router.delete('/time_logs/:id', authMiddleware, timeLogsController.delete);
+
+// ===== Wiki routes =====
+router.get('/wiki/articles', authMiddleware, wikiArticlesController.list);
+router.get('/wiki/articles/:id', authMiddleware, wikiArticlesController.get);
+router.post('/wiki/articles', authMiddleware, wikiArticlesController.create);
+router.put('/wiki/articles/:id', authMiddleware, wikiArticlesController.update);
+router.delete('/wiki/articles/:id', authMiddleware, wikiArticlesController.delete);
+
+router.get('/wiki/sections', authMiddleware, wikiSectionsController.list);
+router.get('/wiki/sections/:id', authMiddleware, wikiSectionsController.get);
+router.post('/wiki/sections', authMiddleware, wikiSectionsController.create);
+router.put('/wiki/sections/:id', authMiddleware, wikiSectionsController.update);
+router.delete('/wiki/sections/:id', authMiddleware, wikiSectionsController.delete);
+
+router.get('/wiki/articles/:article_id/storage', authMiddleware, wikiArticleStorageController.list);
+router.get('/wiki/articles/storage/:id', authMiddleware, wikiArticleStorageController.get);
+router.post('/wiki/articles/:article_id/storage', authMiddleware, wikiArticleStorageController.create);
+router.delete('/wiki/articles/storage/:id', authMiddleware, wikiArticleStorageController.delete);
 
 // ===== User pages (menu) =====
 // GET /api/user/pages

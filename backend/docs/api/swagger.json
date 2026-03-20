@@ -220,6 +220,33 @@
           }
         }
       },
+      "TimeLog": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "user_id": { "type": "integer", "nullable": true },
+          "project_id": { "type": "integer", "nullable": true },
+          "issue_id": { "type": "integer", "nullable": true },
+          "start_time": { "type": "string", "format": "date-time", "nullable": true },
+          "end_time": { "type": "string", "format": "date-time", "nullable": true },
+          "duration_minutes": { "type": "integer", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TimeLogCreate": {
+        "type": "object",
+        "required": ["start_time"],
+        "properties": {
+          "user_id": { "type": "integer" },
+          "project_id": { "type": "integer", "nullable": true },
+          "issue_id": { "type": "integer", "nullable": true },
+          "start_time": { "type": "string", "format": "date-time" },
+          "end_time": { "type": "string", "format": "date-time", "nullable": true },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
       "CustomerQuestion": {
         "type": "object",
         "properties": {
@@ -13637,6 +13664,84 @@
             "description": "Customer question not found"
           }
         }
+      }
+    },
+    "/api/time_logs": {
+      "get": {
+        "tags": ["time_logs"],
+        "summary": "List time logs",
+        "description": "List time log entries. Requires appropriate permission.",
+        "security": [ { "bearerAuth": [] }, { "cookieAuth": [] } ],
+        "x-permissions": ["time_logs.view"],
+        "parameters": [
+          { "in": "query", "name": "user_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "project_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "issue_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "page", "schema": { "type": "integer", "default": 1 } },
+          { "in": "query", "name": "limit", "schema": { "type": "integer", "default": 50 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/TimeLog" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["time_logs"],
+        "summary": "Create time log",
+        "description": "Create a new time log entry.",
+        "security": [ { "bearerAuth": [] }, { "cookieAuth": [] } ],
+        "x-permissions": ["time_logs.create"],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TimeLogCreate" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/TimeLog" } } } } }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden" }
+        }
+      }
+    },
+    "/api/time_logs/{id}": {
+      "get": {
+        "tags": ["time_logs"],
+        "summary": "Get time log",
+        "security": [ { "bearerAuth": [] }, { "cookieAuth": [] } ],
+        "x-permissions": ["time_logs.view"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/TimeLog" } } } } } }, "404": { "description": "Not found" } }
+      },
+      "put": {
+        "tags": ["time_logs"],
+        "summary": "Update time log",
+        "security": [ { "bearerAuth": [] }, { "cookieAuth": [] } ],
+        "x-permissions": ["time_logs.update"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TimeLogCreate" } } } },
+        "responses": { "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/TimeLog" } } } } } }, "400": { "description": "Validation error" }, "404": { "description": "Not found" } }
+      },
+      "delete": {
+        "tags": ["time_logs"],
+        "summary": "Delete time log",
+        "security": [ { "bearerAuth": [] }, { "cookieAuth": [] } ],
+        "x-permissions": ["time_logs.delete"],
+        "parameters": [ { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "Deleted" }, "404": { "description": "Not found" } }
       }
     }
   }
