@@ -18,7 +18,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          # cache removed because the repo root has no lockfile; install runs in `backend`
 
       - name: Install dependencies
         run: npm install
