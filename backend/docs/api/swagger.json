@@ -144,6 +144,15 @@
       "name": "users",
       "description": "User management, notifications, and settings"
     }
+    ,
+    {
+      "name": "groups",
+      "description": "CRUD operations for user groups"
+    },
+    {
+      "name": "organizations",
+      "description": "CRUD operations for organizations"
+    }
   ],
   "components": {
     "securitySchemes": {
@@ -1466,57 +1475,51 @@
       "User": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "username": {
-            "type": "string"
-          },
-          "avatar_id": {
-            "type": "integer",
-            "nullable": true
-          },
-          "email": {
-            "type": "string",
-            "format": "email"
-          },
-          "phone": {
-            "type": "string"
-          },
-          "first_name": {
-            "type": "string",
-            "nullable": true
-          },
-          "last_name": {
-            "type": "string",
-            "nullable": true
-          },
-          "middle_name": {
-            "type": "string",
-            "nullable": true
-          },
-          "department_id": {
-            "type": "integer",
-            "nullable": true
-          },
-          "job_title_id": {
-            "type": "integer",
-            "nullable": true
-          },
-          "is_active": {
-            "type": "boolean"
-          },
-          "is_verified": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
+          "id": { "type": "integer" },
+          "username": { "type": "string" },
+          "avatar_id": { "type": "integer", "nullable": true },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string" },
+          "first_name": { "type": "string", "nullable": true },
+          "last_name": { "type": "string", "nullable": true },
+          "middle_name": { "type": "string", "nullable": true },
+          "department_id": { "type": "integer", "nullable": true },
+          "department": { "$ref": "#/components/schemas/Department", "nullable": true },
+          "job_title_id": { "type": "integer", "nullable": true },
+          "job_title": { "$ref": "#/components/schemas/JobTitle", "nullable": true },
+          "group_id": { "type": "integer", "nullable": true },
+          "group": { "type": "string", "nullable": true },
+          "organization_id": { "type": "integer", "nullable": true },
+          "organization": { "type": "string", "nullable": true },
+          "is_active": { "type": "boolean" },
+          "is_verified": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+
+      "Group": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "is_active": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+
+      "Organization": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "slug": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "is_active": { "type": "boolean" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
         }
       },
       "UserNotification": {
@@ -3864,7 +3867,124 @@
         }
       }
     },
-    "/api/document_statuses": {
+      "/api/groups": {
+        "post": {
+          "tags": ["groups"],
+          "summary": "Create group",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["groups.create"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["name"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "description": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          },
+          "responses": { "201": { "description": "Created" }, "400": { "description": "Validation error" }, "401": { "description": "Authentication required" }, "403": { "description": "Forbidden" } }
+        },
+        "get": {
+          "tags": ["groups"],
+          "summary": "List groups",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["groups.view"],
+          "responses": { "200": { "description": "OK" }, "401": { "description": "Authentication required" }, "403": { "description": "Forbidden" } }
+        }
+      },
+      "/api/groups/{id}": {
+        "put": {
+          "tags": ["groups"],
+          "summary": "Update group",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["groups.update"],
+          "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+          "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "description": { "type": "string", "nullable": true }, "is_active": { "type": "boolean" } } } } } },
+          "responses": { "200": { "description": "OK" }, "400": { "description": "Invalid id or payload" }, "404": { "description": "Not found" } }
+        },
+        "delete": {
+          "tags": ["groups"],
+          "summary": "Delete group",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["groups.delete"],
+          "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+          "responses": { "200": { "description": "Deleted" }, "404": { "description": "Not found" } }
+        },
+        "get": {
+          "tags": ["groups"],
+          "summary": "Get group by ID",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["groups.view"],
+          "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+          "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+        }
+      },
+      "/api/organizations": {
+        "post": {
+          "tags": ["organizations"],
+          "summary": "Create organization",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["organizations.create"],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["name"],
+                  "properties": {
+                    "name": { "type": "string" },
+                    "slug": { "type": "string", "nullable": true },
+                    "description": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
+          },
+          "responses": { "201": { "description": "Created" }, "400": { "description": "Validation error" }, "401": { "description": "Authentication required" }, "403": { "description": "Forbidden" } }
+        },
+        "get": {
+          "tags": ["organizations"],
+          "summary": "List organizations",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["organizations.view"],
+          "responses": { "200": { "description": "OK" }, "401": { "description": "Authentication required" }, "403": { "description": "Forbidden" } }
+        }
+      },
+      "/api/organizations/{id}": {
+        "put": {
+          "tags": ["organizations"],
+          "summary": "Update organization",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["organizations.update"],
+          "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+          "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "slug": { "type": "string" }, "description": { "type": "string" }, "is_active": { "type": "boolean" } } } } } },
+          "responses": { "200": { "description": "OK" }, "400": { "description": "Invalid id or payload" }, "404": { "description": "Not found" } }
+        },
+        "delete": {
+          "tags": ["organizations"],
+          "summary": "Delete organization",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["organizations.delete"],
+          "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+          "responses": { "200": { "description": "Deleted" }, "404": { "description": "Not found" } }
+        },
+        "get": {
+          "tags": ["organizations"],
+          "summary": "Get organization by ID",
+          "security": [{ "bearerAuth": [] }],
+          "x-permissions": ["organizations.view"],
+          "parameters": [{ "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }],
+          "responses": { "200": { "description": "OK" }, "404": { "description": "Not found" } }
+        }
+      },
+      "/api/document_statuses": {
       "post": {
         "tags": [
           "document_statuses"

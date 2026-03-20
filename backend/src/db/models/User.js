@@ -19,8 +19,10 @@ class User {
         first_name, 
         last_name, 
         middle_name,
-        department_id,
-        job_title_id,
+          department_id,
+          group_id,
+          organization_id,
+          job_title_id,
         is_active, 
         is_verified,
         last_login,
@@ -50,6 +52,10 @@ class User {
         u.middle_name,
         u.department_id,
         d.name AS department,
+        u.group_id,
+        g.name AS group_name,
+        u.organization_id,
+        o.name AS organization_name,
         u.job_title_id,
         jt.name AS job_title,
         u.is_active, 
@@ -60,6 +66,8 @@ class User {
       FROM users u
       LEFT JOIN department d ON u.department_id = d.id
       LEFT JOIN job_title jt ON u.job_title_id = jt.id
+      LEFT JOIN groups g ON u.group_id = g.id
+      LEFT JOIN organizations o ON u.organization_id = o.id
       WHERE u.id = $1
     `;
 
@@ -114,8 +122,10 @@ class User {
         first_name, 
         last_name, 
         middle_name,
-        department_id,
-        job_title_id,
+          department_id,
+          group_id,
+          organization_id,
+          job_title_id,
         is_active, 
         is_verified,
         last_login,
@@ -143,8 +153,10 @@ class User {
         first_name, 
         last_name, 
         middle_name,
-        department_id,
-        job_title_id,
+          department_id,
+          group_id,
+          organization_id,
+          job_title_id,
         is_active, 
         is_verified,
         last_login,
@@ -171,6 +183,8 @@ class User {
       last_name,
       middle_name,
       department_id,
+      group_id,
+      organization_id,
       job_title_id,
       is_active = true,
       is_verified = false
@@ -186,11 +200,13 @@ class User {
         last_name, 
         middle_name,
         department_id,
+        group_id,
+        organization_id,
         job_title_id,
         is_active, 
         is_verified
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING 
         id, 
         username, 
@@ -200,6 +216,8 @@ class User {
         last_name, 
         middle_name,
         department_id,
+        group_id,
+        organization_id,
         job_title_id,
         is_active, 
         is_verified,
@@ -216,6 +234,8 @@ class User {
       last_name || null,
       middle_name || null,
       department_id || null,
+      group_id || null,
+      organization_id || null,
       job_title_id || null,
       is_active,
       is_verified
@@ -228,7 +248,7 @@ class User {
    * Обновить существующего пользователя (частично). Возвращает обновлённую запись.
    */
   static async update(id, fields) {
-    const allowed = ['username','email','phone','first_name','last_name','middle_name','department_id','job_title_id','is_active','is_verified'];
+    const allowed = ['username','email','phone','first_name','last_name','middle_name','department_id','group_id','organization_id','job_title_id','is_active','is_verified'];
     const sets = [];
     const params = [];
     let idx = 1;
@@ -307,6 +327,10 @@ class User {
              u.middle_name,
             u.department_id,
              d.name AS department,
+             u.group_id,
+             g.name AS group_name,
+             u.organization_id,
+             o.name AS organization_name,
              u.job_title_id,
              jt.name AS job_title,
              u.is_active,
@@ -316,6 +340,8 @@ class User {
       FROM users u
       LEFT JOIN department d ON u.department_id = d.id
       LEFT JOIN job_title jt ON u.job_title_id = jt.id
+      LEFT JOIN groups g ON u.group_id = g.id
+      LEFT JOIN organizations o ON u.organization_id = o.id
       ${where}
       ORDER BY u.id ASC
       ${paging}

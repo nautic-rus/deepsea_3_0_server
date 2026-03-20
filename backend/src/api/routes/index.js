@@ -9,6 +9,8 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const usersController = require('../controllers/usersController');
 const departmentsController = require('../controllers/departmentsController');
+const groupsController = require('../controllers/groupsController');
+const organizationsController = require('../controllers/organizationsController');
 const rolesController = require('../controllers/rolesController');
 const projectsController = require('../controllers/projectsController');
 const issuesController = require('../controllers/issuesController');
@@ -112,6 +114,18 @@ router.post('/departments', authMiddleware, departmentsController.create);
 router.put('/departments/:id', authMiddleware, departmentsController.update);
 // DELETE /api/departments/:id
 router.delete('/departments/:id', authMiddleware, departmentsController.delete);
+
+// ===== Groups routes =====
+router.get('/groups', authMiddleware, groupsController.list);
+router.post('/groups', authMiddleware, groupsController.create);
+router.put('/groups/:id', authMiddleware, groupsController.update);
+router.delete('/groups/:id', authMiddleware, groupsController.delete);
+
+// ===== Organizations routes =====
+router.get('/organizations', authMiddleware, organizationsController.list);
+router.post('/organizations', authMiddleware, organizationsController.create);
+router.put('/organizations/:id', authMiddleware, organizationsController.update);
+router.delete('/organizations/:id', authMiddleware, organizationsController.delete);
 
 // ===== Roles routes =====
 // GET /api/roles

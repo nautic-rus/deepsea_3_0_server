@@ -207,6 +207,10 @@ class AuthController {
         job_title_id: user.job_title_id || null,
         department: user.department || null,
         job_title: user.job_title || null,
+        group_id: user.group_id || null,
+        group: user.group_name || null,
+        organization_id: user.organization_id || null,
+        organization: user.organization_name || null,
         rc_username: rc_username,
         is_active: user.is_active
       };

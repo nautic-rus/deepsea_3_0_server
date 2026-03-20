@@ -39,6 +39,10 @@ jobs:
       - name: Deploy to server (rsync)
         run: |
           rsync -avz --delete \
+            --exclude 'env' \
+            --exclude '.env' \
+            --exclude 'uploads' \
+            --exclude 'logs' \
             -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
             ${{ env.OUTPUT_DIR }}/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.TARGET_DIR_BACK }}

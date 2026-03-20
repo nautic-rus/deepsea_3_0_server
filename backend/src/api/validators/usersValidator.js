@@ -14,6 +14,8 @@ function validateCreateUser(req, res, next) {
     last_name,
     middle_name,
     department_id,
+    group_id,
+    organization_id,
     job_title_id,
     is_active,
     is_verified
@@ -79,6 +81,18 @@ function validateCreateUser(req, res, next) {
   if (department_id !== undefined && department_id !== null) {
     if (!Number.isInteger(Number(department_id)) || Number(department_id) < 1) {
       errors.push('Department ID must be a positive integer');
+    }
+  }
+
+  if (group_id !== undefined && group_id !== null) {
+    if (!Number.isInteger(Number(group_id)) || Number(group_id) < 1) {
+      errors.push('Group ID must be a positive integer');
+    }
+  }
+
+  if (organization_id !== undefined && organization_id !== null) {
+    if (!Number.isInteger(Number(organization_id)) || Number(organization_id) < 1) {
+      errors.push('Organization ID must be a positive integer');
     }
   }
 
