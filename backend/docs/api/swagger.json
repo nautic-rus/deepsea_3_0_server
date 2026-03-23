@@ -237,14 +237,38 @@
       },
       "TimeLogCreate": {
         "type": "object",
-        "required": ["start_time"],
+        "required": ["issue_id", "user_id", "hours", "date"],
         "properties": {
+          "issue_id": { "type": "integer" },
           "user_id": { "type": "integer" },
-          "project_id": { "type": "integer", "nullable": true },
-          "issue_id": { "type": "integer", "nullable": true },
-          "start_time": { "type": "string", "format": "date-time" },
-          "end_time": { "type": "string", "format": "date-time", "nullable": true },
-          "description": { "type": "string", "nullable": true }
+          "hours": { "type": "number", "format": "float" },
+          "date": { "type": "string", "format": "date" },
+          "description": { "type": "string", "nullable": true },
+          "interval": {
+            "type": "object",
+            "description": "Optional interval to create multiple time logs",
+            "properties": {
+              "start_date": { "type": "string", "format": "date" },
+              "end_date": { "type": "string", "format": "date" },
+              "days": { "type": "array", "items": { "oneOf": [ { "type": "integer" }, { "type": "string" } ] }, "description": "Weekdays (0=Sun..6=Sat) or names (mon,tue,...)" },
+              "hours": { "type": "number", "format": "float" },
+              "issue_id": { "type": "integer" },
+              "user_id": { "type": "integer" },
+              "description": { "type": "string", "nullable": true }
+            }
+          }
+        },
+        "example": {
+          "issue_id": 123,
+          "user_id": 45,
+          "hours": 1.5,
+          "date": "2026-03-23",
+          "description": "Worked on bug fix",
+          "interval": {
+            "start_date": "2026-03-23",
+            "end_date": "2026-03-27",
+            "hours": 8
+          }
         }
       },
       "CustomerQuestion": {
