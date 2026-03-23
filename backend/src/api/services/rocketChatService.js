@@ -66,11 +66,6 @@ class RocketChatService {
     });
   }
 
-  static async _sendViaWebhook(webhookUrl, options) {
-    // removed: webhook support is no longer available in this service
-    throw new Error('Webhook support removed — use REST API via ROCKET_CHAT_URL');
-  }
-
   static async _sendViaRest(baseUrl, options) {
     // Ensure we have an auth token and user id (either from env or by logging in)
     const { token, userId } = await this._ensureAuth(baseUrl);

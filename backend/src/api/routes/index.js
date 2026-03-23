@@ -85,6 +85,9 @@ router.get('/users/notification_settings', authMiddleware, userNotificationSetti
 router.post('/users/notification_settings', authMiddleware, userNotificationSettingsController.upsert);
 router.delete('/users/notification_settings', authMiddleware, userNotificationSettingsController.remove);
 
+// User notification center (current user) - placed before `/users/:id` to avoid route clash
+router.get('/users/notifications', authMiddleware, userNotificationsController.list);
+
 // GET /api/users/:id (single user)
 router.get('/users/:id', authMiddleware, usersController.getUser);
 
@@ -95,7 +98,6 @@ router.delete('/users/:id/rocket_chat', authMiddleware, userRocketChatController
 
 // (routes for notification_settings moved above to avoid conflicting with /users/:id)
 
-// User notification center endpoints
 router.get('/users/:id/notifications', authMiddleware, userNotificationsController.list);
 router.get('/users/:id/notifications/unread_count', authMiddleware, userNotificationsController.unreadCount);
 router.post('/users/:id/notifications/:notificationId/read', authMiddleware, userNotificationsController.markAsRead);

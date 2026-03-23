@@ -6,6 +6,7 @@ const { hasPermission } = require('./permissionChecker');
 const RocketChatService = require('./rocketChatService');
 const HistoryService = require('./historyService');
 const UserNotification = require('../../db/models/UserNotification');
+const { buildNotificationData } = require('../../db/models/UserNotification');
 const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
 const TemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
@@ -231,15 +232,19 @@ class CustomerQuestionsService {
         const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${created.id}` : '';
         const context = { project: { id: created.project_id, code: (created.project && created.project.code) ? created.project.code : null }, question: created, actor: actor, questionUrl };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             const notifPayload = {
               user_id: r.user_id,
               event_code: 'question_created_in_project',
               project_id: created.project_id,
-              data: { question: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              data: buildNotificationData(actor, { id: created.id, code: 'customer_question', title: created.question_title || created.id }, { value: created })
             };
             UserNotification.create(notifPayload).catch(() => {});
+            }
 
             if (r.method_code === 'rocket_chat') {
               const rendered = await TemplateService.render('question_created_in_project', 'rocket_chat', context);
@@ -308,15 +313,19 @@ class CustomerQuestionsService {
         const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${updated.id}` : '';
         const context = { project: { id: updated.project_id, code: (updated.project && updated.project.code) ? updated.project.code : null }, question: updated, actor: actor, questionUrl, changes: { before: existing, after: updated } };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             const notifPayload = {
               user_id: r.user_id,
               event_code: 'question_updated_in_project',
               project_id: updated.project_id,
-              data: { question: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              data: buildNotificationData(actor, { id: updated.id, code: 'customer_question', title: updated.question_title || updated.id }, { before: existing, after: updated })
             };
             UserNotification.create(notifPayload).catch(() => {});
+            }
 
             if (r.method_code === 'rocket_chat') {
               const rendered = await TemplateService.render('question_updated_in_project', 'rocket_chat', context);
@@ -346,15 +355,19 @@ class CustomerQuestionsService {
         const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${updated.id}` : '';
         const context = { project: { id: updated.project_id, code: (updated.project && updated.project.code) ? updated.project.code : null }, question: updated, actor: actor, questionUrl, changes: { before: existing, after: updated } };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             const notifPayload = {
               user_id: r.user_id,
               event_code: 'question_updated',
               project_id: updated.project_id,
-              data: { question: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              data: buildNotificationData(actor, { id: updated.id, code: 'customer_question', title: updated.question_title || updated.id }, { before: existing, after: updated })
             };
             UserNotification.create(notifPayload).catch(() => {});
+            }
 
             if (r.method_code === 'rocket_chat') {
               const rendered = await TemplateService.render('question_updated', 'rocket_chat', context);
@@ -448,18 +461,22 @@ class CustomerQuestionsService {
         const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${existing.id}` : '';
         const context = { project: { id: existing.project_id, code: (existing.project && existing.project.code) ? existing.project.code : null }, targetType: 'CustomerQuestion', targetId: existing.id, targetTitle: existing.question_title || existing.id, targetUrl, actor: actor, message: created };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
             if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) continue;
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             try {
               const notifPayload = {
                 user_id: r.user_id,
                 event_code: 'comment_added',
                 project_id: existing.project_id,
-                data: { customer_question_id: existing.id, message: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+                data: buildNotificationData(actor, { id: existing.id, code: 'customer_question', title: existing.question_title || existing.id }, { value: created.content })
               };
               UserNotification.create(notifPayload).catch(() => {});
             } catch (e) { console.error('Failed to queue user notification', e && e.message ? e.message : e); }
+            }
 
             if (r.method_code === 'rocket_chat') {
               const rendered = await TemplateService.render('comment_added', 'rocket_chat', context);

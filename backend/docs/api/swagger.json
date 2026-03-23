@@ -1592,7 +1592,40 @@
           },
           "data": {
             "type": "object",
-            "nullable": true
+            "nullable": true,
+            "description": "Unified payload describing initiator, target entity and content change/value.",
+            "properties": {
+              "initiator": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "nullable": true },
+                  "full_name": { "type": "string", "nullable": true },
+                  "avatar_id": { "type": "integer", "nullable": true }
+                }
+              },
+              "entity": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "integer", "nullable": true },
+                  "code": { "type": "string", "nullable": true },
+                  "title": { "type": "string", "nullable": true }
+                }
+              },
+              "content": {
+                "type": "object",
+                "description": "Either { before, after } for changed values or { value } for single-value events.",
+                "properties": {
+                  "before": { "type": ["object", "string", "number", "array", "null"], "nullable": true },
+                  "after": { "type": ["object", "string", "number", "array", "null"], "nullable": true },
+                  "value": { "type": ["object", "string", "number", "array", "null"], "nullable": true }
+                }
+              }
+            },
+            "example": {
+              "initiator": { "id": 5, "full_name": "Ivan Petrov", "avatar_id": 12 },
+              "entity": { "id": 123, "code": "issue", "title": "Pipeline leak" },
+              "content": { "before": { "status": "open" }, "after": { "status": "in_progress" } }
+            }
           },
           "is_read": {
             "type": "boolean"
@@ -12785,6 +12818,72 @@
           "403": {
             "description": "Forbidden"
           }
+        }
+      }
+    },
+    "/api/users/notifications": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Current user's notifications (notification center)",
+        "description": "Returns notifications for the authenticated user. Hidden notifications are excluded by default.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_hidden",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Include hidden notifications"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UserNotification"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden" }
         }
       }
     },

@@ -31,25 +31,6 @@ class UserNotificationSetting {
   /**
    * Update by id or by composite key
    */
-  static async updateById(id, fields) {
-    const allowed = ['enabled', 'config'];
-    const sets = [];
-    const params = [];
-    let idx = 1;
-    for (const k of allowed) {
-      if (Object.prototype.hasOwnProperty.call(fields, k)) {
-        sets.push(`${k} = $${idx}`);
-        params.push(fields[k]);
-        idx++;
-      }
-    }
-    if (sets.length === 0) return await UserNotificationSetting.findById(id);
-    params.push(id);
-    const query = `UPDATE public.user_notification_settings SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING *`;
-    const res = await pool.query(query, params);
-    return res.rows[0] || null;
-  }
-
   static async updateByComposite(user_id, project_id, event_id, method_id, fields) {
     const allowed = ['enabled', 'config'];
     const sets = [];
@@ -113,23 +94,19 @@ class UserNotificationSetting {
       return res.rows;
     }
 
-    // Ignore user settings and return all users (center notifications will be
-    // created for every user). We still include rocket chat / email fields so
-    // callers can attempt method-specific deliveries if desired.
+    // Return one row per user per active notification method so that callers
+    // can iterate and send via rocket_chat / email as before.
     const q = `
-      SELECT u.id AS user_id, NULL::text AS method_code, urc.rc_username, urc.rc_user_id, u.email
+      SELECT u.id AS user_id, nm.code AS method_code, urc.rc_username, urc.rc_user_id, u.email
       FROM public.users u
+      CROSS JOIN public.notification_methods nm
       LEFT JOIN public.user_rocket_chat urc ON urc.user_id = u.id
+      WHERE nm.status = true
     `;
     const res = await pool.query(q);
     return res.rows;
   }
 
-  static async findById(id) {
-    const query = `SELECT * FROM public.user_notification_settings WHERE id = $1`;
-    const res = await pool.query(query, [id]);
-    return res.rows[0] || null;
-  }
 }
 
 module.exports = UserNotificationSetting;

@@ -4,6 +4,7 @@ const { hasPermission } = require('./permissionChecker');
 const HistoryService = require('./historyService');
 const DocumentMessage = require('../../db/models/DocumentMessage');
 const UserNotification = require('../../db/models/UserNotification');
+const { buildNotificationData } = require('../../db/models/UserNotification');
 const DocumentStorage = require('../../db/models/DocumentStorage');
 const Storage = require('../../db/models/Storage');
 const ProtectionService = require('./protectionService');
@@ -259,6 +260,7 @@ class DocumentsService {
   // Include project.code when available so templates can render {{project.code}}
   const context = { project: { id: created.project_id, code: (project && project.code) ? project.code : null }, document: created, actor: actor, documentUrl };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
             // Do not send notifications to the actor who performed the action
@@ -266,16 +268,19 @@ class DocumentsService {
               // skip sending/creating notifications for the actor
               continue;
             }
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             try {
               const notifPayload = {
                 user_id: r.user_id,
                 event_code: 'document_created',
                 project_id: created.project_id,
-                data: { document: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+                data: buildNotificationData(actor, { id: created.id, code: 'document', title: created.title }, { value: created })
               };
               UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
             } catch (e) {
               console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
             }
 
             if (r.method_code === 'rocket_chat') {
@@ -331,15 +336,19 @@ class DocumentsService {
         const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${created.id}` : '';
         const context = { project: { id: created.project_id, code: (project && project.code) ? project.code : null }, document: created, actor: actor, documentUrl };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             const notifPayload = {
               user_id: r.user_id,
               event_code: 'document_created_in_project',
               project_id: created.project_id,
-              data: { document: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              data: buildNotificationData(actor, { id: created.id, code: 'document', title: created.title }, { value: created })
             };
             UserNotification.create(notifPayload).catch(() => {});
+            }
 
             if (r.method_code === 'rocket_chat') {
               const rendered = await TemplateService.render('document_created_in_project', 'rocket_chat', context);
@@ -390,15 +399,19 @@ class DocumentsService {
           storage_file_list: storageItems.map(s => s.file_name).join('\n')
         };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             const notifPayload = {
               user_id: r.user_id,
               event_code: 'document_uploaded_in_project',
               project_id: existing.project_id,
-              data: { document: existing, storage: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              data: buildNotificationData(actor, { id: existing.id, code: 'document', title: existing.title }, { value: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr })
             };
             UserNotification.create(notifPayload).catch(() => {});
+            }
 
             if (r.method_code === 'rocket_chat') {
               const rendered = await TemplateService.render('document_uploaded_in_project', 'rocket_chat', context);
@@ -482,22 +495,26 @@ class DocumentsService {
         }
         const context = { project: { id: updated.project_id, code: (_project && _project.code) ? _project.code : null }, document: updated, actor: actor, documentUrl, changes: { before: existing, after: updated } };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
             // Do not send notifications to the actor who performed the action
             if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
               continue;
             }
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             try {
               const notifPayload = {
                 user_id: r.user_id,
                 event_code: 'document_updated',
                 project_id: updated.project_id,
-                data: { document: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+                data: buildNotificationData(actor, { id: updated.id, code: 'document', title: updated.title }, { before: existing, after: updated })
               };
               UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
             } catch (e) {
               console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
             }
 
             if (r.method_code === 'rocket_chat') {
@@ -553,15 +570,19 @@ class DocumentsService {
         const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${updated.id}` : '';
         const context = { project: { id: updated.project_id, code: (_project && _project.code) ? _project.code : null }, document: updated, actor: actor, documentUrl, changes: { before: existing, after: updated } };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             const notifPayload = {
               user_id: r.user_id,
               event_code: 'document_updated_in_project',
               project_id: updated.project_id,
-              data: { document: updated, via: r.method_code || null, recipient: { user_id: r.user_id } }
+              data: buildNotificationData(actor, { id: updated.id, code: 'document', title: updated.title }, { before: existing, after: updated })
             };
             UserNotification.create(notifPayload).catch(() => {});
+            }
 
             if (r.method_code === 'rocket_chat') {
               const rendered = await TemplateService.render('document_updated_in_project', 'rocket_chat', context);
@@ -666,22 +687,26 @@ class DocumentsService {
   try { const Project = require('../../db/models/Project'); _projForComment = await Project.findById(Number(existing.project_id)); } catch (e) { _projForComment = null; }
   const context = { project: { id: existing.project_id, code: (_projForComment && _projForComment.code) ? _projForComment.code : null }, targetType: 'Document', targetId: existing.id, targetTitle: existing.title, targetUrl, actor: actor, message: created };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
             // Do not send notifications to the actor who performed the action
             if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
               continue;
             }
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             try {
               const notifPayload = {
                 user_id: r.user_id,
                 event_code: 'comment_added',
                 project_id: existing.project_id,
-                data: { document_id: existing.id, message: created, via: r.method_code || null, recipient: { user_id: r.user_id } }
+                data: buildNotificationData(actor, { id: existing.id, code: 'document', title: existing.title }, { value: created.content })
               };
               UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
             } catch (e) {
               console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
             }
 
             if (r.method_code === 'rocket_chat') {
@@ -785,23 +810,26 @@ class DocumentsService {
     storage_file_list: storageItems.map(s => s.file_name).join('\n')
   };
 
+        const notifiedUserIds = new Set();
         for (const r of recipients) {
           try {
             // Do not send notifications to the actor who performed the action
             if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
               continue;
             }
+            if (!notifiedUserIds.has(Number(r.user_id))) {
+              notifiedUserIds.add(Number(r.user_id));
             try {
               const notifPayload = {
                 user_id: r.user_id,
                 event_code: 'document_uploaded',
                 project_id: existing.project_id,
-                // Provide storage info: single object when one file attached, or array when multiple
-                data: { document: existing, storage: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr, via: r.method_code || null, recipient: { user_id: r.user_id } }
+                data: buildNotificationData(actor, { id: existing.id, code: 'document', title: existing.title }, { value: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr })
               };
               UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
             } catch (e) {
               console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
             }
 
             if (r.method_code === 'rocket_chat') {

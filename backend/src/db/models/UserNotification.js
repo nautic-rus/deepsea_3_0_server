@@ -5,110 +5,56 @@
 
 const pool = require('../connection');
 
+/**
+ * Build unified notification data payload.
+ *
+ * @param {object} actor   - { id, first_name, last_name, avatar_id } (req.user)
+ * @param {object} entity  - { id, code, title }
+ *                            code: 'issue' | 'document' | 'question' | etc.
+ * @param {object} content - either { value: <any> }
+ *                            or { before: <any>, after: <any> }
+ * @returns {object} unified { initiator, entity, content }
+ */
+function buildNotificationData(actor, entity, content) {
+  const initiator = {
+    id: (actor && actor.id) || null,
+    full_name: actor ? `${actor.first_name || ''} ${actor.last_name || ''}`.trim() || null : null,
+    avatar_id: (actor && actor.avatar_id) || null
+  };
+  const ent = {
+    id: (entity && entity.id) || null,
+    code: (entity && entity.code) || null,
+    title: (entity && entity.title) || null
+  };
+  let cont = content || { value: null };
+  // For before/after content, keep only the fields that actually changed
+  if (cont.before && cont.after) {
+    const before = cont.before;
+    const after = cont.after;
+    const diffBefore = {};
+    const diffAfter = {};
+    for (const key of Object.keys(after)) {
+      if (key === 'updated_at' || key === 'created_at') continue;
+      const a = before[key];
+      const b = after[key];
+      if (a !== b && JSON.stringify(a) !== JSON.stringify(b)) {
+        diffBefore[key] = a;
+        diffAfter[key] = b;
+      }
+    }
+    cont = { before: diffBefore, after: diffAfter };
+  }
+  return { initiator, entity: ent, content: cont };
+}
+
 class UserNotification {
   /**
    * Создать запись уведомления
-   * data: { user_id, event_code, project_id, data (object/json) }
+   * data: { user_id, event_code, project_id, data (object — unified format) }
    */
   static async create(data) {
     const { user_id, event_code = null, project_id = null, data: payload = null } = data;
-    // Normalize payload into unified format:
-    // {
-    //   initiator: { id, full_name, avatar_id },
-    //   entity: { id, code, title },
-    //   content: { before?, after? } OR { value }
-    // }
-    let sanitized = payload;
-    try {
-      const buildInitiator = async (p) => {
-        if (!p) return { id: null, full_name: null, avatar_id: null };
-        if (p.initiator && typeof p.initiator === 'object') {
-          return {
-            id: p.initiator.id || null,
-            full_name: p.initiator.full_name || p.initiator.name || null,
-            avatar_id: p.initiator.avatar_id || null
-          };
-        }
-        const initiatorId = p.assigned_by || p.initiator_id || p.actor_id || (p.actor && p.actor.id) || null;
-        if (!initiatorId) return { id: null, full_name: null, avatar_id: null };
-        try {
-          const User = require('./User');
-          const u = await User.findById(initiatorId);
-          if (u) return { id: u.id, full_name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || null, avatar_id: u.avatar_id || null };
-        } catch (e) {
-          // ignore lookup errors
-        }
-        return { id: initiatorId, full_name: null, avatar_id: null };
-      };
-
-      const buildEntity = (p) => {
-        if (!p || typeof p !== 'object') return { id: null, code: null, title: null };
-        const entityKeys = ['issue', 'document', 'question', 'user', 'project', 'entity'];
-        for (const key of entityKeys) {
-          if (Object.prototype.hasOwnProperty.call(p, key) && p[key]) {
-            const e = p[key];
-            const id = e.id || e[`${key}_id`] || null;
-            const title = e.title || e.name || e.subject || e.number || null;
-            return { id, code: key, title };
-          }
-        }
-        // If top-level has id/code/title fields
-        if (p.id || p.code || p.title || p.name) {
-          return { id: p.id || null, code: p.code || null, title: p.title || p.name || null };
-        }
-        return { id: null, code: null, title: null };
-      };
-
-      const buildContent = (p) => {
-        if (!p) return { value: null };
-        if (Object.prototype.hasOwnProperty.call(p, 'before') || Object.prototype.hasOwnProperty.call(p, 'after')) {
-          return { before: p.before || null, after: p.after || null };
-        }
-        // if payload contains changed fields map
-        if (p.changes && typeof p.changes === 'object') {
-          return { before: p.changes.before || null, after: p.changes.after || null };
-        }
-        // fallback: store provided payload (excluding large nested entities)
-        return { value: p.value !== undefined ? p.value : p };
-      };
-
-      // If payload already looks normalized, keep as is
-      const looksNormalized = sanitized && typeof sanitized === 'object' && (sanitized.initiator || sanitized.entity || sanitized.content);
-      if (!looksNormalized) {
-        const initiator = await buildInitiator(sanitized || {});
-        const entity = buildEntity(sanitized || {});
-        const content = buildContent(sanitized || {});
-        sanitized = { initiator, entity, content };
-      } else {
-        // ensure initiator has required subfields (try to fetch if only id present)
-        if (sanitized.initiator && typeof sanitized.initiator === 'object' && sanitized.initiator.id && !sanitized.initiator.full_name) {
-          try {
-            const User = require('./User');
-            const u = await User.findById(sanitized.initiator.id);
-            if (u) sanitized.initiator.full_name = `${u.first_name || ''} ${u.last_name || ''}`.trim() || null;
-            if (u && u.avatar_id) sanitized.initiator.avatar_id = u.avatar_id;
-          } catch (e) { /* ignore */ }
-        }
-        // remove null via field if present
-        if (Object.prototype.hasOwnProperty.call(sanitized, 'via') && (sanitized.via === null || typeof sanitized.via === 'undefined')) delete sanitized.via;
-      }
-    } catch (e) {
-      // on any error fall back to original payload
-      sanitized = payload;
-    }
-    const payloadParam = sanitized ? JSON.stringify(sanitized) : null;
-
-    // Check for an existing identical notification to avoid duplicates
-    const findQuery = `
-      SELECT * FROM public.user_notifications
-      WHERE user_id = $1
-        AND event_code IS NOT DISTINCT FROM $2
-        AND project_id IS NOT DISTINCT FROM $3
-        AND (data = $4::jsonb OR (data IS NULL AND $4 IS NULL))
-      LIMIT 1
-    `;
-    const found = await pool.query(findQuery, [user_id, event_code, project_id, payloadParam]);
-    if (found.rows && found.rows[0]) return found.rows[0];
+    const payloadParam = payload ? JSON.stringify(payload) : null;
 
     const query = `
       INSERT INTO public.user_notifications (user_id, event_code, project_id, data)
@@ -117,15 +63,6 @@ class UserNotification {
     `;
     const res = await pool.query(query, [user_id, event_code, project_id, payloadParam]);
     return res.rows[0];
-  }
-
-  /**
-   * Найти по id
-   */
-  static async findById(id) {
-    const query = `SELECT * FROM public.user_notifications WHERE id = $1`;
-    const res = await pool.query(query, [id]);
-    return res.rows[0] || null;
   }
 
   /**
@@ -184,3 +121,4 @@ class UserNotification {
 }
 
 module.exports = UserNotification;
+module.exports.buildNotificationData = buildNotificationData;
