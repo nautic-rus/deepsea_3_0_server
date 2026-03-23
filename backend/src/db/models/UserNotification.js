@@ -15,6 +15,102 @@ const pool = require('../connection');
  *                            or { before: <any>, after: <any> }
  * @returns {object} unified { initiator, entity, content }
  */
+/**
+ * FK field → SQL query mapping per entity code.
+ * Each query must return a single column `name` for the given id ($1).
+ */
+const FK_RESOLVERS = {
+  issue: {
+    status_id: 'SELECT name FROM issue_status WHERE id = $1',
+    type_id: 'SELECT name FROM issue_type WHERE id = $1',
+    assignee_id: "SELECT TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name FROM users WHERE id = $1",
+    author_id: "SELECT TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name FROM users WHERE id = $1",
+    project_id: 'SELECT name FROM projects WHERE id = $1',
+  },
+  document: {
+    status_id: 'SELECT name FROM document_status WHERE id = $1',
+    type_id: 'SELECT name FROM document_type WHERE id = $1',
+    stage_id: 'SELECT name FROM stages WHERE id = $1',
+    specialization_id: 'SELECT name FROM specializations WHERE id = $1',
+    directory_id: 'SELECT name FROM document_directories WHERE id = $1',
+    assigne_to: "SELECT TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name FROM users WHERE id = $1",
+    created_by: "SELECT TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name FROM users WHERE id = $1",
+    updated_by: "SELECT TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name FROM users WHERE id = $1",
+    project_id: 'SELECT name FROM projects WHERE id = $1',
+  },
+  customer_question: {
+    status_id: 'SELECT name FROM customer_question_status WHERE id = $1',
+    type_id: 'SELECT name FROM customer_question_type WHERE id = $1',
+    asked_by: "SELECT TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name FROM users WHERE id = $1",
+    answered_by: "SELECT TRIM(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) AS name FROM users WHERE id = $1",
+    project_id: 'SELECT name FROM projects WHERE id = $1',
+  }
+};
+
+/**
+ * Resolve FK id fields to human-readable names.
+ *
+ * Enriches content.before / content.after / content.value with `field_name`
+ * keys for every known FK field.  E.g. status_id: 3 → status_id_name: "In Progress"
+ *
+ * @param {string} entityCode - 'issue' | 'document' | 'customer_question'
+ * @param {object} content    - the `content` part of notification data
+ * @returns {Promise<object>} enriched content (shallow clone; originals untouched)
+ */
+async function resolveFieldNames(entityCode, content) {
+  if (!content || !entityCode) return content;
+  const resolvers = FK_RESOLVERS[entityCode];
+  if (!resolvers) return content;
+
+  // Collect sources to enrich
+  const sources = {};
+  if (content.before && typeof content.before === 'object') sources.before = content.before;
+  if (content.after && typeof content.after === 'object') sources.after = content.after;
+  if (content.value && typeof content.value === 'object' && !Array.isArray(content.value)) sources.value = content.value;
+  if (Object.keys(sources).length === 0) return content;
+
+  // Collect all {field, id} pairs that need resolution
+  const tasks = []; // { field, id, target, sql }
+  for (const [srcName, srcObj] of Object.entries(sources)) {
+    for (const [field, sql] of Object.entries(resolvers)) {
+      const val = srcObj[field];
+      if (val !== undefined && val !== null) {
+        tasks.push({ field, id: val, target: srcName, sql });
+      }
+    }
+  }
+  if (tasks.length === 0) return content;
+
+  // Resolve with caching (same query+id → same name)
+  const cache = new Map();
+  const result = Object.assign({}, content);
+  // Shallow-clone each source so we don't mutate originals
+  for (const key of Object.keys(sources)) {
+    result[key] = Object.assign({}, result[key]);
+  }
+
+  for (const t of tasks) {
+    const cacheKey = `${t.sql}|${t.id}`;
+    let name;
+    if (cache.has(cacheKey)) {
+      name = cache.get(cacheKey);
+    } else {
+      try {
+        const res = await pool.query(t.sql, [t.id]);
+        name = (res.rows[0] && res.rows[0].name) ? res.rows[0].name.trim() || null : null;
+      } catch (_) {
+        name = null;
+      }
+      cache.set(cacheKey, name);
+    }
+    if (name !== null) {
+      result[t.target][t.field + '_name'] = name;
+    }
+  }
+
+  return result;
+}
+
 function buildNotificationData(actor, entity, content) {
   const initiator = {
     id: (actor && actor.id) || null,
@@ -122,3 +218,4 @@ class UserNotification {
 
 module.exports = UserNotification;
 module.exports.buildNotificationData = buildNotificationData;
+module.exports.resolveFieldNames = resolveFieldNames;

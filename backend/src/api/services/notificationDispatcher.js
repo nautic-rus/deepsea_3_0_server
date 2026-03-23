@@ -10,7 +10,7 @@
  */
 
 const UserNotification = require('../../db/models/UserNotification');
-const { buildNotificationData } = require('../../db/models/UserNotification');
+const { buildNotificationData, resolveFieldNames } = require('../../db/models/UserNotification');
 const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
 const TemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
@@ -76,8 +76,16 @@ class NotificationDispatcher {
     });
     if (recipients.length === 0) return;
 
-    // 3. Build unified notification data once
+    // 3. Build unified notification data once, then resolve FK names
     const notifData = buildNotificationData(actor, entity, content);
+    const entityCode = entity && entity.code ? entity.code : null;
+    if (entityCode && notifData.content) {
+      try {
+        notifData.content = await resolveFieldNames(entityCode, notifData.content);
+      } catch (e) {
+        console.error('Failed to resolve field names for notification', e && e.message ? e.message : e);
+      }
+    }
 
     // 4. Loop: create DB record (once per user), send via method
     const notifiedUserIds = new Set();
