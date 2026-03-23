@@ -104,24 +104,35 @@ async function authMiddleware(req, res, next) {
     }
 
     // Подгружаем список кодов разрешений для пользователя. Вынесено в модель/сервис.
+    // Для эндпоинтов, возвращающих уведомления конкретного пользователя
+    // (например `/api/users/:id/notifications`), не нужно запрашивать
+    // полный список разрешений — пропускаем дополнительный запрос.
     let permissions = [];
-    try {
-      const PermissionModel = require('../../db/models/Permission');
-      const permQuery = `
-        SELECT DISTINCT p.code
-        FROM permissions p
-        JOIN role_permissions rp ON rp.permission_id = p.id
-        JOIN user_roles ur ON ur.role_id = rp.role_id
-        WHERE ur.user_id = $1
-      `;
-      // Используем pool напрямую здесь для совместимости с существующей структурой
-      const permsRes = await require('../../db/connection').query(permQuery, [user.id]);
-  // normalize permission codes (trim + lowercase) to make comparisons reliable
-  permissions = permsRes.rows.map(r => (r.code || '').trim().toLowerCase()).filter(Boolean);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn('Failed to load permissions for user', user.id, e.message);
-      permissions = [];
+    const origUrl = req.originalUrl || '';
+    const relPath = req.path || '';
+    const isUserNotificationsRoute = (
+      (typeof origUrl === 'string' && origUrl.startsWith('/api/users/') && origUrl.includes('/notifications')) ||
+      (/^\/users\/\d+\/notifications/.test(relPath))
+    );
+    if (!isUserNotificationsRoute) {
+      try {
+        const PermissionModel = require('../../db/models/Permission');
+        const permQuery = `
+          SELECT DISTINCT p.code
+          FROM permissions p
+          JOIN role_permissions rp ON rp.permission_id = p.id
+          JOIN user_roles ur ON ur.role_id = rp.role_id
+          WHERE ur.user_id = $1
+        `;
+        // Используем pool напрямую здесь для совместимости с существующей структурой
+        const permsRes = await require('../../db/connection').query(permQuery, [user.id]);
+        // normalize permission codes (trim + lowercase) to make comparisons reliable
+        permissions = permsRes.rows.map(r => (r.code || '').trim().toLowerCase()).filter(Boolean);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to load permissions for user', user.id, e.message);
+        permissions = [];
+      }
     }
 
     // Попробуем получить текстовые наименования отдела и должности

@@ -12,17 +12,89 @@ class UserNotification {
    */
   static async create(data) {
     const { user_id, event_code = null, project_id = null, data: payload = null } = data;
-    // Remove unnecessary null fields (e.g. `via: null`) so DB doesn't store nulls
+    // Normalize payload into unified format:
+    // {
+    //   initiator: { id, full_name, avatar_id },
+    //   entity: { id, code, title },
+    //   content: { before?, after? } OR { value }
+    // }
     let sanitized = payload;
-    if (sanitized && typeof sanitized === 'object') {
-      try {
-        if (Object.prototype.hasOwnProperty.call(sanitized, 'via') && (sanitized.via === null || typeof sanitized.via === 'undefined')) {
-          delete sanitized.via;
+    try {
+      const buildInitiator = async (p) => {
+        if (!p) return { id: null, full_name: null, avatar_id: null };
+        if (p.initiator && typeof p.initiator === 'object') {
+          return {
+            id: p.initiator.id || null,
+            full_name: p.initiator.full_name || p.initiator.name || null,
+            avatar_id: p.initiator.avatar_id || null
+          };
         }
-      } catch (e) {
-        // ignore sanitization errors and fall back to original payload
-        sanitized = payload;
+        const initiatorId = p.assigned_by || p.initiator_id || p.actor_id || (p.actor && p.actor.id) || null;
+        if (!initiatorId) return { id: null, full_name: null, avatar_id: null };
+        try {
+          const User = require('./User');
+          const u = await User.findById(initiatorId);
+          if (u) return { id: u.id, full_name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || null, avatar_id: u.avatar_id || null };
+        } catch (e) {
+          // ignore lookup errors
+        }
+        return { id: initiatorId, full_name: null, avatar_id: null };
+      };
+
+      const buildEntity = (p) => {
+        if (!p || typeof p !== 'object') return { id: null, code: null, title: null };
+        const entityKeys = ['issue', 'document', 'question', 'user', 'project', 'entity'];
+        for (const key of entityKeys) {
+          if (Object.prototype.hasOwnProperty.call(p, key) && p[key]) {
+            const e = p[key];
+            const id = e.id || e[`${key}_id`] || null;
+            const title = e.title || e.name || e.subject || e.number || null;
+            return { id, code: key, title };
+          }
+        }
+        // If top-level has id/code/title fields
+        if (p.id || p.code || p.title || p.name) {
+          return { id: p.id || null, code: p.code || null, title: p.title || p.name || null };
+        }
+        return { id: null, code: null, title: null };
+      };
+
+      const buildContent = (p) => {
+        if (!p) return { value: null };
+        if (Object.prototype.hasOwnProperty.call(p, 'before') || Object.prototype.hasOwnProperty.call(p, 'after')) {
+          return { before: p.before || null, after: p.after || null };
+        }
+        // if payload contains changed fields map
+        if (p.changes && typeof p.changes === 'object') {
+          return { before: p.changes.before || null, after: p.changes.after || null };
+        }
+        // fallback: store provided payload (excluding large nested entities)
+        return { value: p.value !== undefined ? p.value : p };
+      };
+
+      // If payload already looks normalized, keep as is
+      const looksNormalized = sanitized && typeof sanitized === 'object' && (sanitized.initiator || sanitized.entity || sanitized.content);
+      if (!looksNormalized) {
+        const initiator = await buildInitiator(sanitized || {});
+        const entity = buildEntity(sanitized || {});
+        const content = buildContent(sanitized || {});
+        sanitized = { initiator, entity, content };
+      } else {
+        // ensure initiator has required subfields (try to fetch if only id present)
+        if (sanitized.initiator && typeof sanitized.initiator === 'object' && sanitized.initiator.id && !sanitized.initiator.full_name) {
+          try {
+            const User = require('./User');
+            const u = await User.findById(sanitized.initiator.id);
+            if (u) sanitized.initiator.full_name = `${u.first_name || ''} ${u.last_name || ''}`.trim() || null;
+            if (u && u.avatar_id) sanitized.initiator.avatar_id = u.avatar_id;
+          } catch (e) { /* ignore */ }
+        }
+        // remove null via field if present
+        if (Object.prototype.hasOwnProperty.call(sanitized, 'via') && (sanitized.via === null || typeof sanitized.via === 'undefined')) delete sanitized.via;
       }
+    } catch (e) {
+      // on any error fall back to original payload
+      sanitized = payload;
     }
     const payloadParam = sanitized ? JSON.stringify(sanitized) : null;
 
