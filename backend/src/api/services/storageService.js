@@ -39,9 +39,20 @@ class StorageService {
       return { type: 'local', path: filePath, filename: s.file_name || path.basename(filePath), mime: s.mime_type || 'application/octet-stream' };
     }
     if (s.storage_type === 's3') {
-      // If we have a public url stored, return it for redirection; otherwise not supported here
+      // If we have a public url stored, return it for redirection
       if (s.url) return { type: 's3', url: s.url, filename: s.file_name || 'file' };
-      const err = new Error('S3 download not supported'); err.statusCode = 501; throw err;
+      // Otherwise attempt to provide a readable stream from S3 for direct download
+      try {
+        const stream = await S3Service.getObjectStream({ bucket: s.bucket_name, key: s.object_key });
+        return {
+          type: 's3',
+          stream,
+          filename: s.file_name || (s.object_key ? path.basename(s.object_key) : 'file'),
+          mime: s.mime_type || 'application/octet-stream'
+        };
+      } catch (e) {
+        const err = new Error('Failed to get S3 object stream'); err.statusCode = 502; throw err;
+      }
     }
     const err = new Error('Unsupported storage type'); err.statusCode = 500; throw err;
   }
@@ -127,7 +138,7 @@ class StorageService {
     if (!file || !file.buffer || !file.originalname) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
     const bucket = opts.bucket_name || process.env.S3_DEFAULT_BUCKET || process.env.YC_S3_BUCKET;
     if (!bucket) { const err = new Error('S3 bucket not configured'); err.statusCode = 500; throw err; }
-    const uploaded = await S3Service.uploadBuffer({ buffer: file.buffer, originalName: file.originalname, bucket, contentType: file.mimetype });
+    const uploaded = await S3Service.uploadBuffer({ buffer: file.buffer, originalName: file.originalname, bucket, contentType: file.mimetype, directory: opts.directory || opts.subdir });
     const createFields = { bucket_name: uploaded.bucket, object_key: uploaded.key, storage_type: 's3', file_name: file.originalname, file_size: uploaded.size, mime_type: uploaded.content_type, uploaded_by: actor.id };
     const created = await Storage.create(createFields);
     return Object.assign({}, created, { url: uploaded.url, size: uploaded.size, content_type: uploaded.content_type });

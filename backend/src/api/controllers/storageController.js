@@ -71,7 +71,14 @@ class StorageController {
     try {
       const actor = req.user || null;
       if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
-      const created = await StorageService.uploadAndCreate(req.file, actor, req.body || {});
+      // Accept optional `directory` (or `subdir`) in request body to place object under a prefix
+      const opts = {};
+      if (req.body) {
+        if (req.body.directory) opts.directory = String(req.body.directory);
+        if (req.body.subdir) opts.directory = String(req.body.subdir);
+        if (req.body.bucket_name) opts.bucket_name = String(req.body.bucket_name);
+      }
+      const created = await StorageService.uploadAndCreate(req.file, actor, opts);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }
@@ -120,8 +127,15 @@ class StorageController {
         return;
       }
       if (info.type === 's3') {
-        // Redirect to S3 URL (may be public)
-        return res.redirect(info.url);
+        // If we have a public URL, redirect. Otherwise, stream the S3 object directly.
+        if (info.url) return res.redirect(info.url);
+        if (info.stream) {
+          res.setHeader('Content-Type', info.mime || 'application/octet-stream');
+          res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(info.filename)}`);
+          info.stream.on('error', (e) => { next(e); });
+          info.stream.pipe(res);
+          return;
+        }
       }
       const err = new Error('Unsupported storage type'); err.statusCode = 500; throw err;
     } catch (err) { next(err); }

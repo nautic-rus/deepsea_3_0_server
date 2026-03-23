@@ -12107,6 +12107,10 @@
                   "bucket_name": {
                     "type": "string",
                     "description": "Optional bucket to override default"
+                  },
+                  "directory": {
+                    "type": "string",
+                    "description": "Optional directory/prefix (subdir) to store the object under"
                   }
                 },
                 "required": [
