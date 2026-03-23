@@ -12617,8 +12617,8 @@
         "tags": [
           "users"
         ],
-        "summary": "Upload current user's avatar (local storage)",
-        "description": "Upload avatar for the currently authenticated user. Accepts multipart/form-data with field 'file'. Stores file in local uploads and updates user's avatar_id (stores reference to a `storage` record).",
+        "summary": "Upload current user's avatar (S3 storage)",
+        "description": "Upload avatar for the currently authenticated user. Accepts multipart/form-data with field 'file'. Stores file in S3 (under optional `directory`/`subdir`, default 'avatars') and updates user's avatar_id (stores reference to a `storage` record).",
         "security": [
           {
             "bearerAuth": []
@@ -12635,6 +12635,10 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "directory": {
+                    "type": "string",
+                    "description": "Optional directory/prefix to store avatar under (default: 'avatars')"
                   }
                 },
                 "required": [

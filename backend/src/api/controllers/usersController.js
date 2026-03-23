@@ -222,9 +222,13 @@ class UsersController {
       const file = req.file;
       if (!file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
 
-      // Avatars are stored only in local storage (no S3 for avatars)
+      // Store avatars in S3. Use `avatars` prefix by default; allow overriding via body.directory
       const StorageService = require('../services/storageService');
-      const createdStorage = await StorageService.uploadToLocalAndCreate(file, actor, {});
+      const opts = {};
+      if (req.body && req.body.directory) opts.directory = String(req.body.directory);
+      // default prefix
+      if (!opts.directory) opts.directory = 'avatars';
+      const createdStorage = await StorageService.uploadAndCreate(file, actor, opts);
 
       // Update current user's avatar_id to the storage record id returned by storage.
       const UserModel = require('../../db/models/User');
