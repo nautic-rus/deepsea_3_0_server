@@ -1,10 +1,9 @@
 const Document = require('../../db/models/Document');
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
+const NotificationDispatcher = require('./notificationDispatcher');
 const HistoryService = require('./historyService');
 const DocumentMessage = require('../../db/models/DocumentMessage');
-const UserNotification = require('../../db/models/UserNotification');
-const { buildNotificationData } = require('../../db/models/UserNotification');
 const DocumentStorage = require('../../db/models/DocumentStorage');
 const Storage = require('../../db/models/Storage');
 const ProtectionService = require('./protectionService');
@@ -239,197 +238,41 @@ class DocumentsService {
     const created = await Document.create(fields);
     // Intentionally do not write a history entry for document creation per request.
 
-    // Fire-and-forget: notify users who subscribed to 'document_created' (project-specific or global)
-    (async () => {
-      try {
-        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
-        const TemplateService = require('./notificationTemplateService');
-        const EmailService = require('./emailService');
-        const RocketChatService = require('./rocketChatService');
+    // Notify: document_created
+    {
+      const frontendRoot = process.env.FRONTEND_URL || '';
+      const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${created.id}` : '';
+      NotificationDispatcher.dispatch({
+        eventCode: 'document_created',
+        projectId: created.project_id,
+        actor,
+        entity: { id: created.id, code: 'document', title: created.title },
+        content: { value: created },
+        participantIds: [created.created_by, created.assigne_to],
+        templateContext: { project: { id: created.project_id, code: (project && project.code) || null }, document: created, actor, documentUrl },
+        fallbackText: `New document: ${created.title}`,
+        fallbackSubject: `New document ${created.title}`
+      });
+    }
 
-        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(created.project_id, 'document_created');
-        if (!allRecipients || allRecipients.length === 0) return;
-
-        // Only notify participants (author + assignee) of this document, excluding the actor
-        const participantIds = new Set([created.created_by, created.assigne_to].filter(Boolean).map(Number));
-        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
-        if (recipients.length === 0) return;
-
-  const frontendRoot = process.env.FRONTEND_URL || '';
-  const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${created.id}` : '';
-  // Include project.code when available so templates can render {{project.code}}
-  const context = { project: { id: created.project_id, code: (project && project.code) ? project.code : null }, document: created, actor: actor, documentUrl };
-
-        const notifiedUserIds = new Set();
-        for (const r of recipients) {
-          try {
-            // Do not send notifications to the actor who performed the action
-            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
-              // skip sending/creating notifications for the actor
-              continue;
-            }
-            if (!notifiedUserIds.has(Number(r.user_id))) {
-              notifiedUserIds.add(Number(r.user_id));
-            try {
-              const notifPayload = {
-                user_id: r.user_id,
-                event_code: 'document_created',
-                project_id: created.project_id,
-                data: buildNotificationData(actor, { id: created.id, code: 'document', title: created.title }, { value: created })
-              };
-              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
-            } catch (e) {
-              console.error('Failed to queue user notification', e && e.message ? e.message : e);
-            }
-            }
-
-            if (r.method_code === 'rocket_chat') {
-              const rendered = await TemplateService.render('document_created', 'rocket_chat', context);
-              const textToSend = rendered.text || rendered.html || `New document: ${created.title}`;
-              if (r.rc_username) {
-                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
-              } else if (r.rc_user_id) {
-                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
-              } else {
-                console.warn('No Rocket.Chat mapping for user', r.user_id);
-              }
-            } else if (r.method_code === 'email') {
-              const rendered = await TemplateService.render('document_created', 'email', context);
-              const subject = rendered.subject || `New document ${created.title}`;
-              try {
-                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
-              } catch (mailErr) {
-                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
-              }
-            } else {
-              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
-            }
-          } catch (err) {
-            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
-          }
-        }
-      } catch (err) {
-        console.error('Error while processing notifications for document_created:', err && err.stack ? err.stack : err);
-      }
-    })();
-
-    // Fire-and-forget: notify project participants subscribed to 'document_created_in_project'
-    (async () => {
-      try {
-        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
-        const TemplateService = require('./notificationTemplateService');
-        const EmailService = require('./emailService');
-        const RocketChatService = require('./rocketChatService');
-
-        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(created.project_id, 'document_created_in_project');
-        if (!allRecipients || allRecipients.length === 0) return;
-
-        // Get project participant ids (users assigned via user_roles)
-        const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [created.project_id]);
-        const participantIds = new Set((prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean));
-
-        // Keep only recipients who are project participants and not the actor
-        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
-        if (recipients.length === 0) return;
-
-        const frontendRoot = process.env.FRONTEND_URL || '';
-        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${created.id}` : '';
-        const context = { project: { id: created.project_id, code: (project && project.code) ? project.code : null }, document: created, actor: actor, documentUrl };
-
-        const notifiedUserIds = new Set();
-        for (const r of recipients) {
-          try {
-            if (!notifiedUserIds.has(Number(r.user_id))) {
-              notifiedUserIds.add(Number(r.user_id));
-            const notifPayload = {
-              user_id: r.user_id,
-              event_code: 'document_created_in_project',
-              project_id: created.project_id,
-              data: buildNotificationData(actor, { id: created.id, code: 'document', title: created.title }, { value: created })
-            };
-            UserNotification.create(notifPayload).catch(() => {});
-            }
-
-            if (r.method_code === 'rocket_chat') {
-              const rendered = await TemplateService.render('document_created_in_project', 'rocket_chat', context);
-              const textToSend = rendered.text || rendered.html || `New document: ${created.title}`;
-              if (r.rc_username) {
-                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
-              } else if (r.rc_user_id) {
-                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
-              }
-            } else if (r.method_code === 'email') {
-              const rendered = await TemplateService.render('document_created_in_project', 'email', context);
-              const subject = rendered.subject || `New document ${created.title}`;
-              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (mailErr) { console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr); }
-            }
-          } catch (e) { console.error('Failed to send document_created_in_project notification', e && e.message ? e.message : e); }
-        }
-      } catch (err) { console.error('Error while processing notifications for document_created_in_project', err && err.stack ? err.stack : err); }
-    })();
-
-    // Fire-and-forget: notify project participants subscribed to 'document_uploaded_in_project'
-    (async () => {
-      try {
-        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
-        const TemplateService = require('./notificationTemplateService');
-        const EmailService = require('./emailService');
-        const RocketChatService = require('./rocketChatService');
-
-        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'document_uploaded_in_project');
-        if (!allRecipients || allRecipients.length === 0) return;
-
-        // Get project participant ids (users assigned via user_roles)
-        const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [existing.project_id]);
-        const participantIds = new Set((prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean));
-
-        // Keep only recipients who are project participants and not the actor
-        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
-        if (recipients.length === 0) return;
-
-        const frontendRoot = process.env.FRONTEND_URL || '';
-        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
-        const context = {
-          project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) ? _projForAttach.code : null },
-          document: existing,
-          actor: actor,
-          documentUrl,
-          storage_items: storageItems,
-          storage_item: storage_item,
-          storage_file_list: storageItems.map(s => s.file_name).join('\n')
-        };
-
-        const notifiedUserIds = new Set();
-        for (const r of recipients) {
-          try {
-            if (!notifiedUserIds.has(Number(r.user_id))) {
-              notifiedUserIds.add(Number(r.user_id));
-            const notifPayload = {
-              user_id: r.user_id,
-              event_code: 'document_uploaded_in_project',
-              project_id: existing.project_id,
-              data: buildNotificationData(actor, { id: existing.id, code: 'document', title: existing.title }, { value: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr })
-            };
-            UserNotification.create(notifPayload).catch(() => {});
-            }
-
-            if (r.method_code === 'rocket_chat') {
-              const rendered = await TemplateService.render('document_uploaded_in_project', 'rocket_chat', context);
-              const textToSend = rendered.text || rendered.html || `Document uploaded: ${existing.title}`;
-              if (r.rc_username) {
-                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
-              } else if (r.rc_user_id) {
-                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
-              }
-            } else if (r.method_code === 'email') {
-              const rendered = await TemplateService.render('document_uploaded_in_project', 'email', context);
-              const subject = rendered.subject || `Document uploaded ${existing.title}`;
-              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (mailErr) { console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr); }
-            }
-          } catch (e) { console.error('Failed to send document_uploaded_in_project notification', e && e.message ? e.message : e); }
-        }
-      } catch (err) { console.error('Error while processing notifications for document_uploaded_in_project', err && err.stack ? err.stack : err); }
-    })();
+    // Notify: document_created_in_project
+    {
+      const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [created.project_id]);
+      const projectParticipantIds = (prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean);
+      const frontendRoot = process.env.FRONTEND_URL || '';
+      const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${created.id}` : '';
+      NotificationDispatcher.dispatch({
+        eventCode: 'document_created_in_project',
+        projectId: created.project_id,
+        actor,
+        entity: { id: created.id, code: 'document', title: created.title },
+        content: { value: created },
+        participantIds: projectParticipantIds,
+        templateContext: { project: { id: created.project_id, code: (project && project.code) || null }, document: created, actor, documentUrl },
+        fallbackText: `New document: ${created.title}`,
+        fallbackSubject: `New document ${created.title}`
+      });
+    }
 
     return created;
   }
@@ -467,140 +310,41 @@ class DocumentsService {
         await HistoryService.addDocumentHistory(Number(id), actor, 'updated', { before: existing, after: updated });
       } catch (e) { console.error('Failed to write document history for update', e && e.message ? e.message : e); }
     })();
-    // Fire-and-forget: notify users subscribed to 'document_updated'
-    (async () => {
-      try {
-        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
-        const TemplateService = require('./notificationTemplateService');
-        const EmailService = require('./emailService');
-        const RocketChatService = require('./rocketChatService');
+    // Notify: document_updated
+    {
+      const Project = require('../../db/models/Project');
+      let _project = null;
+      try { _project = await Project.findById(Number(updated.project_id)); } catch (e) { _project = null; }
+      const frontendRoot = process.env.FRONTEND_URL || '';
+      const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${updated.id}` : '';
+      const projCtx = { id: updated.project_id, code: (_project && _project.code) || null };
+      NotificationDispatcher.dispatch({
+        eventCode: 'document_updated',
+        projectId: updated.project_id,
+        actor,
+        entity: { id: updated.id, code: 'document', title: updated.title },
+        content: { before: existing, after: updated },
+        participantIds: [updated.created_by, updated.assigne_to, existing.created_by, existing.assigne_to],
+        templateContext: { project: projCtx, document: updated, actor, documentUrl, changes: { before: existing, after: updated } },
+        fallbackText: `Document updated: ${updated.title}`,
+        fallbackSubject: `Document updated ${updated.title}`
+      });
 
-        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'document_updated');
-        if (!allRecipients || allRecipients.length === 0) return;
-
-        // Only notify participants (author + assignee) of this document, excluding the actor
-        const participantIds = new Set([updated.created_by, updated.assigne_to, existing.created_by, existing.assigne_to].filter(Boolean).map(Number));
-        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
-        if (recipients.length === 0) return;
-
-        const frontendRoot = process.env.FRONTEND_URL || '';
-        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${updated.id}` : '';
-        // Try to fetch project to include its code in notification context
-        let _project = null;
-        try {
-          const Project = require('../../db/models/Project');
-          _project = await Project.findById(Number(updated.project_id));
-        } catch (e) {
-          _project = null;
-        }
-        const context = { project: { id: updated.project_id, code: (_project && _project.code) ? _project.code : null }, document: updated, actor: actor, documentUrl, changes: { before: existing, after: updated } };
-
-        const notifiedUserIds = new Set();
-        for (const r of recipients) {
-          try {
-            // Do not send notifications to the actor who performed the action
-            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
-              continue;
-            }
-            if (!notifiedUserIds.has(Number(r.user_id))) {
-              notifiedUserIds.add(Number(r.user_id));
-            try {
-              const notifPayload = {
-                user_id: r.user_id,
-                event_code: 'document_updated',
-                project_id: updated.project_id,
-                data: buildNotificationData(actor, { id: updated.id, code: 'document', title: updated.title }, { before: existing, after: updated })
-              };
-              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
-            } catch (e) {
-              console.error('Failed to queue user notification', e && e.message ? e.message : e);
-            }
-            }
-
-            if (r.method_code === 'rocket_chat') {
-              const rendered = await TemplateService.render('document_updated', 'rocket_chat', context);
-              const textToSend = rendered.text || rendered.html || `Document updated: ${updated.title}`;
-              if (r.rc_username) {
-                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
-              } else if (r.rc_user_id) {
-                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
-              } else {
-                console.warn('No Rocket.Chat mapping for user', r.user_id);
-              }
-            } else if (r.method_code === 'email') {
-              const rendered = await TemplateService.render('document_updated', 'email', context);
-              const subject = rendered.subject || `Document updated ${updated.title}`;
-              try {
-                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
-              } catch (mailErr) {
-                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
-              }
-            } else {
-              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
-            }
-          } catch (err) {
-            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
-          }
-        }
-      } catch (err) {
-        console.error('Error while processing notifications for document_updated:', err && err.stack ? err.stack : err);
-      }
-    })();
-
-    // Fire-and-forget: notify project participants subscribed to 'document_updated_in_project'
-    (async () => {
-      try {
-        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
-        const TemplateService = require('./notificationTemplateService');
-        const EmailService = require('./emailService');
-        const RocketChatService = require('./rocketChatService');
-
-        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(updated.project_id, 'document_updated_in_project');
-        if (!allRecipients || allRecipients.length === 0) return;
-
-        // Get project participant ids (users assigned via user_roles)
-        const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [updated.project_id]);
-        const participantIds = new Set((prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean));
-
-        // Keep only recipients who are project participants and not the actor
-        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
-        if (recipients.length === 0) return;
-
-        const frontendRoot = process.env.FRONTEND_URL || '';
-        const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${updated.id}` : '';
-        const context = { project: { id: updated.project_id, code: (_project && _project.code) ? _project.code : null }, document: updated, actor: actor, documentUrl, changes: { before: existing, after: updated } };
-
-        const notifiedUserIds = new Set();
-        for (const r of recipients) {
-          try {
-            if (!notifiedUserIds.has(Number(r.user_id))) {
-              notifiedUserIds.add(Number(r.user_id));
-            const notifPayload = {
-              user_id: r.user_id,
-              event_code: 'document_updated_in_project',
-              project_id: updated.project_id,
-              data: buildNotificationData(actor, { id: updated.id, code: 'document', title: updated.title }, { before: existing, after: updated })
-            };
-            UserNotification.create(notifPayload).catch(() => {});
-            }
-
-            if (r.method_code === 'rocket_chat') {
-              const rendered = await TemplateService.render('document_updated_in_project', 'rocket_chat', context);
-              const textToSend = rendered.text || rendered.html || `Document updated: ${updated.title}`;
-              if (r.rc_username) {
-                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
-              } else if (r.rc_user_id) {
-                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
-              }
-            } else if (r.method_code === 'email') {
-              const rendered = await TemplateService.render('document_updated_in_project', 'email', context);
-              const subject = rendered.subject || `Document updated ${updated.title}`;
-              try { await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html }); } catch (mailErr) { console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr); }
-            }
-          } catch (e) { console.error('Failed to send document_updated_in_project notification', e && e.message ? e.message : e); }
-        }
-      } catch (err) { console.error('Error while processing notifications for document_updated_in_project', err && err.stack ? err.stack : err); }
-    })();
+      // Notify: document_updated_in_project
+      const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [updated.project_id]);
+      const projectParticipantIds = (prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean);
+      NotificationDispatcher.dispatch({
+        eventCode: 'document_updated_in_project',
+        projectId: updated.project_id,
+        actor,
+        entity: { id: updated.id, code: 'document', title: updated.title },
+        content: { before: existing, after: updated },
+        participantIds: projectParticipantIds,
+        templateContext: { project: projCtx, document: updated, actor, documentUrl, changes: { before: existing, after: updated } },
+        fallbackText: `Document updated: ${updated.title}`,
+        fallbackSubject: `Document updated ${updated.title}`
+      });
+    }
 
     return updated;
   }
@@ -664,80 +408,25 @@ class DocumentsService {
 
     // Intentionally not recording a history entry for comment creation per request.
 
-    // Notify subscribers (email/rocket/center notification)
-    (async () => {
-      try {
-        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
-        const TemplateService = require('./notificationTemplateService');
-        const EmailService = require('./emailService');
-        const RocketChatService = require('./rocketChatService');
-
-        const allRecipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'comment_added');
-        if (!allRecipients || allRecipients.length === 0) return;
-
-        // Only notify participants (author + assignee) of this document, excluding the actor
-        const participantIds = new Set([existing.created_by, existing.assigne_to].filter(Boolean).map(Number));
-        const recipients = allRecipients.filter(r => participantIds.has(Number(r.user_id)) && (!actor || Number(r.user_id) !== Number(actor.id)));
-        if (recipients.length === 0) return;
-
-  const frontendRoot = process.env.FRONTEND_URL || '';
-  const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
-  // Include project.code when possible
-  let _projForComment = null;
-  try { const Project = require('../../db/models/Project'); _projForComment = await Project.findById(Number(existing.project_id)); } catch (e) { _projForComment = null; }
-  const context = { project: { id: existing.project_id, code: (_projForComment && _projForComment.code) ? _projForComment.code : null }, targetType: 'Document', targetId: existing.id, targetTitle: existing.title, targetUrl, actor: actor, message: created };
-
-        const notifiedUserIds = new Set();
-        for (const r of recipients) {
-          try {
-            // Do not send notifications to the actor who performed the action
-            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
-              continue;
-            }
-            if (!notifiedUserIds.has(Number(r.user_id))) {
-              notifiedUserIds.add(Number(r.user_id));
-            try {
-              const notifPayload = {
-                user_id: r.user_id,
-                event_code: 'comment_added',
-                project_id: existing.project_id,
-                data: buildNotificationData(actor, { id: existing.id, code: 'document', title: existing.title }, { value: created.content })
-              };
-              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
-            } catch (e) {
-              console.error('Failed to queue user notification', e && e.message ? e.message : e);
-            }
-            }
-
-            if (r.method_code === 'rocket_chat') {
-              const rendered = await TemplateService.render('comment_added', 'rocket_chat', context);
-              const textToSend = rendered.text || rendered.html || `${existing.title}: new comment`;
-              if (r.rc_username) {
-                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
-              } else if (r.rc_user_id) {
-                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
-              } else {
-                console.warn('No Rocket.Chat mapping for user', r.user_id);
-              }
-            } else if (r.method_code === 'email') {
-              const rendered = await TemplateService.render('comment_added', 'email', context);
-              const subject = rendered.subject || `New comment on document ${existing.title}`;
-              try {
-                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
-              } catch (mailErr) {
-                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
-              }
-            } else {
-              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
-            }
-          } catch (err) {
-            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
-          }
-        }
-      } catch (err) {
-        console.error('Error while processing notifications for document comment_added:', err && err.stack ? err.stack : err);
-      }
-    })();
+    // Notify: comment_added (document)
+    {
+      const Project = require('../../db/models/Project');
+      let _projForComment = null;
+      try { _projForComment = await Project.findById(Number(existing.project_id)); } catch (e) { _projForComment = null; }
+      const frontendRoot = process.env.FRONTEND_URL || '';
+      const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
+      NotificationDispatcher.dispatch({
+        eventCode: 'comment_added',
+        projectId: existing.project_id,
+        actor,
+        entity: { id: existing.id, code: 'document', title: existing.title },
+        content: { value: created.content },
+        participantIds: [existing.created_by, existing.assigne_to],
+        templateContext: { project: { id: existing.project_id, code: (_projForComment && _projForComment.code) || null }, targetType: 'Document', targetId: existing.id, targetTitle: existing.title, targetUrl, actor, message: created },
+        fallbackText: `${existing.title}: new comment`,
+        fallbackSubject: `New comment on document ${existing.title}`
+      });
+    }
 
     return created;
   }
@@ -779,88 +468,49 @@ class DocumentsService {
     if (attached) attachedArr.push(attached);
   }
     // Do not record a history entry for file attachment per request.
-    // Fire-and-forget: notify subscribers of 'document_uploaded'
-    (async () => {
-      try {
-        const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
-        const TemplateService = require('./notificationTemplateService');
-        const EmailService = require('./emailService');
-        const RocketChatService = require('./rocketChatService');
+    // Notify: document_uploaded
+    {
+      const Project = require('../../db/models/Project');
+      let _projForAttach = null;
+      try { _projForAttach = await Project.findById(Number(existing.project_id)); } catch (e) { _projForAttach = null; }
+      const frontendRoot = process.env.FRONTEND_URL || '';
+      const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
+      const storage_item = storageItems[0] || null;
+      NotificationDispatcher.dispatch({
+        eventCode: 'document_uploaded',
+        projectId: existing.project_id,
+        actor,
+        entity: { id: existing.id, code: 'document', title: existing.title },
+        content: { value: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr },
+        participantIds: [],
+        templateContext: {
+          project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) || null },
+          document: existing, actor, documentUrl,
+          storage_items: storageItems, storage_item, storage_file_list: storageItems.map(s => s.file_name).join('\n')
+        },
+        fallbackText: `Document uploaded: ${existing.title}`,
+        fallbackSubject: `Document uploaded ${existing.title}`
+      });
 
-        const recipients = await UserNotificationSetting.getRecipientsForEvent(existing.project_id, 'document_uploaded');
-        if (!recipients || recipients.length === 0) return;
-
-  const frontendRoot = process.env.FRONTEND_URL || '';
-  const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
-  // Include project.code for templates
-  let _projForAttach = null;
-  try { const Project = require('../../db/models/Project'); _projForAttach = await Project.findById(Number(existing.project_id)); } catch (e) { _projForAttach = null; }
-  // Include storage info in context so templates can render file_name and other metadata.
-  // Provide `storage_items` (array), `storage_item` (first item for backward compat),
-  // and `storage_file_list` (joined string) so templates (which are simple replacements)
-  // can show one or many filenames.
-  const storage_item = storageItems[0] || null;
-  const context = {
-    project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) ? _projForAttach.code : null },
-    document: existing,
-    actor: actor,
-    documentUrl,
-    storage_items: storageItems,
-    storage_item: storage_item,
-    storage_file_list: storageItems.map(s => s.file_name).join('\n')
-  };
-
-        const notifiedUserIds = new Set();
-        for (const r of recipients) {
-          try {
-            // Do not send notifications to the actor who performed the action
-            if (actor && typeof r.user_id !== 'undefined' && Number(r.user_id) === Number(actor.id)) {
-              continue;
-            }
-            if (!notifiedUserIds.has(Number(r.user_id))) {
-              notifiedUserIds.add(Number(r.user_id));
-            try {
-              const notifPayload = {
-                user_id: r.user_id,
-                event_code: 'document_uploaded',
-                project_id: existing.project_id,
-                data: buildNotificationData(actor, { id: existing.id, code: 'document', title: existing.title }, { value: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr })
-              };
-              UserNotification.create(notifPayload).catch((e) => console.error('Failed to create user notification', e && e.message ? e.message : e));
-            } catch (e) {
-              console.error('Failed to queue user notification', e && e.message ? e.message : e);
-            }
-            }
-
-            if (r.method_code === 'rocket_chat') {
-              const rendered = await TemplateService.render('document_uploaded', 'rocket_chat', context);
-              const textToSend = rendered.text || rendered.html || `Document uploaded: ${existing.title}`;
-              if (r.rc_username) {
-                await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text: textToSend });
-              } else if (r.rc_user_id) {
-                await RocketChatService.sendMessage({ channel: r.rc_user_id, text: textToSend });
-              } else {
-                console.warn('No Rocket.Chat mapping for user', r.user_id);
-              }
-            } else if (r.method_code === 'email') {
-              const rendered = await TemplateService.render('document_uploaded', 'email', context);
-              const subject = rendered.subject || `Document uploaded ${existing.title}`;
-              try {
-                await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
-              } catch (mailErr) {
-                console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
-              }
-            } else {
-              console.log(`Unknown notification method ${r.method_code} for user ${r.user_id}`);
-            }
-          } catch (err) {
-            console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
-          }
-        }
-      } catch (err) {
-        console.error('Error while processing notifications for document_uploaded:', err && err.stack ? err.stack : err);
-      }
-    })();
+      // Notify: document_uploaded_in_project
+      const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [existing.project_id]);
+      const projectParticipantIds = (prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean);
+      NotificationDispatcher.dispatch({
+        eventCode: 'document_uploaded_in_project',
+        projectId: existing.project_id,
+        actor,
+        entity: { id: existing.id, code: 'document', title: existing.title },
+        content: { value: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr },
+        participantIds: projectParticipantIds,
+        templateContext: {
+          project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) || null },
+          document: existing, actor, documentUrl,
+          storage_items: storageItems, storage_item, storage_file_list: storageItems.map(s => s.file_name).join('\n')
+        },
+        fallbackText: `Document uploaded: ${existing.title}`,
+        fallbackSubject: `Document uploaded ${existing.title}`
+      });
+    }
 
   // Return attached items. If single item was attached, return the object for
   // backward compatibility; otherwise return the array of attached objects.
