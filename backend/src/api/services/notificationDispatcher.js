@@ -12,6 +12,7 @@
 const UserNotification = require('../../db/models/UserNotification');
 const { buildNotificationData, resolveFieldNames } = require('../../db/models/UserNotification');
 const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+const User = require('../../db/models/User');
 const TemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
 const RocketChatService = require('./rocketChatService');
@@ -94,23 +95,31 @@ class NotificationDispatcher {
       try {
         const uid = Number(r.user_id);
 
-        // Create center notification (once per user)
+        // Create center notification (once per user) unless user is inactive
+        const isActive = typeof r.is_active !== 'undefined' ? Boolean(r.is_active) : true;
         if (!notifiedUserIds.has(uid)) {
+          // mark as handled to avoid duplicate attempts (even if inactive)
           notifiedUserIds.add(uid);
-          try {
-            UserNotification.create({
-              user_id: uid,
-              event_code: eventCode,
-              project_id: projectId,
-              data: notifData
-            }).catch(e => console.error('Failed to create user notification', e && e.message ? e.message : e));
-          } catch (e) {
-            console.error('Failed to queue user notification', e && e.message ? e.message : e);
+          if (isActive) {
+            try {
+              UserNotification.create({
+                user_id: uid,
+                event_code: eventCode,
+                project_id: projectId,
+                data: notifData
+              }).catch(e => console.error('Failed to create user notification', e && e.message ? e.message : e));
+            } catch (e) {
+              console.error('Failed to queue user notification', e && e.message ? e.message : e);
+            }
           }
         }
 
-        // Deliver via channel
+        // Deliver via channel (skip external channels for inactive users)
         if (r.method_code === 'rocket_chat') {
+          if (!isActive) {
+            // skip sending to inactive user's Rocket.Chat
+            continue;
+          }
           const rendered = await TemplateService.render(eventCode, 'rocket_chat', templateContext);
           const text = rendered.text || rendered.html || fallbackText;
           if (r.rc_username) {
@@ -119,6 +128,10 @@ class NotificationDispatcher {
             await RocketChatService.sendMessage({ channel: r.rc_user_id, text });
           }
         } else if (r.method_code === 'email') {
+          if (!isActive) {
+            // skip sending email to inactive user
+            continue;
+          }
           const rendered = await TemplateService.render(eventCode, 'email', templateContext);
           const subject = rendered.subject || fallbackSubject || `Notification: ${eventCode}`;
           try {
@@ -137,13 +150,21 @@ class NotificationDispatcher {
       for (const uid of directUserIds) {
         const numUid = Number(uid);
         if (uid && !notifiedUserIds.has(numUid)) {
-          notifiedUserIds.add(numUid);
-          UserNotification.create({
-            user_id: numUid,
-            event_code: eventCode,
-            project_id: projectId,
-            data: notifData
-          }).catch(e => console.error('Failed to create direct user notification', e && e.message ? e.message : e));
+          // check if user is active before creating center notification
+          try {
+            const user = await User.findById(numUid);
+            notifiedUserIds.add(numUid);
+            if (user && user.is_active) {
+              UserNotification.create({
+                user_id: numUid,
+                event_code: eventCode,
+                project_id: projectId,
+                data: notifData
+              }).catch(e => console.error('Failed to create direct user notification', e && e.message ? e.message : e));
+            }
+          } catch (e) {
+            console.error('Failed to check/create direct user notification for', numUid, e && e.message ? e.message : e);
+          }
         }
       }
     }

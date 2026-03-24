@@ -94,17 +94,25 @@ class UserNotificationSetting {
       return res.rows;
     }
 
-    // Return one row per user per active notification method so that callers
-    // can iterate and send via rocket_chat / email as before.
+    // Normal-case: return one row per user per enabled notification method
+    // based on user_notification_settings for the given event and project.
+    // If project_id is non-null we include settings for that project and
+    // global settings (project_id IS NULL). If project_id is null we only
+    // include global settings (project_id IS NULL).
     const q = `
-      SELECT u.id AS user_id, nm.code AS method_code, urc.rc_username, urc.rc_user_id, u.email
-      FROM public.users u
-      CROSS JOIN public.notification_methods nm
-      LEFT JOIN public.user_rocket_chat urc ON urc.user_id = u.id
-      WHERE nm.status = true
+      SELECT uns.user_id, nm.code AS method_code, urc.rc_username, urc.rc_user_id, u.email, u.is_active
+      FROM public.user_notification_settings uns
+      JOIN public.notification_events ne ON ne.id = uns.event_id
+      JOIN public.notification_methods nm ON nm.id = uns.method_id
+      LEFT JOIN public.user_rocket_chat urc ON urc.user_id = uns.user_id
+      LEFT JOIN public.users u ON u.id = uns.user_id
+      WHERE ne.code = $2
+        AND uns.enabled = true
+        AND nm.status = true
+        AND (uns.project_id IS NULL OR uns.project_id IS NOT DISTINCT FROM $1)
     `;
-    const res = await pool.query(q);
-    return res.rows;
+    const res = await pool.query(q, [project_id, event_code]);
+    return res.rows || [];
   }
 
 }
