@@ -33,6 +33,14 @@ class CustomerQuestion {
       values.push(is_closed);
     }
     if (project_id !== undefined && project_id !== null) { where.push(`(cq.project_id IS NULL OR cq.project_id = $${idx++})`); values.push(project_id); }
+    // allowed_project_ids: only include questions that belong to these projects (or have no project)
+    if (filters.allowed_project_ids !== undefined && filters.allowed_project_ids !== null) {
+      const arr = Array.isArray(filters.allowed_project_ids) ? filters.allowed_project_ids.map(p => Number(p)).filter(p => !Number.isNaN(p)) : [Number(filters.allowed_project_ids)].filter(p => !Number.isNaN(p));
+      if (arr.length === 0) return [];
+      where.push(`(cq.project_id IS NULL OR cq.project_id = ANY($${idx}::int[]))`);
+      values.push(arr);
+      idx++;
+    }
     if (search) { where.push(`(question_text ILIKE $${idx} OR answer_text ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     if (created_at_from) { where.push(`cq.created_at >= $${idx++}`); values.push(created_at_from); }
     if (created_at_to) { where.push(`cq.created_at <= $${idx++}`); values.push(created_at_to); }
