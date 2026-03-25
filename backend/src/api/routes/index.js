@@ -88,6 +88,9 @@ router.delete('/users/notification_settings', authMiddleware, userNotificationSe
 // User notification center (current user) - placed before `/users/:id` to avoid route clash
 router.get('/users/notifications', authMiddleware, userNotificationsController.list);
 
+// GET /api/users/statistics (user statistics for current authenticated user)
+router.get('/users/statistics', authMiddleware, usersController.getStatistics);
+
 // GET /api/users/:id (single user)
 router.get('/users/:id', authMiddleware, usersController.getUser);
 

@@ -189,6 +189,74 @@ class UsersService {
   }
 
   /**
+   * Get aggregated statistics for a given user.
+   * Returns project count, issues counts, documents counts and customer question counts.
+   */
+  static async getUserStatistics(userId, actor) {
+    const pool = require('../../db/connection');
+    const Project = require('../../db/models/Project');
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    // allow if actor has users.view or is requesting their own stats
+    const allowed = await hasPermission(actor, 'users.view');
+    if (!allowed && Number(actor.id) !== Number(userId)) { const err = new Error('Forbidden: missing permission users.view'); err.statusCode = 403; throw err; }
+
+    const uid = Number(userId);
+
+    // projects count (assigned via user_roles)
+    const projectIds = await Project.listAssignedProjectIds(uid);
+    const projects_count = (projectIds || []).length;
+
+    // issues: total, open (status.is_final != true), added last 7 days (author)
+    const issuesTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE (assignee_id = $1 OR author_id = $1) AND is_active = true`, [uid]);
+    const issues_total = Number(issuesTotalRes.rows[0] ? issuesTotalRes.rows[0].cnt : 0);
+
+    const issuesOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues i JOIN issue_status s ON i.status_id = s.id WHERE (i.assignee_id = $1 OR i.author_id = $1) AND (s.is_final IS NOT TRUE) AND i.is_active = true`, [uid]);
+    const issues_open = Number(issuesOpenRes.rows[0] ? issuesOpenRes.rows[0].cnt : 0);
+
+    const issuesWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE author_id = $1 AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
+    const issues_last_week = Number(issuesWeekRes.rows[0] ? issuesWeekRes.rows[0].cnt : 0);
+
+    // documents: total, open (document_status.is_final != true), added last 7 days (created_by)
+    const docsTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND is_active = true`, [uid]);
+    const documents_total = Number(docsTotalRes.rows[0] ? docsTotalRes.rows[0].cnt : 0);
+
+    const docsOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents d JOIN document_status s ON d.status_id = s.id WHERE (d.created_by = $1 OR d.responsible_id = $1) AND (s.is_final IS NOT TRUE) AND d.is_active = true`, [uid]);
+    const documents_open = Number(docsOpenRes.rows[0] ? docsOpenRes.rows[0].cnt : 0);
+
+    const docsWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
+    const documents_last_week = Number(docsWeekRes.rows[0] ? docsWeekRes.rows[0].cnt : 0);
+
+    // customer questions: total, open (status.is_final != true), added last 7 days (asked_by)
+    const cqTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE (asked_by = $1 OR answered_by = $1) AND is_active = true`, [uid]);
+    const customer_questions_total = Number(cqTotalRes.rows[0] ? cqTotalRes.rows[0].cnt : 0);
+
+    const cqOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions cq JOIN customer_question_status cs ON cq.status_id = cs.id WHERE (cq.asked_by = $1 OR cq.answered_by = $1) AND (cs.is_final IS NOT TRUE) AND cq.is_active = true`, [uid]);
+    const customer_questions_open = Number(cqOpenRes.rows[0] ? cqOpenRes.rows[0].cnt : 0);
+
+    const cqWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE asked_by = $1 AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
+    const customer_questions_last_week = Number(cqWeekRes.rows[0] ? cqWeekRes.rows[0].cnt : 0);
+
+    return {
+      projects_count,
+      issues: {
+        total: issues_total,
+        open: issues_open,
+        last_week: issues_last_week
+      },
+      documents: {
+        total: documents_total,
+        open: documents_open,
+        last_week: documents_last_week
+      },
+      customer_questions: {
+        total: customer_questions_total,
+        open: customer_questions_open,
+        last_week: customer_questions_last_week
+      }
+    };
+  }
+
+  /**
    * Получить одного пользователя по id
    */
   static async getUserById(id, actor) {

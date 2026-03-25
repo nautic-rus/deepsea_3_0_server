@@ -162,6 +162,18 @@ class UsersController {
   }
 
   /**
+   * Get user statistics (projects, issues, documents, customer questions).
+   */
+  static async getStatistics(req, res, next) {
+    try {
+      const actor = req.user || null;
+      if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+      const stats = await UsersService.getUserStatistics(Number(actor.id), actor);
+      res.status(200).json({ data: stats });
+    } catch (error) { next(error); }
+  }
+
+  /**
    * Update current user's profile (email, phone, first_name, last_name, middle_name, rocket_login)
    */
   static async updateProfile(req, res, next) {

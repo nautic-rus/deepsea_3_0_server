@@ -1807,6 +1807,37 @@
           }
         }
       }
+      ,
+      "UserStatistics": {
+        "type": "object",
+        "properties": {
+          "projects_count": { "type": "integer", "example": 3 },
+          "issues": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer", "example": 42 },
+              "open": { "type": "integer", "example": 5 },
+              "last_week": { "type": "integer", "example": 2 }
+            }
+          },
+          "documents": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer", "example": 10 },
+              "open": { "type": "integer", "example": 1 },
+              "last_week": { "type": "integer", "example": 0 }
+            }
+          },
+          "customer_questions": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer", "example": 7 },
+              "open": { "type": "integer", "example": 3 },
+              "last_week": { "type": "integer", "example": 1 }
+            }
+          }
+        }
+      }
     }
   },
   "paths": {
@@ -12835,6 +12866,41 @@
         }
       }
     },
+    "/api/users/statistics": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get current user's statistics",
+        "description": "Aggregated counts for the current authenticated user's projects, issues, documents and customer questions.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "users.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "Statistics returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "$ref": "#/components/schemas/UserStatistics" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden - missing permission users.view" }
+        }
+      }
+    },
+
     "/api/users/{id}/notifications": {
       "get": {
         "tags": [
