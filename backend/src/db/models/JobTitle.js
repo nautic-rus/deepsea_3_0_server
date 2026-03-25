@@ -27,7 +27,7 @@ class JobTitle {
   }
 
   static async update(id, fields) {
-    const allowed = ['name'];
+    const allowed = ['name', 'description'];
     const sets = [];
     const params = [];
     let idx = 1;

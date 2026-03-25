@@ -26,6 +26,7 @@ class JobTitlesService {
     if (!allowed) { const err = new Error('Forbidden: missing permission job_titles.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     if (fields.name !== undefined && (!fields.name || typeof fields.name !== 'string')) { const err = new Error('Invalid name'); err.statusCode = 400; throw err; }
+    if (fields.description !== undefined && fields.description !== null && typeof fields.description !== 'string') { const err = new Error('Invalid description'); err.statusCode = 400; throw err; }
     const updated = await JobTitle.update(Number(id), fields);
     if (!updated) { const err = new Error('Job title not found'); err.statusCode = 404; throw err; }
     return updated;
