@@ -69,7 +69,8 @@ class CustomerQuestionsController {
         return;
       }
       const { storage_id } = req.body || {};
-      const created = await CustomerQuestionsService.attachFileToQuestion(Number(id), Number(storage_id), actor);
+      const storagePayload = Array.isArray(storage_id) ? storage_id.map(Number) : Number(storage_id);
+      const created = await CustomerQuestionsService.attachFileToQuestion(Number(id), storagePayload, actor);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }

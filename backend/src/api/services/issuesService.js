@@ -666,12 +666,19 @@ class IssuesService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission issues.update'); err.statusCode = 403; throw err; }
-    if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
+    if (!id || Number.isNaN(Number(id)) || !storageId) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
 
-  const existing = await Issue.findById(Number(id));
-  if (!existing || existing.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
-    const storageItem = await Storage.findById(Number(storageId));
-    if (!storageItem) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
+    const existing = await Issue.findById(Number(id));
+    if (!existing || existing.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+    // support single storageId or array of storageIds
+    const storageIds = Array.isArray(storageId) ? storageId.map(Number) : [Number(storageId)];
+    const storageItems = [];
+    for (const sid of storageIds) {
+      if (!sid || Number.isNaN(Number(sid))) { const err = new Error('Invalid storage id'); err.statusCode = 400; throw err; }
+      const si = await Storage.findById(Number(sid));
+      if (!si) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
+      storageItems.push(si);
+    }
 
     // Ensure actor belongs to the project's scope unless elevated
     const canUpdateAll = await hasPermission(actor, 'issues.update_all');
@@ -682,16 +689,18 @@ class IssuesService {
       if (!isAssigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
     }
 
-    const attached = await IssueStorage.attach({ issue_id: Number(id), storage_id: Number(storageId) });
-
-    // History: store filename (not id) as new_value
-    (async () => {
-      try {
-        await HistoryService.addIssueHistory(Number(id), actor, 'file_attached', { before: null, after: storageItem.file_name || null });
-      } catch (e) { console.error('Failed to write issue history for file attach', e && e.message ? e.message : e); }
-    })();
-
-    return attached;
+    const attachedArr = [];
+    for (const si of storageItems) {
+      const attached = await IssueStorage.attach({ issue_id: Number(id), storage_id: Number(si.id) });
+      if (attached) attachedArr.push(attached);
+      // History: store filename (not id) as new_value per file
+      (async () => {
+        try {
+          await HistoryService.addIssueHistory(Number(id), actor, 'file_attached', { before: null, after: si.file_name || null });
+        } catch (e) { console.error('Failed to write issue history for file attach', e && e.message ? e.message : e); }
+      })();
+    }
+    return attachedArr.length === 1 ? attachedArr[0] : attachedArr;
   }
 
   static async detachFileFromIssue(id, storageId, actor) {

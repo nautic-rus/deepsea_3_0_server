@@ -3374,7 +3374,11 @@ paths:
                 - storage_id
               properties:
                 storage_id:
-                  type: integer
+                  oneOf:
+                    - type: integer
+                    - type: array
+                      items:
+                        type: integer
       responses:
         '201':
           description: Attached
@@ -3577,6 +3581,62 @@ paths:
           description: Forbidden - missing permission customer_questions.comment
         '404':
           description: Customer question not found
+  /api/customer_questions/{id}/files:
+    post:
+      tags:
+        - customer_questions
+      summary: Прикрепить файл к вопросу клиента
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - customer_questions.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID вопроса клиента
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - storage_id
+              properties:
+                storage_id:
+                  oneOf:
+                    - type: integer
+                    - type: array
+                      items:
+                        type: integer
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Attached
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StorageRef'
+        '400':
+          description: Invalid input or ids
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission customer_questions.update
+        '404':
+          description: Question or storage item not found
   /api/documents/{id}/files:
     post:
       tags:
@@ -3598,12 +3658,50 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - storage_id
-              properties:
-                storage_id:
-                  type: integer
+              oneOf:
+                - type: object
+                  required:
+                    - storage_id
+                  properties:
+                    storage_id:
+                      oneOf:
+                        - type: integer
+                        - type: array
+                          items:
+                            type: integer
+                    type_id:
+                      type: integer
+                      description: Optional documents_storage_type id
+                    rev:
+                      type: integer
+                      description: Optional revision/version number
+                    archive:
+                      type: boolean
+                      description: Mark this attachment as archived
+                    archive_data:
+                      type: string
+                      format: date-time
+                      description: Archive timestamp (ISO)
+                - type: array
+                  items:
+                    type: object
+                    required:
+                      - storage_id
+                    properties:
+                      storage_id:
+                        type: integer
+                      type_id:
+                        type: integer
+                        description: Optional documents_storage_type id (per-item)
+                      rev:
+                        type: integer
+                        description: Optional revision/version number (per-item)
+                      archive:
+                        type: boolean
+                      archive_data:
+                        type: string
+                        format: date-time
+                        description: Archive timestamp (ISO)
       responses:
         '201':
           description: Attached

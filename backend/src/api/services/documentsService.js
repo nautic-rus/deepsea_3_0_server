@@ -436,15 +436,33 @@ class DocumentsService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
-    if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
+    if (!id || Number.isNaN(Number(id)) || (storageId === undefined || storageId === null)) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
 
-  const existing = await Document.findById(Number(id));
-  if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
-    // support single storageId or array of storageIds (bulk attach)
-    const storageIds = Array.isArray(storageId) ? storageId.map(Number) : [Number(storageId)];
+    const existing = await Document.findById(Number(id));
+    if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+    // Normalize storage entries to array of objects: { storage_id, type_id, rev, archive, archive_data, user_id }
+    let entries = [];
+    if (Array.isArray(storageId)) {
+      if (storageId.length === 0) { const err = new Error('Empty storage list'); err.statusCode = 400; throw err; }
+      if (typeof storageId[0] === 'object' && storageId[0] !== null && storageId[0].storage_id !== undefined) {
+        entries = storageId.map((e) => ({
+          storage_id: Number(e.storage_id),
+          type_id: typeof e.type_id !== 'undefined' ? e.type_id : metadata.type_id,
+          rev: typeof e.rev !== 'undefined' ? e.rev : metadata.rev,
+          archive: typeof e.archive !== 'undefined' ? e.archive : metadata.archive,
+          archive_data: typeof e.archive_data !== 'undefined' ? e.archive_data : metadata.archive_data,
+          user_id: typeof e.user_id !== 'undefined' ? e.user_id : metadata.user_id
+        }));
+      } else {
+        entries = storageId.map((s) => ({ storage_id: Number(s), type_id: metadata.type_id, rev: metadata.rev, archive: metadata.archive, archive_data: metadata.archive_data, user_id: metadata.user_id }));
+      }
+    } else {
+      entries = [{ storage_id: Number(storageId), type_id: metadata.type_id, rev: metadata.rev, archive: metadata.archive, archive_data: metadata.archive_data, user_id: metadata.user_id }];
+    }
     const storageItems = [];
-    for (const sid of storageIds) {
-      const si = await Storage.findById(Number(sid));
+    for (const e of entries) {
+      if (!e.storage_id || Number.isNaN(Number(e.storage_id))) { const err = new Error('Invalid storage id'); err.statusCode = 400; throw err; }
+      const si = await Storage.findById(Number(e.storage_id));
       if (!si) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
       storageItems.push(si);
     }
@@ -456,14 +474,21 @@ class DocumentsService {
       if (!isAssigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
     }
 
-  // Prepare metadata to pass to DocumentStorage.attach
-  const attachPayload = Object.assign({ document_id: Number(id), storage_id: Number(storageId) }, metadata);
-  // Ensure user_id is set to actor by default
-  if (!attachPayload.user_id && actor && actor.id) attachPayload.user_id = actor.id;
-  // Attach one or many storage entries to the document
+  // Attach entries to DocumentStorage, applying per-entry metadata
   const attachedArr = [];
-  for (const sid of storageIds) {
-    const payload = Object.assign({}, attachPayload, { storage_id: Number(sid) });
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    const payload = {
+      document_id: Number(id),
+      storage_id: Number(e.storage_id),
+      type_id: typeof e.type_id !== 'undefined' ? (e.type_id === null ? null : Number(e.type_id)) : undefined,
+      rev: typeof e.rev !== 'undefined' ? (e.rev === null ? null : Number(e.rev)) : undefined,
+      archive: typeof e.archive !== 'undefined' ? e.archive : undefined,
+      archive_data: typeof e.archive_data !== 'undefined' ? e.archive_data : undefined,
+      user_id: typeof e.user_id !== 'undefined' ? (e.user_id === null ? null : Number(e.user_id)) : undefined
+    };
+    // Ensure user_id is set to actor by default when not provided
+    if (!payload.user_id && actor && actor.id) payload.user_id = actor.id;
     const attached = await DocumentStorage.attach(payload);
     if (attached) attachedArr.push(attached);
   }
@@ -482,7 +507,8 @@ class DocumentsService {
         actor,
         entity: { id: existing.id, code: 'document', title: existing.title },
         content: { value: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr },
-        participantIds: [],
+        // Notify only document participants: author (created_by) and assignee (assigne_to)
+        participantIds: [existing.created_by, existing.assigne_to],
         templateContext: {
           project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) || null },
           document: existing, actor, documentUrl,

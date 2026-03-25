@@ -3569,25 +3569,25 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "storage_id"
-                ],
-                "properties": {
-                  "storage_id": {
-                    "type": "integer"
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": ["storage_id"],
+                    "properties": { "storage_id": { "type": "integer" } }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["storage_id"],
+                    "properties": { "storage_id": { "type": "array", "items": { "type": "integer" } } }
                   }
-                }
+                ]
               }
             },
             "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
+                  "file": { "type": "array", "items": { "type": "string", "format": "binary" } }
                 }
               }
             }
@@ -3645,7 +3645,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/StorageRef"
+                        "$ref": "#/components/schemas/DocumentFile"
                       }
                     }
                   }
@@ -5286,12 +5286,6 @@
             "application/json": {
               "schema": {
                 "type": "object"
-              },
-              "example": {
-                "title": "",
-                "description": "",
-                "project_id": 0,
-                "code": ""
               }
             }
           }
@@ -5641,14 +5635,56 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "storage_id"
-                ],
-                "properties": {
-                  "storage_id": {
-                    "type": "integer"
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": ["storage_id"],
+                    "properties": {
+                      "storage_id": { "type": "integer" },
+                      "type_id": { "type": "integer", "description": "Optional documents_storage_type id" },
+                      "rev": { "type": "integer", "description": "Optional revision/version number" },
+                      "archive": { "type": "boolean", "description": "Mark this attachment as archived" },
+                      "archive_data": { "type": "string", "format": "date-time", "description": "Archive timestamp (ISO)" }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["storage_id"],
+                    "properties": {
+                      "storage_id": { "type": "array", "items": { "type": "integer" } },
+                      "type_id": { "type": "integer", "description": "Optional documents_storage_type id" },
+                      "rev": { "type": "integer", "description": "Optional revision/version number" },
+                      "archive": { "type": "boolean", "description": "Mark this attachment as archived" },
+                      "archive_data": { "type": "string", "format": "date-time", "description": "Archive timestamp (ISO)" }
+                    }
                   }
+                  ,
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["storage_id"],
+                      "properties": {
+                        "storage_id": { "type": "integer" },
+                        "type_id": { "type": "integer", "description": "Optional documents_storage_type id (per-item)" },
+                        "rev": { "type": "integer", "description": "Optional revision/version number (per-item)" },
+                        "archive": { "type": "boolean" },
+                        "archive_data": { "type": "string", "format": "date-time", "description": "Archive timestamp (ISO)" }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "array", "items": { "type": "string", "format": "binary" } },
+                  "type_id": { "type": "integer" },
+                  "rev": { "type": "integer" },
+                  "archive": { "type": "boolean" },
+                  "archive_data": { "type": "string", "format": "date-time" }
                 }
               }
             }
@@ -5663,7 +5699,10 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/StorageRef"
+                      "oneOf": [
+                        { "$ref": "#/components/schemas/DocumentFile" },
+                        { "type": "array", "items": { "$ref": "#/components/schemas/DocumentFile" } }
+                      ]
                     }
                   }
                 }
@@ -7966,55 +8005,29 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "storage_id"
-                ],
-                "properties": {
-                  "storage_id": {
-                    "type": "integer"
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": ["storage_id"],
+                    "properties": {
+                      "storage_id": { "type": "integer" }
+                    }
                   },
-                  "type_id": {
-                    "type": "integer",
-                    "description": "Optional documents_storage_type id"
-                  },
-                  "rev": {
-                    "type": "integer",
-                    "description": "Optional revision/version number"
-                  },
-                  "archive": {
-                    "type": "boolean",
-                    "description": "Mark this attachment as archived"
-                  },
-                  "archive_data": {
-                    "type": "string",
-                    "format": "date-time",
-                    "description": "Archive timestamp (ISO)"
+                  {
+                    "type": "object",
+                    "required": ["storage_id"],
+                    "properties": {
+                      "storage_id": { "type": "array", "items": { "type": "integer" } }
+                    }
                   }
-                }
+                ]
               }
             },
             "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  },
-                  "type_id": {
-                    "type": "integer"
-                  },
-                  "rev": {
-                    "type": "integer"
-                  },
-                  "archive": {
-                    "type": "boolean"
-                  },
-                  "archive_data": {
-                    "type": "string",
-                    "format": "date-time"
-                  }
+                  "file": { "type": "array", "items": { "type": "string", "format": "binary" } }
                 }
               }
             }
@@ -8029,7 +8042,10 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/DocumentFile"
+                      "oneOf": [
+                        { "$ref": "#/components/schemas/StorageRef" },
+                        { "type": "array", "items": { "$ref": "#/components/schemas/StorageRef" } }
+                      ]
                     }
                   }
                 }
@@ -8085,7 +8101,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/DocumentFile"
+                        "$ref": "#/components/schemas/StorageRef"
                       }
                     }
                   }
