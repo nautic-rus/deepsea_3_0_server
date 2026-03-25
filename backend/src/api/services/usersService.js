@@ -208,9 +208,29 @@ class UsersService {
 
     const uid = Number(userId);
 
-    // projects count (assigned via user_roles)
+    // projects assigned to user (via user_roles)
     const projectIds = await Project.listAssignedProjectIds(uid);
     const projects_count = (projectIds || []).length;
+
+    // Fetch project details (code, name, description, status, owner full name)
+    let projects = [];
+    let projects_active = 0;
+    if (projectIds && projectIds.length) {
+      const q = `SELECT p.id, p.code, p.name, p.description, p.status,
+        concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS owner_full_name
+        FROM projects p
+        LEFT JOIN users u ON u.id = p.owner_id
+        WHERE p.id = ANY($1::int[])`;
+      const projRes = await pool.query(q, [projectIds]);
+      projects = (projRes.rows || []).map(r => ({
+        code: r.code,
+        name: r.name,
+        description: r.description,
+        status: r.status,
+        owner_full_name: r.owner_full_name || null
+      }));
+      projects_active = projects.filter(p => p.status === 'active').length;
+    }
 
     // issues: total, open (status.is_final != true), added last 7 days (author)
     const issuesTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE (assignee_id = $1 OR author_id = $1) AND is_active = true`, [uid]);
@@ -243,7 +263,11 @@ class UsersService {
     const customer_questions_last_week = Number(cqWeekRes.rows[0] ? cqWeekRes.rows[0].cnt : 0);
 
     return {
-      projects_count,
+      projects: {
+        total: projects_count,
+        active: projects_active,
+        items: projects
+      },
       issues: {
         total: issues_total,
         open: issues_open,
