@@ -3,6 +3,8 @@
  */
 
 const pool = require('../connection');
+const Session = require('./Session');
+const AuditLog = require('./AuditLog');
 
 class User {
   /**
@@ -88,10 +90,30 @@ class User {
   /**
    * Set password hash for a user
    */
-  static async setPassword(id, password_hash) {
+  static async setPassword(id, password_hash, actor_id = null) {
     const query = `UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
     const res = await pool.query(query, [password_hash, id]);
     if (res.rowCount === 0) return null;
+    // Deactivate all existing sessions for the user after password change
+    try {
+      await Session.deactivateAllUserSessions(id);
+    } catch (e) {
+      // Log but don't fail the password update if session invalidation fails
+      console.error('Failed to deactivate user sessions after password change', e && e.message ? e.message : e);
+    }
+    // Audit log: record who initiated the password change
+    try {
+      await AuditLog.create({
+        actor_id: actor_id || null,
+        entity: 'user',
+        entity_id: id,
+        action: 'password.change',
+        details: { initiated_by: actor_id || null }
+      });
+    } catch (e) {
+      console.error('Failed to write audit log for password change', e && e.message ? e.message : e);
+    }
+
     return await User.findById(id);
   }
 

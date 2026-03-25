@@ -7,7 +7,7 @@
 
 const User = require('../../db/models/User');
 const pool = require('../../db/connection');
-const { hashPassword } = require('../../utils/password');
+const { hashPassword, validatePassword } = require('../../utils/password');
 const crypto = require('crypto');
 const { hasPermission } = require('./permissionChecker');
 const NotificationTemplateService = require('./notificationTemplateService');
@@ -125,6 +125,12 @@ class UsersService {
     let plainPassword = password;
     if (!plainPassword) {
       plainPassword = generateStrongPassword(16);
+    } else {
+      // если пароль передан от клиента — проверим его на соответствие политике
+      const errors = validatePassword(plainPassword);
+      if (errors && errors.length > 0) {
+        const err = new Error('Password validation error: ' + errors.join('; ')); err.statusCode = 400; throw err;
+      }
     }
 
     // Хешировать пароль

@@ -83,7 +83,8 @@ class UsersController {
           // generate temporary password, hash and persist
           const plainPassword = generateStrongPassword(12);
           const password_hash = await hashPassword(plainPassword);
-          await User.setPassword(Number(id), password_hash);
+          // pass actor id for audit (admin/system user who initiated invite)
+          await User.setPassword(Number(id), password_hash, actor && actor.id ? actor.id : null);
 
           const context = { user, actor: actor || null, loginUrl, company, support_email, password: plainPassword };
           const rendered = await NotificationTemplateService.render('user_created', 'email', context);
