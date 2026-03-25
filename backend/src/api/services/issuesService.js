@@ -684,10 +684,10 @@ class IssuesService {
 
     const attached = await IssueStorage.attach({ issue_id: Number(id), storage_id: Number(storageId) });
 
-    // History
+    // History: store filename (not id) as new_value
     (async () => {
       try {
-        await HistoryService.addIssueHistory(Number(id), actor, 'file_attached', { before: {}, after: { storage_id: storageId } });
+        await HistoryService.addIssueHistory(Number(id), actor, 'file_attached', { before: null, after: storageItem.file_name || null });
       } catch (e) { console.error('Failed to write issue history for file attach', e && e.message ? e.message : e); }
     })();
 
@@ -702,10 +702,12 @@ class IssuesService {
     if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
   const existing = await Issue.findById(Number(id));
   if (!existing || existing.is_active === false) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
+    // Retrieve storage item to capture filename for history
+    const storageItem = await Storage.findById(Number(storageId));
     const detached = await IssueStorage.detach({ issue_id: Number(id), storage_id: Number(storageId) });
     (async () => {
       try {
-        await HistoryService.addIssueHistory(Number(id), actor, 'file_detached', { before: {}, after: { storage_id: storageId } });
+        await HistoryService.addIssueHistory(Number(id), actor, 'file_detached', { before: storageItem ? storageItem.file_name : null, after: null });
       } catch (e) { console.error('Failed to write issue history for file detach', e && e.message ? e.message : e); }
     })();
 

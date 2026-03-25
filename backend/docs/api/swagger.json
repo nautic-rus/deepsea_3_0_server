@@ -3746,6 +3746,86 @@
         }
       }
     },
+    "/api/storage/s3": {
+      "post": {
+        "tags": [
+          "storage"
+        ],
+        "summary": "Upload file(s) to S3",
+        "description": "Upload one or multiple files to S3 and create storage records.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    },
+                    "description": "Multiple files upload (field name files)"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Single file fallback (field name file)"
+                  },
+                  "directory": {
+                    "type": "string",
+                    "description": "Optional directory/subdir prefix for S3 key"
+                  },
+                  "bucket_name": {
+                    "type": "string",
+                    "description": "Optional target bucket name"
+                  }
+                }
+              },
+              "encoding": {
+                "files": {
+                  "style": "form",
+                  "explode": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/StorageRef"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StorageRef"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error / Missing file" },
+          "401": { "description": "Authentication required" }
+        }
+      }
+    },
     "/api/departments": {
       "post": {
         "tags": [

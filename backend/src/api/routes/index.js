@@ -406,8 +406,9 @@ router.post('/storage/download', authMiddleware, storageController.downloadMulti
 // POST /api/storage - (removed) create storage DB record was removed; use /storage/local or /storage/s3 instead
 // POST /api/storage/local - upload file to local storage
 router.post('/storage/local', authMiddleware, _upload.single('file'), storageController.uploadLocal);
-// POST /api/storage/s3 - upload file to S3
-router.post('/storage/s3', authMiddleware, _upload.single('file'), storageController.uploadS3);
+// POST /api/storage/s3 - upload file(s) to S3
+// Accepts multiple files under field name 'files' or a single file under 'file'
+router.post('/storage/s3', authMiddleware, _upload.fields([{ name: 'files', maxCount: 50 }, { name: 'file', maxCount: 1 }]), storageController.uploadS3);
 router.put('/storage/:id', authMiddleware, storageController.update);
 router.delete('/storage/:id', authMiddleware, storageController.delete);
 

@@ -70,7 +70,20 @@ class StorageController {
   static async uploadS3(req, res, next) {
     try {
       const actor = req.user || null;
-      if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
+      // Collect files from multer. We support:
+      // - fields: { files: [...], file: [...] }
+      // - single file in req.file (fallback)
+      let files = [];
+      if (req.files) {
+        if (Array.isArray(req.files)) files = req.files;
+        else {
+          if (req.files.files) files = files.concat(req.files.files);
+          if (req.files.file) files = files.concat(req.files.file);
+        }
+      }
+      if (req.file) files.push(req.file);
+      if (!files || files.length === 0) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
+
       // Accept optional `directory` (or `subdir`) in request body to place object under a prefix
       const opts = {};
       if (req.body) {
@@ -78,8 +91,16 @@ class StorageController {
         if (req.body.subdir) opts.directory = String(req.body.subdir);
         if (req.body.bucket_name) opts.bucket_name = String(req.body.bucket_name);
       }
-      const created = await StorageService.uploadAndCreate(req.file, actor, opts);
-      res.status(201).json({ data: created });
+
+      const results = [];
+      for (const f of files) {
+        const created = await StorageService.uploadAndCreate(f, actor, opts);
+        results.push(created);
+      }
+
+      // Keep backward compatibility: return single object when one file uploaded
+      if (results.length === 1) return res.status(201).json({ data: results[0] });
+      return res.status(201).json({ data: results });
     } catch (err) { next(err); }
   }
 

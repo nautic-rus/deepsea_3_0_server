@@ -526,10 +526,12 @@ class DocumentsService {
     if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
   const existing = await Document.findById(Number(id));
   if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+    // Retrieve storage item to capture filename for history
+    const storageItem = await Storage.findById(Number(storageId));
     const detached = await DocumentStorage.detach({ document_id: Number(id), storage_id: Number(storageId) });
     (async () => {
       try {
-        await HistoryService.addDocumentHistory(Number(id), actor, 'file_detached', { before: {}, after: { storage_id: storageId } });
+        await HistoryService.addDocumentHistory(Number(id), actor, 'file_detached', { before: storageItem ? storageItem.file_name : null, after: null });
       } catch (e) { console.error('Failed to write document history for file detach', e && e.message ? e.message : e); }
     })();
     // Attempt to delete storage object + DB record. Don't block the detach if deletion fails.

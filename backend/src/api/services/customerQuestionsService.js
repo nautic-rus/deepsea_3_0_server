@@ -317,7 +317,15 @@ class CustomerQuestionsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.update'); err.statusCode = 403; throw err; }
     if (!questionId || Number.isNaN(Number(questionId)) || !storageId) { const err = new Error('Invalid parameters'); err.statusCode = 400; throw err; }
+    const storageItem = await Storage.findById(Number(storageId));
+    if (!storageItem) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
     const attached = await CustomerQuestionStorage.attach({ customer_question_id: Number(questionId), storage_id: Number(storageId) });
+    // Record history: new_value should be filename
+    (async () => {
+      try {
+        await HistoryService.addCustomerQuestionHistory(Number(questionId), actor, 'file_attached', { before: null, after: storageItem.file_name || null });
+      } catch (e) { console.error('Failed to write customer question history for file attach', e && e.message ? e.message : e); }
+    })();
     return attached;
   }
 
@@ -326,7 +334,14 @@ class CustomerQuestionsService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.update'); err.statusCode = 403; throw err; }
+    const storageItem = await Storage.findById(Number(storageId));
     await CustomerQuestionStorage.detach({ customer_question_id: Number(questionId), storage_id: Number(storageId) });
+    // Record history: old_value should be filename of removed file
+    (async () => {
+      try {
+        await HistoryService.addCustomerQuestionHistory(Number(questionId), actor, 'file_detached', { before: storageItem ? storageItem.file_name : null, after: null });
+      } catch (e) { console.error('Failed to write customer question history for file detach', e && e.message ? e.message : e); }
+    })();
     return { success: true };
   }
 
