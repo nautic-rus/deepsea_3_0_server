@@ -1811,7 +1811,17 @@
       "UserStatistics": {
         "type": "object",
         "properties": {
-          "projects_count": { "type": "integer", "example": 3 },
+          "projects": {
+            "type": "object",
+            "properties": {
+              "total": { "type": "integer", "example": 3 },
+              "active": { "type": "integer", "example": 2 },
+              "items": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/Project" }
+              }
+            }
+          },
           "issues": {
             "type": "object",
             "properties": {
