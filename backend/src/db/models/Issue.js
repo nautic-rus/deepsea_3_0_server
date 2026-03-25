@@ -102,10 +102,24 @@ class Issue {
    * @returns {Promise<Object>} Newly created issue object
    */
   static async create(fields) {
-    // DB column is currently named author_id in schema file; accept fields.author_id from API and store into that column
-  const q = `INSERT INTO issues (project_id, title, description, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
-    const vals = [fields.project_id, fields.title, fields.description, fields.type_id, fields.priority, fields.estimated_hours || 0, fields.start_date, fields.due_date, fields.assignee_id, fields.author_id];
-    const res = await pool.query(q, vals);
+    // Build INSERT dynamically so that DB defaults (e.g. priority) are preserved
+    const allowedCols = ['project_id', 'title', 'description', 'type_id', 'priority', 'estimated_hours', 'start_date', 'due_date', 'assignee_id', 'author_id'];
+    const cols = [];
+    const placeholders = [];
+    const values = [];
+    let idx = 1;
+    for (const c of allowedCols) {
+      if (fields[c] !== undefined) {
+        cols.push(c);
+        placeholders.push(`$${idx++}`);
+        // Normalize empty string to null for nullable columns
+        if (fields[c] === '') values.push(null);
+        else values.push(fields[c]);
+      }
+    }
+    if (cols.length === 0) throw new Error('No fields provided for insert');
+    const q = `INSERT INTO issues (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
+    const res = await pool.query(q, values);
     return res.rows[0];
   }
 
