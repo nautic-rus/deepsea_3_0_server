@@ -3,6 +3,7 @@
  * Stores UI pages and their required permissions.
  */
 const pool = require('../connection');
+const ProtectionService = require('../../api/services/protectionService');
 
 class Page {
   /**
@@ -13,22 +14,24 @@ class Page {
     // Some deployments may have added a 'main_menu' boolean column to pages.
     // We first detect whether the column exists and then select it if present.
     const colCheck = `
-      SELECT 1
+      SELECT column_name
       FROM information_schema.columns
-      WHERE table_name = 'pages' AND column_name = 'main_menu'
-      LIMIT 1
+      WHERE table_name = 'pages' AND column_name IN ('main_menu', 'status')
     `;
     const colRes = await pool.query(colCheck);
-    const hasMainMenu = colRes.rowCount > 0;
+    const cols = colRes.rows.map(r => r.column_name);
+    const hasMainMenu = cols.includes('main_menu');
+    const hasStatus = cols.includes('status');
 
     if (hasMainMenu) {
       const q = `
         SELECT p.id, p.key, p.path, p.key AS title_key, NULL::text AS title_en, p.parent_id, p.icon, p.order_index,
           p.main_menu AS main_menu,
-          COALESCE(array_agg(pp_code.code) FILTER (WHERE pp_code.code IS NOT NULL), ARRAY[]::text[]) AS permissions
+          ${hasStatus ? 'p.status AS status,' : 'true AS status,'}
+          COALESCE(json_agg(pp_code.perm) FILTER (WHERE pp_code.perm IS NOT NULL), '[]'::json) AS permissions
         FROM pages p
         LEFT JOIN (
-          SELECT pp.page_id, pr.code
+          SELECT pp.page_id, json_build_object('id', pr.id, 'code', pr.code, 'name', pr.name) AS perm
           FROM page_permissions pp
           JOIN permissions pr ON pp.permission_id = pr.id
         ) pp_code ON pp_code.page_id = p.id
@@ -42,10 +45,11 @@ class Page {
     // Fallback when main_menu column is absent
     const q = `
       SELECT p.id, p.key, p.path, p.key AS title_key, NULL::text AS title_en, p.parent_id, p.icon, p.order_index,
-        COALESCE(array_agg(pp_code.code) FILTER (WHERE pp_code.code IS NOT NULL), ARRAY[]::text[]) AS permissions
+        ${hasStatus ? 'p.status AS status,' : 'true AS status,'}
+        COALESCE(json_agg(pp_code.perm) FILTER (WHERE pp_code.perm IS NOT NULL), '[]'::json) AS permissions
       FROM pages p
       LEFT JOIN (
-        SELECT pp.page_id, pr.code
+        SELECT pp.page_id, json_build_object('id', pr.id, 'code', pr.code, 'name', pr.name) AS perm
         FROM page_permissions pp
         JOIN permissions pr ON pp.permission_id = pr.id
       ) pp_code ON pp_code.page_id = p.id
@@ -73,14 +77,22 @@ class Page {
   }
 
   static async create(fields) {
-    const q = `INSERT INTO pages (key, path, parent_id, icon, order_index, main_menu) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`;
-    const params = [fields.key || null, fields.path || null, fields.parent_id || null, fields.icon || null, fields.order_index || null, fields.main_menu === undefined ? null : fields.main_menu];
+    const q = `INSERT INTO pages (key, path, parent_id, icon, order_index, main_menu, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`;
+    const params = [
+      fields.key || null,
+      fields.path || null,
+      fields.parent_id || null,
+      fields.icon || null,
+      fields.order_index || null,
+      fields.main_menu === undefined ? null : fields.main_menu,
+      fields.status === undefined ? true : !!fields.status
+    ];
     const res = await pool.query(q, params);
     return res.rows[0];
   }
 
   static async update(id, fields) {
-    const allowed = ['key', 'path', 'parent_id', 'icon', 'order_index', 'main_menu'];
+    const allowed = ['key', 'path', 'parent_id', 'icon', 'order_index', 'main_menu', 'status'];
     const sets = [];
     const params = [];
     let idx = 1;
@@ -100,11 +112,13 @@ class Page {
 
   static async softDelete(id) {
     try {
+      await ProtectionService.assertNotProtected('pages', Number(id));
       const res = await pool.query("UPDATE pages SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id", [id]);
       if (res.rowCount > 0) return true;
     } catch (e) {
       // ignore and fallback to hard delete
     }
+    await ProtectionService.assertNotProtected('pages', Number(id));
     const del = await pool.query('DELETE FROM pages WHERE id = $1', [id]);
     return del.rowCount > 0;
   }

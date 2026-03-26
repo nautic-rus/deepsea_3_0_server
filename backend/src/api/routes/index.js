@@ -9,6 +9,8 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const usersController = require('../controllers/usersController');
 const departmentsController = require('../controllers/departmentsController');
+const groupsController = require('../controllers/groupsController');
+const organizationsController = require('../controllers/organizationsController');
 const rolesController = require('../controllers/rolesController');
 const projectsController = require('../controllers/projectsController');
 const issuesController = require('../controllers/issuesController');
@@ -17,6 +19,7 @@ const documentWorkFlowsController = require('../controllers/documentWorkFlowsCon
 const specializationsController = require('../controllers/specializationsController');
 const issueHistoryController = require('../controllers/issueHistoryController');
 const documentHistoryController = require('../controllers/documentHistoryController');
+const customerQuestionHistoryController = require('../controllers/customerQuestionHistoryController');
 const materialsController = require('../controllers/materialsController');
 const equipmentController = require('../controllers/equipmentController');
 const suppliersController = require('../controllers/suppliersController');
@@ -39,6 +42,15 @@ const userNotificationsController = require('../controllers/userNotificationsCon
 const entityLinksController = require('../controllers/entityLinksController');
 const auditLogsController = require('../controllers/auditLogsController');
 const customerQuestionsController = require('../controllers/customerQuestionsController');
+const customerQuestionStatusesController = require('../controllers/customerQuestionStatusesController');
+const customerQuestionWorkFlowsController = require('../controllers/customerQuestionWorkFlowsController');
+const issueWorkFlowsController = require('../controllers/issueWorkFlowsController');
+const notificationEventsController = require('../controllers/notificationEventsController');
+const notificationMethodsController = require('../controllers/notificationMethodsController');
+const wikiArticlesController = require('../controllers/wikiArticlesController');
+const wikiArticleStorageController = require('../controllers/wikiArticleStorageController');
+const wikiSectionsController = require('../controllers/wikiSectionsController');
+const timeLogsController = require('../controllers/timeLogsController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -62,9 +74,23 @@ router.post('/auth/reset_password', authController.resetPassword);
 // ===== Users routes =====
 // POST /api/create_users
 router.post('/create_users', authMiddleware, validateCreateUser, usersController.createUser);
+router.post('/users/invite', authMiddleware, usersController.inviteUsers);
 
 // GET /api/users (list)
 router.get('/users', authMiddleware, usersController.getUsers);
+// PUT /api/update_profile - update current user's profile
+router.put('/update_profile', authMiddleware, usersController.updateProfile);
+
+// User notification settings (current user)
+router.get('/users/notification_settings', authMiddleware, userNotificationSettingsController.list);
+router.post('/users/notification_settings', authMiddleware, userNotificationSettingsController.upsert);
+router.delete('/users/notification_settings', authMiddleware, userNotificationSettingsController.remove);
+
+// User notification center (current user) - placed before `/users/:id` to avoid route clash
+router.get('/users/notifications', authMiddleware, userNotificationsController.list);
+
+// GET /api/users/statistics (user statistics for current authenticated user)
+router.get('/users/statistics', authMiddleware, usersController.getStatistics);
 
 // GET /api/users/:id (single user)
 router.get('/users/:id', authMiddleware, usersController.getUser);
@@ -74,12 +100,8 @@ router.get('/users/:id/rocket_chat', authMiddleware, userRocketChatController.ge
 router.post('/users/:id/rocket_chat', authMiddleware, userRocketChatController.set);
 router.delete('/users/:id/rocket_chat', authMiddleware, userRocketChatController.remove);
 
-// User notification settings
-router.get('/users/:id/notification_settings', authMiddleware, userNotificationSettingsController.list);
-router.post('/users/:id/notification_settings', authMiddleware, userNotificationSettingsController.upsert);
-router.delete('/users/:id/notification_settings', authMiddleware, userNotificationSettingsController.remove);
+// (routes for notification_settings moved above to avoid conflicting with /users/:id)
 
-// User notification center endpoints
 router.get('/users/:id/notifications', authMiddleware, userNotificationsController.list);
 router.get('/users/:id/notifications/unread_count', authMiddleware, userNotificationsController.unreadCount);
 router.post('/users/:id/notifications/:notificationId/read', authMiddleware, userNotificationsController.markAsRead);
@@ -89,8 +111,9 @@ router.post('/users/:id/notifications/:notificationId/hide', authMiddleware, use
 router.put('/users/:id', authMiddleware, usersController.updateUser);
 // DELETE /api/users/:id (soft-delete)
 router.delete('/users/:id', authMiddleware, usersController.deleteUser);
-// POST /api/users/:id/avatar - upload avatar (multipart field 'file')
-router.post('/users/:id/avatar', authMiddleware, _upload.single('file'), usersController.uploadAvatar);
+// POST /api/users/avatar - upload current user's avatar (multipart field 'file')
+router.post('/users/avatar', authMiddleware, _upload.single('file'), usersController.uploadAvatar);
+router.post('/users/password_reset', authMiddleware, usersController.sendPasswordResets);
 
 // ===== Departments routes =====
 // GET /api/departments
@@ -101,6 +124,18 @@ router.post('/departments', authMiddleware, departmentsController.create);
 router.put('/departments/:id', authMiddleware, departmentsController.update);
 // DELETE /api/departments/:id
 router.delete('/departments/:id', authMiddleware, departmentsController.delete);
+
+// ===== Groups routes =====
+router.get('/groups', authMiddleware, groupsController.list);
+router.post('/groups', authMiddleware, groupsController.create);
+router.put('/groups/:id', authMiddleware, groupsController.update);
+router.delete('/groups/:id', authMiddleware, groupsController.delete);
+
+// ===== Organizations routes =====
+router.get('/organizations', authMiddleware, organizationsController.list);
+router.post('/organizations', authMiddleware, organizationsController.create);
+router.put('/organizations/:id', authMiddleware, organizationsController.update);
+router.delete('/organizations/:id', authMiddleware, organizationsController.delete);
 
 // ===== Roles routes =====
 // GET /api/roles
@@ -188,6 +223,7 @@ router.get('/issues/:id/history', authMiddleware, issueHistoryController.list);
 // ===== Customer questions routes =====
 router.get('/customer_questions', authMiddleware, customerQuestionsController.list);
 router.get('/customer_questions/:id', authMiddleware, customerQuestionsController.get);
+router.get('/customer_questions/:id/history', authMiddleware, customerQuestionHistoryController.list);
 router.post('/customer_questions', authMiddleware, customerQuestionsController.create);
 router.put('/customer_questions/:id', authMiddleware, customerQuestionsController.update);
 router.delete('/customer_questions/:id', authMiddleware, customerQuestionsController.delete);
@@ -196,6 +232,49 @@ router.post('/customer_questions/:id/files', authMiddleware, _upload.single('fil
 router.post('/customer_questions/:id/files/local', authMiddleware, _upload.single('file'), customerQuestionsController.attachLocalFile);
 router.delete('/customer_questions/:id/files/:storage_id', authMiddleware, customerQuestionsController.detachFile);
 router.get('/customer_questions/:id/files', authMiddleware, customerQuestionsController.listFiles);
+// messages attached to customer question
+router.post('/customer_questions/:id/messages', authMiddleware, customerQuestionsController.addMessage);
+router.get('/customer_questions/:id/messages', authMiddleware, customerQuestionsController.listMessages);
+// ===== Customer question types routes =====
+router.get('/customer_question_types', authMiddleware, customerQuestionsController.listTypes);
+router.get('/customer_question_types/:id', authMiddleware, customerQuestionsController.getType);
+router.post('/customer_question_types', authMiddleware, customerQuestionsController.createType);
+router.put('/customer_question_types/:id', authMiddleware, customerQuestionsController.updateType);
+router.delete('/customer_question_types/:id', authMiddleware, customerQuestionsController.deleteType);
+
+// ===== Customer question statuses routes =====
+router.get('/customer_question_statuses', authMiddleware, customerQuestionStatusesController.list);
+router.get('/customer_question_statuses/:id', authMiddleware, customerQuestionStatusesController.get);
+router.post('/customer_question_statuses', authMiddleware, customerQuestionStatusesController.create);
+router.put('/customer_question_statuses/:id', authMiddleware, customerQuestionStatusesController.update);
+router.delete('/customer_question_statuses/:id', authMiddleware, customerQuestionStatusesController.delete);
+
+// ===== Customer question work flows routes =====
+router.get('/customer_question_work_flows', authMiddleware, customerQuestionWorkFlowsController.list);
+router.get('/customer_question_work_flows/:id', authMiddleware, customerQuestionWorkFlowsController.get);
+router.post('/customer_question_work_flows', authMiddleware, customerQuestionWorkFlowsController.create);
+router.put('/customer_question_work_flows/:id', authMiddleware, customerQuestionWorkFlowsController.update);
+router.delete('/customer_question_work_flows/:id', authMiddleware, customerQuestionWorkFlowsController.delete);
+
+// ===== Issue work flows routes =====
+router.get('/issue_work_flows', authMiddleware, issueWorkFlowsController.list);
+router.get('/issue_work_flows/:id', authMiddleware, issueWorkFlowsController.get);
+router.post('/issue_work_flows', authMiddleware, issueWorkFlowsController.create);
+router.put('/issue_work_flows/:id', authMiddleware, issueWorkFlowsController.update);
+router.delete('/issue_work_flows/:id', authMiddleware, issueWorkFlowsController.delete);
+
+// ===== Notification events/methods (admin) =====
+router.get('/notification_events', authMiddleware, notificationEventsController.list);
+router.post('/notification_events', authMiddleware, notificationEventsController.create);
+router.get('/notification_events/:id', authMiddleware, notificationEventsController.get);
+router.put('/notification_events/:id', authMiddleware, notificationEventsController.update);
+router.delete('/notification_events/:id', authMiddleware, notificationEventsController.remove);
+
+router.get('/notification_methods', authMiddleware, notificationMethodsController.list);
+router.post('/notification_methods', authMiddleware, notificationMethodsController.create);
+router.get('/notification_methods/:id', authMiddleware, notificationMethodsController.get);
+router.put('/notification_methods/:id', authMiddleware, notificationMethodsController.update);
+router.delete('/notification_methods/:id', authMiddleware, notificationMethodsController.remove);
 
 // ===== Documents routes =====
 // GET /api/documents
@@ -338,8 +417,9 @@ router.post('/storage/download', authMiddleware, storageController.downloadMulti
 // POST /api/storage - (removed) create storage DB record was removed; use /storage/local or /storage/s3 instead
 // POST /api/storage/local - upload file to local storage
 router.post('/storage/local', authMiddleware, _upload.single('file'), storageController.uploadLocal);
-// POST /api/storage/s3 - upload file to S3
-router.post('/storage/s3', authMiddleware, _upload.single('file'), storageController.uploadS3);
+// POST /api/storage/s3 - upload file(s) to S3
+// Accepts multiple files under field name 'files' or a single file under 'file'
+router.post('/storage/s3', authMiddleware, _upload.fields([{ name: 'files', maxCount: 50 }, { name: 'file', maxCount: 1 }]), storageController.uploadS3);
 router.put('/storage/:id', authMiddleware, storageController.update);
 router.delete('/storage/:id', authMiddleware, storageController.delete);
 
@@ -380,6 +460,33 @@ router.delete('/page_permissions/:id', authMiddleware, pagePermissionsController
 // ===== Audit routes =====
 // GET /api/audit_logs - list audit entries (filters: actor_id, entity, entity_id, limit, offset)
 router.get('/audit_logs', authMiddleware, auditLogsController.list);
+
+// ===== Time logs routes =====
+router.get('/time_logs', authMiddleware, timeLogsController.list);
+// GET /api/time_logs/me - list current user's time logs (no extra permissions required)
+router.get('/time_logs/me', authMiddleware, timeLogsController.listMine);
+router.get('/time_logs/:id', authMiddleware, timeLogsController.get);
+router.post('/time_logs', authMiddleware, timeLogsController.create);
+router.put('/time_logs/:id', authMiddleware, timeLogsController.update);
+router.delete('/time_logs/:id', authMiddleware, timeLogsController.delete);
+
+// ===== Wiki routes =====
+router.get('/wiki/articles', authMiddleware, wikiArticlesController.list);
+router.get('/wiki/articles/:id', authMiddleware, wikiArticlesController.get);
+router.post('/wiki/articles', authMiddleware, wikiArticlesController.create);
+router.put('/wiki/articles/:id', authMiddleware, wikiArticlesController.update);
+router.delete('/wiki/articles/:id', authMiddleware, wikiArticlesController.delete);
+
+router.get('/wiki/sections', authMiddleware, wikiSectionsController.list);
+router.get('/wiki/sections/:id', authMiddleware, wikiSectionsController.get);
+router.post('/wiki/sections', authMiddleware, wikiSectionsController.create);
+router.put('/wiki/sections/:id', authMiddleware, wikiSectionsController.update);
+router.delete('/wiki/sections/:id', authMiddleware, wikiSectionsController.delete);
+
+router.get('/wiki/articles/:article_id/storage', authMiddleware, wikiArticleStorageController.list);
+router.get('/wiki/articles/storage/:id', authMiddleware, wikiArticleStorageController.get);
+router.post('/wiki/articles/:article_id/storage', authMiddleware, wikiArticleStorageController.create);
+router.delete('/wiki/articles/storage/:id', authMiddleware, wikiArticleStorageController.delete);
 
 // ===== User pages (menu) =====
 // GET /api/user/pages

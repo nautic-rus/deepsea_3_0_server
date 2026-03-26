@@ -1,0 +1,56 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      NODE_VERSION: '24.11.1'
+      OUTPUT_DIR: 'backend'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # cache removed because the repo root has no lockfile; install runs in `backend`
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: backend
+
+      - name: Build project
+        run: npm run build || true
+        working-directory: backend
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to server (rsync)
+        run: |
+          rsync -avz --delete \
+            --exclude 'env' \
+            --exclude '.env' \
+            --exclude 'uploads' \
+            --exclude 'logs' \
+            -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+            ${{ env.OUTPUT_DIR }}/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.TARGET_DIR_BACK }}
+
+      - name: Remote restart (optional)
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "cd '${{ secrets.TARGET_DIR_BACK }}' && \
+             docker ps -a --filter \"name=deepsea-watcher\" -q | xargs -r docker rm -f || true && \
+             docker compose pull || true && \
+             docker compose up -d --build --force-recreate --remove-orphans"

@@ -182,6 +182,18 @@ class AuthController {
 
       // Prepare a sanitized copy for the public /me endpoint.
       // Do not expose internal permissions array. Return department and job_title as text.
+      // Try to include Rocket.Chat username if configured
+      let rc_username = null;
+      try {
+        const UserRocketChat = require('../../db/models/UserRocketChat');
+        const mapping = await UserRocketChat.findByUserId(user.id);
+        if (mapping && mapping.rc_username) rc_username = mapping.rc_username;
+      } catch (e) {
+        // Non-fatal: log and continue without rc_username
+        // eslint-disable-next-line no-console
+        console.warn('Failed to load user_rocket_chat mapping for user', user.id, e && e.message ? e.message : e);
+      }
+
       const out = {
         id: user.id,
         username: user.username,
@@ -191,8 +203,15 @@ class AuthController {
         middle_name: user.middle_name,
         phone: user.phone,
         avatar_id: user.avatar_id || null,
+        department_id: user.department_id || null,
+        job_title_id: user.job_title_id || null,
         department: user.department || null,
         job_title: user.job_title || null,
+        group_id: user.group_id || null,
+        group: user.group_name || null,
+        organization_id: user.organization_id || null,
+        organization: user.organization_name || null,
+        rc_username: rc_username,
         is_active: user.is_active
       };
 

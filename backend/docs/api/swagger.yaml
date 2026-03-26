@@ -7,127 +7,158 @@ servers:
   - url: ''
     description: Development server
 tags: []
-components:
-  
-  schemas:
-    Error:
-      type: object
-      properties:
-        error:
-          type: string
-        messages:
-          type: array
-          items:
-            type: string
-    User:
-      type: object
-      properties:
-        id:
-          type: integer
-        username:
-          type: string
-        avatar_id:
-          type: integer
-          nullable: true
-        email:
-          type: string
-          format: email
-        phone:
-          type: string
-        first_name:
-          type: string
-          nullable: true
-        last_name:
-          type: string
-          nullable: true
-        middle_name:
-          type: string
-          nullable: true
-        department_id:
-          type: integer
-          nullable: true
-        job_title_id:
-          type: integer
-          nullable: true
-        is_active:
-          type: boolean
-        is_verified:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    UserRocketChat:
-      type: object
-      properties:
-        id:
-          type: integer
-        user_id:
-          type: integer
-        rc_username:
-          type: string
-        rc_user_id:
-          type: string
-          nullable: true
-        rc_display_name:
-          type: string
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    UserNotificationSetting:
-      type: object
-      properties:
-        id:
-          type: integer
-        user_id:
-          type: integer
-        project_id:
-          type: integer
-          nullable: true
-        event_id:
-          type: integer
-        method_id:
-          type: integer
-        enabled:
-          type: boolean
-        config:
-          type: object
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    UserNotification:
-      type: object
-      properties:
-        id:
-          type: integer
-        user_id:
-          type: integer
-        event_code:
-          type: string
-          nullable: true
-        project_id:
-          type: integer
-          nullable: true
-        data:
-          type: object
-          nullable: true
-        is_read:
-          type: boolean
-        is_hidden:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
+  /api/users/notification_settings:
+    get:
+      tags:
+        - users
+      summary: Получить настройки уведомлений текущего пользователя
+      description: >-
+        Возвращает список настроек уведомлений для текущего пользователя. Можно передать project_id в query для фильтрации по
+        проекту.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: project_id
+          required: false
+          schema:
+            type: integer
+          description: Optional project id to filter settings
+      responses:
+        '200':
+          description: Notification settings matrix
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      events:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NotificationEvent'
+                      methods:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/NotificationMethod'
+                      matrix:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            event:
+                              $ref: '#/components/schemas/NotificationEvent'
+                            methods:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  method:
+                                    $ref: '#/components/schemas/NotificationMethod'
+                                  enabled:
+                                    type: boolean
+                                  config:
+                                    type: object
+                                    nullable: true
+        '401':
+          description: Authentication required
+    post:
+      tags:
+        - users
+      summary: Create/Update notification setting for current user
+      description: Create or update a notification setting for the authenticated user.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: integer
+                  nullable: true
+                event_id:
+                  type: integer
+                method_id:
+                  type: integer
+                enabled:
+                  type: boolean
+                config:
+                  type: object
+                  nullable: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserNotificationSetting'
+        '400':
+          description: Validation error
+        '401':
+          description: Authentication required
+    delete:
+      tags:
+        - users
+      summary: Delete notification setting for current user
+      description: Delete a notification setting for the authenticated user.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: integer
+                  nullable: true
+                event_id:
+                  type: integer
+                method_id:
+                  type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        page_id:
+                          type: integer
+                        permission_id:
+                          type: integer
+                        permission_code:
+                          type: string
+                        permission_name:
+                          type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '400':
+          description: Validation error
+        '401':
+          description: Authentication required
         read_at:
           type: string
           format: date-time
@@ -193,6 +224,78 @@ components:
         updated_at:
           type: string
           format: date-time
+    NotificationEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    NotificationMethod:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    PageItem:
+      type: object
+      properties:
+        id:
+          type: string
+        dbId:
+          type: integer
+          nullable: true
+        path:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        mainMenu:
+          type: boolean
+        order:
+          type: integer
+          nullable: true
+        icon:
+          type: string
+          nullable: true
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/PageItem'
+    PagesResponse:
+      type: object
+      properties:
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/PageItem'
+        generatedAt:
+          type: string
+          format: date-time
+        version:
+          type: string
     AuditLog:
       type: object
       properties:
@@ -449,6 +552,33 @@ components:
         author_name:
           type: string
           nullable: true
+    CustomerQuestionMessageCreate:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+        parent_id:
+          type: integer
+          nullable: true
+    CustomerQuestionMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        customer_question_id:
+          type: integer
+        content:
+          type: string
+        created_by:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        author_name:
+          type: string
+          nullable: true
     StorageRef:
       type: object
       properties:
@@ -519,6 +649,58 @@ components:
           type: string
           format: date-time
 paths:
+  /api/storage/s3:
+    post:
+      tags:
+        - storage
+      summary: Upload file(s) to S3
+      description: Upload one or multiple files to S3 and create storage records.
+      security:
+        - bearerAuth: []
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Multiple files upload (field name `files`)
+                file:
+                  type: string
+                  format: binary
+                  description: Single file fallback (field name `file`)
+                directory:
+                  type: string
+                  description: Optional directory/subdir prefix for S3 key
+                bucket_name:
+                  type: string
+                  description: Optional target bucket name
+            encoding:
+              files:
+                style: form
+                explode: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/StorageRef'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/StorageRef'
+        '400':
+          description: Validation error / Missing file
+        '401':
+          description: Authentication required
+
   /api/job_titles:
     get:
       tags:
@@ -882,8 +1064,12 @@ paths:
               properties:
                 name:
                   type: string
+                description:
+                  type: string
+                  nullable: true
             example:
               name: ''
+              description: null
       responses:
         '201':
           description: Отдел создан
@@ -938,6 +1124,284 @@ paths:
                 $ref: '#/components/schemas/Department'
         '400':
           description: Invalid id or payload
+
+  /api/notification_events:
+    get:
+      tags:
+        - notifications
+      summary: List notification events
+      description: Returns list of notification events. Requires permission notification_events.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_events.view
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationEvent'
+    post:
+      tags:
+        - notifications
+      summary: Create notification event
+      description: Create a new notification event. Requires permission notification_events.create.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_events.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationEvent'
+
+  /api/notification_events/{id}:
+    get:
+      tags:
+        - notifications
+      summary: Get notification event
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_events.view
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationEvent'
+    put:
+      tags:
+        - notifications
+      summary: Update notification event
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_events.update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationEvent'
+    delete:
+      tags:
+        - notifications
+      summary: Delete notification event
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_events.delete
+      responses:
+        '200':
+          description: OK
+
+  /api/notification_methods:
+    get:
+      tags:
+        - notifications
+      summary: List notification methods
+      description: Returns list of notification methods. Requires permission notification_methods.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_methods.view
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationMethod'
+    post:
+      tags:
+        - notifications
+      summary: Create notification method
+      description: Create a new notification method. Requires permission notification_methods.create.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_methods.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationMethod'
+
+  /api/notification_methods/{id}:
+    get:
+      tags:
+        - notifications
+      summary: Get notification method
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_methods.view
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationMethod'
+    put:
+      tags:
+        - notifications
+      summary: Update notification method
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_methods.update
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NotificationMethod'
+    delete:
+      tags:
+        - notifications
+      summary: Delete notification method
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - notification_methods.delete
+      responses:
+        '200':
+          description: OK
         '401':
           description: Authentication required
         '403':
@@ -1888,6 +2352,10 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagesResponse'
         '401':
           description: Authentication required
       parameters: []
@@ -2906,7 +3374,11 @@ paths:
                 - storage_id
               properties:
                 storage_id:
-                  type: integer
+                  oneOf:
+                    - type: integer
+                    - type: array
+                      items:
+                        type: integer
       responses:
         '201':
           description: Attached
@@ -3024,6 +3496,147 @@ paths:
           description: Forbidden - missing permission documents.comment
         '404':
           description: Document not found
+  /api/customer_questions/{id}/messages:
+    get:
+      tags:
+        - customer_questions
+      summary: Список сообщений вопроса
+      description: Возвращает список сообщений (комментариев) customer question. Требуется разрешение customer_questions.view.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - customer_questions.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID вопроса клиента
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: Limit results
+          example: 100
+        - in: query
+          name: offset
+          schema:
+            type: integer
+          description: Pagination offset
+          example: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CustomerQuestionMessage'
+        '400':
+          description: Invalid id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission customer_questions.view
+        '404':
+          description: Customer question not found
+    post:
+      tags:
+        - customer_questions
+      summary: Добавить сообщение к вопросу клиента
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - customer_questions.comment
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID вопроса клиента
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomerQuestionMessageCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerQuestionMessage'
+        '400':
+          description: Invalid input or question id
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission customer_questions.comment
+        '404':
+          description: Customer question not found
+  /api/customer_questions/{id}/files:
+    post:
+      tags:
+        - customer_questions
+      summary: Прикрепить файл к вопросу клиента
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - customer_questions.update
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          description: ID вопроса клиента
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - storage_id
+              properties:
+                storage_id:
+                  oneOf:
+                    - type: integer
+                    - type: array
+                      items:
+                        type: integer
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Attached
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StorageRef'
+        '400':
+          description: Invalid input or ids
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission customer_questions.update
+        '404':
+          description: Question or storage item not found
   /api/documents/{id}/files:
     post:
       tags:
@@ -3045,12 +3658,50 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - storage_id
-              properties:
-                storage_id:
-                  type: integer
+              oneOf:
+                - type: object
+                  required:
+                    - storage_id
+                  properties:
+                    storage_id:
+                      oneOf:
+                        - type: integer
+                        - type: array
+                          items:
+                            type: integer
+                    type_id:
+                      type: integer
+                      description: Optional documents_storage_type id
+                    rev:
+                      type: integer
+                      description: Optional revision/version number
+                    archive:
+                      type: boolean
+                      description: Mark this attachment as archived
+                    archive_data:
+                      type: string
+                      format: date-time
+                      description: Archive timestamp (ISO)
+                - type: array
+                  items:
+                    type: object
+                    required:
+                      - storage_id
+                    properties:
+                      storage_id:
+                        type: integer
+                      type_id:
+                        type: integer
+                        description: Optional documents_storage_type id (per-item)
+                      rev:
+                        type: integer
+                        description: Optional revision/version number (per-item)
+                      archive:
+                        type: boolean
+                      archive_data:
+                        type: string
+                        format: date-time
+                        description: Archive timestamp (ISO)
       responses:
         '201':
           description: Attached
@@ -4680,24 +5331,7 @@ paths:
                   data:
                     type: array
                     items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                        key:
-                          type: string
-                        path:
-                          type: string
-                        parent_id:
-                          type: integer
-                        icon:
-                          type: string
-                        order_index:
-                          type: integer
-                        permissions:
-                          type: array
-                          items:
-                            type: string
+                      $ref: '#/components/schemas/PageItem'
     post:
       tags:
         - pages
@@ -4860,8 +5494,9 @@ paths:
     delete:
       tags:
         - page_permissions
-      summary: Удалить привязку разрешения к странице
-      description: Удаляет запись из `page_permissions`. Требуется разрешение page_permissions.delete.
+      summary: Удалить все привязки разрешений для страницы
+      description: >-
+        Удаляет все записи из `page_permissions` для указанной страницы и возвращает число удалённых записей.
       security:
         - bearerAuth: []
       x-permissions:
@@ -4875,3 +5510,12 @@ paths:
       responses:
         '200':
           description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  deleted:
+                    type: integer

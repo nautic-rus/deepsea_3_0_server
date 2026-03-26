@@ -13,9 +13,17 @@ class CustomerQuestionStorage {
     return res.rows[0] || null;
   }
 
-  static async listByQuestion(questionId, { limit = 100, offset = 0 } = {}) {
-    const q = `SELECT s.storage_id AS storage_id, st.bucket_name, st.object_key, st.file_name, st.file_size, st.mime_type, st.storage_type, st.uploaded_by, st.created_at FROM customer_questions_storage s JOIN storage st ON st.id = s.storage_id WHERE s.customer_question_id = $1 ORDER BY s.id DESC LIMIT $2 OFFSET $3`;
-    const res = await pool.query(q, [questionId, limit, offset]);
+  static async listByQuestion(questionId, { limit, offset = 0 } = {}) {
+    let q = `SELECT s.storage_id AS storage_id, st.bucket_name, st.object_key, st.file_name, st.file_size, st.mime_type, st.storage_type, st.uploaded_by, st.created_at FROM customer_questions_storage s JOIN storage st ON st.id = s.storage_id WHERE s.customer_question_id = $1 ORDER BY s.id DESC`;
+    const params = [questionId];
+    if (limit != null) {
+      params.push(limit, offset);
+      q += ` LIMIT $2 OFFSET $3`;
+    } else if (offset) {
+      params.push(offset);
+      q += ` OFFSET $2`;
+    }
+    const res = await pool.query(q, params);
     return res.rows;
   }
 }

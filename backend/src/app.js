@@ -12,6 +12,91 @@ const errorHandler = require('./api/middleware/errorHandler');
 const config = require('./config');
 const { swaggerUi, swaggerSpec } = require('./config/swagger');
 const storageConfig = require('./config/storage');
+const cacheInvalidator = require('./utils/cacheInvalidator');
+
+// Prometheus client for metrics
+const client = require('prom-client');
+const os = require('os');
+
+// Collect default metrics (CPU, memory, eventloop, etc.)
+client.collectDefaultMetrics({ timeout: 5000 });
+
+const httpRequestDurationMilliseconds = new client.Histogram({
+  name: 'http_request_duration_ms',
+  help: 'Duration of HTTP requests in ms',
+  labelNames: ['method', 'route', 'code'],
+  buckets: [50, 100, 200, 300, 400, 500, 1000]
+});
+
+// Counter for total requests (useful for request rate)
+const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'code']
+});
+
+// Additional metrics inspired by provided Koa snippet
+const nodeHttpTotalCount = new client.Counter({
+  name: 'nodejs_http_total_count',
+  help: 'total request number',
+  labelNames: ['method', 'path']
+});
+
+const nodeHttpTotalDuration = new client.Gauge({
+  name: 'nodejs_http_total_duration',
+  help: 'the last duration or response time of last request',
+  labelNames: ['method', 'path']
+});
+
+// Gauges for CPU% and Memory%
+const processCpuPercent = new client.Gauge({
+  name: 'process_cpu_percent',
+  help: 'Process CPU usage percent (0-100)'
+});
+
+const processMemoryPercent = new client.Gauge({
+  name: 'process_memory_percent',
+  help: 'Process memory usage percent (0-100)'
+});
+
+// Helper to compute CPU percentage for the Node process
+let lastUsage = process.cpuUsage();
+let lastTime = Date.now();
+function updateCpuMemoryMetrics() {
+  try {
+    const curUsage = process.cpuUsage();
+    const curTime = Date.now();
+    const elapsedMicros = (curTime - lastTime) * 1000; // ms -> µs
+    const userDiff = curUsage.user - lastUsage.user;
+    const systemDiff = curUsage.system - lastUsage.system;
+    const totalProcessMicros = userDiff + systemDiff;
+
+    // number of logical CPUs
+    const cpuCount = os.cpus().length || 1;
+
+    // CPU percent = (process CPU time / elapsed time) / cpuCount * 100
+    const cpuPercent = Math.min(100, (totalProcessMicros / elapsedMicros) / cpuCount * 100);
+    if (!Number.isNaN(cpuPercent) && Number.isFinite(cpuPercent)) {
+      processCpuPercent.set(cpuPercent);
+    }
+
+    const mem = process.memoryUsage();
+    const totalMem = os.totalmem() || 1;
+    const memPercent = Math.min(100, (mem.rss / totalMem) * 100);
+    if (!Number.isNaN(memPercent) && Number.isFinite(memPercent)) {
+      processMemoryPercent.set(memPercent);
+    }
+
+    lastUsage = curUsage;
+    lastTime = curTime;
+  } catch (e) {
+    // ignore metric calculation errors
+  }
+}
+
+// Update CPU/memory gauges every 5 seconds
+setInterval(updateCpuMemoryMetrics, 5000);
+updateCpuMemoryMetrics();
 
 const app = express();
 
@@ -32,6 +117,40 @@ app.use(cookieParser());
 
 // Trust proxy для получения реального IP адреса
 app.set('trust proxy', true);
+
+// Middleware: observe request durations for Prometheus
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const route = req.route && req.route.path ? req.route.path : req.path;
+    const duration = Date.now() - start;
+    try {
+      httpRequestDurationMilliseconds.labels(req.method, route, res.statusCode).observe(duration);
+      httpRequestsTotal.labels(req.method, route, res.statusCode).inc();
+      // Koa-like per-route metrics: count and last-duration (ms)
+      try {
+        const pathLabel = route || req.path;
+        nodeHttpTotalCount.labels(req.method, pathLabel).inc();
+        nodeHttpTotalDuration.labels(req.method, pathLabel).set(duration);
+      } catch (err) {
+        // ignore per-route metric errors
+      }
+    } catch (e) {
+      // ignore metric errors
+    }
+  });
+  next();
+});
+
+// Metrics endpoint for Prometheus to scrape
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', client.register.contentType);
+    res.send(await client.register.metrics());
+  } catch (e) {
+    res.status(500).send(e.message);
+  }
+});
 
 // Функция для динамической загрузки swagger spec
 function getSwaggerSpec() {
@@ -66,6 +185,21 @@ app.get('/api-docs.json', (req, res) => {
 
 // API Routes
 app.use('/api', apiRoutes);
+
+// Admin endpoint: clear cache (protected by ADMIN_KEY header)
+app.post('/admin/cache/clear', (req, res) => {
+  const key = req.headers['x-admin-key'] || req.query.admin_key;
+  if (!process.env.ADMIN_KEY || key !== process.env.ADMIN_KEY) {
+    return res.status(403).json({ error: 'forbidden' });
+  }
+  const entity = req.body && req.body.entity ? String(req.body.entity).toLowerCase() : null;
+  if (entity) {
+    cacheInvalidator.invalidate(entity, { by: 'admin', ip: req.ip });
+    return res.json({ ok: true, invalidated: entity });
+  }
+  cacheInvalidator.invalidateAll({ by: 'admin', ip: req.ip });
+  return res.json({ ok: true, invalidated: 'all' });
+});
 
 // Serve local uploads (if any) — mount path and directory come from config/storage
 try {

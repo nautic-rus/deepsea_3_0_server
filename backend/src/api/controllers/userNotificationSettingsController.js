@@ -3,8 +3,8 @@ const UserNotificationSettingsService = require('../services/userNotificationSet
 class UserNotificationSettingsController {
   static async list(req, res, next) {
     try {
-      const userId = Number(req.params.id);
-      if (!userId) { const err = new Error('user id required'); err.statusCode = 400; throw err; }
+      const userId = req.user && req.user.id ? Number(req.user.id) : null;
+      if (!userId) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
       const projectId = req.query.project_id ? Number(req.query.project_id) : null;
       const rows = await UserNotificationSettingsService.list(userId, projectId);
       res.json({ data: rows });
@@ -14,8 +14,8 @@ class UserNotificationSettingsController {
   static async upsert(req, res, next) {
     try {
       const actor = req.user || null;
-      const userId = Number(req.params.id);
-      if (!userId) { const err = new Error('user id required'); err.statusCode = 400; throw err; }
+      const userId = req.user && req.user.id ? Number(req.user.id) : null;
+      if (!userId) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
       const body = req.body || {};
       const payload = {
         project_id: body.project_id !== undefined ? body.project_id : null,
@@ -32,8 +32,8 @@ class UserNotificationSettingsController {
   static async remove(req, res, next) {
     try {
       const actor = req.user || null;
-      const userId = Number(req.params.id);
-      if (!userId) { const err = new Error('user id required'); err.statusCode = 400; throw err; }
+      const userId = req.user && req.user.id ? Number(req.user.id) : null;
+      if (!userId) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
       const body = req.body || {};
       const payload = {
         project_id: body.project_id !== undefined ? body.project_id : null,

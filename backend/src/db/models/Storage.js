@@ -2,8 +2,8 @@ const pool = require('../connection');
 
 class Storage {
   static async list(filters = {}) {
-    const { uploaded_by, storage_type, page = 1, limit = 50, search } = filters;
-    const offset = (page - 1) * limit;
+    const { uploaded_by, storage_type, page = 1, limit, search } = filters;
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
@@ -11,8 +11,14 @@ class Storage {
     if (storage_type) { where.push(`storage_type = $${idx++}`); values.push(storage_type); }
     if (search) { where.push(`(bucket_name ILIKE $${idx} OR object_key ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const q = `SELECT id, url, bucket_name, object_key, file_name, file_size, mime_type, storage_type, uploaded_by, created_at FROM storage ${whereSql} ORDER BY id DESC LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+  let q = `SELECT id, url, bucket_name, object_key, file_name, file_size, mime_type, storage_type, uploaded_by, created_at FROM storage ${whereSql} ORDER BY id DESC`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }

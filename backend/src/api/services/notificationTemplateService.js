@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const cacheInvalidator = require('../../utils/cacheInvalidator');
 
 /**
  * Simple template renderer for notification messages.
@@ -13,6 +14,19 @@ const path = require('path');
 
 class NotificationTemplateService {
   static templatesCache = {};
+
+  // Subscribe to cache invalidation events and clear templates cache
+  static _subscribeInvalidation() {
+    try {
+      cacheInvalidator.on('invalidate', (entity) => {
+        // For now, clear templates cache on any entity change; can be refined
+        NotificationTemplateService.templatesCache = {};
+      });
+    } catch (e) {}
+  }
+
+
+
 
   // Safely resolve a dotted path from an object, e.g. 'issue.title'
   static _resolvePath(obj, pathStr) {
@@ -99,7 +113,12 @@ class NotificationTemplateService {
     // convert it into a readable multi-line string so simple templates
     // (which only support {{key}} replacement) can present history records
     // instead of dumping raw JSON.
-    if (ctx.changes && typeof ctx.changes === 'object' && (ctx.changes.before || ctx.changes.after)) {
+    // Cache the resolved string on the original context to avoid re-running
+    // expensive DB lookups when render() is called multiple times for the
+    // same event (e.g., once per recipient).
+    if (context && context._resolvedChanges) {
+      ctx.changes = context._resolvedChanges;
+    } else if (ctx.changes && typeof ctx.changes === 'object' && (ctx.changes.before || ctx.changes.after)) {
       try {
         const before = ctx.changes.before || {};
         const after = ctx.changes.after || {};
@@ -264,6 +283,8 @@ class NotificationTemplateService {
           });
           ctx.changes = lines.join('\n');
         }
+        // Cache on the original context so subsequent render() calls skip DB lookups
+        if (context) context._resolvedChanges = ctx.changes;
       } catch (e) {
         // on any error, fall back to original behavior (JSON stringification in _renderString)
       }
@@ -316,5 +337,8 @@ class NotificationTemplateService {
     return result;
   }
 }
+
+// initialize subscription (do this after class is defined)
+try { NotificationTemplateService._subscribeInvalidation(); } catch (e) {}
 
 module.exports = NotificationTemplateService;

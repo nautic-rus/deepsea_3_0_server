@@ -2,15 +2,21 @@ const pool = require('../connection');
 
 class MaterialKitItem {
   static async list(filters = {}) {
-    const { kit_id, page = 1, limit = 50 } = filters;
-    const offset = (page - 1) * limit;
+    const { kit_id, page = 1, limit } = filters;
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
     if (kit_id) { where.push(`kit_id = $${idx++}`); values.push(kit_id); }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT id, kit_id, material_id, stock_code, quantity, unit_id, notes, created_at FROM material_kit_items ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+    let q = `SELECT id, kit_id, material_id, stock_code, quantity, unit_id, notes, created_at FROM material_kit_items ${whereSql} ORDER BY id`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }

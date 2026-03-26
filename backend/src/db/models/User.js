@@ -3,6 +3,8 @@
  */
 
 const pool = require('../connection');
+const Session = require('./Session');
+const AuditLog = require('./AuditLog');
 
 class User {
   /**
@@ -19,8 +21,10 @@ class User {
         first_name, 
         last_name, 
         middle_name,
-        department_id,
-        job_title_id,
+          department_id,
+          group_id,
+          organization_id,
+          job_title_id,
         is_active, 
         is_verified,
         last_login,
@@ -50,6 +54,10 @@ class User {
         u.middle_name,
         u.department_id,
         d.name AS department,
+        u.group_id,
+        g.name AS group_name,
+        u.organization_id,
+        o.name AS organization_name,
         u.job_title_id,
         jt.name AS job_title,
         u.is_active, 
@@ -60,6 +68,8 @@ class User {
       FROM users u
       LEFT JOIN department d ON u.department_id = d.id
       LEFT JOIN job_title jt ON u.job_title_id = jt.id
+      LEFT JOIN groups g ON u.group_id = g.id
+      LEFT JOIN organizations o ON u.organization_id = o.id
       WHERE u.id = $1
     `;
 
@@ -71,7 +81,7 @@ class User {
    * Set avatar URL for a user and return updated user record
    */
   static async setAvatar(id, url) {
-    const query = `UPDATE users SET avatar_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
+    const query = `UPDATE users SET avatar_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
     const res = await pool.query(query, [url || null, id]);
     if (res.rowCount === 0) return null;
     return await User.findById(id);
@@ -80,10 +90,30 @@ class User {
   /**
    * Set password hash for a user
    */
-  static async setPassword(id, password_hash) {
+  static async setPassword(id, password_hash, actor_id = null) {
     const query = `UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id`;
     const res = await pool.query(query, [password_hash, id]);
     if (res.rowCount === 0) return null;
+    // Deactivate all existing sessions for the user after password change
+    try {
+      await Session.deactivateAllUserSessions(id);
+    } catch (e) {
+      // Log but don't fail the password update if session invalidation fails
+      console.error('Failed to deactivate user sessions after password change', e && e.message ? e.message : e);
+    }
+    // Audit log: record who initiated the password change
+    try {
+      await AuditLog.create({
+        actor_id: actor_id || null,
+        entity: 'user',
+        entity_id: id,
+        action: 'password.change',
+        details: { initiated_by: actor_id || null }
+      });
+    } catch (e) {
+      console.error('Failed to write audit log for password change', e && e.message ? e.message : e);
+    }
+
     return await User.findById(id);
   }
 
@@ -114,8 +144,10 @@ class User {
         first_name, 
         last_name, 
         middle_name,
-        department_id,
-        job_title_id,
+          department_id,
+          group_id,
+          organization_id,
+          job_title_id,
         is_active, 
         is_verified,
         last_login,
@@ -143,8 +175,10 @@ class User {
         first_name, 
         last_name, 
         middle_name,
-        department_id,
-        job_title_id,
+          department_id,
+          group_id,
+          organization_id,
+          job_title_id,
         is_active, 
         is_verified,
         last_login,
@@ -171,6 +205,8 @@ class User {
       last_name,
       middle_name,
       department_id,
+      group_id,
+      organization_id,
       job_title_id,
       is_active = true,
       is_verified = false
@@ -186,11 +222,13 @@ class User {
         last_name, 
         middle_name,
         department_id,
+        group_id,
+        organization_id,
         job_title_id,
         is_active, 
         is_verified
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING 
         id, 
         username, 
@@ -200,6 +238,8 @@ class User {
         last_name, 
         middle_name,
         department_id,
+        group_id,
+        organization_id,
         job_title_id,
         is_active, 
         is_verified,
@@ -216,6 +256,8 @@ class User {
       last_name || null,
       middle_name || null,
       department_id || null,
+      group_id || null,
+      organization_id || null,
       job_title_id || null,
       is_active,
       is_verified
@@ -228,7 +270,7 @@ class User {
    * Обновить существующего пользователя (частично). Возвращает обновлённую запись.
    */
   static async update(id, fields) {
-    const allowed = ['username','email','phone','first_name','last_name','middle_name','department_id','job_title_id','is_active','is_verified'];
+    const allowed = ['username','email','phone','first_name','last_name','middle_name','department_id','group_id','organization_id','job_title_id','is_active','is_verified'];
     const sets = [];
     const params = [];
     let idx = 1;
@@ -275,7 +317,7 @@ class User {
   /**
    * Вернуть список пользователей с пагинацией и поиском
    */
-  static async listUsers({ search = null, limit = 25, offset = 0 } = {}) {
+  static async listUsers({ search = null, limit, offset = 0 } = {}) {
     const params = [];
     let where = '';
     // Build WHERE clause with dynamic parameter positions
@@ -284,12 +326,17 @@ class User {
       where = `WHERE u.username ILIKE $1 OR u.email ILIKE $2 OR u.phone ILIKE $3`;
     }
 
-    // push limit and offset
-    params.push(limit, offset);
-
     // Note: join department and job_title to return textual names
-    const limitParamIndex = params.length - 1; // limit is second-last
-    const offsetParamIndex = params.length; // offset is last
+    let paging = '';
+    if (limit != null) {
+      params.push(limit, offset);
+      const limitParamIndex = params.length - 1;
+      const offsetParamIndex = params.length;
+      paging = `LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}`;
+    } else if (offset) {
+      params.push(offset);
+      paging = `OFFSET $${params.length}`;
+    }
 
     const query = `
       SELECT u.id,
@@ -302,6 +349,10 @@ class User {
              u.middle_name,
             u.department_id,
              d.name AS department,
+             u.group_id,
+             g.name AS group_name,
+             u.organization_id,
+             o.name AS organization_name,
              u.job_title_id,
              jt.name AS job_title,
              u.is_active,
@@ -311,9 +362,11 @@ class User {
       FROM users u
       LEFT JOIN department d ON u.department_id = d.id
       LEFT JOIN job_title jt ON u.job_title_id = jt.id
+      LEFT JOIN groups g ON u.group_id = g.id
+      LEFT JOIN organizations o ON u.organization_id = o.id
       ${where}
       ORDER BY u.id ASC
-      LIMIT $${limitParamIndex} OFFSET $${offsetParamIndex}
+      ${paging}
     `;
     const res = await pool.query(query, params);
     return res.rows;

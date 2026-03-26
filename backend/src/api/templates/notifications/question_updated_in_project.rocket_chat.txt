@@ -1,0 +1,13 @@
+📝 Вопрос обновлён!
+
+*Проект:* {{project.code}}
+*Номер:* #{{question.id}}
+*Заголовок:* {{question.question_title}}
+*Кто изменил:* {{actor.full_name}}
+
+*Изменения:*
+{{changes}}
+
+{{questionUrl}}
+
+_Автоматическое уведомление от {{company.name}}._

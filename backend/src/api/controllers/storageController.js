@@ -70,9 +70,37 @@ class StorageController {
   static async uploadS3(req, res, next) {
     try {
       const actor = req.user || null;
-      if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
-      const created = await StorageService.uploadAndCreate(req.file, actor, req.body || {});
-      res.status(201).json({ data: created });
+      // Collect files from multer. We support:
+      // - fields: { files: [...], file: [...] }
+      // - single file in req.file (fallback)
+      let files = [];
+      if (req.files) {
+        if (Array.isArray(req.files)) files = req.files;
+        else {
+          if (req.files.files) files = files.concat(req.files.files);
+          if (req.files.file) files = files.concat(req.files.file);
+        }
+      }
+      if (req.file) files.push(req.file);
+      if (!files || files.length === 0) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
+
+      // Accept optional `directory` (or `subdir`) in request body to place object under a prefix
+      const opts = {};
+      if (req.body) {
+        if (req.body.directory) opts.directory = String(req.body.directory);
+        if (req.body.subdir) opts.directory = String(req.body.subdir);
+        if (req.body.bucket_name) opts.bucket_name = String(req.body.bucket_name);
+      }
+
+      const results = [];
+      for (const f of files) {
+        const created = await StorageService.uploadAndCreate(f, actor, opts);
+        results.push(created);
+      }
+
+      // Keep backward compatibility: return single object when one file uploaded
+      if (results.length === 1) return res.status(201).json({ data: results[0] });
+      return res.status(201).json({ data: results });
     } catch (err) { next(err); }
   }
 
@@ -120,8 +148,15 @@ class StorageController {
         return;
       }
       if (info.type === 's3') {
-        // Redirect to S3 URL (may be public)
-        return res.redirect(info.url);
+        // If we have a public URL, redirect. Otherwise, stream the S3 object directly.
+        if (info.url) return res.redirect(info.url);
+        if (info.stream) {
+          res.setHeader('Content-Type', info.mime || 'application/octet-stream');
+          res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(info.filename)}`);
+          info.stream.on('error', (e) => { next(e); });
+          info.stream.pipe(res);
+          return;
+        }
       }
       const err = new Error('Unsupported storage type'); err.statusCode = 500; throw err;
     } catch (err) { next(err); }

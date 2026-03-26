@@ -2,6 +2,7 @@
  * Модель для операций с разрешениями (permissions)
  */
 const pool = require('../connection');
+const ProtectionService = require('../../api/services/protectionService');
 
 class Permission {
   /**
@@ -16,6 +17,25 @@ class Permission {
       LIMIT 1
     `;
     const res = await pool.query(query, [userId, permissionCode]);
+    return res.rowCount > 0;
+  }
+
+  /**
+   * Проверить наличие разрешения у пользователя для конкретного проекта.
+   * Учитывает глобальные роли (project_id IS NULL) и роли привязанные к проекту.
+   */
+  static async hasPermissionForProject(userId, permissionCode, projectId) {
+    const query = `
+      SELECT 1 FROM user_roles ur
+      JOIN role_permissions rp ON ur.role_id = rp.role_id
+      JOIN permissions p ON rp.permission_id = p.id
+      WHERE ur.user_id = $1 AND p.code = $2
+        AND (ur.project_id IS NULL${projectId ? ' OR ur.project_id = $3' : ''})
+      LIMIT 1
+    `;
+    const params = [userId, permissionCode];
+    if (projectId) params.push(projectId);
+    const res = await pool.query(query, params);
     return res.rowCount > 0;
   }
 
@@ -134,6 +154,8 @@ class Permission {
       const err = new Error('Invalid permission id'); err.statusCode = 400; throw err;
     }
 
+    // Application-level protection
+    await ProtectionService.assertNotProtected('permissions', Number(id));
     // Remove associations first to avoid FK constraint if present
     await pool.query('DELETE FROM role_permissions WHERE permission_id = $1', [id]);
 

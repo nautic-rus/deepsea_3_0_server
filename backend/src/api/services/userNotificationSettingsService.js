@@ -1,5 +1,7 @@
 const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
 const User = require('../../db/models/User');
+const NotificationEvent = require('../../db/models/NotificationEvent');
+const NotificationMethod = require('../../db/models/NotificationMethod');
 
 class UserNotificationSettingsService {
   static async list(userId, projectId = null) {
@@ -7,10 +9,39 @@ class UserNotificationSettingsService {
     const user = await User.findById(userId);
     if (!user) { const err = new Error('User not found'); err.statusCode = 404; throw err; }
 
-    if (projectId === null || projectId === undefined) {
-      return await UserNotificationSetting.findByUser(userId);
+    // Build events x methods matrix for the user (optionally scoped to project)
+    const events = await NotificationEvent.listAll();
+    const methods = await NotificationMethod.listAll();
+
+    const settings = (projectId === null || projectId === undefined)
+      ? await UserNotificationSetting.findByUser(userId)
+      : await UserNotificationSetting.findByUserProject(userId, projectId);
+
+    // map existing settings by composite key
+    const map = new Map();
+    for (const s of settings) {
+      const key = `${s.event_id}:${s.method_id}`;
+      map.set(key, s);
     }
-    return await UserNotificationSetting.findByUserProject(userId, projectId);
+
+    // assemble matrix: array of rows where each row corresponds to an event
+    const matrix = events.map(ev => {
+      const row = {
+        event: { id: ev.id, code: ev.code, name: ev.name, description: ev.description },
+        methods: methods.map(m => {
+          const key = `${ev.id}:${m.id}`;
+          const s = map.get(key) || null;
+          return {
+            method: { id: m.id, code: m.code, name: m.name, description: m.description },
+            enabled: s ? !!s.enabled : false,
+            config: s ? s.config : null
+          };
+        })
+      };
+      return row;
+    });
+
+    return { events, methods, matrix };
   }
 
   static async upsert(userId, data) {

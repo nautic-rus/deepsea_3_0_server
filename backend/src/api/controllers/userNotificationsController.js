@@ -4,8 +4,17 @@ class UserNotificationsController {
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
-      const userId = Number(req.params.id);
-      if (!userId) { const err = new Error('user id required'); err.statusCode = 400; throw err; }
+      // Allow requests either with path param `/users/:id/notifications`
+      // or without it `/users/notifications` (in which case current authenticated user is used).
+      let userId = null;
+      if (req.params && req.params.id) {
+        userId = Number(req.params.id);
+        if (!userId) { const err = new Error('invalid user id'); err.statusCode = 400; throw err; }
+      } else if (actor && actor.id) {
+        userId = actor.id;
+      } else {
+        const err = new Error('user id required'); err.statusCode = 400; throw err;
+      }
 
       // allow only self
       if (!actor || actor.id !== userId) {
@@ -13,7 +22,7 @@ class UserNotificationsController {
       }
 
       const options = {
-        limit: req.query.limit ? Number(req.query.limit) : 50,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
         offset: req.query.offset ? Number(req.query.offset) : 0,
         includeHidden: req.query.include_hidden === 'true' || req.query.includeHidden === 'true'
       };

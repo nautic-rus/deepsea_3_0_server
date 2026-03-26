@@ -23,9 +23,17 @@ class S3Service {
    * @param {string} bucket
    * @param {string} contentType
    */
-  static async uploadBuffer({ buffer, originalName, bucket, contentType }) {
+  static async uploadBuffer({ buffer, originalName, bucket, contentType, directory }) {
     if (!buffer || !originalName) throw new Error('Missing buffer or filename');
-    const key = `${uuidv4()}-${originalName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    // Sanitize original name and optional directory prefix
+    const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const baseKey = `${uuidv4()}-${safeName}`;
+    let key = baseKey;
+    if (directory) {
+      // allow alphanumeric, dash, underscore and slashes for subdirs
+      const safeDir = String(directory).replace(/[^a-zA-Z0-9_\-\/]/g, '_').replace(/^\/+|\/+$/g, '');
+      if (safeDir) key = `${safeDir}/${baseKey}`;
+    }
     const params = {
       Bucket: bucket,
       Key: key,

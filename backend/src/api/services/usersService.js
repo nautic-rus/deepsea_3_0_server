@@ -7,7 +7,7 @@
 
 const User = require('../../db/models/User');
 const pool = require('../../db/connection');
-const { hashPassword } = require('../../utils/password');
+const { hashPassword, validatePassword } = require('../../utils/password');
 const crypto = require('crypto');
 const { hasPermission } = require('./permissionChecker');
 const NotificationTemplateService = require('./notificationTemplateService');
@@ -28,6 +28,8 @@ class UsersService {
       last_name,
       middle_name,
       department_id,
+      group_id,
+      organization_id,
       job_title_id,
       is_active,
       is_verified
@@ -123,6 +125,12 @@ class UsersService {
     let plainPassword = password;
     if (!plainPassword) {
       plainPassword = generateStrongPassword(16);
+    } else {
+      // если пароль передан от клиента — проверим его на соответствие политике
+      const errors = validatePassword(plainPassword);
+      if (errors && errors.length > 0) {
+        const err = new Error('Password validation error: ' + errors.join('; ')); err.statusCode = 400; throw err;
+      }
     }
 
     // Хешировать пароль
@@ -138,6 +146,8 @@ class UsersService {
       last_name,
       middle_name,
       department_id,
+      group_id,
+      organization_id,
       job_title_id,
       is_active: is_active !== undefined ? is_active : true,
       is_verified: is_verified !== undefined ? is_verified : false
@@ -174,11 +184,105 @@ class UsersService {
       last_name: newUser.last_name,
       middle_name: newUser.middle_name,
       department_id: newUser.department_id,
+      group_id: newUser.group_id,
+      organization_id: newUser.organization_id,
       job_title_id: newUser.job_title_id,
       is_active: newUser.is_active,
       is_verified: newUser.is_verified,
       created_at: newUser.created_at,
       updated_at: newUser.updated_at
+    };
+  }
+
+  /**
+   * Get aggregated statistics for a given user.
+   * Returns project count, issues counts, documents counts and customer question counts.
+   */
+  static async getUserStatistics(userId, actor) {
+    const pool = require('../../db/connection');
+    const Project = require('../../db/models/Project');
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    // allow if actor has users.view or is requesting their own stats
+    const allowed = await hasPermission(actor, 'users.view');
+    if (!allowed && Number(actor.id) !== Number(userId)) { const err = new Error('Forbidden: missing permission users.view'); err.statusCode = 403; throw err; }
+
+    const uid = Number(userId);
+
+    // projects assigned to user (via user_roles)
+    const projectIds = await Project.listAssignedProjectIds(uid);
+    const projects_count = (projectIds || []).length;
+
+    // Fetch project details (code, name, description, status, owner full name)
+    let projects = [];
+    let projects_active = 0;
+    if (projectIds && projectIds.length) {
+      const q = `SELECT p.id, p.code, p.name, p.description, p.status,
+        concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS owner_full_name
+        FROM projects p
+        LEFT JOIN users u ON u.id = p.owner_id
+        WHERE p.id = ANY($1::int[])`;
+      const projRes = await pool.query(q, [projectIds]);
+      projects = (projRes.rows || []).map(r => ({
+        code: r.code,
+        name: r.name,
+        description: r.description,
+        status: r.status,
+        owner_full_name: r.owner_full_name || null
+      }));
+      projects_active = projects.filter(p => p.status === 'active').length;
+    }
+
+    // issues: total, open (status.is_final != true), added last 7 days (author)
+    const issuesTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE (assignee_id = $1 OR author_id = $1) AND is_active = true`, [uid]);
+    const issues_total = Number(issuesTotalRes.rows[0] ? issuesTotalRes.rows[0].cnt : 0);
+
+    const issuesOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues i JOIN issue_status s ON i.status_id = s.id WHERE (i.assignee_id = $1 OR i.author_id = $1) AND (s.is_final IS NOT TRUE) AND i.is_active = true`, [uid]);
+    const issues_open = Number(issuesOpenRes.rows[0] ? issuesOpenRes.rows[0].cnt : 0);
+
+    const issuesWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE author_id = $1 AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
+    const issues_last_week = Number(issuesWeekRes.rows[0] ? issuesWeekRes.rows[0].cnt : 0);
+
+    // documents: total, open (document_status.is_final != true), added last 7 days (created_by)
+    const docsTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND is_active = true`, [uid]);
+    const documents_total = Number(docsTotalRes.rows[0] ? docsTotalRes.rows[0].cnt : 0);
+
+    const docsOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents d JOIN document_status s ON d.status_id = s.id WHERE (d.created_by = $1 OR d.responsible_id = $1) AND (s.is_final IS NOT TRUE) AND d.is_active = true`, [uid]);
+    const documents_open = Number(docsOpenRes.rows[0] ? docsOpenRes.rows[0].cnt : 0);
+
+    const docsWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
+    const documents_last_week = Number(docsWeekRes.rows[0] ? docsWeekRes.rows[0].cnt : 0);
+
+    // customer questions: total, open (status.is_final != true), added last 7 days (asked_by)
+    const cqTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE (asked_by = $1 OR answered_by = $1) AND is_active = true`, [uid]);
+    const customer_questions_total = Number(cqTotalRes.rows[0] ? cqTotalRes.rows[0].cnt : 0);
+
+    const cqOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions cq JOIN customer_question_status cs ON cq.status_id = cs.id WHERE (cq.asked_by = $1 OR cq.answered_by = $1) AND (cs.is_final IS NOT TRUE) AND cq.is_active = true`, [uid]);
+    const customer_questions_open = Number(cqOpenRes.rows[0] ? cqOpenRes.rows[0].cnt : 0);
+
+    const cqWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE asked_by = $1 AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
+    const customer_questions_last_week = Number(cqWeekRes.rows[0] ? cqWeekRes.rows[0].cnt : 0);
+
+    return {
+      projects: {
+        total: projects_count,
+        active: projects_active,
+        items: projects
+      },
+      issues: {
+        total: issues_total,
+        open: issues_open,
+        last_week: issues_last_week
+      },
+      documents: {
+        total: documents_total,
+        open: documents_open,
+        last_week: documents_last_week
+      },
+      customer_questions: {
+        total: customer_questions_total,
+        open: customer_questions_open,
+        last_week: customer_questions_last_week
+      }
     };
   }
 
@@ -225,6 +329,10 @@ class UsersService {
       middle_name: user.middle_name,
       department_id: user.department_id,
       department: user.department,
+      group_id: user.group_id,
+      group: user.group_name || null,
+      organization_id: user.organization_id,
+      organization: user.organization_name || null,
       job_title_id: user.job_title_id,
       job_title: user.job_title,
       is_active: user.is_active,
@@ -257,8 +365,10 @@ class UsersService {
 
     // Pagination
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 25, 1), 200);
-    const offset = (page - 1) * limit;
+    // Allow arbitrary limit from client (minimum 1). No default limit — return all if not specified.
+    const hasLimit = query.limit != null && query.limit !== '';
+    const limit = hasLimit ? Math.max(parseInt(query.limit, 10) || 1, 1) : undefined;
+    const offset = limit ? (page - 1) * limit : 0;
 
     // Search (username/email/phone)
     const search = query.search ? `%${query.search.trim()}%` : null;
@@ -310,6 +420,39 @@ UsersService.updateUser = async function (id, fields, actor) {
     const existing = await User.findByUsername(fields.username);
     if (existing && existing.id !== Number(id)) { const err = new Error('Username already exists'); err.statusCode = 409; throw err; }
   }
+  if (fields.email) {
+    const existing = await User.findByEmail(fields.email);
+    if (existing && existing.id !== Number(id)) { const err = new Error('Email already exists'); err.statusCode = 409; throw err; }
+  }
+  if (fields.phone) {
+    const existing = await User.findByPhone(fields.phone);
+    if (existing && existing.id !== Number(id)) { const err = new Error('Phone already exists'); err.statusCode = 409; throw err; }
+  }
+
+  const updated = await User.update(Number(id), fields);
+  if (!updated) { const err = new Error('User not found'); err.statusCode = 404; throw err; }
+  return updated;
+};
+
+/**
+ * Update profile for the current user (no admin permission required)
+ * Allows updating: email, phone, first_name, last_name, middle_name
+ */
+UsersService.updateProfile = async function (id, fields, actor) {
+  if (!actor || !actor.id) {
+    const err = new Error('Authentication required'); err.statusCode = 401; throw err;
+  }
+  if (Number(actor.id) !== Number(id)) {
+    const err = new Error('Forbidden'); err.statusCode = 403; throw err;
+  }
+
+  // Prevent changing password via this endpoint
+  if (fields.password || fields.password_hash) {
+    const err = new Error('Password cannot be changed via this endpoint'); err.statusCode = 400; throw err;
+  }
+
+  // Validate uniqueness for email/phone
+  const User = require('../../db/models/User');
   if (fields.email) {
     const existing = await User.findByEmail(fields.email);
     if (existing && existing.id !== Number(id)) { const err = new Error('Email already exists'); err.statusCode = 409; throw err; }

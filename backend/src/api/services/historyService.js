@@ -1,5 +1,6 @@
 const IssueHistory = require('../../db/models/IssueHistory');
 const DocumentHistory = require('../../db/models/DocumentHistory');
+const CustomerQuestionHistory = require('../../db/models/CustomerQuestionHistory');
 
 /**
  * HistoryService
@@ -22,6 +23,7 @@ class HistoryService {
       const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
       const writes = [];
       for (const k of keys) {
+        if (k === 'updated_at' || k === 'updatedAt') continue;
         const bv = before[k];
         const av = after[k];
         const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
@@ -33,7 +35,15 @@ class HistoryService {
       return Promise.all(writes);
     }
 
-    const payload = { issue_id: issueId, actor_id: actorId, action, details };
+    const payload = { issue_id: issueId, actor_id: actorId, action };
+    if (details && typeof details === 'object') {
+      const d = Array.isArray(details) ? details : Object.assign({}, details);
+      delete d.updated_at;
+      delete d.updatedAt;
+      payload.details = d;
+    } else {
+      payload.details = details;
+    }
     return IssueHistory.create(payload);
   }
 
@@ -52,6 +62,7 @@ class HistoryService {
       const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
       const writes = [];
       for (const k of keys) {
+        if (k === 'updated_at' || k === 'updatedAt') continue;
         const bv = before[k];
         const av = after[k];
         const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
@@ -62,9 +73,56 @@ class HistoryService {
       return Promise.all(writes);
     }
 
-    const payload = { document_id: documentId, actor_id: actorId, action, details };
+    const payload = { document_id: documentId, actor_id: actorId, action };
+    if (details && typeof details === 'object') {
+      const d = Array.isArray(details) ? details : Object.assign({}, details);
+      delete d.updated_at;
+      delete d.updatedAt;
+      payload.details = d;
+    } else {
+      payload.details = details;
+    }
     return DocumentHistory.create(payload);
   }
+
+  /**
+   * Add customer question history record.
+   * @param {number} questionId
+   * @param {Object|number} actor - actor object or actor id
+   * @param {string} action - short action code
+   * @param {Object|string|null} details - optional details
+   */
+  static async addCustomerQuestionHistory(questionId, actor, action, details = null) {
+    const actorId = (actor && typeof actor === 'object') ? (actor.id || actor.user_id || null) : actor;
+    if (details && typeof details === 'object' && details.before && details.after && typeof details.before === 'object' && typeof details.after === 'object') {
+      const before = details.before || {};
+      const after = details.after || {};
+      const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+      const writes = [];
+      for (const k of keys) {
+        if (k === 'updated_at' || k === 'updatedAt') continue;
+        const bv = before[k];
+        const av = after[k];
+        const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
+        const avStr = av === undefined ? null : (typeof av === 'string' ? av : JSON.stringify(av));
+        if (bvStr === avStr) continue;
+        writes.push(CustomerQuestionHistory.create({ question_id: questionId, actor_id: actorId, action: k, details: { before: bv, after: av } }));
+      }
+      return Promise.all(writes);
+    }
+
+    const payload = { question_id: questionId, actor_id: actorId, action };
+    if (details && typeof details === 'object') {
+      const d = Array.isArray(details) ? details : Object.assign({}, details);
+      delete d.updated_at;
+      delete d.updatedAt;
+      payload.details = d;
+    } else {
+      payload.details = details;
+    }
+    return CustomerQuestionHistory.create(payload);
+  }
+
 }
 
 module.exports = HistoryService;

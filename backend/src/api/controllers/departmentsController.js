@@ -25,8 +25,8 @@ exports.list = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     const actor = req.user;
-    const { name } = req.body;
-    const created = await DepartmentsService.createDepartment(name, actor);
+    const { name, description } = req.body;
+    const created = await DepartmentsService.createDepartment(name, description, actor);
     res.status(201).json({ data: created });
   } catch (err) {
     next(err);

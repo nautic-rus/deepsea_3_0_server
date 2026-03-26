@@ -60,7 +60,7 @@ class ProjectsService {
   static async listProjectsForUser(query = {}, actor) {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const projects = await Project.listForUser(actor.id, query);
-    // Attach participants for each project: id, full_name, email, phone, url_avatar
+    // Attach participants for each project: id, full_name, url_avatar (exclude email and phone)
     const pool = require('../../db/connection');
     for (const p of projects) {
       try {
@@ -70,10 +70,10 @@ class ProjectsService {
           WHERE u.id IN (SELECT user_id FROM user_roles WHERE project_id = $1)
           ORDER BY u.last_name, u.first_name`;
         const res = await pool.query(q, [p.id]);
-        p.participants = res.rows.map(r => ({ id: r.id, full_name: r.full_name, email: r.email, phone: r.phone, avatar_id: r.avatar_id }));
+        p.participants = res.rows.map(r => ({ id: r.id, full_name: r.full_name, avatar_id: r.avatar_id }));
       } catch (e) {
         p.participants = [];
-      }
+      } 
     }
     return projects;
   }

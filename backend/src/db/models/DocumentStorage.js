@@ -33,8 +33,8 @@ class DocumentStorage {
     return res.rows[0] || null;
   }
 
-  static async listByDocument(documentId, { limit = 100, offset = 0 } = {}) {
-    const q = `SELECT s.id AS id, s.document_id, s.storage_id, s.type_id, s.rev, s.user_id, s.archive, s.archive_data,
+  static async listByDocument(documentId, { limit, offset = 0 } = {}) {
+    let q = `SELECT s.id AS id, s.document_id, s.storage_id, s.type_id, s.rev, s.user_id, s.archive, s.archive_data,
         st.bucket_name, st.object_key, st.storage_type, st.uploaded_by, st.created_at AS storage_created_at,
         st.file_name, st.file_size, st.mime_type,
         dst.name AS type_name,
@@ -44,9 +44,16 @@ class DocumentStorage {
       LEFT JOIN documents_storage_type dst ON dst.id = s.type_id
       LEFT JOIN users u ON u.id = s.user_id
       WHERE s.document_id = $1
-      ORDER BY s.id DESC
-      LIMIT $2 OFFSET $3`;
-    const res = await pool.query(q, [documentId, limit, offset]);
+      ORDER BY s.id DESC`;
+    const params = [documentId];
+    if (limit != null) {
+      params.push(limit, offset);
+      q += ` LIMIT $2 OFFSET $3`;
+    } else if (offset) {
+      params.push(offset);
+      q += ` OFFSET $2`;
+    }
+    const res = await pool.query(q, params);
     return res.rows;
   }
 

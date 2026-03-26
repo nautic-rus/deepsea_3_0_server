@@ -1,0 +1,1861 @@
+{
+	"info": {
+		"_postman_id": "deepsea-3-load-test-collection",
+		"name": "DeepSea 3.0 — Load Testing",
+		"description": "Коллекция для нагрузочного тестирования DeepSea 3.0 API.\n\nПеред запуском:\n1. Установите переменные окружения base_url, login_email, login_password.\n2. Запустите запрос «Login» — токен автоматически сохранится.\n3. Используйте Postman Runner / Newman для итеративного прогона.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:3000/api", "type": "string" },
+		{ "key": "access_token", "value": "", "type": "string" },
+		{ "key": "refresh_token", "value": "", "type": "string" },
+
+		{ "key": "user_id", "value": "1", "type": "string" },
+		{ "key": "user_email", "value": "test@example.com", "type": "string" },
+		{ "key": "user_password", "value": "password123", "type": "string" },
+
+		{ "key": "department_id", "value": "1", "type": "string" },
+		{ "key": "department_name", "value": "Test Department", "type": "string" },
+
+		{ "key": "role_id", "value": "1", "type": "string" },
+		{ "key": "role_name", "value": "Test Role", "type": "string" },
+		{ "key": "permission_id", "value": "1", "type": "string" },
+
+		{ "key": "project_id", "value": "1", "type": "string" },
+		{ "key": "project_name", "value": "Test Project", "type": "string" },
+
+		{ "key": "issue_id", "value": "1", "type": "string" },
+		{ "key": "issue_status_id", "value": "1", "type": "string" },
+		{ "key": "issue_type_id", "value": "1", "type": "string" },
+		{ "key": "issue_assignee_id", "value": "1", "type": "string" },
+
+		{ "key": "document_id", "value": "1", "type": "string" },
+		{ "key": "document_type_id", "value": "1", "type": "string" },
+		{ "key": "document_status_id", "value": "1", "type": "string" },
+		{ "key": "document_directory_id", "value": "1", "type": "string" },
+		{ "key": "document_storage_type_id", "value": "1", "type": "string" },
+		{ "key": "document_work_flow_id", "value": "1", "type": "string" },
+
+		{ "key": "customer_question_id", "value": "1", "type": "string" },
+		{ "key": "customer_question_status_id", "value": "1", "type": "string" },
+		{ "key": "customer_question_work_flow_id", "value": "1", "type": "string" },
+
+		{ "key": "notification_event_id", "value": "1", "type": "string" },
+		{ "key": "notification_method_id", "value": "1", "type": "string" },
+		{ "key": "notification_id", "value": "1", "type": "string" },
+
+		{ "key": "material_id", "value": "1", "type": "string" },
+		{ "key": "material_kit_id", "value": "1", "type": "string" },
+		{ "key": "material_kit_item_id", "value": "1", "type": "string" },
+
+		{ "key": "equipment_id", "value": "1", "type": "string" },
+		{ "key": "specification_id", "value": "1", "type": "string" },
+		{ "key": "specialization_id", "value": "1", "type": "string" },
+		{ "key": "stage_id", "value": "1", "type": "string" },
+		{ "key": "storage_id", "value": "1", "type": "string" },
+		{ "key": "statement_id", "value": "1", "type": "string" },
+
+		{ "key": "link_id", "value": "1", "type": "string" },
+		{ "key": "page_id", "value": "1", "type": "string" },
+		{ "key": "page_permission_id", "value": "1", "type": "string" },
+		{ "key": "job_title_id", "value": "1", "type": "string" },
+
+		{ "key": "limit", "value": "20", "type": "string" },
+		{ "key": "offset", "value": "0", "type": "string" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request: add timestamp for unique test data",
+					"pm.variables.set('timestamp', Date.now());",
+					"pm.variables.set('random_num', Math.floor(Math.random() * 100000));",
+					"",
+					"// Inject cookie header with saved tokens for every request.",
+					"// This ensures auth works even without a cookie jar (Newman, Runner, CI).",
+					"var parts = [];",
+					"var at = pm.collectionVariables.get('access_token');",
+					"var rt = pm.collectionVariables.get('refresh_token');",
+					"if (at) { parts.push('access_token=' + at); }",
+					"if (rt) { parts.push('refresh_token=' + rt); }",
+					"if (parts.length) {",
+					"    pm.request.headers.upsert({ key: 'Cookie', value: parts.join('; ') });",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test: track response time for load testing metrics",
+					"pm.test('Response time < 2000ms', function () {",
+					"    pm.expect(pm.response.responseTime).to.be.below(2000);",
+					"});",
+					"",
+					"pm.test('Status code is not 500', function () {",
+					"    pm.expect(pm.response.code).to.not.equal(500);",
+					"});"
+				]
+			}
+		}
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Login successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// --- Parse tokens from Set-Cookie headers ---",
+									"// The API returns tokens ONLY via HttpOnly cookies, not in JSON body.",
+									"var setCookies = pm.response.headers.filter(function (h) {",
+									"    return h.key.toLowerCase() === 'set-cookie';",
+									"});",
+									"setCookies.forEach(function (header) {",
+									"    var val = header.value || '';",
+									"    if (val.startsWith('access_token=')) {",
+									"        var token = val.split(';')[0].replace('access_token=', '');",
+									"        if (token) pm.collectionVariables.set('access_token', token);",
+									"    }",
+									"    if (val.startsWith('refresh_token=')) {",
+									"        var rt = val.split(';')[0].replace('refresh_token=', '');",
+									"        if (rt) pm.collectionVariables.set('refresh_token', rt);",
+									"    }",
+									"});",
+									"",
+									"// Fallback: also try to read from JSON body (backwards compat)",
+									"try {",
+									"    var json = pm.response.json();",
+									"    if (json.access_token) pm.collectionVariables.set('access_token', json.access_token);",
+									"    if (json.accessToken)  pm.collectionVariables.set('access_token', json.accessToken);",
+									"    if (json.token)        pm.collectionVariables.set('access_token', json.token);",
+									"    if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);",
+									"    if (json.refreshToken)  pm.collectionVariables.set('refresh_token', json.refreshToken);",
+									"    if (json.user && json.user.id) pm.collectionVariables.set('user_id', json.user.id);",
+									"} catch(e) { /* body may not contain tokens */ }",
+									"",
+									"pm.test('Tokens extracted', function () {",
+									"    pm.expect(pm.collectionVariables.get('access_token')).to.be.a('string').and.not.empty;",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{user_email}}\",\n  \"password\": \"{{user_password}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/auth/login", "host": ["{{base_url}}"], "path": ["auth", "login"] }
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Ensure refresh_token cookie is sent",
+									"var rt = pm.collectionVariables.get('refresh_token');",
+									"if (rt) {",
+									"    pm.request.headers.upsert({ key: 'Cookie', value: 'refresh_token=' + rt });",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Refresh successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Parse rotated tokens from Set-Cookie headers",
+									"var setCookies = pm.response.headers.filter(function (h) {",
+									"    return h.key.toLowerCase() === 'set-cookie';",
+									"});",
+									"setCookies.forEach(function (header) {",
+									"    var val = header.value || '';",
+									"    if (val.startsWith('access_token=')) {",
+									"        var token = val.split(';')[0].replace('access_token=', '');",
+									"        if (token) pm.collectionVariables.set('access_token', token);",
+									"    }",
+									"    if (val.startsWith('refresh_token=')) {",
+									"        var rt = val.split(';')[0].replace('refresh_token=', '');",
+									"        if (rt) pm.collectionVariables.set('refresh_token', rt);",
+									"    }",
+									"});",
+									"",
+									"// Fallback: JSON body",
+									"try {",
+									"    var json = pm.response.json();",
+									"    if (json.access_token) pm.collectionVariables.set('access_token', json.access_token);",
+									"    if (json.accessToken)  pm.collectionVariables.set('access_token', json.accessToken);",
+									"    if (json.token)        pm.collectionVariables.set('access_token', json.token);",
+									"    if (json.refresh_token) pm.collectionVariables.set('refresh_token', json.refresh_token);",
+									"    if (json.refreshToken)  pm.collectionVariables.set('refresh_token', json.refreshToken);",
+									"} catch(e) {}"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": { "raw": "{{base_url}}/auth/refresh", "host": ["{{base_url}}"], "path": ["auth", "refresh"] }
+					}
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Clear saved tokens after logout",
+									"pm.collectionVariables.set('access_token', '');",
+									"pm.collectionVariables.set('refresh_token', '');"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": { "raw": "{{base_url}}/auth/logout", "host": ["{{base_url}}"], "path": ["auth", "logout"] }
+					}
+				},
+				{
+					"name": "Me (current user)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('user_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/auth/me", "host": ["{{base_url}}"], "path": ["auth", "me"] }
+					}
+				},
+				{
+					"name": "Request Password Reset",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{user_email}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/auth/request_password_reset", "host": ["{{base_url}}"], "path": ["auth", "request_password_reset"] }
+					}
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"reset-token-here\",\n  \"new_password\": \"newPassword123\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/auth/reset_password", "host": ["{{base_url}}"], "path": ["auth", "reset_password"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "List Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["users"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] }
+					}
+				},
+				{
+					"name": "Get User by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}"] }
+					}
+				},
+				{
+					"name": "Create User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('User created', function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('user_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"loadtest_{{timestamp}}@test.com\",\n  \"password\": \"TestPass123!\",\n  \"first_name\": \"Load\",\n  \"last_name\": \"Test_{{random_num}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/create_users", "host": ["{{base_url}}"], "path": ["create_users"] }
+					}
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"first_name\": \"Updated\",\n  \"last_name\": \"User_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}"] }
+					}
+				},
+				{
+					"name": "Delete User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users/{{user_id}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}"] }
+					}
+				},
+				{
+					"name": "Upload Avatar",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" }
+							]
+						},
+						"url": { "raw": "{{base_url}}/users/{{user_id}}/avatar", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}", "avatar"] }
+					}
+				},
+				{
+					"name": "Get User Rocket.Chat",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users/{{user_id}}/rocket_chat", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}", "rocket_chat"] }
+					}
+				},
+				{
+					"name": "Set User Rocket.Chat",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"rocket_chat_user_id\": \"rc_user_{{random_num}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/users/{{user_id}}/rocket_chat", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}", "rocket_chat"] }
+					}
+				},
+				{
+					"name": "Remove User Rocket.Chat",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users/{{user_id}}/rocket_chat", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}", "rocket_chat"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "User Notifications",
+			"item": [
+				{
+					"name": "List Notification Settings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users/notification_settings", "host": ["{{base_url}}"], "path": ["users", "notification_settings"] }
+					}
+				},
+				{
+					"name": "Upsert Notification Setting",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": {{notification_event_id}},\n  \"method_id\": {{notification_method_id}},\n  \"enabled\": true\n}"
+						},
+						"url": { "raw": "{{base_url}}/users/notification_settings", "host": ["{{base_url}}"], "path": ["users", "notification_settings"] }
+					}
+				},
+				{
+					"name": "Remove Notification Setting",
+					"request": {
+						"method": "DELETE",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"event_id\": {{notification_event_id}},\n  \"method_id\": {{notification_method_id}}\n}"
+						},
+						"url": { "raw": "{{base_url}}/users/notification_settings", "host": ["{{base_url}}"], "path": ["users", "notification_settings"] }
+					}
+				},
+				{
+					"name": "List User Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users/{{user_id}}/notifications?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}", "notifications"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] }
+					}
+				},
+				{
+					"name": "Unread Notifications Count",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users/{{user_id}}/notifications/unread_count", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}", "notifications", "unread_count"] }
+					}
+				},
+				{
+					"name": "Mark Notification as Read",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users/{{user_id}}/notifications/{{notification_id}}/read", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}", "notifications", "{{notification_id}}", "read"] }
+					}
+				},
+				{
+					"name": "Mark Notification as Hidden",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": { "raw": "{{base_url}}/users/{{user_id}}/notifications/{{notification_id}}/hide", "host": ["{{base_url}}"], "path": ["users", "{{user_id}}", "notifications", "{{notification_id}}", "hide"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Departments",
+			"item": [
+				{
+					"name": "List Departments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/departments", "host": ["{{base_url}}"], "path": ["departments"] }
+					}
+				},
+				{
+					"name": "Create Department",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('department_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Dept_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/departments", "host": ["{{base_url}}"], "path": ["departments"] }
+					}
+				},
+				{
+					"name": "Update Department",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Dept_Updated_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/departments/{{department_id}}", "host": ["{{base_url}}"], "path": ["departments", "{{department_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Department",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/departments/{{department_id}}", "host": ["{{base_url}}"], "path": ["departments", "{{department_id}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Roles & Permissions",
+			"item": [
+				{
+					"name": "List Roles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/roles", "host": ["{{base_url}}"], "path": ["roles"] }
+					}
+				},
+				{
+					"name": "Create Role",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('role_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Role_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/roles", "host": ["{{base_url}}"], "path": ["roles"] }
+					}
+				},
+				{
+					"name": "Update Role",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Role_Updated_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/roles/{{role_id}}", "host": ["{{base_url}}"], "path": ["roles", "{{role_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Role",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/roles/{{role_id}}", "host": ["{{base_url}}"], "path": ["roles", "{{role_id}}"] }
+					}
+				},
+				{
+					"name": "Get Role Permissions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/roles/{{role_id}}/permissions", "host": ["{{base_url}}"], "path": ["roles", "{{role_id}}", "permissions"] }
+					}
+				},
+				{
+					"name": "Assign Permission to Role",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"permission_id\": {{permission_id}}\n}"
+						},
+						"url": { "raw": "{{base_url}}/roles/{{role_id}}/permissions", "host": ["{{base_url}}"], "path": ["roles", "{{role_id}}", "permissions"] }
+					}
+				},
+				{
+					"name": "Unassign Permission from Role",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/roles/{{role_id}}/permissions/{{permission_id}}", "host": ["{{base_url}}"], "path": ["roles", "{{role_id}}", "permissions", "{{permission_id}}"] }
+					}
+				},
+				{
+					"name": "Get Permissions by Query",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/roles/permissions?role_id={{role_id}}", "host": ["{{base_url}}"], "path": ["roles", "permissions"], "query": [{ "key": "role_id", "value": "{{role_id}}" }] }
+					}
+				},
+				{
+					"name": "List Permissions",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/permissions", "host": ["{{base_url}}"], "path": ["permissions"] }
+					}
+				},
+				{
+					"name": "Create Permission",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('permission_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"perm_{{timestamp}}\",\n  \"description\": \"Load test permission\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/permissions", "host": ["{{base_url}}"], "path": ["permissions"] }
+					}
+				},
+				{
+					"name": "Update Permission",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"perm_updated_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/permissions/{{permission_id}}", "host": ["{{base_url}}"], "path": ["permissions", "{{permission_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Permission",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/permissions/{{permission_id}}", "host": ["{{base_url}}"], "path": ["permissions", "{{permission_id}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Projects",
+			"item": [
+				{
+					"name": "List Projects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/projects?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["projects"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] }
+					}
+				},
+				{
+					"name": "My Projects",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/my_projects", "host": ["{{base_url}}"], "path": ["my_projects"] }
+					}
+				},
+				{
+					"name": "Get Project by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/projects/{{project_id}}", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}"] }
+					}
+				},
+				{
+					"name": "Create Project",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('project_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Project_{{timestamp}}\",\n  \"description\": \"Load test project\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/projects", "host": ["{{base_url}}"], "path": ["projects"] }
+					}
+				},
+				{
+					"name": "Update Project",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Project_Updated_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/projects/{{project_id}}", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Project",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/projects/{{project_id}}", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}"] }
+					}
+				},
+				{
+					"name": "List Project Assignments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/projects/{{project_id}}/assignments", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "assignments"] }
+					}
+				},
+				{
+					"name": "Assign to Project",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"project_id\": {{project_id}},\n  \"user_id\": {{user_id}},\n  \"role_id\": {{role_id}}\n}"
+						},
+						"url": { "raw": "{{base_url}}/projects/assign", "host": ["{{base_url}}"], "path": ["projects", "assign"] }
+					}
+				},
+				{
+					"name": "Unassign from Project",
+					"request": {
+						"method": "DELETE",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"user_id\": {{user_id}}\n}"
+						},
+						"url": { "raw": "{{base_url}}/projects/{{project_id}}/assignments", "host": ["{{base_url}}"], "path": ["projects", "{{project_id}}", "assignments"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Issues",
+			"item": [
+				{
+					"name": "List Issues",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issues?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["issues"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] }
+					}
+				},
+				{
+					"name": "Get Issue by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}"] }
+					}
+				},
+				{
+					"name": "Create Issue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('issue_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Issue_{{timestamp}}\",\n  \"description\": \"Load test issue\",\n  \"project_id\": {{project_id}},\n  \"issue_type_id\": {{issue_type_id}},\n  \"issue_status_id\": {{issue_status_id}}\n}"
+						},
+						"url": { "raw": "{{base_url}}/issues", "host": ["{{base_url}}"], "path": ["issues"] }
+					}
+				},
+				{
+					"name": "Update Issue",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Issue_Updated_{{timestamp}}\",\n  \"description\": \"Updated load test issue\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Issue",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}"] }
+					}
+				},
+				{
+					"name": "Assign Issue",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"assignee_id\": {{issue_assignee_id}}\n}"
+						},
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}/assign", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "assign"] }
+					}
+				},
+				{
+					"name": "Add Issue Message",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"Load test comment {{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}/messages", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "messages"] }
+					}
+				},
+				{
+					"name": "List Issue Messages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}/messages", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "messages"] }
+					}
+				},
+				{
+					"name": "Attach File to Issue",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" }
+							]
+						},
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}/files", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "files"] }
+					}
+				},
+				{
+					"name": "List Issue Files",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}/files", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "files"] }
+					}
+				},
+				{
+					"name": "Detach File from Issue",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}/files/{{storage_id}}", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "files", "{{storage_id}}"] }
+					}
+				},
+				{
+					"name": "Issue History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issues/{{issue_id}}/history", "host": ["{{base_url}}"], "path": ["issues", "{{issue_id}}", "history"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Issue Statuses",
+			"item": [
+				{
+					"name": "List Issue Statuses",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issue_statuses", "host": ["{{base_url}}"], "path": ["issue_statuses"] }
+					}
+				},
+				{
+					"name": "Get Issue Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issue_statuses/{{issue_status_id}}", "host": ["{{base_url}}"], "path": ["issue_statuses", "{{issue_status_id}}"] }
+					}
+				},
+				{
+					"name": "Create Issue Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('issue_status_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Status_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/issue_statuses", "host": ["{{base_url}}"], "path": ["issue_statuses"] }
+					}
+				},
+				{
+					"name": "Update Issue Status",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Status_Updated_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/issue_statuses/{{issue_status_id}}", "host": ["{{base_url}}"], "path": ["issue_statuses", "{{issue_status_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Issue Status",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issue_statuses/{{issue_status_id}}", "host": ["{{base_url}}"], "path": ["issue_statuses", "{{issue_status_id}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Issue Types",
+			"item": [
+				{
+					"name": "List Issue Types",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issue_types", "host": ["{{base_url}}"], "path": ["issue_types"] }
+					}
+				},
+				{
+					"name": "Get Issue Type",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issue_types/{{issue_type_id}}", "host": ["{{base_url}}"], "path": ["issue_types", "{{issue_type_id}}"] }
+					}
+				},
+				{
+					"name": "Create Issue Type",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('issue_type_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Type_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/issue_types", "host": ["{{base_url}}"], "path": ["issue_types"] }
+					}
+				},
+				{
+					"name": "Update Issue Type",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Type_Updated_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/issue_types/{{issue_type_id}}", "host": ["{{base_url}}"], "path": ["issue_types", "{{issue_type_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Issue Type",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/issue_types/{{issue_type_id}}", "host": ["{{base_url}}"], "path": ["issue_types", "{{issue_type_id}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Documents",
+			"item": [
+				{
+					"name": "List Documents",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/documents?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["documents"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] }
+					}
+				},
+				{
+					"name": "Get Document by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}"] }
+					}
+				},
+				{
+					"name": "Create Document",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('document_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Doc_{{timestamp}}\",\n  \"project_id\": {{project_id}},\n  \"document_type_id\": {{document_type_id}},\n  \"document_status_id\": {{document_status_id}}\n}"
+						},
+						"url": { "raw": "{{base_url}}/documents", "host": ["{{base_url}}"], "path": ["documents"] }
+					}
+				},
+				{
+					"name": "Update Document",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Doc_Updated_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Document",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}"] }
+					}
+				},
+				{
+					"name": "Document History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}/history", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}", "history"] }
+					}
+				},
+				{
+					"name": "Add Document Message",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"Doc comment {{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}/messages", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}", "messages"] }
+					}
+				},
+				{
+					"name": "List Document Messages",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}/messages", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}", "messages"] }
+					}
+				},
+				{
+					"name": "Attach File to Document",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{ "key": "file", "type": "file", "src": "" }
+							]
+						},
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}/files", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}", "files"] }
+					}
+				},
+				{
+					"name": "Update Document File Metadata",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"storage_id\": {{storage_id}},\n  \"description\": \"Updated metadata {{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}/files", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}", "files"] }
+					}
+				},
+				{
+					"name": "List Document Files",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}/files", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}", "files"] }
+					}
+				},
+				{
+					"name": "Detach File from Document",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/documents/{{document_id}}/files/{{storage_id}}", "host": ["{{base_url}}"], "path": ["documents", "{{document_id}}", "files", "{{storage_id}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Document Directories",
+			"item": [
+				{
+					"name": "List Directories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{base_url}}/documents/directories", "host": ["{{base_url}}"], "path": ["documents", "directories"] }
+					}
+				},
+				{
+					"name": "Create Directory",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"var json = pm.response.json();",
+									"if (json.id) pm.collectionVariables.set('document_directory_id', json.id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Dir_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/documents/directories", "host": ["{{base_url}}"], "path": ["documents", "directories"] }
+					}
+				},
+				{
+					"name": "Update Directory",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Dir_Updated_{{timestamp}}\"\n}"
+						},
+						"url": { "raw": "{{base_url}}/documents/directories/{{document_directory_id}}", "host": ["{{base_url}}"], "path": ["documents", "directories", "{{document_directory_id}}"] }
+					}
+				},
+				{
+					"name": "Delete Directory",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{base_url}}/documents/directories/{{document_directory_id}}", "host": ["{{base_url}}"], "path": ["documents", "directories", "{{document_directory_id}}"] }
+					}
+				}
+			]
+		},
+		{
+			"name": "Document Types",
+			"item": [
+				{
+					"name": "List Document Types",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/document_types", "host": ["{{base_url}}"], "path": ["document_types"] } }
+				},
+				{
+					"name": "Get Document Type",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/document_types/{{document_type_id}}", "host": ["{{base_url}}"], "path": ["document_types", "{{document_type_id}}"] } }
+				},
+				{
+					"name": "Create Document Type",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('document_type_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"DocType_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/document_types", "host": ["{{base_url}}"], "path": ["document_types"] } }
+				},
+				{
+					"name": "Update Document Type",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"DocType_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/document_types/{{document_type_id}}", "host": ["{{base_url}}"], "path": ["document_types", "{{document_type_id}}"] } }
+				},
+				{
+					"name": "Delete Document Type",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/document_types/{{document_type_id}}", "host": ["{{base_url}}"], "path": ["document_types", "{{document_type_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Document Statuses",
+			"item": [
+				{
+					"name": "List Document Statuses",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/document_statuses", "host": ["{{base_url}}"], "path": ["document_statuses"] } }
+				},
+				{
+					"name": "Get Document Status",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/document_statuses/{{document_status_id}}", "host": ["{{base_url}}"], "path": ["document_statuses", "{{document_status_id}}"] } }
+				},
+				{
+					"name": "Create Document Status",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('document_status_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"DocStatus_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/document_statuses", "host": ["{{base_url}}"], "path": ["document_statuses"] } }
+				},
+				{
+					"name": "Update Document Status",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"DocStatus_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/document_statuses/{{document_status_id}}", "host": ["{{base_url}}"], "path": ["document_statuses", "{{document_status_id}}"] } }
+				},
+				{
+					"name": "Delete Document Status",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/document_statuses/{{document_status_id}}", "host": ["{{base_url}}"], "path": ["document_statuses", "{{document_status_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Document Storage Types",
+			"item": [
+				{
+					"name": "List Storage Types",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/document_storage_types", "host": ["{{base_url}}"], "path": ["document_storage_types"] } }
+				},
+				{
+					"name": "Get Storage Type",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/document_storage_types/{{document_storage_type_id}}", "host": ["{{base_url}}"], "path": ["document_storage_types", "{{document_storage_type_id}}"] } }
+				},
+				{
+					"name": "Create Storage Type",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('document_storage_type_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"StorageType_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/document_storage_types", "host": ["{{base_url}}"], "path": ["document_storage_types"] } }
+				},
+				{
+					"name": "Update Storage Type",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"StorageType_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/document_storage_types/{{document_storage_type_id}}", "host": ["{{base_url}}"], "path": ["document_storage_types", "{{document_storage_type_id}}"] } }
+				},
+				{
+					"name": "Delete Storage Type",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/document_storage_types/{{document_storage_type_id}}", "host": ["{{base_url}}"], "path": ["document_storage_types", "{{document_storage_type_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Document Work Flows",
+			"item": [
+				{
+					"name": "List Work Flows",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/document_work_flows", "host": ["{{base_url}}"], "path": ["document_work_flows"] } }
+				},
+				{
+					"name": "Get Work Flow",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/document_work_flows/{{document_work_flow_id}}", "host": ["{{base_url}}"], "path": ["document_work_flows", "{{document_work_flow_id}}"] } }
+				},
+				{
+					"name": "Create Work Flow",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('document_work_flow_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"DocWF_{{timestamp}}\",\n  \"from_status_id\": {{document_status_id}},\n  \"to_status_id\": {{document_status_id}}\n}" }, "url": { "raw": "{{base_url}}/document_work_flows", "host": ["{{base_url}}"], "path": ["document_work_flows"] } }
+				},
+				{
+					"name": "Update Work Flow",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"DocWF_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/document_work_flows/{{document_work_flow_id}}", "host": ["{{base_url}}"], "path": ["document_work_flows", "{{document_work_flow_id}}"] } }
+				},
+				{
+					"name": "Delete Work Flow",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/document_work_flows/{{document_work_flow_id}}", "host": ["{{base_url}}"], "path": ["document_work_flows", "{{document_work_flow_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Customer Questions",
+			"item": [
+				{
+					"name": "List Customer Questions",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/customer_questions?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["customer_questions"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] } }
+				},
+				{
+					"name": "Get Customer Question",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/customer_questions/{{customer_question_id}}", "host": ["{{base_url}}"], "path": ["customer_questions", "{{customer_question_id}}"] } }
+				},
+				{
+					"name": "Create Customer Question",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('customer_question_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"title\": \"CQ_{{timestamp}}\",\n  \"description\": \"Load test customer question\",\n  \"project_id\": {{project_id}}\n}" }, "url": { "raw": "{{base_url}}/customer_questions", "host": ["{{base_url}}"], "path": ["customer_questions"] } }
+				},
+				{
+					"name": "Update Customer Question",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"title\": \"CQ_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/customer_questions/{{customer_question_id}}", "host": ["{{base_url}}"], "path": ["customer_questions", "{{customer_question_id}}"] } }
+				},
+				{
+					"name": "Delete Customer Question",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/customer_questions/{{customer_question_id}}", "host": ["{{base_url}}"], "path": ["customer_questions", "{{customer_question_id}}"] } }
+				},
+				{
+					"name": "Attach File to CQ",
+					"request": { "method": "POST", "header": [], "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }, "url": { "raw": "{{base_url}}/customer_questions/{{customer_question_id}}/files", "host": ["{{base_url}}"], "path": ["customer_questions", "{{customer_question_id}}", "files"] } }
+				},
+				{
+					"name": "List CQ Files",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/customer_questions/{{customer_question_id}}/files", "host": ["{{base_url}}"], "path": ["customer_questions", "{{customer_question_id}}", "files"] } }
+				},
+				{
+					"name": "Detach File from CQ",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/customer_questions/{{customer_question_id}}/files/{{storage_id}}", "host": ["{{base_url}}"], "path": ["customer_questions", "{{customer_question_id}}", "files", "{{storage_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Customer Question Statuses",
+			"item": [
+				{
+					"name": "List CQ Statuses",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/customer_question_statuses", "host": ["{{base_url}}"], "path": ["customer_question_statuses"] } }
+				},
+				{
+					"name": "Get CQ Status",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/customer_question_statuses/{{customer_question_status_id}}", "host": ["{{base_url}}"], "path": ["customer_question_statuses", "{{customer_question_status_id}}"] } }
+				},
+				{
+					"name": "Create CQ Status",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('customer_question_status_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"CQStatus_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/customer_question_statuses", "host": ["{{base_url}}"], "path": ["customer_question_statuses"] } }
+				},
+				{
+					"name": "Update CQ Status",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"CQStatus_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/customer_question_statuses/{{customer_question_status_id}}", "host": ["{{base_url}}"], "path": ["customer_question_statuses", "{{customer_question_status_id}}"] } }
+				},
+				{
+					"name": "Delete CQ Status",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/customer_question_statuses/{{customer_question_status_id}}", "host": ["{{base_url}}"], "path": ["customer_question_statuses", "{{customer_question_status_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Customer Question Work Flows",
+			"item": [
+				{
+					"name": "List CQ Work Flows",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/customer_question_work_flows", "host": ["{{base_url}}"], "path": ["customer_question_work_flows"] } }
+				},
+				{
+					"name": "Get CQ Work Flow",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/customer_question_work_flows/{{customer_question_work_flow_id}}", "host": ["{{base_url}}"], "path": ["customer_question_work_flows", "{{customer_question_work_flow_id}}"] } }
+				},
+				{
+					"name": "Create CQ Work Flow",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('customer_question_work_flow_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"from_status_id\": {{customer_question_status_id}},\n  \"to_status_id\": {{customer_question_status_id}}\n}" }, "url": { "raw": "{{base_url}}/customer_question_work_flows", "host": ["{{base_url}}"], "path": ["customer_question_work_flows"] } }
+				},
+				{
+					"name": "Update CQ Work Flow",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"from_status_id\": {{customer_question_status_id}},\n  \"to_status_id\": {{customer_question_status_id}}\n}" }, "url": { "raw": "{{base_url}}/customer_question_work_flows/{{customer_question_work_flow_id}}", "host": ["{{base_url}}"], "path": ["customer_question_work_flows", "{{customer_question_work_flow_id}}"] } }
+				},
+				{
+					"name": "Delete CQ Work Flow",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/customer_question_work_flows/{{customer_question_work_flow_id}}", "host": ["{{base_url}}"], "path": ["customer_question_work_flows", "{{customer_question_work_flow_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Notification Events",
+			"item": [
+				{
+					"name": "List Notification Events",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/notification_events", "host": ["{{base_url}}"], "path": ["notification_events"] } }
+				},
+				{
+					"name": "Get Notification Event",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/notification_events/{{notification_event_id}}", "host": ["{{base_url}}"], "path": ["notification_events", "{{notification_event_id}}"] } }
+				},
+				{
+					"name": "Create Notification Event",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('notification_event_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Event_{{timestamp}}\",\n  \"code\": \"event_{{random_num}}\"\n}" }, "url": { "raw": "{{base_url}}/notification_events", "host": ["{{base_url}}"], "path": ["notification_events"] } }
+				},
+				{
+					"name": "Update Notification Event",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Event_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/notification_events/{{notification_event_id}}", "host": ["{{base_url}}"], "path": ["notification_events", "{{notification_event_id}}"] } }
+				},
+				{
+					"name": "Delete Notification Event",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/notification_events/{{notification_event_id}}", "host": ["{{base_url}}"], "path": ["notification_events", "{{notification_event_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Notification Methods",
+			"item": [
+				{
+					"name": "List Notification Methods",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/notification_methods", "host": ["{{base_url}}"], "path": ["notification_methods"] } }
+				},
+				{
+					"name": "Get Notification Method",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/notification_methods/{{notification_method_id}}", "host": ["{{base_url}}"], "path": ["notification_methods", "{{notification_method_id}}"] } }
+				},
+				{
+					"name": "Create Notification Method",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('notification_method_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Method_{{timestamp}}\",\n  \"code\": \"method_{{random_num}}\"\n}" }, "url": { "raw": "{{base_url}}/notification_methods", "host": ["{{base_url}}"], "path": ["notification_methods"] } }
+				},
+				{
+					"name": "Update Notification Method",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Method_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/notification_methods/{{notification_method_id}}", "host": ["{{base_url}}"], "path": ["notification_methods", "{{notification_method_id}}"] } }
+				},
+				{
+					"name": "Delete Notification Method",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/notification_methods/{{notification_method_id}}", "host": ["{{base_url}}"], "path": ["notification_methods", "{{notification_method_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Specializations",
+			"item": [
+				{
+					"name": "List Specializations",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/specializations", "host": ["{{base_url}}"], "path": ["specializations"] } }
+				},
+				{
+					"name": "Get Specialization",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/specializations/{{specialization_id}}", "host": ["{{base_url}}"], "path": ["specializations", "{{specialization_id}}"] } }
+				},
+				{
+					"name": "Create Specialization",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('specialization_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Spec_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/specializations", "host": ["{{base_url}}"], "path": ["specializations"] } }
+				},
+				{
+					"name": "Update Specialization",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Spec_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/specializations/{{specialization_id}}", "host": ["{{base_url}}"], "path": ["specializations", "{{specialization_id}}"] } }
+				},
+				{
+					"name": "Delete Specialization",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/specializations/{{specialization_id}}", "host": ["{{base_url}}"], "path": ["specializations", "{{specialization_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Entity Links",
+			"item": [
+				{
+					"name": "List Links",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/links", "host": ["{{base_url}}"], "path": ["links"] } }
+				},
+				{
+					"name": "Create Link",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('link_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"source_entity\": \"issue\",\n  \"source_id\": {{issue_id}},\n  \"target_entity\": \"document\",\n  \"target_id\": {{document_id}}\n}" }, "url": { "raw": "{{base_url}}/links", "host": ["{{base_url}}"], "path": ["links"] } }
+				},
+				{
+					"name": "Delete Link",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/links/{{link_id}}", "host": ["{{base_url}}"], "path": ["links", "{{link_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Materials",
+			"item": [
+				{
+					"name": "List Materials",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/materials?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["materials"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] } }
+				},
+				{
+					"name": "Next Stock Code",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/materials/next_stock_code", "host": ["{{base_url}}"], "path": ["materials", "next_stock_code"] } }
+				},
+				{
+					"name": "Get Material",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/materials/{{material_id}}", "host": ["{{base_url}}"], "path": ["materials", "{{material_id}}"] } }
+				},
+				{
+					"name": "Create Material",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('material_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Mat_{{timestamp}}\",\n  \"unit\": \"шт\"\n}" }, "url": { "raw": "{{base_url}}/materials", "host": ["{{base_url}}"], "path": ["materials"] } }
+				},
+				{
+					"name": "Update Material",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Mat_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/materials/{{material_id}}", "host": ["{{base_url}}"], "path": ["materials", "{{material_id}}"] } }
+				},
+				{
+					"name": "Delete Material",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/materials/{{material_id}}", "host": ["{{base_url}}"], "path": ["materials", "{{material_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Material Kits",
+			"item": [
+				{
+					"name": "List Material Kits",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/material_kits", "host": ["{{base_url}}"], "path": ["material_kits"] } }
+				},
+				{
+					"name": "Get Material Kit",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/material_kits/{{material_kit_id}}", "host": ["{{base_url}}"], "path": ["material_kits", "{{material_kit_id}}"] } }
+				},
+				{
+					"name": "Create Material Kit",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('material_kit_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Kit_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/material_kits", "host": ["{{base_url}}"], "path": ["material_kits"] } }
+				},
+				{
+					"name": "Update Material Kit",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Kit_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/material_kits/{{material_kit_id}}", "host": ["{{base_url}}"], "path": ["material_kits", "{{material_kit_id}}"] } }
+				},
+				{
+					"name": "Delete Material Kit",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/material_kits/{{material_kit_id}}", "host": ["{{base_url}}"], "path": ["material_kits", "{{material_kit_id}}"] } }
+				},
+				{
+					"name": "List Kit Items",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/material_kits/{{material_kit_id}}/items", "host": ["{{base_url}}"], "path": ["material_kits", "{{material_kit_id}}", "items"] } }
+				},
+				{
+					"name": "Create Kit Item",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('material_kit_item_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"material_id\": {{material_id}},\n  \"quantity\": 10\n}" }, "url": { "raw": "{{base_url}}/material_kits/{{material_kit_id}}/items", "host": ["{{base_url}}"], "path": ["material_kits", "{{material_kit_id}}", "items"] } }
+				},
+				{
+					"name": "Update Kit Item",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"quantity\": 20\n}" }, "url": { "raw": "{{base_url}}/material_kits/items/{{material_kit_item_id}}", "host": ["{{base_url}}"], "path": ["material_kits", "items", "{{material_kit_item_id}}"] } }
+				},
+				{
+					"name": "Delete Kit Item",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/material_kits/items/{{material_kit_item_id}}", "host": ["{{base_url}}"], "path": ["material_kits", "items", "{{material_kit_item_id}}"] } }
+				},
+				{
+					"name": "Apply Kit to Specification",
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"specification_id\": {{specification_id}}\n}" }, "url": { "raw": "{{base_url}}/material_kits/{{material_kit_id}}/apply", "host": ["{{base_url}}"], "path": ["material_kits", "{{material_kit_id}}", "apply"] } }
+				}
+			]
+		},
+		{
+			"name": "Equipment",
+			"item": [
+				{
+					"name": "List Equipment",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/equipment?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["equipment"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] } }
+				},
+				{
+					"name": "Get Equipment",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/equipment/{{equipment_id}}", "host": ["{{base_url}}"], "path": ["equipment", "{{equipment_id}}"] } }
+				},
+				{
+					"name": "Create Equipment",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('equipment_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Equip_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/equipment", "host": ["{{base_url}}"], "path": ["equipment"] } }
+				},
+				{
+					"name": "Update Equipment",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Equip_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/equipment/{{equipment_id}}", "host": ["{{base_url}}"], "path": ["equipment", "{{equipment_id}}"] } }
+				},
+				{
+					"name": "Delete Equipment",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/equipment/{{equipment_id}}", "host": ["{{base_url}}"], "path": ["equipment", "{{equipment_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Specifications",
+			"item": [
+				{
+					"name": "List Specifications",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/specifications", "host": ["{{base_url}}"], "path": ["specifications"] } }
+				},
+				{
+					"name": "Get Specification",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/specifications/{{specification_id}}", "host": ["{{base_url}}"], "path": ["specifications", "{{specification_id}}"] } }
+				},
+				{
+					"name": "Create Specification",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('specification_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Spec_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/specifications", "host": ["{{base_url}}"], "path": ["specifications"] } }
+				},
+				{
+					"name": "Update Specification",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Spec_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/specifications/{{specification_id}}", "host": ["{{base_url}}"], "path": ["specifications", "{{specification_id}}"] } }
+				},
+				{
+					"name": "Delete Specification",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/specifications/{{specification_id}}", "host": ["{{base_url}}"], "path": ["specifications", "{{specification_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Stages",
+			"item": [
+				{
+					"name": "List Stages",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/stages", "host": ["{{base_url}}"], "path": ["stages"] } }
+				},
+				{
+					"name": "Get Stage",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/stages/{{stage_id}}", "host": ["{{base_url}}"], "path": ["stages", "{{stage_id}}"] } }
+				},
+				{
+					"name": "Create Stage",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('stage_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Stage_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/stages", "host": ["{{base_url}}"], "path": ["stages"] } }
+				},
+				{
+					"name": "Update Stage",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Stage_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/stages/{{stage_id}}", "host": ["{{base_url}}"], "path": ["stages", "{{stage_id}}"] } }
+				},
+				{
+					"name": "Delete Stage",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/stages/{{stage_id}}", "host": ["{{base_url}}"], "path": ["stages", "{{stage_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Storage",
+			"item": [
+				{
+					"name": "List Storage",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/storage?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["storage"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] } }
+				},
+				{
+					"name": "Get Storage Item",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/storage/{{storage_id}}", "host": ["{{base_url}}"], "path": ["storage", "{{storage_id}}"] } }
+				},
+				{
+					"name": "Download Storage Item",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/storage/{{storage_id}}/download", "host": ["{{base_url}}"], "path": ["storage", "{{storage_id}}", "download"] } }
+				},
+				{
+					"name": "Download Multiple (ZIP)",
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"ids\": [{{storage_id}}]\n}" }, "url": { "raw": "{{base_url}}/storage/download", "host": ["{{base_url}}"], "path": ["storage", "download"] } }
+				},
+				{
+					"name": "Upload Local",
+					"request": { "method": "POST", "header": [], "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }, "url": { "raw": "{{base_url}}/storage/local", "host": ["{{base_url}}"], "path": ["storage", "local"] } }
+				},
+				{
+					"name": "Upload S3",
+					"request": { "method": "POST", "header": [], "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "" }] }, "url": { "raw": "{{base_url}}/storage/s3", "host": ["{{base_url}}"], "path": ["storage", "s3"] } }
+				},
+				{
+					"name": "Update Storage Item",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"description\": \"Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/storage/{{storage_id}}", "host": ["{{base_url}}"], "path": ["storage", "{{storage_id}}"] } }
+				},
+				{
+					"name": "Delete Storage Item",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/storage/{{storage_id}}", "host": ["{{base_url}}"], "path": ["storage", "{{storage_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Statements",
+			"item": [
+				{
+					"name": "List Statements",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/statements", "host": ["{{base_url}}"], "path": ["statements"] } }
+				},
+				{
+					"name": "Get Statement",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/statements/{{statement_id}}", "host": ["{{base_url}}"], "path": ["statements", "{{statement_id}}"] } }
+				},
+				{
+					"name": "Create Statement",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('statement_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Stmt_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/statements", "host": ["{{base_url}}"], "path": ["statements"] } }
+				},
+				{
+					"name": "Update Statement",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Stmt_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/statements/{{statement_id}}", "host": ["{{base_url}}"], "path": ["statements", "{{statement_id}}"] } }
+				},
+				{
+					"name": "Delete Statement",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/statements/{{statement_id}}", "host": ["{{base_url}}"], "path": ["statements", "{{statement_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Job Titles",
+			"item": [
+				{
+					"name": "List Job Titles",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/job_titles", "host": ["{{base_url}}"], "path": ["job_titles"] } }
+				},
+				{
+					"name": "Create Job Title",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('job_title_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"JobTitle_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/job_titles", "host": ["{{base_url}}"], "path": ["job_titles"] } }
+				},
+				{
+					"name": "Update Job Title",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"JobTitle_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/job_titles/{{job_title_id}}", "host": ["{{base_url}}"], "path": ["job_titles", "{{job_title_id}}"] } }
+				},
+				{
+					"name": "Delete Job Title",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/job_titles/{{job_title_id}}", "host": ["{{base_url}}"], "path": ["job_titles", "{{job_title_id}}"] } }
+				}
+			]
+		},
+		{
+			"name": "Pages & Page Permissions",
+			"item": [
+				{
+					"name": "List Pages",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/pages", "host": ["{{base_url}}"], "path": ["pages"] } }
+				},
+				{
+					"name": "Create Page",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('page_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Page_{{timestamp}}\",\n  \"path\": \"/page_{{random_num}}\"\n}" }, "url": { "raw": "{{base_url}}/pages", "host": ["{{base_url}}"], "path": ["pages"] } }
+				},
+				{
+					"name": "Update Page",
+					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Page_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/pages/{{page_id}}", "host": ["{{base_url}}"], "path": ["pages", "{{page_id}}"] } }
+				},
+				{
+					"name": "Delete Page",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/pages/{{page_id}}", "host": ["{{base_url}}"], "path": ["pages", "{{page_id}}"] } }
+				},
+				{
+					"name": "List Page Permissions",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/page_permissions", "host": ["{{base_url}}"], "path": ["page_permissions"] } }
+				},
+				{
+					"name": "Create Page Permission",
+					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('page_permission_id', json.id);"] } }],
+					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"page_id\": {{page_id}},\n  \"permission_id\": {{permission_id}}\n}" }, "url": { "raw": "{{base_url}}/page_permissions", "host": ["{{base_url}}"], "path": ["page_permissions"] } }
+				},
+				{
+					"name": "Delete Page Permission",
+					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/page_permissions/{{page_permission_id}}", "host": ["{{base_url}}"], "path": ["page_permissions", "{{page_permission_id}}"] } }
+				},
+				{
+					"name": "User Pages (Menu)",
+					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/user/pages", "host": ["{{base_url}}"], "path": ["user", "pages"] } }
+				}
+			]
+		},
+		{
+			"name": "Audit Logs",
+			"item": [
+				{
+					"name": "List Audit Logs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/audit_logs?limit={{limit}}&offset={{offset}}",
+							"host": ["{{base_url}}"],
+							"path": ["audit_logs"],
+							"query": [
+								{ "key": "limit", "value": "{{limit}}" },
+								{ "key": "offset", "value": "{{offset}}" },
+								{ "key": "actor_id", "value": "{{user_id}}", "disabled": true },
+								{ "key": "entity", "value": "issue", "disabled": true },
+								{ "key": "entity_id", "value": "{{issue_id}}", "disabled": true }
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}

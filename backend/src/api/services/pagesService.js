@@ -35,6 +35,7 @@ class PagesService {
         icon: r.icon,
         permissions: r.permissions || [],
         mainMenu: !!r.main_menu,
+        status: typeof r.status === 'undefined' ? true : !!r.status,
         parentId: r.parent_id,
         children: []
       });
@@ -55,21 +56,24 @@ class PagesService {
   const allowedPages = [];
   const debug = process.env.DEBUG_PAGES === '1';
     async function filterAndSanitize(node) {
+      // exclude pages that are explicitly disabled via `status` flag
+      if (node.status === false) return null;
       // check permissions for this node
       let allowed = false;
       // ensure permissions is an array (DB may return different shapes in edge cases)
-      const perms = Array.isArray(node.permissions) ? node.permissions : (node.permissions ? [node.permissions] : []);
+        const perms = Array.isArray(node.permissions) ? node.permissions : (node.permissions ? [node.permissions] : []);
       if (!perms || perms.length === 0) {
         // If a page has no permissions assigned in page_permissions, deny by default.
         // This prevents returning all pages when page_permissions table is empty.
         allowed = false;
         if (debug) console.debug(`pagesService: page ${node.id} denied (no perms defined)`);
       } else {
-        for (const perm of perms) {
-          const ok = await hasPermission(user, perm);
-          if (debug) console.debug(`pagesService: checking perm='${perm}' for user=${user.id} => ${ok}`);
-          if (ok) { allowed = true; break; }
-        }
+          for (const perm of perms) {
+            const code = (perm && typeof perm === 'object') ? perm.code : perm;
+            const ok = await hasPermission(user, code);
+            if (debug) console.debug(`pagesService: checking perm='${code}' for user=${user.id} => ${ok}`);
+            if (ok) { allowed = true; break; }
+          }
         if (debug && !allowed) console.debug(`pagesService: page ${node.id} denied (no matching perms)`);
       }
       if (!allowed) return null;
@@ -80,9 +84,11 @@ class PagesService {
         // titleKey removed from API payload per request
         title: node.title || undefined,
         mainMenu: node.mainMenu,
+        status: node.status,
         order: node.order,
         icon: node.icon
       };
+        // Do not expose permission metadata to end-user pages endpoint
       if (node.children && node.children.length > 0) {
         const children = [];
         for (const ch of node.children) {

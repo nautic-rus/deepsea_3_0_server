@@ -1,0 +1,13 @@
+:white_check_mark: Создан вопрос!
+
+*Проект: *{{project.code}}
+*Номер: *#{{question.id}}
+*Заголовок: *{{question.question_title}}
+*Создал: *{{actor.full_name}}
+
+*Текст вопроса:*
+{{question.question_text}}
+
+{{questionUrl}}
+
+_Это автоматическое уведомление от {{company.name}}._

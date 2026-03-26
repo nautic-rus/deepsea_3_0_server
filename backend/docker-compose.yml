@@ -1,0 +1,108 @@
+version: '3.7'
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+    depends_on:
+      - alertmanager
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-storage:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - 4000:3000
+    depends_on:
+      - prometheus
+      - loki
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:2.8.1
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    user: "0"
+    volumes:
+      - ./monitoring/loki/config.yaml:/etc/loki/local-config.yaml:ro
+      - loki-wal:/wal
+      - loki-index:/loki/index
+    ports:
+      - 3100:3100
+    restart: unless-stopped
+
+  promtail:
+    image: grafana/promtail:2.8.1
+    container_name: promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - /home/spiridovich/deepsea_3_0_server/backend/logs:/var/log/deepsea:ro
+      - ./monitoring/promtail/config.yml:/etc/promtail/config.yml:ro
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ./monitoring/alertmanager/config.yml:/etc/alertmanager/config.yml:ro
+      - ./monitoring/alertmanager/templates:/etc/alertmanager/templates:ro
+    command: --config.file=/etc/alertmanager/config.yml
+    ports:
+      - 9093:9093
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    environment:
+      # Default DSN using values from backend/env; adjust if your DB is reachable
+      # from containers at a different host/IP. Example uses host.docker.internal.
+      - DATA_SOURCE_NAME=postgresql://postgres:230571Sp@:5432/deepsea3?sslmode=disable
+    ports:
+      - 9187:9187
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: root
+    container_name: deepsea-backend
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount env file from repo so server loads the same configuration as local
+      - ./env:/usr/src/app/env:ro
+      - ./uploads:/usr/src/app/uploads
+      - ./logs:/usr/src/app/logs
+    restart: unless-stopped
+
+  watcher:
+    image: alpine:3.18
+    container_name: deepsea-watcher
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/workdir
+    working_dir: /workdir
+    command: >
+      sh -c "apk add --no-cache inotify-tools docker-cli >/dev/null 2>&1 || true; \
+      echo 'Starting watcher: watching ./uploads ./env ./src'; \
+      while inotifywait -r -e modify,create,delete ./uploads ./env ./src; do \
+        echo 'Change detected, recreating backend...'; \
+        docker compose -f docker-compose.yml up -d --build --force-recreate backend; \
+      done"
+    restart: unless-stopped
+
+volumes:
+  grafana-storage:
+  loki-wal:
+  loki-index:

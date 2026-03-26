@@ -38,4 +38,26 @@ async function hasPermission(actor, permissionCode) {
   }
 }
 
-module.exports = { hasPermission };
+/**
+ * Check whether an actor has a given permission code in the context of a project.
+ * Checks global roles (project_id IS NULL) and project-specific roles.
+ *
+ * @param {Object} actor - Authenticated user object
+ * @param {string} permissionCode - Permission code to check
+ * @param {number|null} projectId - Project ID (optional)
+ * @returns {Promise<boolean>} true if actor has permission
+ */
+async function hasPermissionForProject(actor, permissionCode, projectId) {
+  if (!actor || !actor.id) return false;
+  if (!permissionCode) return true;
+
+  try {
+    return await Permission.hasPermissionForProject(actor.id, permissionCode, projectId || null);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('permissionChecker.hasPermissionForProject error:', err.message);
+    return false;
+  }
+}
+
+module.exports = { hasPermission, hasPermissionForProject };

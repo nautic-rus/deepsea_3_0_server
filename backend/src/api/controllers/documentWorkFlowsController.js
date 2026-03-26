@@ -2,9 +2,9 @@ const DocumentWorkFlowsService = require('../services/documentWorkFlowsService')
 
 exports.list = async (req, res, next) => {
   try {
-    const actor = req.user;
-    const opts = { project_id: req.query.project_id ? Number(req.query.project_id) : undefined, document_type_id: req.query.document_type_id ? Number(req.query.document_type_id) : undefined };
-    const rows = await DocumentWorkFlowsService.list(actor, opts);
+    const actor = req.user || null;
+    const query = req.query || {};
+    const rows = await DocumentWorkFlowsService.list(query, actor);
     res.json({ data: rows });
   } catch (err) {
     next(err);
@@ -13,7 +13,7 @@ exports.list = async (req, res, next) => {
 
 exports.get = async (req, res, next) => {
   try {
-    const actor = req.user;
+    const actor = req.user || null;
     const id = parseInt(req.params.id, 10);
     const row = await DocumentWorkFlowsService.get(id, actor);
     res.json({ data: row });
@@ -24,7 +24,7 @@ exports.get = async (req, res, next) => {
 
 exports.create = async (req, res, next) => {
   try {
-    const actor = req.user;
+    const actor = req.user || null;
     const created = await DocumentWorkFlowsService.create(req.body || {}, actor);
     res.status(201).json({ data: created });
   } catch (err) {
@@ -34,7 +34,7 @@ exports.create = async (req, res, next) => {
 
 exports.update = async (req, res, next) => {
   try {
-    const actor = req.user;
+    const actor = req.user || null;
     const id = parseInt(req.params.id, 10);
     const updated = await DocumentWorkFlowsService.update(id, req.body || {}, actor);
     res.json({ data: updated });
@@ -45,7 +45,7 @@ exports.update = async (req, res, next) => {
 
 exports.delete = async (req, res, next) => {
   try {
-    const actor = req.user;
+    const actor = req.user || null;
     const id = parseInt(req.params.id, 10);
     await DocumentWorkFlowsService.delete(id, actor);
     res.json({ message: 'Deleted' });

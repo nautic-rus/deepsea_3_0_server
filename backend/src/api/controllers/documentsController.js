@@ -55,8 +55,8 @@ class DocumentsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { limit = 100, offset = 0 } = req.query || {};
-      const rows = await DocumentsService.listDocumentMessages(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      const { limit, offset = 0 } = req.query || {};
+      const rows = await DocumentsService.listDocumentMessages(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) }, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
@@ -83,14 +83,25 @@ class DocumentsController {
         res.status(201).json({ data: created });
         return;
       }
-      const { storage_id } = req.body || {};
+      // Support body formats:
+      // - single object: { storage_id: 123, type_id, rev }
+      // - array of ids: { storage_id: [1,2,3] }
+      // - array of objects: [ { storage_id: 1, type_id, rev }, { storage_id: 2, ... } ]
+      let storagePayload;
+      const body = req.body;
+      if (Array.isArray(body)) {
+        storagePayload = body; // array of objects expected
+      } else {
+        const { storage_id } = body || {};
+        storagePayload = Array.isArray(storage_id) ? storage_id.map(Number) : Number(storage_id);
+      }
       const metadata = {
-        type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
-        rev: req.body && req.body.rev ? Number(req.body.rev) : undefined,
-        archive: req.body && typeof req.body.archive !== 'undefined' ? (req.body.archive === 'true' || req.body.archive === true) : undefined,
-        archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined
+        type_id: body && body.type_id ? Number(body.type_id) : undefined,
+        rev: body && body.rev ? Number(body.rev) : undefined,
+        archive: body && typeof body.archive !== 'undefined' ? (body.archive === 'true' || body.archive === true) : undefined,
+        archive_data: body && body.archive_data ? body.archive_data : undefined
       };
-      const created = await DocumentsService.attachFileToDocument(Number(id), Number(storage_id), actor, metadata);
+      const created = await DocumentsService.attachFileToDocument(Number(id), storagePayload, actor, metadata);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }
@@ -162,8 +173,8 @@ class DocumentsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { limit = 100, offset = 0 } = req.query || {};
-      const rows = await DocumentsService.listDocumentFiles(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      const { limit, offset = 0 } = req.query || {};
+      const rows = await DocumentsService.listDocumentFiles(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) }, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }

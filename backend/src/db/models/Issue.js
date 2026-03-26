@@ -14,8 +14,8 @@ class Issue {
    * @returns {Promise<Array<Object>>} Array of issue objects matching filters
    */
   static async list(filters = {}) {
-  const { project_id, status_id, assignee_id, type_id, priority, estimated_hours, author_id, my_issue_user_id, is_closed, is_active, page = 1, limit = 50, search, start_date_from, start_date_to, due_date_from, due_date_to, estimated_hours_min, estimated_hours_max, allowed_project_ids } = filters;
-    const offset = (page - 1) * limit;
+  const { project_id, status_id, assignee_id, type_id, priority, estimated_hours, author_id, my_issue_user_id, is_closed, is_active, page = 1, limit, search, start_date_from, start_date_to, due_date_from, due_date_to, estimated_hours_min, estimated_hours_max, allowed_project_ids } = filters;
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
@@ -71,8 +71,14 @@ class Issue {
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-  const q = `SELECT id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+  let q = `SELECT id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues ${whereSql} ORDER BY id`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }
@@ -96,10 +102,24 @@ class Issue {
    * @returns {Promise<Object>} Newly created issue object
    */
   static async create(fields) {
-    // DB column is currently named author_id in schema file; accept fields.author_id from API and store into that column
-  const q = `INSERT INTO issues (project_id, title, description, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
-    const vals = [fields.project_id, fields.title, fields.description, fields.type_id, fields.priority, fields.estimated_hours || 0, fields.start_date, fields.due_date, fields.assignee_id, fields.author_id];
-    const res = await pool.query(q, vals);
+    // Build INSERT dynamically so that DB defaults (e.g. priority) are preserved
+    const allowedCols = ['project_id', 'title', 'description', 'type_id', 'priority', 'estimated_hours', 'start_date', 'due_date', 'assignee_id', 'author_id'];
+    const cols = [];
+    const placeholders = [];
+    const values = [];
+    let idx = 1;
+    for (const c of allowedCols) {
+      if (fields[c] !== undefined) {
+        cols.push(c);
+        placeholders.push(`$${idx++}`);
+        // Normalize empty string to null for nullable columns
+        if (fields[c] === '') values.push(null);
+        else values.push(fields[c]);
+      }
+    }
+    if (cols.length === 0) throw new Error('No fields provided for insert');
+    const q = `INSERT INTO issues (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
+    const res = await pool.query(q, values);
     return res.rows[0];
   }
 
@@ -118,7 +138,7 @@ class Issue {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Issue.findById(id);
-  const q = `UPDATE issues SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, created_at, updated_at`;
+  const q = `UPDATE issues SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;

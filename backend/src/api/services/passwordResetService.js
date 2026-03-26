@@ -3,7 +3,7 @@ const PasswordResetToken = require('../../db/models/PasswordResetToken');
 const User = require('../../db/models/User');
 const NotificationTemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
-const { hashPassword } = require('../../utils/password');
+const { hashPassword, validatePassword } = require('../../utils/password');
 
 class PasswordResetService {
   static async createTokenForEmail(email) {
@@ -44,8 +44,9 @@ class PasswordResetService {
     if (!token) {
       const err = new Error('Token required'); err.statusCode = 400; throw err;
     }
-    if (!newPassword || String(newPassword).length < 6) {
-      const err = new Error('Password must be at least 6 characters'); err.statusCode = 400; throw err;
+    const validationErrors = validatePassword(newPassword);
+    if (validationErrors && validationErrors.length > 0) {
+      const err = new Error('Password validation error: ' + validationErrors.join('; ')); err.statusCode = 400; throw err;
     }
 
     const rec = await PasswordResetToken.findValidByToken(token);
@@ -54,7 +55,8 @@ class PasswordResetService {
     }
 
     const password_hash = await hashPassword(newPassword);
-    const updated = await User.setPassword(rec.user_id, password_hash);
+    // When resetting via token, the user themself is the initiator
+    const updated = await User.setPassword(rec.user_id, password_hash, rec.user_id);
     await PasswordResetToken.markUsed(rec.id);
     return updated;
   }

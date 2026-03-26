@@ -9,6 +9,7 @@
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
+const cacheInvalidator = require('../../utils/cacheInvalidator');
 
 class RocketChatService {
   /**
@@ -63,11 +64,6 @@ class RocketChatService {
         reject(err);
       }
     });
-  }
-
-  static async _sendViaWebhook(webhookUrl, options) {
-    // removed: webhook support is no longer available in this service
-    throw new Error('Webhook support removed — use REST API via ROCKET_CHAT_URL');
   }
 
   static async _sendViaRest(baseUrl, options) {
@@ -136,5 +132,12 @@ class RocketChatService {
 
 // Cache auth in-memory for the process lifetime
 RocketChatService._cachedAuth = null;
+
+// Clear cached auth on relevant DB changes
+try {
+  cacheInvalidator.on('invalidate', (entity) => {
+    RocketChatService._cachedAuth = null;
+  });
+} catch (e) {}
 
 module.exports = RocketChatService;

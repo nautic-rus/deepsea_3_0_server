@@ -285,7 +285,8 @@ class IssuesController {
         return;
       }
       const { storage_id } = req.body || {};
-      const created = await IssuesService.attachFileToIssue(Number(id), Number(storage_id), actor);
+      const storagePayload = Array.isArray(storage_id) ? storage_id.map(Number) : Number(storage_id);
+      const created = await IssuesService.attachFileToIssue(Number(id), storagePayload, actor);
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }
@@ -326,8 +327,8 @@ class IssuesController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { limit = 100, offset = 0 } = req.query || {};
-      const rows = await IssuesService.listIssueFiles(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      const { limit, offset = 0 } = req.query || {};
+      const rows = await IssuesService.listIssueFiles(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) }, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
@@ -339,8 +340,8 @@ class IssuesController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { limit = 100, offset = 0 } = req.query || {};
-      const rows = await IssuesService.listIssueMessages(Number(id), { limit: Number(limit), offset: Number(offset) }, actor);
+      const { limit, offset = 0 } = req.query || {};
+      const rows = await IssuesService.listIssueMessages(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) }, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }

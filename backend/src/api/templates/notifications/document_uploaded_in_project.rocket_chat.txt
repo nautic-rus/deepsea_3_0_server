@@ -1,0 +1,14 @@
+:white_check_mark: Файл добавлен к документу!
+
+*Проект: *{{project.code}}
+*Номер: *{{document.code}}
+*Документ: *{{document.title}}
+*Загрузил: *{{actor.full_name}}
+
+*Файл(ы):*
+{{storage_file_list}}
+
+{{documentUrl}}
+
+_Это автоматическое уведомление от {{company.name}}._
+

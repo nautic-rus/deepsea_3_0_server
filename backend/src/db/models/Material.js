@@ -2,8 +2,8 @@ const pool = require('../connection');
 
 class Material {
   static async list(filters = {}) {
-    const { directory_id, unit_id, category_id, page = 1, limit = 50, search } = filters;
-    const offset = (page - 1) * limit;
+    const { directory_id, unit_id, category_id, page = 1, limit, search } = filters;
+    const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
@@ -12,8 +12,14 @@ class Material {
     if (category_id) { where.push(`category_id = $${idx++}`); values.push(category_id); }
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const q = `SELECT id, stock_code, name, description, directory_id, unit_id, category_id, manufacturer, created_by, created_at FROM materials ${whereSql} ORDER BY id LIMIT $${idx++} OFFSET $${idx}`;
-    values.push(limit, offset);
+    let q = `SELECT id, stock_code, name, description, directory_id, unit_id, category_id, manufacturer, created_by, created_at FROM materials ${whereSql} ORDER BY id`;
+    if (limit != null) {
+      q += ` LIMIT $${idx++} OFFSET $${idx}`;
+      values.push(limit, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      values.push(offset);
+    }
     const res = await pool.query(q, values);
     return res.rows;
   }

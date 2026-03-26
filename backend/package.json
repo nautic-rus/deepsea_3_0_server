@@ -23,6 +23,7 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^7.0.12",
     "pg": "^8.11.3",
+    "prom-client": "^14.2.0",
     "swagger-jsdoc": "^1.2.1",
     "swagger-parser": "^10.0.3",
     "swagger-ui-express": "^5.0.0",

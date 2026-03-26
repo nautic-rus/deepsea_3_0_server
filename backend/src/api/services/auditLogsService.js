@@ -31,17 +31,23 @@ class AuditLogsService {
       idx += 1;
     }
 
-    const limit = Math.min( (filters.limit ? Number(filters.limit) : 50), 1000 );
+    // Allow arbitrary limit from caller (minimum 1). No default limit — return all if not specified.
+    const limitVal = filters.limit ? Math.max(Number(filters.limit), 1) : undefined;
     const offset = filters.offset ? Number(filters.offset) : 0;
 
-    const q = `
+    let q = `
       SELECT id, actor_id, entity, entity_id, action, details, created_at
       FROM audit_logs
       ${where}
       ORDER BY created_at DESC
-      LIMIT $${idx} OFFSET $${idx + 1}
     `;
-    params.push(limit, offset);
+    if (limitVal) {
+      q += ` LIMIT $${idx} OFFSET $${idx + 1}`;
+      params.push(limitVal, offset);
+    } else if (offset) {
+      q += ` OFFSET $${idx}`;
+      params.push(offset);
+    }
 
     const res = await pool.query(q, params);
     return res.rows;
