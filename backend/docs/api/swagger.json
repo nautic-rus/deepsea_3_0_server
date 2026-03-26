@@ -12,156 +12,44 @@
     }
   ],
   "tags": [
-    {
-      "name": "audit",
-      "description": "View audit log records"
-    },
-    {
-      "name": "auth",
-      "description": "Authentication and session management"
-    },
-    {
-      "name": "customer_question_statuses",
-      "description": "CRUD operations for customer question statuses"
-    },
-    {
-      "name": "customer_question_types",
-      "description": "CRUD operations for customer question types"
-    },
-    {
-      "name": "customer_question_work_flow",
-      "description": "CRUD operations for customer question workflow transitions"
-    },
-    {
-      "name": "customer_questions",
-      "description": "CRUD operations for customer questions"
-    },
-    {
-      "name": "departments",
-      "description": "CRUD operations for departments"
-    },
-    {
-      "name": "document_statuses",
-      "description": "CRUD operations for document statuses"
-    },
-    
-    {
-      "name": "document_storage_types",
-      "description": "CRUD operations for document storage types"
-    },
-    {
-      "name": "document_types",
-      "description": "CRUD operations for document types"
-    },
-    {
-      "name": "document_work_flow",
-      "description": "CRUD operations for document workflow transitions"
-    },
-    {
-      "name": "documents",
-      "description": "Operations for documents and document directories"
-    },
-    {
-      "name": "equipment",
-      "description": "CRUD operations for equipment"
-    },
-    {
-      "name": "issue_statuses",
-      "description": "CRUD operations for issue statuses"
-    },
-    {
-      "name": "issue_types",
-      "description": "CRUD operations for issue types"
-    },
-    {
-      "name": "issue_work_flow",
-      "description": "CRUD operations for issue workflow transitions"
-    },
-    {
-      "name": "issues",
-      "description": "CRUD operations for issues"
-    },
-    {
-      "name": "job_titles",
-      "description": "CRUD operations for job titles"
-    },
-    {
-      "name": "links",
-      "description": "Operations for creating and deleting entity links"
-    },
-    {
-      "name": "material_kits",
-      "description": "CRUD operations for material kits"
-    },
-    {
-      "name": "materials",
-      "description": "CRUD operations for materials"
-    },
-    {
-      "name": "notifications",
-      "description": "Notification events and methods management"
-    },
-    {
-      "name": "page_permissions",
-      "description": "Link permissions to pages"
-    },
-    {
-      "name": "pages",
-      "description": "CRUD operations for menu pages"
-    },
-    {
-      "name": "permissions",
-      "description": "CRUD operations for permissions"
-    },
-    {
-      "name": "projects",
-      "description": "CRUD operations for projects and assignments"
-    },
-    {
-      "name": "roles",
-      "description": "CRUD operations for roles and role permissions"
-    },
-    {
-      "name": "specializations",
-      "description": "CRUD operations for document specializations"
-    },
-    {
-      "name": "specifications",
-      "description": "CRUD operations for specifications"
-    },
-    {
-      "name": "stages",
-      "description": "CRUD operations for stages"
-    },
-    {
-      "name": "statements",
-      "description": "CRUD operations for statements"
-    },
-    {
-      "name": "storage",
-      "description": "File storage operations (upload, download, manage)"
-    },
-    {
-      "name": "users",
-      "description": "User management, notifications, and settings"
-    }
-    ,
-    {
-      "name": "groups",
-      "description": "CRUD operations for user groups"
-    },
-    {
-      "name": "shipments",
-      "description": "CRUD operations for shipments"
-    },
-    {
-      "name": "suppliers",
-      "description": "CRUD операции с поставщиками оборудования"
-    },
-    {
-      "name": "organizations",
-      "description": "CRUD operations for organizations"
-    }
+    { "name": "audit", "description": "View audit log records" },
+    { "name": "auth", "description": "Authentication and session management" },
+    { "name": "customer_question_statuses", "description": "CRUD operations for customer question statuses" },
+    { "name": "customer_question_types", "description": "CRUD operations for customer question types" },
+    { "name": "customer_question_work_flow", "description": "CRUD operations for customer question workflow transitions" },
+    { "name": "customer_questions", "description": "CRUD operations for customer questions" },
+    { "name": "departments", "description": "CRUD operations for departments" },
+    { "name": "document_statuses", "description": "CRUD operations for document statuses" },
+    { "name": "document_storage_types", "description": "CRUD operations for document storage types" },
+    { "name": "document_types", "description": "CRUD operations for document types" },
+    { "name": "document_work_flow", "description": "CRUD operations for document workflow transitions" },
+    { "name": "documents", "description": "Operations for documents and document directories" },
+    { "name": "equipment", "description": "CRUD operations for equipment" },
+    { "name": "groups", "description": "CRUD operations for user groups" },
+    { "name": "issue_statuses", "description": "CRUD operations for issue statuses" },
+    { "name": "issue_types", "description": "CRUD operations for issue types" },
+    { "name": "issue_work_flow", "description": "CRUD operations for issue workflow transitions" },
+    { "name": "issues", "description": "CRUD operations for issues" },
+    { "name": "job_titles", "description": "CRUD operations for job titles" },
+    { "name": "links", "description": "Operations for creating and deleting entity links" },
+    { "name": "material_kits", "description": "CRUD operations for material kits" },
+    { "name": "materials", "description": "CRUD operations for materials" },
+    { "name": "notifications", "description": "Notification events and methods management" },
+    { "name": "organizations", "description": "CRUD operations for organizations" },
+    { "name": "page_permissions", "description": "Link permissions to pages" },
+    { "name": "pages", "description": "CRUD operations for menu pages" },
+    { "name": "permissions", "description": "CRUD operations for permissions" },
+    { "name": "projects", "description": "CRUD operations for projects and assignments" },
+    { "name": "roles", "description": "CRUD operations for roles and role permissions" },
+    { "name": "shipments", "description": "CRUD operations for shipments" },
+    { "name": "specializations", "description": "CRUD operations for document specializations" },
+    { "name": "specifications", "description": "CRUD operations for specifications" },
+    { "name": "stages", "description": "CRUD operations for project stages" },
+    { "name": "statements", "description": "CRUD operations for statements" },
+    { "name": "storage", "description": "File storage operations (upload, download, manage)" },
+    { "name": "suppliers", "description": "CRUD operations for suppliers" },
+    { "name": "time_logs", "description": "CRUD operations for time logs" },
+    { "name": "users", "description": "User management, notifications, and settings" }
   ],
   "components": {
     "securitySchemes": {
@@ -2016,6 +1904,89 @@
           "received_at": { "type": "string", "format": "date-time", "nullable": true, "description": "Дата получения" },
           "created_by": { "type": "integer", "nullable": true, "description": "ID создателя" },
           "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Statement": {
+        "type": "object",
+        "description": "Ведомость — запись из таблицы statements",
+        "properties": {
+          "id": { "type": "integer", "description": "ID ведомости" },
+          "document_id": { "type": "integer", "nullable": true, "description": "ID документа" },
+          "parent_id": { "type": "integer", "nullable": true, "description": "ID родительской ведомости" },
+          "project_id": { "type": "integer", "nullable": true, "description": "ID проекта" },
+          "code": { "type": "string", "nullable": true, "description": "Код ведомости" },
+          "name": { "type": "string", "description": "Наименование ведомости" },
+          "description": { "type": "string", "nullable": true, "description": "Описание" },
+          "created_by": { "type": "integer", "description": "ID создателя" },
+          "created_at": { "type": "string", "format": "date-time", "description": "Дата создания" }
+        }
+      },
+      "StatementCreate": {
+        "type": "object",
+        "description": "Тело запроса для создания/обновления ведомости",
+        "required": ["document_id", "name"],
+        "properties": {
+          "document_id": { "type": "integer", "description": "ID документа (обязательно)" },
+          "parent_id": { "type": "integer", "nullable": true, "description": "ID родительской ведомости" },
+          "project_id": { "type": "integer", "nullable": true, "description": "ID проекта" },
+          "code": { "type": "string", "nullable": true, "description": "Код ведомости" },
+          "name": { "type": "string", "description": "Наименование ведомости (обязательно)" },
+          "description": { "type": "string", "nullable": true, "description": "Описание" }
+        }
+      },
+      "Stage": {
+        "type": "object",
+        "description": "Этап проекта — запись из таблицы stages",
+        "properties": {
+          "id": { "type": "integer", "description": "ID этапа" },
+          "project_id": { "type": "integer", "description": "ID проекта" },
+          "name": { "type": "string", "description": "Наименование этапа" },
+          "code": { "type": "string", "nullable": true, "description": "Код этапа" },
+          "description": { "type": "string", "nullable": true, "description": "Описание" },
+          "end_date": { "type": "string", "format": "date", "description": "Дата окончания" },
+          "order_index": { "type": "integer", "description": "Порядковый индекс для сортировки" },
+          "created_at": { "type": "string", "format": "date-time", "description": "Дата создания" }
+        }
+      },
+      "StageCreate": {
+        "type": "object",
+        "description": "Тело запроса для создания этапа",
+        "required": ["project_id", "name", "end_date"],
+        "properties": {
+          "project_id": { "type": "integer", "description": "ID проекта (обязательно)" },
+          "name": { "type": "string", "description": "Наименование этапа (обязательно)" },
+          "code": { "type": "string", "nullable": true, "description": "Код этапа" },
+          "description": { "type": "string", "nullable": true, "description": "Описание" },
+          "end_date": { "type": "string", "format": "date", "description": "Дата окончания (обязательно)" },
+          "order_index": { "type": "integer", "description": "Порядковый индекс (по умолчанию 0)" }
+        }
+      },
+      "Specification": {
+        "type": "object",
+        "description": "Спецификация — запись из таблицы specification",
+        "properties": {
+          "id": { "type": "integer", "description": "ID спецификации" },
+          "project_id": { "type": "integer", "description": "ID проекта" },
+          "document_id": { "type": "integer", "nullable": true, "description": "ID документа" },
+          "code": { "type": "string", "nullable": true, "description": "Код спецификации" },
+          "name": { "type": "string", "description": "Наименование спецификации" },
+          "description": { "type": "string", "nullable": true, "description": "Описание" },
+          "version": { "type": "string", "nullable": true, "description": "Версия" },
+          "created_by": { "type": "integer", "description": "ID создателя" },
+          "created_at": { "type": "string", "format": "date-time", "description": "Дата создания" }
+        }
+      },
+      "SpecificationCreate": {
+        "type": "object",
+        "description": "Тело запроса для создания спецификации",
+        "required": ["project_id", "name"],
+        "properties": {
+          "project_id": { "type": "integer", "description": "ID проекта (обязательно)" },
+          "document_id": { "type": "integer", "nullable": true, "description": "ID документа" },
+          "code": { "type": "string", "nullable": true, "description": "Код спецификации" },
+          "name": { "type": "string", "description": "Наименование (обязательно)" },
+          "description": { "type": "string", "nullable": true, "description": "Описание" },
+          "version": { "type": "string", "nullable": true, "description": "Версия (при создании записывается в specification_version)" }
         }
       }
     }
@@ -12203,518 +12174,488 @@
       }
     },
     "/api/specifications": {
+      "get": {
+        "tags": ["specifications"],
+        "summary": "Список спецификаций",
+        "description": "Возвращает список спецификаций с фильтрацией по project_id и текстовому поиску. Пагинация через page/limit.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["specifications.view"],
+        "parameters": [
+          { "name": "project_id", "in": "query", "description": "Фильтр по ID проекта", "schema": { "type": "integer" } },
+          { "name": "search", "in": "query", "description": "Поиск по name и description (ILIKE)", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "description": "Номер страницы (по умолчанию 1)", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "description": "Записей на странице (если не указан — без лимита)", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список спецификаций",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Specification" } } } },
+                "example": {
+                  "data": [
+                    { "id": 1, "project_id": 1, "document_id": 5, "code": "SPEC-001", "name": "Спецификация главного двигателя", "description": "Техническая спецификация MAN 6S60ME", "version": "v1.0", "created_by": 2, "created_at": "2026-01-15T10:00:00.000Z" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission specifications.view" }
+        }
+      },
       "post": {
-        "tags": [
-          "specifications"
-        ],
-        "summary": "Create specification",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "specifications.create"
-        ],
-        "parameters": [],
+        "tags": ["specifications"],
+        "summary": "Создать спецификацию",
+        "description": "Создаёт новую спецификацию. Обязательные поля: project_id, name. При указании version также создаётся запись в specification_version.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["specifications.create"],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object"
-              },
-              "example": {}
+              "schema": { "$ref": "#/components/schemas/SpecificationCreate" },
+              "example": {
+                "project_id": 1,
+                "document_id": 5,
+                "code": "SPEC-002",
+                "name": "Спецификация генератора",
+                "description": "Техническая спецификация Caterpillar C32",
+                "version": "v1.0"
+              }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created"
-          }
+            "description": "Спецификация создана",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Specification" } } },
+                "example": {
+                  "data": { "id": 2, "project_id": 1, "document_id": 5, "code": "SPEC-002", "name": "Спецификация генератора", "description": "Техническая спецификация Caterpillar C32", "version": "v1.0", "created_by": 2, "created_at": "2026-02-01T12:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing required fields (project_id, name)" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission specifications.create" }
         }
-      },
-      "get": {
-        "tags": [
-          "specifications"
-        ],
-        "summary": "List specifications",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "specifications.view"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "parameters": []
       }
     },
     "/api/specifications/{id}": {
-      "put": {
-        "tags": [
-          "specifications"
-        ],
-        "summary": "Update specification",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "specifications.update"
-        ],
+      "get": {
+        "tags": ["specifications"],
+        "summary": "Получить спецификацию по ID",
+        "description": "Возвращает одну запись спецификации по идентификатору.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["specifications.view"],
         "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": "{{id}}"
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID спецификации" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Запись спецификации",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Specification" },
+                "example": { "id": 1, "project_id": 1, "document_id": 5, "code": "SPEC-001", "name": "Спецификация главного двигателя", "description": "Техническая спецификация MAN 6S60ME", "version": "v1.0", "created_by": 2, "created_at": "2026-01-15T10:00:00.000Z" }
+              }
+            }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission specifications.view" },
+          "404": { "description": "Specification not found" }
+        }
+      },
+      "put": {
+        "tags": ["specifications"],
+        "summary": "Обновить спецификацию",
+        "description": "Частичное обновление спецификации. Изменяемые поля: document_id, code, name, description, version. При изменении version создаётся новая запись в specification_version.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["specifications.update"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID спецификации" }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "document_id": { "type": "integer", "nullable": true },
+                  "code": { "type": "string" },
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "version": { "type": "string" }
+                }
               },
-              "example": {}
+              "example": { "name": "Спецификация главного двигателя (обновлено)", "version": "v2.0" }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK"
-          }
+            "description": "Обновлённая запись",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Specification" } } },
+                "example": {
+                  "data": { "id": 1, "project_id": 1, "document_id": 5, "code": "SPEC-001", "name": "Спецификация главного двигателя (обновлено)", "description": "Техническая спецификация MAN 6S60ME", "version": "v2.0", "created_by": 2, "created_at": "2026-01-15T10:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission specifications.update" },
+          "404": { "description": "Specification not found" }
         }
       },
       "delete": {
-        "tags": [
-          "specifications"
-        ],
-        "summary": "Delete specification",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "specifications.delete"
-        ],
+        "tags": ["specifications"],
+        "summary": "Удалить спецификацию",
+        "description": "Soft-delete спецификации (is_active = false). При невозможности — полное удаление.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["specifications.delete"],
         "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": "{{id}}"
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID спецификации" }
         ],
         "responses": {
           "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "specifications"
-        ],
-        "summary": "Get specification",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "specifications.view"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": "{{id}}"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
+            "description": "Спецификация удалена",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } }, "example": { "message": "Specification deleted" } } }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission specifications.delete" },
+          "404": { "description": "Specification not found" }
         }
       }
     },
     "/api/stages": {
+      "get": {
+        "tags": ["stages"],
+        "summary": "Список этапов",
+        "description": "Возвращает список этапов проекта с фильтрацией по project_id и текстовому поиску. Сортировка по order_index. Пагинация через page/limit.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["stages.view"],
+        "parameters": [
+          { "name": "project_id", "in": "query", "description": "Фильтр по ID проекта", "schema": { "type": "integer" } },
+          { "name": "search", "in": "query", "description": "Поиск по name и description (ILIKE)", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "description": "Номер страницы (по умолчанию 1)", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "description": "Записей на странице (если не указан — без лимита)", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список этапов",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Stage" } } } },
+                "example": {
+                  "data": [
+                    { "id": 1, "project_id": 1, "name": "Проектирование", "code": "STG-001", "description": "Этап проектирования судна", "end_date": "2026-06-30", "order_index": 1, "created_at": "2026-01-10T10:00:00.000Z" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission stages.view" }
+        }
+      },
       "post": {
-        "tags": [
-          "stages"
-        ],
-        "summary": "Create stage",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "stages.create"
-        ],
-        "parameters": [],
+        "tags": ["stages"],
+        "summary": "Создать этап",
+        "description": "Создаёт новый этап проекта. Обязательные поля: project_id, name, end_date.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["stages.create"],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object"
-              },
-              "example": {}
+              "schema": { "$ref": "#/components/schemas/StageCreate" },
+              "example": {
+                "project_id": 1,
+                "name": "Проектирование",
+                "code": "STG-001",
+                "description": "Этап проектирования судна",
+                "end_date": "2026-06-30",
+                "order_index": 1
+              }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created"
-          }
+            "description": "Этап создан",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Stage" } } },
+                "example": {
+                  "data": { "id": 1, "project_id": 1, "name": "Проектирование", "code": "STG-001", "description": "Этап проектирования судна", "end_date": "2026-06-30", "order_index": 1, "created_at": "2026-01-10T10:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing required fields (project_id, name, end_date)" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission stages.create" }
         }
-      },
-      "get": {
-        "tags": [
-          "stages"
-        ],
-        "summary": "List stages",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "stages.view"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        },
-        "parameters": []
       }
     },
     "/api/stages/{id}": {
-      "put": {
-        "tags": [
-          "stages"
-        ],
-        "summary": "Update stage",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "stages.update"
-        ],
+      "get": {
+        "tags": ["stages"],
+        "summary": "Получить этап по ID",
+        "description": "Возвращает одну запись этапа по идентификатору.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["stages.view"],
         "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": "{{id}}"
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID этапа" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Запись этапа",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Stage" },
+                "example": { "id": 1, "project_id": 1, "name": "Проектирование", "code": "STG-001", "description": "Этап проектирования судна", "end_date": "2026-06-30", "order_index": 1, "created_at": "2026-01-10T10:00:00.000Z" }
+              }
+            }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission stages.view" },
+          "404": { "description": "Stage not found" }
+        }
+      },
+      "put": {
+        "tags": ["stages"],
+        "summary": "Обновить этап",
+        "description": "Частичное обновление этапа. Изменяемые поля: name, code, description, end_date, order_index.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["stages.update"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID этапа" }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "code": { "type": "string" },
+                  "description": { "type": "string" },
+                  "end_date": { "type": "string", "format": "date" },
+                  "order_index": { "type": "integer" }
+                }
               },
-              "example": {}
+              "example": { "name": "Проектирование (обновлено)", "end_date": "2026-09-30" }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK"
-          }
+            "description": "Обновлённая запись",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Stage" } } },
+                "example": {
+                  "data": { "id": 1, "project_id": 1, "name": "Проектирование (обновлено)", "code": "STG-001", "description": "Этап проектирования судна", "end_date": "2026-09-30", "order_index": 1, "created_at": "2026-01-10T10:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission stages.update" },
+          "404": { "description": "Stage not found" }
         }
       },
       "delete": {
-        "tags": [
-          "stages"
-        ],
-        "summary": "Delete stage",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "stages.delete"
-        ],
+        "tags": ["stages"],
+        "summary": "Удалить этап",
+        "description": "Soft-delete этапа (is_active = false). При невозможности — полное удаление.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["stages.delete"],
         "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": "{{id}}"
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID этапа" }
         ],
         "responses": {
           "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "stages"
-        ],
-        "summary": "Get stage",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "stages.view"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": "{{id}}"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
+            "description": "Этап удалён",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } }, "example": { "message": "Stage deleted" } } }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission stages.delete" },
+          "404": { "description": "Stage not found" }
         }
       }
     },
     "/api/statements": {
+      "get": {
+        "tags": ["statements"],
+        "summary": "Список ведомостей",
+        "description": "Возвращает список ведомостей с текстовым поиском по name и description. Пагинация через page/limit.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["statements.view"],
+        "parameters": [
+          { "name": "search", "in": "query", "description": "Поиск по name и description (ILIKE)", "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "description": "Номер страницы (по умолчанию 1)", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "description": "Записей на странице (если не указан — без лимита)", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список ведомостей",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Statement" } } } },
+                "example": {
+                  "data": [
+                    { "id": 1, "document_id": 1, "parent_id": null, "project_id": 12, "code": "ST-001", "name": "Monthly materials statement", "description": "Statement for March", "created_by": 2, "created_at": "2024-01-01T00:00:00.000Z" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission statements.view" }
+        }
+      },
       "post": {
         "tags": ["statements"],
-        "summary": "Create statement",
+        "summary": "Создать ведомость",
+        "description": "Создаёт новую ведомость. Обязательные поля: document_id, name.",
         "security": [{ "bearerAuth": [] }],
         "x-permissions": ["statements.create"],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "parent_id": { "type": "integer", "example": 1 },
-                  "project_id": { "type": "integer", "example": 12 },
-                  "document_id": { "type": "integer", "example": 1 },
-                  "code": { "type": "string" },
-                  "name": { "type": "string" },
-                  "description": { "type": "string" },
-                  "version": { "type": "string" }
-                }
-                },
-                "/api/statements/{id}": {
-                  "get": {
-                    "tags": ["statements"],
-                    "summary": "Get statement by id",
-                    "security": [{ "bearerAuth": [] }],
-                    "x-permissions": ["statements.view"],
-                    "parameters": [
-                      { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": "{{id}}" }
-                    ],
-                    "responses": {
-                      "200": {
-                        "description": "OK",
-                        "content": {
-                          "application/json": {
-                            "schema": {
-                              "type": "object",
-                              "properties": {
-                                "data": {
-                                  "type": "object",
-                                  "properties": {
-                                    "id": { "type": "integer" },
-                                    "document_id": { "type": "integer", "nullable": true },
-                                    "parent_id": { "type": "integer", "nullable": true },
-                                    "project_id": { "type": "integer", "nullable": true },
-                                    "code": { "type": "string", "nullable": true },
-                                    "name": { "type": "string" },
-                                    "description": { "type": "string", "nullable": true },
-                                    "created_by": { "type": "integer" },
-                                    "updated_by": { "type": "integer", "nullable": true },
-                                    "created_at": { "type": "string", "format": "date-time" },
-                                    "updated_at": { "type": "string", "format": "date-time" }
-                                  }
-                                }
-                              }
-                            },
-                            "example": { "data": { "id": 1, "document_id": 1, "parent_id": null, "project_id": 12, "code": "ST-001", "name": "Monthly materials statement", "description": "Statement for March", "created_by": 2, "updated_by": null, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-02T00:00:00Z" } }
-                          }
-                        }
-                      },
-                      "404": { "description": "Not found" }
-                    }
-                  },
-                  "put": {
-                    "tags": ["statements"],
-                    "summary": "Update statement",
-                    "security": [{ "bearerAuth": [] }],
-                    "x-permissions": ["statements.update"],
-                    "parameters": [
-                      { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": "{{id}}" }
-                    ],
-                    "requestBody": {
-                      "required": true,
-                      "content": {
-                        "application/json": {
-                          "schema": {
-                            "type": "object",
-                            "properties": {
-                              "document_id": { "type": "integer" },
-                              "parent_id": { "type": "integer" },
-                              "project_id": { "type": "integer" },
-                              "code": { "type": "string" },
-                              "name": { "type": "string" },
-                              "description": { "type": "string" }
-                            }
-                          },
-                          "example": { "document_id": 1, "parent_id": null, "project_id": 12, "code": "ST-001", "name": "Updated name", "description": "Updated description" }
-                        }
-                      }
-                    },
-                    "responses": {
-                      "200": {
-                        "description": "Updated",
-                        "content": {
-                          "application/json": {
-                            "schema": { "type": "object", "properties": { "data": { "type": "object" } } },
-                            "example": { "data": { "id": 1, "document_id": 1, "parent_id": null, "project_id": 12, "code": "ST-001", "name": "Updated name", "description": "Updated description", "created_by": 2, "created_at": "2024-01-01T00:00:00Z" } }
-                          }
-                        }
-                      },
-                      "400": { "description": "Validation error" },
-                      "404": { "description": "Not found" }
-                    }
-                  },
-                  "delete": {
-                    "tags": ["statements"],
-                    "summary": "Delete statement",
-                    "security": [{ "bearerAuth": [] }],
-                    "x-permissions": ["statements.delete"],
-                    "parameters": [
-                      { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" }, "example": "{{id}}" }
-                    ],
-                    "responses": {
-                      "200": { "description": "Deleted", "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } }, "example": { "message": "Statement deleted" } } } },
-                      "404": { "description": "Not found" }
-                    }
-                  }
-                },
+              "schema": { "$ref": "#/components/schemas/StatementCreate" },
               "example": {
+                "document_id": 1,
                 "parent_id": null,
                 "project_id": 12,
-                "document_id": 1,
                 "code": "ST-010",
                 "name": "Monthly materials statement",
-                "description": "Statement for March",
-                "version": "v1"
+                "description": "Statement for March"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created",
+            "description": "Ведомость создана",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": { "type": "integer" },
-                        "parent_id": { "type": "integer", "nullable": true },
-                        "project_id": { "type": "integer", "nullable": true },
-                        "document_id": { "type": "integer", "nullable": true },
-                        "code": { "type": "string", "nullable": true },
-                        "name": { "type": "string" },
-                        "description": { "type": "string", "nullable": true },
-                        "version": { "type": "string", "nullable": true },
-                        "created_by": { "type": "integer" },
-                        "created_at": { "type": "string", "format": "date-time" }
-                      }
-                    }
-                  }
-                },
-                "example": { "data": { "id": 10, "parent_id": null, "project_id": 12, "document_id": 1, "code": "ST-010", "name": "Monthly materials statement", "description": "Created statement", "version": "v1", "created_by": 2, "created_at": "2024-01-01T00:00:00Z" } }
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Statement" } } },
+                "example": {
+                  "data": { "id": 10, "document_id": 1, "parent_id": null, "project_id": 12, "code": "ST-010", "name": "Monthly materials statement", "description": "Statement for March", "created_by": 2, "created_at": "2024-01-01T00:00:00.000Z" }
+                }
               }
             }
-          }
+          },
+          "400": { "description": "Missing required fields (document_id, name)" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission statements.create" }
         }
-      },
+      }
+    },
+    "/api/statements/{id}": {
       "get": {
         "tags": ["statements"],
-        "summary": "List statements",
+        "summary": "Получить ведомость по ID",
+        "description": "Возвращает одну запись ведомости по идентификатору.",
         "security": [{ "bearerAuth": [] }],
         "x-permissions": ["statements.view"],
         "parameters": [
-          { "in": "query", "name": "document_id", "schema": { "type": "integer" }, "required": false },
-          { "in": "query", "name": "project_id", "schema": { "type": "integer" }, "required": false }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID ведомости" }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Запись ведомости",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": { "type": "integer" },
-                          "document_id": { "type": "integer", "nullable": true },
-                          "parent_id": { "type": "integer", "nullable": true },
-                          "project_id": { "type": "integer", "nullable": true },
-                          "code": { "type": "string", "nullable": true },
-                          "name": { "type": "string" },
-                          "description": { "type": "string", "nullable": true },
-                          "version": { "type": "string", "nullable": true },
-                          "created_by": { "type": "integer", "nullable": true },
-                          "updated_by": { "type": "integer", "nullable": true },
-                          "created_at": { "type": "string", "format": "date-time" },
-                          "updated_at": { "type": "string", "format": "date-time" }
-                        }
-                      }
-                    }
-                  }
-                },
-                "example": { "data": [ { "id": 1, "document_id": 1, "parent_id": null, "project_id": 12, "code": "ST-001", "name": "Monthly materials statement", "description": "Statement for March", "version": "v1", "created_by": 2, "updated_by": null, "created_at": "2024-01-01T00:00:00Z", "updated_at": "2024-01-02T00:00:00Z" } ] }
+                "schema": { "$ref": "#/components/schemas/Statement" },
+                "example": { "id": 1, "document_id": 1, "parent_id": null, "project_id": 12, "code": "ST-001", "name": "Monthly materials statement", "description": "Statement for March", "created_by": 2, "created_at": "2024-01-01T00:00:00.000Z" }
               }
             }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission statements.view" },
+          "404": { "description": "Statement not found" }
+        }
+      },
+      "put": {
+        "tags": ["statements"],
+        "summary": "Обновить ведомость",
+        "description": "Частичное обновление ведомости. Передаются только изменяемые поля: document_id, parent_id, project_id, code, name, description.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["statements.update"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID ведомости" }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "document_id": { "type": "integer" },
+                  "parent_id": { "type": "integer", "nullable": true },
+                  "project_id": { "type": "integer", "nullable": true },
+                  "code": { "type": "string" },
+                  "name": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              },
+              "example": { "name": "Updated name", "description": "Updated description" }
+            }
           }
+        },
+        "responses": {
+          "200": {
+            "description": "Обновлённая запись",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Statement" } } },
+                "example": {
+                  "data": { "id": 1, "document_id": 1, "parent_id": null, "project_id": 12, "code": "ST-001", "name": "Updated name", "description": "Updated description", "created_by": 2, "created_at": "2024-01-01T00:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission statements.update" },
+          "404": { "description": "Statement not found" }
+        }
+      },
+      "delete": {
+        "tags": ["statements"],
+        "summary": "Удалить ведомость",
+        "description": "Soft-delete ведомости (is_active = false). При невозможности — полное удаление.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["statements.delete"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID ведомости" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ведомость удалена",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } }, "example": { "message": "Statement deleted" } } }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission statements.delete" },
+          "404": { "description": "Statement not found" }
         }
       }
     },
