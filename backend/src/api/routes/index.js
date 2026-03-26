@@ -31,6 +31,9 @@ const storageController = require('../controllers/storageController');
 const multer = require('multer');
 const _upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 const statementsController = require('../controllers/statementsController');
+const specificationPartsController = require('../controllers/specificationPartsController');
+const statementsVersionController = require('../controllers/statementsVersionController');
+const statementsPartsController = require('../controllers/statementsPartsController');
 const permissionsController = require('../controllers/permissionsController');
 const userPagesController = require('../controllers/userPagesController');
 const pagesController = require('../controllers/pagesController');
@@ -416,6 +419,14 @@ router.post('/specifications', authMiddleware, specificationsController.create);
 router.put('/specifications/:id', authMiddleware, specificationsController.update);
 router.delete('/specifications/:id', authMiddleware, specificationsController.delete);
 
+// ===== Specification versions / parts routes =====
+// Specification parts
+router.get('/specification_parts', authMiddleware, specificationPartsController.list);
+router.get('/specification_parts/:id', authMiddleware, specificationPartsController.get);
+router.post('/specification_parts', authMiddleware, specificationPartsController.create);
+router.put('/specification_parts/:id', authMiddleware, specificationPartsController.update);
+router.delete('/specification_parts/:id', authMiddleware, specificationPartsController.delete);
+
 // ===== Stages routes =====
 router.get('/stages', authMiddleware, stagesController.list);
 router.get('/stages/:id', authMiddleware, stagesController.get);
@@ -445,6 +456,19 @@ router.get('/statements/:id', authMiddleware, statementsController.get);
 router.post('/statements', authMiddleware, statementsController.create);
 router.put('/statements/:id', authMiddleware, statementsController.update);
 router.delete('/statements/:id', authMiddleware, statementsController.delete);
+
+// ===== Statements versions / parts routes =====
+router.get('/statements_versions', authMiddleware, statementsVersionController.list);
+router.get('/statements_versions/:id', authMiddleware, statementsVersionController.get);
+router.post('/statements_versions', authMiddleware, statementsVersionController.create);
+router.put('/statements_versions/:id', authMiddleware, statementsVersionController.update);
+router.delete('/statements_versions/:id', authMiddleware, statementsVersionController.delete);
+
+router.get('/statements_parts', authMiddleware, statementsPartsController.list);
+router.get('/statements_parts/:id', authMiddleware, statementsPartsController.get);
+router.post('/statements_parts', authMiddleware, statementsPartsController.create);
+router.put('/statements_parts/:id', authMiddleware, statementsPartsController.update);
+router.delete('/statements_parts/:id', authMiddleware, statementsPartsController.delete);
 
 // ===== Permissions routes =====
 // GET /api/permissions
