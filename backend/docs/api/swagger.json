@@ -1859,23 +1859,66 @@
       },
       "Material": {
         "type": "object",
-        "description": "Материал — запись из таблицы materials",
+        "description": "Материал — запись из таблицы materials (с вложенными объектами для связей)",
         "properties": {
           "id": { "type": "integer", "description": "ID материала" },
           "stock_code": { "type": "string", "description": "Складской код (формат NR + 14 цифр)" },
           "name": { "type": "string", "description": "Наименование материала" },
           "description": { "type": "string", "nullable": true, "description": "Описание материала" },
-          "directory_id": { "type": "integer", "nullable": true, "description": "ID директории (справочника)" },
-          "unit_id": { "type": "integer", "nullable": true, "description": "ID единицы измерения" },
-          "manufacturer": { "type": "string", "nullable": true, "description": "Производитель" },
-          "count": { "type": "integer", "nullable": true, "description": "Количество" },
-          "created_by": { "type": "integer", "description": "ID создателя" },
-          "created_at": { "type": "string", "format": "date-time" }
+          "directory": {
+            "type": "object",
+            "nullable": true,
+            "description": "Директория (справочник)",
+            "properties": {
+              "id": { "type": "integer", "description": "ID директории" },
+              "name": { "type": "string", "description": "Название директории" }
+            }
+          },
+          "unit": {
+            "type": "object",
+            "nullable": true,
+            "description": "Единица измерения",
+            "properties": {
+              "id": { "type": "integer", "description": "ID единицы измерения" },
+              "name": { "type": "string", "description": "Название единицы измерения" }
+            }
+          },
+          "weight": { "type": "number", "nullable": true, "description": "Вес материала" },
+          "created_by": {
+            "type": "object",
+            "nullable": true,
+            "description": "Создатель",
+            "properties": {
+              "id": { "type": "integer", "description": "ID пользователя" },
+              "name": { "type": "string", "nullable": true, "description": "ФИО пользователя" }
+            }
+          },
+          "created_at": { "type": "string", "format": "date-time", "description": "Дата создания" },
+          "updated_by": {
+            "type": "object",
+            "nullable": true,
+            "description": "Кто обновил",
+            "properties": {
+              "id": { "type": "integer", "description": "ID пользователя" },
+              "name": { "type": "string", "nullable": true, "description": "ФИО пользователя" }
+            }
+          },
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true, "description": "Дата обновления" },
+          "statement_materials": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "description": "Массив ID связанных ведомостей (statement_id)"
+          },
+          "shipment_materials": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "description": "Массив ID связанных поставок (shipment_id)"
+          }
         }
       },
       "MaterialCreate": {
         "type": "object",
-        "description": "Тело запроса для создания материала",
+        "description": "Тело запроса для создания/обновления материала",
         "properties": {
           "stock_code": { "type": "string", "nullable": true, "description": "Складской код (генерируется автоматически если не передан)" },
           "name": { "type": "string", "description": "Наименование материала" },
@@ -1884,8 +1927,26 @@
           "unit_id": { "type": "integer", "nullable": true },
           "manufacturer": { "type": "string", "nullable": true },
           "count": { "type": "integer", "nullable": true, "description": "Количество" },
-          "shipments": { "type": "array", "items": { "type": "object", "properties": { "shipment_id": { "type": "integer" }, "quantity": { "type": "number" } } }, "description": "Привязка к поставкам (опционально)" },
-          "statements": { "type": "array", "items": { "type": "object", "properties": { "statement_id": { "type": "integer" }, "quantity": { "type": "number" } } }, "description": "Привязка к ведомостям (опционально)" }
+          "shipments": {
+            "type": "array",
+            "description": "Привязка к поставкам — массив ID или объектов { shipment_id }. При обновлении полностью пересинхронизирует связи.",
+            "items": {
+              "oneOf": [
+                { "type": "integer", "description": "ID поставки" },
+                { "type": "object", "properties": { "shipment_id": { "type": "integer" } } }
+              ]
+            }
+          },
+          "statements": {
+            "type": "array",
+            "description": "Привязка к ведомостям — массив ID или объектов { statement_id }. При обновлении полностью пересинхронизирует связи.",
+            "items": {
+              "oneOf": [
+                { "type": "integer", "description": "ID ведомости" },
+                { "type": "object", "properties": { "statement_id": { "type": "integer" } } }
+              ]
+            }
+          }
         },
         "required": ["name"]
       },
@@ -1964,12 +2025,14 @@
       "get": {
         "tags": ["materials"],
         "summary": "Список материалов",
-        "description": "Возвращает список материалов с фильтрацией по директории, единице измерения и текстовому поиску. Пагинация через page/limit.",
+        "description": "Возвращает список материалов с фильтрацией по директории, единице измерения, ведомости, поставке и текстовому поиску. Пагинация через page/limit.",
         "security": [{ "bearerAuth": [] }],
         "x-permissions": ["materials.view"],
         "parameters": [
           { "name": "directory_id", "in": "query", "description": "Фильтр по ID директории", "schema": { "type": "integer" } },
           { "name": "unit_id", "in": "query", "description": "Фильтр по ID единицы измерения", "schema": { "type": "integer" } },
+          { "name": "statement_id", "in": "query", "description": "Фильтр по ID ведомости (через связь statement_materials)", "schema": { "type": "integer" } },
+          { "name": "shipment_id", "in": "query", "description": "Фильтр по ID поставки (через связь shipment_materials)", "schema": { "type": "integer" } },
           { "name": "search", "in": "query", "description": "Поиск по name и description (ILIKE)", "schema": { "type": "string" } },
           { "name": "page", "in": "query", "description": "Номер страницы (по умолчанию 1)", "schema": { "type": "integer", "default": 1 } },
           { "name": "limit", "in": "query", "description": "Записей на странице (если не указан — без лимита)", "schema": { "type": "integer" } }
@@ -1982,7 +2045,21 @@
                 "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/Material" } } } },
                 "example": {
                   "data": [
-                    { "id": 1, "stock_code": "NR00000000000001", "name": "Труба стальная 100мм", "description": "Бесшовная ГОСТ 8732-78", "directory_id": 5, "unit_id": 2, "manufacturer": "СтальПром", "count": 100, "created_by": 1, "created_at": "2026-01-15T10:30:00.000Z" }
+                    {
+                      "id": 1,
+                      "stock_code": "NR00000000000001",
+                      "name": "Труба стальная 100мм",
+                      "description": "Бесшовная ГОСТ 8732-78",
+                      "directory": { "id": 5, "name": "Трубы" },
+                      "unit": { "id": 2, "name": "шт" },
+                      "weight": 12.5,
+                      "created_by": { "id": 1, "name": "Иван Петров" },
+                      "created_at": "2026-01-15T10:30:00.000Z",
+                      "updated_by": null,
+                      "updated_at": null,
+                      "statement_materials": [10, 15],
+                      "shipment_materials": [1]
+                    }
                   ]
                 }
               }
@@ -1995,7 +2072,7 @@
       "post": {
         "tags": ["materials"],
         "summary": "Создать материал",
-        "description": "Создаёт новый материал. Обязательное поле: name. stock_code генерируется автоматически (NR + 14 цифр) если не передан. Опционально можно передать массивы shipments и statements для привязки.",
+        "description": "Создаёт новый материал. Обязательное поле: name. stock_code генерируется автоматически (NR + 14 цифр) если не передан. Опционально можно передать массивы shipments и statements для привязки. При конфликте stock_code автоматически повторяет попытку до 5 раз.",
         "security": [{ "bearerAuth": [] }],
         "x-permissions": ["materials.create"],
         "requestBody": {
@@ -2010,8 +2087,8 @@
                 "unit_id": 2,
                 "manufacturer": "СтальПром",
                 "count": 100,
-                "shipments": [{ "shipment_id": 1, "quantity": 50 }],
-                "statements": [{ "statement_id": 10, "quantity": 100 }]
+                "shipments": [1, 2],
+                "statements": [{ "statement_id": 10 }]
               }
             }
           }
@@ -2023,7 +2100,21 @@
               "application/json": {
                 "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Material" } } },
                 "example": {
-                  "data": { "id": 1, "stock_code": "NR00000000000001", "name": "Труба стальная 100мм", "description": "Бесшовная ГОСТ 8732-78", "directory_id": 5, "unit_id": 2, "manufacturer": "СтальПром", "count": 100, "created_by": 1, "created_at": "2026-01-15T10:30:00.000Z" }
+                  "data": {
+                    "id": 1,
+                    "stock_code": "NR00000000000001",
+                    "name": "Труба стальная 100мм",
+                    "description": "Бесшовная ГОСТ 8732-78",
+                    "directory": { "id": 5, "name": "Трубы" },
+                    "unit": { "id": 2, "name": "шт" },
+                    "weight": null,
+                    "created_by": { "id": 1, "name": "Иван Петров" },
+                    "created_at": "2026-01-15T10:30:00.000Z",
+                    "updated_by": null,
+                    "updated_at": null,
+                    "statement_materials": [10],
+                    "shipment_materials": [1, 2]
+                  }
                 }
               }
             }
@@ -2038,7 +2129,7 @@
       "get": {
         "tags": ["materials"],
         "summary": "Получить материал по ID",
-        "description": "Возвращает одну запись материала по идентификатору.",
+        "description": "Возвращает одну запись материала по идентификатору. Ответ содержит вложенные объекты directory, unit, created_by, updated_by и массивы statement_materials, shipment_materials.",
         "security": [{ "bearerAuth": [] }],
         "x-permissions": ["materials.view"],
         "parameters": [
@@ -2047,7 +2138,26 @@
         "responses": {
           "200": {
             "description": "Запись материала",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Material" } } }
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Material" },
+                "example": {
+                  "id": 1,
+                  "stock_code": "NR00000000000001",
+                  "name": "Труба стальная 100мм",
+                  "description": "Бесшовная ГОСТ 8732-78",
+                  "directory": { "id": 5, "name": "Трубы" },
+                  "unit": { "id": 2, "name": "шт" },
+                  "weight": 12.5,
+                  "created_by": { "id": 1, "name": "Иван Петров" },
+                  "created_at": "2026-01-15T10:30:00.000Z",
+                  "updated_by": null,
+                  "updated_at": null,
+                  "statement_materials": [10],
+                  "shipment_materials": [1]
+                }
+              }
+            }
           },
           "400": { "description": "Invalid id" },
           "401": { "description": "Authentication required" },
@@ -2058,7 +2168,7 @@
       "put": {
         "tags": ["materials"],
         "summary": "Обновить материал",
-        "description": "Частичное обновление материала. Передаются только изменяемые поля. Опционально можно передать массивы shipments и statements для пересинхронизации связей.",
+        "description": "Частичное обновление материала. Передаются только изменяемые поля (stock_code, name, description, directory_id, unit_id, manufacturer, count). Опционально можно передать массивы shipments и statements для пересинхронизации связей (полная замена).",
         "security": [{ "bearerAuth": [] }],
         "x-permissions": ["materials.update"],
         "parameters": [
@@ -2068,14 +2178,35 @@
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/MaterialCreate" },
-              "example": { "name": "Труба стальная 150мм", "count": 200, "manufacturer": "МеталлТрейд" }
+              "example": { "name": "Труба стальная 150мм", "count": 200, "manufacturer": "МеталлТрейд", "shipments": [1, 3] }
             }
           }
         },
         "responses": {
           "200": {
             "description": "Обновлённая запись",
-            "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Material" } } } } }
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Material" } } },
+                "example": {
+                  "data": {
+                    "id": 1,
+                    "stock_code": "NR00000000000001",
+                    "name": "Труба стальная 150мм",
+                    "description": "Бесшовная ГОСТ 8732-78",
+                    "directory": { "id": 5, "name": "Трубы" },
+                    "unit": { "id": 2, "name": "шт" },
+                    "weight": 12.5,
+                    "created_by": { "id": 1, "name": "Иван Петров" },
+                    "created_at": "2026-01-15T10:30:00.000Z",
+                    "updated_by": { "id": 2, "name": "Анна Сидорова" },
+                    "updated_at": "2026-02-20T14:00:00.000Z",
+                    "statement_materials": [10],
+                    "shipment_materials": [1, 3]
+                  }
+                }
+              }
+            }
           },
           "400": { "description": "Invalid id" },
           "401": { "description": "Authentication required" },
@@ -2239,6 +2370,142 @@
           "401": { "description": "Authentication required" },
           "403": { "description": "Forbidden — missing permission shipments.delete" },
           "404": { "description": "Shipment not found" }
+        }
+      }
+    },
+    "/api/shipments/{shipment_id}/items": {
+      "get": {
+        "tags": ["shipments"],
+        "summary": "Список материалов в поставке",
+        "description": "Возвращает список записей shipment_materials для указанной поставки.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["shipments.view"],
+        "parameters": [
+          { "name": "shipment_id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID поставки" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список материалов в поставке",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "type": "array", "items": { "$ref": "#/components/schemas/ShipmentMaterial" } } } },
+                "example": {
+                  "data": [
+                    { "id": 1, "shipment_id": 1, "material_id": 5, "quantity": 100, "created_at": "2026-03-20T08:00:00.000Z" }
+                  ]
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid shipment_id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission shipments.view" }
+        }
+      },
+      "post": {
+        "tags": ["shipments"],
+        "summary": "Добавить материал в поставку",
+        "description": "Создаёт новую связь shipment_materials. Обязательное поле: material_id.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["shipments.update"],
+        "parameters": [
+          { "name": "shipment_id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID поставки" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["material_id"],
+                "properties": {
+                  "material_id": { "type": "integer", "description": "ID материала" },
+                  "quantity": { "type": "number", "description": "Количество (по умолчанию 0)" }
+                }
+              },
+              "example": { "material_id": 5, "quantity": 100 }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Материал добавлен в поставку",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ShipmentMaterial" } } },
+                "example": {
+                  "data": { "id": 1, "shipment_id": 1, "material_id": 5, "quantity": 100, "created_at": "2026-03-20T08:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing material_id or invalid shipment_id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission shipments.update" }
+        }
+      }
+    },
+    "/api/shipments/items/{id}": {
+      "put": {
+        "tags": ["shipments"],
+        "summary": "Обновить материал в поставке",
+        "description": "Обновляет запись shipment_materials. Можно изменить shipment_id, material_id, quantity.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["shipments.update"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID записи shipment_materials" }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "shipment_id": { "type": "integer" },
+                  "material_id": { "type": "integer" },
+                  "quantity": { "type": "number" }
+                }
+              },
+              "example": { "quantity": 200 }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Обновлённая запись",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/ShipmentMaterial" } } },
+                "example": {
+                  "data": { "id": 1, "shipment_id": 1, "material_id": 5, "quantity": 200, "created_at": "2026-03-20T08:00:00.000Z" }
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission shipments.update" },
+          "404": { "description": "Item not found" }
+        }
+      },
+      "delete": {
+        "tags": ["shipments"],
+        "summary": "Удалить материал из поставки",
+        "description": "Удаляет запись shipment_materials (полное удаление).",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["shipments.update"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID записи shipment_materials" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Запись удалена",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "message": { "type": "string" } } }, "example": { "message": "Shipment item deleted" } } }
+          },
+          "400": { "description": "Invalid id" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission shipments.update" },
+          "404": { "description": "Item not found" }
         }
       }
     },
