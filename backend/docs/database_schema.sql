@@ -621,11 +621,36 @@ CREATE TABLE specification_version (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE statements_version (
+    id SERIAL PRIMARY KEY,
+    statement_id INTEGER NOT NULL REFERENCES statements(id) ON DELETE CASCADE,
+    version VARCHAR(50),
+    notes TEXT,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Таблица частей спецификации (позиции / части, привязанные к конкретной версии спецификации)
 CREATE TABLE specification_parts (
     id SERIAL PRIMARY KEY,
     specification_version_id INTEGER NOT NULL REFERENCES specification_version(id) ON DELETE CASCADE,
     parent_id INTEGER REFERENCES specification_parts(id) ON DELETE SET NULL,
+    part_code VARCHAR(100),
+    stock_code VARCHAR(255) REFERENCES materials(stock_code) ON DELETE SET NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    quantity DECIMAL(15,3) DEFAULT 1,
+    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Части/позиции ведомости (привязаны к версии ведомости). Может ссылаться
+-- на исходную часть спецификации через specification_part_id
+CREATE TABLE statements_parts (
+    id SERIAL PRIMARY KEY,
+    statements_version_id INTEGER NOT NULL REFERENCES statements_version(id) ON DELETE CASCADE,
+    parent_id INTEGER REFERENCES statements_parts(id) ON DELETE SET NULL,
+    specification_part_id INTEGER REFERENCES specification_parts(id) ON DELETE SET NULL,
     part_code VARCHAR(100),
     stock_code VARCHAR(255) REFERENCES materials(stock_code) ON DELETE SET NULL,
     name VARCHAR(255) NOT NULL,
@@ -662,10 +687,11 @@ CREATE TABLE material_kit_items (
 CREATE TABLE statements (
     id SERIAL PRIMARY KEY,
     document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+    parent_id INTEGER REFERENCES statements(id) ON DELETE SET NULL,
+    project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
     code VARCHAR(100),
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    version VARCHAR(50),
     created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

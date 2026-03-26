@@ -9,7 +9,7 @@ class Statement {
     let idx = 1;
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT id, document_id, code, name, description, version, created_by, created_at FROM statements ${whereSql} ORDER BY id`;
+    let q = `SELECT id, document_id, parent_id, project_id, code, name, description, created_by, created_at FROM statements ${whereSql} ORDER BY id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -22,14 +22,14 @@ class Statement {
   }
 
   static async findById(id) {
-    const q = `SELECT id, document_id, code, name, description, version, created_by, created_at FROM statements WHERE id = $1 LIMIT 1`;
+    const q = `SELECT id, document_id, parent_id, project_id, code, name, description, created_by, created_at FROM statements WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
 
   static async create(fields) {
-    const q = `INSERT INTO statements (document_id, code, name, description, version, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, document_id, code, name, description, version, created_by, created_at`;
-    const vals = [fields.document_id, fields.code, fields.name, fields.description, fields.version, fields.created_by];
+    const q = `INSERT INTO statements (document_id, parent_id, project_id, code, name, description, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, document_id, parent_id, project_id, code, name, description, created_by, created_at`;
+    const vals = [fields.document_id || null, fields.parent_id || null, fields.project_id || null, fields.code, fields.name, fields.description, fields.created_by];
     const res = await pool.query(q, vals);
     return res.rows[0];
   }
@@ -38,11 +38,11 @@ class Statement {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['document_id','code','name','description','version'].forEach((k) => {
+    ['document_id','parent_id','project_id','code','name','description'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Statement.findById(id);
-    const q = `UPDATE statements SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, document_id, code, name, description, version, created_by, created_at`;
+    const q = `UPDATE statements SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, document_id, parent_id, project_id, code, name, description, created_by, created_at`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;

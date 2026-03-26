@@ -2331,13 +2331,18 @@
   "data": [
     {
       "id": 1,
-      "code": "string",
-      "name": "string",
-      "description": "string",
-      "version": "string",
       "document_id": 1,
+      "parent_id": null,
+      "project_id": 12,
+      "code": "ST-001",
+      "name": "Monthly materials statement",
+      "description": "Statement for March",
+      "version": "v1",
       "specifications": [],
-      "created_at": "2024-01-01T00:00:00Z"
+      "created_by": 2,
+      "updated_by": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-02T00:00:00Z"
     }
   ]
 }
@@ -2359,6 +2364,8 @@
 ```json
 {
   "id": 1,
+  "parent_id": null,
+  "project_id": null,
   "code": "string",
   "name": "string",
   "description": "string",
@@ -2384,6 +2391,8 @@
 **Запрос:**
 ```json
 {
+  "parent_id": null,
+  "project_id": null,
   "document_id": 1,
   "code": "string",
   "name": "string",

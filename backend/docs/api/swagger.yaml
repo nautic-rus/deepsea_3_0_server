@@ -4908,10 +4908,78 @@ paths:
         - bearerAuth: []
       x-permissions:
         - statements.view
+      parameters:
+        - in: query
+          name: document_id
+          required: false
+          schema:
+            type: integer
+        - in: query
+          name: project_id
+          required: false
+          schema:
+            type: integer
       responses:
         '200':
           description: OK
-      parameters: []
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        document_id:
+                          type: integer
+                          nullable: true
+                        parent_id:
+                          type: integer
+                          nullable: true
+                        project_id:
+                          type: integer
+                          nullable: true
+                        code:
+                          type: string
+                          nullable: true
+                        name:
+                          type: string
+                        description:
+                          type: string
+                          nullable: true
+                        version:
+                          type: string
+                          nullable: true
+                        created_by:
+                          type: integer
+                          nullable: true
+                        updated_by:
+                          type: integer
+                          nullable: true
+                        created_at:
+                          type: string
+                          format: date-time
+                        updated_at:
+                          type: string
+                          format: date-time
+              example:
+                data:
+                  - id: 1
+                    document_id: 1
+                    parent_id: null
+                    project_id: 12
+                    code: "ST-001"
+                    name: "Monthly materials statement"
+                    description: "Statement for March"
+                    version: "v1"
+                    created_by: 2
+                    updated_by: null
+                    created_at: "2024-01-01T00:00:00Z"
+                    updated_at: "2024-01-02T00:00:00Z"
     post:
       tags:
         - statements
@@ -4927,32 +4995,81 @@ paths:
             schema:
               type: object
               properties:
+                parent_id:
+                  type: integer
+                  example: 1
                 project_id:
                   type: integer
                   example: 12
-                title:
+                document_id:
+                  type: integer
+                  example: 1
+                code:
                   type: string
-                  example: Monthly materials statement
-                items:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      material_id:
-                        type: integer
-                        example: 1
-                      quantity:
-                        type: number
-                        example: 10
+                name:
+                  type: string
+                description:
+                  type: string
+                version:
+                  type: string
             example:
+              parent_id: null
               project_id: 12
-              title: Monthly materials statement
-              items:
-                - material_id: 1
-                  quantity: 10
+              document_id: 1
+              code: "ST-010"
+              name: "Monthly materials statement"
+              description: "Statement for March"
+              version: "v1"
       responses:
         '201':
           description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      parent_id:
+                        type: integer
+                        nullable: true
+                      project_id:
+                        type: integer
+                        nullable: true
+                      document_id:
+                        type: integer
+                        nullable: true
+                      code:
+                        type: string
+                        nullable: true
+                      name:
+                        type: string
+                      description:
+                        type: string
+                        nullable: true
+                      version:
+                        type: string
+                        nullable: true
+                      created_by:
+                        type: integer
+                      created_at:
+                        type: string
+                        format: date-time
+              example:
+                data:
+                  id: 10
+                  parent_id: null
+                  project_id: 12
+                  document_id: 1
+                  code: "ST-010"
+                  name: "Monthly materials statement"
+                  description: "Created statement"
+                  version: "v1"
+                  created_by: 2
+                  created_at: "2024-01-01T00:00:00Z"
   /api/users/{id}/avatar:
     post:
       tags:

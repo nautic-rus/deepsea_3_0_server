@@ -91,29 +91,31 @@ class MaterialsService {
 
   // helpers for syncing many-to-many relations
   static async _syncShipments(materialId, shipments) {
-    // shipments: array of { shipment_id, quantity }
+    // shipments: array of ids OR array of objects { shipment_id | id }
     if (!materialId) return;
     // remove existing links for this material
     await pool.query('DELETE FROM shipment_materials WHERE material_id = $1', [materialId]);
-    const insertQ = 'INSERT INTO shipment_materials (shipment_id, material_id, quantity) VALUES ($1,$2,$3)';
+    const insertQ = 'INSERT INTO shipment_materials (shipment_id, material_id) VALUES ($1,$2)';
     for (const s of shipments) {
-      const sid = s.shipment_id || s.id || null;
-      const qty = (s.quantity != null) ? s.quantity : 0;
-      if (!sid) continue;
-      await pool.query(insertQ, [sid, materialId, qty]);
+      let sid = null;
+      if (s && typeof s === 'object') sid = s.shipment_id || s.id || null;
+      else if (s !== null && s !== undefined) sid = Number(s);
+      if (!sid || Number.isNaN(Number(sid))) continue;
+      await pool.query(insertQ, [sid, materialId]);
     }
   }
 
   static async _syncStatements(materialId, statements) {
-    // statements: array of { statement_id, quantity }
+    // statements: array of ids OR array of objects { statement_id | id }
     if (!materialId) return;
     await pool.query('DELETE FROM statement_materials WHERE material_id = $1', [materialId]);
-    const insertQ = 'INSERT INTO statement_materials (statement_id, material_id, quantity) VALUES ($1,$2,$3)';
+    const insertQ = 'INSERT INTO statement_materials (statement_id, material_id) VALUES ($1,$2)';
     for (const s of statements) {
-      const sid = s.statement_id || s.id || null;
-      const qty = (s.quantity != null) ? s.quantity : 1;
-      if (!sid) continue;
-      await pool.query(insertQ, [sid, materialId, qty]);
+      let sid = null;
+      if (s && typeof s === 'object') sid = s.statement_id || s.id || null;
+      else if (s !== null && s !== undefined) sid = Number(s);
+      if (!sid || Number.isNaN(Number(sid))) continue;
+      await pool.query(insertQ, [sid, materialId]);
     }
   }
 
