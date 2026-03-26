@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: DeepSea 3.0 API
   description: API документация для системы DeepSea 3.0
-  version: 3.0.0
+    IssueType:
 servers:
   - url: ''
     description: Development server
@@ -29,6 +29,66 @@ tags: []
           description: Notification settings matrix
           content:
             application/json:
+    Material:
+      type: object
+      properties:
+        id:
+          type: integer
+        stock_code:
+          type: string
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        count:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        shipments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shipment'
+        statements:
+          type: array
+          items:
+            $ref: '#/components/schemas/Statement'
+    Shipment:
+      type: object
+      properties:
+        id:
+          type: integer
+        project_id:
+          type: integer
+          nullable: true
+        supplier_id:
+          type: integer
+          nullable: true
+        equipment_id:
+          type: integer
+          nullable: true
+        code:
+          type: string
+          nullable: true
+        received_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
               schema:
                 type: object
                 properties:

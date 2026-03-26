@@ -22,8 +22,8 @@ const documentHistoryController = require('../controllers/documentHistoryControl
 const customerQuestionHistoryController = require('../controllers/customerQuestionHistoryController');
 const materialsController = require('../controllers/materialsController');
 const equipmentController = require('../controllers/equipmentController');
-const suppliersController = require('../controllers/suppliersController');
 const materialKitsController = require('../controllers/materialKitsController');
+const shipmentsController = require('../controllers/shipmentsController');
 const specificationsController = require('../controllers/specificationsController');
 const stagesController = require('../controllers/stagesController');
 const storageController = require('../controllers/storageController');
@@ -386,12 +386,14 @@ router.post('/equipment', authMiddleware, equipmentController.create);
 router.put('/equipment/:id', authMiddleware, equipmentController.update);
 router.delete('/equipment/:id', authMiddleware, equipmentController.delete);
 
-// ===== Suppliers routes =====
-router.get('/suppliers', authMiddleware, suppliersController.list);
-router.get('/suppliers/:id', authMiddleware, suppliersController.get);
-router.post('/suppliers', authMiddleware, suppliersController.create);
-router.put('/suppliers/:id', authMiddleware, suppliersController.update);
-router.delete('/suppliers/:id', authMiddleware, suppliersController.delete);
+// ===== Shipments routes =====
+router.get('/shipments', authMiddleware, shipmentsController.list);
+router.get('/shipments/:id', authMiddleware, shipmentsController.get);
+router.post('/shipments', authMiddleware, shipmentsController.create);
+router.put('/shipments/:id', authMiddleware, shipmentsController.update);
+router.delete('/shipments/:id', authMiddleware, shipmentsController.delete);
+
+
 
 // ===== Specifications routes =====
 router.get('/specifications', authMiddleware, specificationsController.list);

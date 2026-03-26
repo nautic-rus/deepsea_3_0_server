@@ -1,7 +1,7 @@
 const pool = require('../../db/connection');
 
 const allowedTables = new Set([
-  'categories',
+  // categories table removed — do not protect by name
   'customer_question_status',
   'customer_question_type',
   'document_status',
