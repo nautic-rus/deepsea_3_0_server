@@ -1695,7 +1695,6 @@
 **Описание:** Список материалов
 
 **Параметры запроса:**
-- `category_id` (int)
 - `directory_id` (int)
 - `manufacturer` (string)
 - `search` (string)
@@ -1713,8 +1712,10 @@
       "description": "string",
       "directory_id": 1,
       "unit_id": 1,
-      "category_id": 1,
       "manufacturer": "string",
+      "count": 0,
+      "shipments": [{ "shipment_id": 1, "quantity": 10 }],
+      "statements": [{ "statement_id": 1, "quantity": 2 }],
       "created_at": "2024-01-01T00:00:00Z"
     }
   ],
@@ -1743,7 +1744,10 @@
   "description": "string",
   "directory": {},
   "unit": {},
-  "category": {},
+  "manufacturer": "string",
+  "count": 0,
+  "shipments": [{ "shipment_id": 1, "quantity": 10 }],
+  "statements": [{ "statement_id": 1, "quantity": 2 }],
   "manufacturer": "string",
   "created_by": {},
   "created_at": "2024-01-01T00:00:00Z"
@@ -1770,8 +1774,10 @@
   "description": "string",
   "directory_id": 1,
   "unit_id": 1,
-  "category_id": 1,
-  "manufacturer": "string"
+  "manufacturer": "string",
+  "count": 0,
+  "shipments": [{ "shipment_id": 1, "quantity": 10 }],
+  "statements": [{ "statement_id": 1, "quantity": 2 }]
 }
 ```
 
@@ -1796,8 +1802,10 @@
   "description": "string",
   "directory_id": 1,
   "unit_id": 1,
-  "category_id": 1,
-  "manufacturer": "string"
+  "manufacturer": "string",
+  "count": 0,
+  "shipments": [{ "shipment_id": 1, "quantity": 10 }],
+  "statements": [{ "statement_id": 1, "quantity": 2 }]
 }
 ```
 
@@ -3292,4 +3300,26 @@
   }
 }
 ```
+
+---
+
+## Shipments API
+
+Endpoints to manage shipments and shipment items.
+
+- `GET /api/shipments` : list shipments (query params: `supplier_id`, `equipment_id`, `page`, `limit`, `search`).
+- `GET /api/shipments/:id` : get shipment by id.
+- `POST /api/shipments` : create shipment. Body fields: `supplier_id`, `equipment_id`, `code`, `received_at`.
+- `PUT /api/shipments/:id` : update shipment fields.
+- `DELETE /api/shipments/:id` : delete (soft-delete) shipment.
+
+Shipment items (materials within a shipment):
+
+- `GET /api/shipments/:shipment_id/items` : list items for a shipment.
+- `POST /api/shipments/:shipment_id/items` : add item to a shipment. Body fields: `material_id`, `quantity`.
+- `PUT /api/shipments/items/:id` : update a shipment item.
+- `DELETE /api/shipments/items/:id` : delete a shipment item.
+
+Permissions: typical permission keys used are `shipments.view`, `shipments.create`, `shipments.update`, `shipments.delete` — ensure these permissions exist in your system if RBAC is enforced.
+
 

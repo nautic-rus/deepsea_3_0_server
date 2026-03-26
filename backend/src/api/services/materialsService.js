@@ -40,9 +40,11 @@ class MaterialsService {
     // ensure stock_code exists; generate if missing
     if (!fields.stock_code) fields.stock_code = await this.nextStockCode(actor);
 
+    let created;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        return await Material.create(fields);
+        created = await Material.create(fields);
+        break;
       } catch (err) {
         // handle unique violation on stock_code (Postgres code 23505)
         if (err && err.code === '23505' && attempt < maxAttempts - 1) {
@@ -53,7 +55,18 @@ class MaterialsService {
         throw err;
       }
     }
-    const err = new Error('Unable to create material due to stock_code collisions'); err.statusCode = 500; throw err;
+    if (!created) { const err = new Error('Unable to create material due to stock_code collisions'); err.statusCode = 500; throw err; }
+
+    const materialId = created.id;
+    // sync shipments and statements if provided
+    if (fields.shipments && Array.isArray(fields.shipments)) {
+      await MaterialsService._syncShipments(materialId, fields.shipments);
+    }
+    if (fields.statements && Array.isArray(fields.statements)) {
+      await MaterialsService._syncStatements(materialId, fields.statements);
+    }
+
+    return created;
   }
 
   static async updateMaterial(id, fields, actor) {
@@ -64,7 +77,44 @@ class MaterialsService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const updated = await Material.update(Number(id), fields);
     if (!updated) { const err = new Error('Material not found'); err.statusCode = 404; throw err; }
+
+    // sync shipments and statements if provided (replace existing links)
+    if (fields.shipments && Array.isArray(fields.shipments)) {
+      await MaterialsService._syncShipments(Number(id), fields.shipments);
+    }
+    if (fields.statements && Array.isArray(fields.statements)) {
+      await MaterialsService._syncStatements(Number(id), fields.statements);
+    }
+
     return updated;
+  }
+
+  // helpers for syncing many-to-many relations
+  static async _syncShipments(materialId, shipments) {
+    // shipments: array of { shipment_id, quantity }
+    if (!materialId) return;
+    // remove existing links for this material
+    await pool.query('DELETE FROM shipment_materials WHERE material_id = $1', [materialId]);
+    const insertQ = 'INSERT INTO shipment_materials (shipment_id, material_id, quantity) VALUES ($1,$2,$3)';
+    for (const s of shipments) {
+      const sid = s.shipment_id || s.id || null;
+      const qty = (s.quantity != null) ? s.quantity : 0;
+      if (!sid) continue;
+      await pool.query(insertQ, [sid, materialId, qty]);
+    }
+  }
+
+  static async _syncStatements(materialId, statements) {
+    // statements: array of { statement_id, quantity }
+    if (!materialId) return;
+    await pool.query('DELETE FROM statement_materials WHERE material_id = $1', [materialId]);
+    const insertQ = 'INSERT INTO statement_materials (statement_id, material_id, quantity) VALUES ($1,$2,$3)';
+    for (const s of statements) {
+      const sid = s.statement_id || s.id || null;
+      const qty = (s.quantity != null) ? s.quantity : 1;
+      if (!sid) continue;
+      await pool.query(insertQ, [sid, materialId, qty]);
+    }
   }
 
   static async deleteMaterial(id, actor) {

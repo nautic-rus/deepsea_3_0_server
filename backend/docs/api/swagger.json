@@ -44,6 +44,7 @@
       "name": "document_statuses",
       "description": "CRUD operations for document statuses"
     },
+    
     {
       "name": "document_storage_types",
       "description": "CRUD operations for document storage types"
@@ -148,6 +149,10 @@
     {
       "name": "groups",
       "description": "CRUD operations for user groups"
+    },
+    {
+      "name": "shipments",
+      "description": "CRUD operations for shipments"
     },
     {
       "name": "organizations",
@@ -1847,10 +1852,298 @@
             }
           }
         }
+      },
+      "Material": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "stock_code": { "type": "string", "nullable": true },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "count": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "shipments": { "type": "array", "items": { "$ref": "#/components/schemas/Shipment" } },
+          "statements": { "type": "array", "items": { "$ref": "#/components/schemas/Statement" } }
+        }
+      },
+      "MaterialCreate": {
+        "type": "object",
+        "properties": {
+          "stock_code": { "type": "string", "nullable": true },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "count": { "type": "integer", "nullable": true },
+          "shipments": { "type": "array", "items": { "type": "integer" } },
+          "statements": { "type": "array", "items": { "type": "integer" } }
+        },
+        "required": ["title"]
+      },
+      "Shipment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "project_id": { "type": "integer", "nullable": true },
+          "supplier_id": { "type": "integer", "nullable": true },
+          "equipment_id": { "type": "integer", "nullable": true },
+          "code": { "type": "string", "nullable": true },
+          "received_at": { "type": "string", "format": "date-time", "nullable": true },
+          "created_by": { "type": "integer", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
       }
     }
   },
   "paths": {
+    "/api/materials": {
+      "post": {
+        "tags": [
+          "materials"
+        ],
+        "summary": "Create material",
+        "description": "Create a new material. Requires materials.create permission.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialCreate"
+              },
+              "example": {
+                "stock_code": "MAT-0001",
+                "title": "Steel Pipe 100mm",
+                "description": "Seamless pipe for main pipeline",
+                "count": 100,
+                "shipments": [1, 2],
+                "statements": [10, 11]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Material"
+                    }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": 123,
+                    "stock_code": "MAT-0001",
+                    "title": "Steel Pipe 100mm",
+                    "description": "Seamless pipe for main pipeline",
+                    "count": 100,
+                    "created_at": "2026-03-26T12:00:00Z",
+                    "updated_at": "2026-03-26T12:00:00Z",
+                    "shipments": [],
+                    "statements": []
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error"
+          }
+        }
+      }
+    },
+    "/api/materials/{id}": {
+      "put": {
+        "tags": ["materials"],
+        "summary": "Update material",
+        "description": "Update an existing material. Requires materials.update permission.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["materials.update"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/Material" },
+              "example": {
+                "stock_code": "MAT-0001",
+                "title": "Steel Pipe 100mm",
+                "description": "Seamless pipe for main pipeline",
+                "count": 120,
+                "shipments": [1],
+                "statements": [10]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Material" } } },
+                "example": {
+                  "data": {
+                    "id": 123,
+                    "stock_code": "MAT-0001",
+                    "title": "Steel Pipe 100mm",
+                    "description": "Seamless pipe for main pipeline",
+                    "count": 120,
+                    "created_at": "2026-03-26T12:00:00Z",
+                    "updated_at": "2026-03-26T12:10:00Z",
+                    "shipments": [],
+                    "statements": []
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/shipments": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "List shipments",
+        "description": "Returns list of shipments. Requires shipments.view permission.",
+        "security": [
+          { "bearerAuth": [] },
+          { "cookieAuth": [] }
+        ],
+        "x-permissions": [ "shipments.view" ],
+        "parameters": [
+          { "in": "query", "name": "project_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "supplier_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "equipment_id", "schema": { "type": "integer" } },
+          { "in": "query", "name": "search", "schema": { "type": "string" } },
+          { "in": "query", "name": "page", "schema": { "type": "integer", "default": 1 } },
+          { "in": "query", "name": "limit", "schema": { "type": "integer" } },
+          { "in": "query", "name": "offset", "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Shipment" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [ "shipments" ],
+        "summary": "Create shipment",
+        "description": "Create a new shipment. Requires shipments.create permission.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "shipments.create" ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project_id": { "type": "integer", "nullable": true },
+                  "supplier_id": { "type": "integer", "nullable": true },
+                  "equipment_id": { "type": "integer", "nullable": true },
+                  "code": { "type": "string", "nullable": true },
+                  "received_at": { "type": "string", "format": "date-time", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "$ref": "#/components/schemas/Shipment" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shipments/{id}": {
+      "get": {
+        "tags": [ "shipments" ],
+        "summary": "Get shipment by ID",
+        "description": "Retrieve a shipment. Requires shipments.view permission.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "shipments.view" ],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Shipment" } } } },
+          "404": { "description": "Not found" }
+        }
+      },
+      "put": {
+        "tags": [ "shipments" ],
+        "summary": "Update shipment",
+        "description": "Update an existing shipment. Requires shipments.update permission.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "shipments.update" ],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project_id": { "type": "integer", "nullable": true },
+                  "supplier_id": { "type": "integer", "nullable": true },
+                  "equipment_id": { "type": "integer", "nullable": true },
+                  "code": { "type": "string", "nullable": true },
+                  "received_at": { "type": "string", "format": "date-time", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK", "content": { "application/json": { "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Shipment" } } } } } },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "tags": [ "shipments" ],
+        "summary": "Delete shipment",
+        "description": "Delete (soft-delete) a shipment. Requires shipments.delete permission.",
+        "security": [ { "bearerAuth": [] } ],
+        "x-permissions": [ "shipments.delete" ],
+        "parameters": [ { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } } ],
+        "responses": { "200": { "description": "Deleted" }, "404": { "description": "Not found" } }
+      }
+    },
     "/api/audit_logs": {
       "get": {
         "tags": [
@@ -6413,12 +6706,18 @@
         ],
         "parameters": [],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object"
-              },
-              "example": {}
+              "schema": { "$ref": "#/components/schemas/MaterialCreate" },
+              "example": {
+                "stock_code": "MAT-0001",
+                "title": "Steel Pipe 100mm",
+                "description": "Seamless pipe for main pipeline",
+                "count": 100,
+                "shipments": [1, 2],
+                "statements": [10, 11]
+              }
             }
           }
         },
@@ -6475,12 +6774,18 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object"
-              },
-              "example": {}
+              "schema": { "$ref": "#/components/schemas/MaterialCreate" },
+              "example": {
+                "stock_code": "MAT-0002",
+                "title": "Valves 50mm",
+                "description": "Gate valve",
+                "count": 50,
+                "shipments": [2],
+                "statements": [20]
+              }
             }
           }
         },
@@ -9125,12 +9430,18 @@
         ],
         "parameters": [],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object"
-              },
-              "example": {}
+              "schema": { "$ref": "#/components/schemas/MaterialCreate" },
+              "example": {
+                "stock_code": "NR0000",
+                "title": "Flange 150mm",
+                "description": "Weld neck flange",
+                "count": 200,
+                "shipments": [],
+                "statements": []
+              }
             }
           }
         },
@@ -9153,113 +9464,206 @@
         "x-permissions": [
           "materials.view"
         ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Project ID for filtering",
+            "schema": { "type": "integer" },
+            "example": 12
+          },
+          {
+            "name": "supplier_id",
+            "in": "query",
+            "description": "Supplier ID for filtering",
+            "schema": { "type": "integer" },
+            "example": 5
+          },
+          {
+            "name": "stock_code",
+            "in": "query",
+            "description": "Filter by stock code (exact or partial)",
+            "schema": { "type": "string" },
+            "example": "MAT-0001"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "General search by title/description/stock_code",
+            "schema": { "type": "string" },
+            "example": "pipe"
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "description": "Filter by active status",
+            "schema": { "type": "boolean" },
+            "example": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": { "type": "integer", "default": 1 },
+            "example": 1
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "description": "Items per page",
+            "schema": { "type": "integer", "default": 25 },
+            "example": 25
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Material" }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "page": { "type": "integer" },
+                        "per_page": { "type": "integer" },
+                        "total": { "type": "integer" }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 123,
+                      "stock_code": "MAT-0001",
+                      "title": "Steel Pipe 100mm",
+                      "description": "Seamless pipe for main pipeline",
+                      "count": 100,
+                      "created_at": "2026-03-26T12:00:00Z",
+                      "updated_at": "2026-03-26T12:00:00Z",
+                      "shipments": [],
+                      "statements": []
+                    }
+                  ],
+                  "meta": { "page": 1, "per_page": 25, "total": 1 }
+                }
+              }
+            }
           }
-        },
-        "parameters": []
+        }
       }
     },
     "/api/materials/{id}": {
       "put": {
-        "tags": [
-          "materials"
-        ],
+        "tags": ["materials"],
         "summary": "Update material",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "materials.update"
-        ],
+        "description": "Update an existing material. Requires materials.update permission.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["materials.update"],
         "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": "{{id}}"
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object"
-              },
-              "example": {}
+              "schema": { "$ref": "#/components/schemas/Material" },
+              "example": {
+                "stock_code": "MAT-0001",
+                "title": "Steel Pipe 100mm",
+                "description": "Seamless pipe for main pipeline",
+                "count": 120,
+                "shipments": [1],
+                "statements": [10]
+              }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK"
-          }
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Material" } } },
+                "example": {
+                  "data": {
+                    "id": 123,
+                    "stock_code": "MAT-0001",
+                    "title": "Steel Pipe 100mm",
+                    "description": "Seamless pipe for main pipeline",
+                    "count": 120,
+                    "created_at": "2026-03-26T12:00:00Z",
+                    "updated_at": "2026-03-26T12:10:00Z",
+                    "shipments": [],
+                    "statements": []
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error" },
+          "404": { "description": "Not found" }
         }
       },
       "delete": {
-        "tags": [
-          "materials"
-        ],
+        "tags": ["materials"],
         "summary": "Delete material",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "materials.delete"
-        ],
+        "description": "Soft-delete the material (marks as inactive) if supported, otherwise permanently deletes. Requires materials.delete permission.",
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["materials.delete"],
         "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": "{{id}}"
-          }
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
         ],
         "responses": {
           "200": {
-            "description": "OK"
-          }
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "deleted": { "type": "boolean" } } },
+                "example": { "deleted": true }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
         }
       },
       "get": {
-        "tags": [
-          "materials"
-        ],
+        "tags": ["materials"],
         "summary": "Get material",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "materials.view"
-        ],
+        "security": [{ "bearerAuth": [] }],
+        "x-permissions": ["materials.view"],
         "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "example": "{{id}}"
-          }
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "integer" } }
         ],
         "responses": {
           "200": {
-            "description": "OK"
-          }
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "data": { "$ref": "#/components/schemas/Material" } } },
+                "example": {
+                  "data": {
+                    "id": 123,
+                    "stock_code": "MAT-0001",
+                    "title": "Steel Pipe 100mm",
+                    "description": "Seamless pipe for main pipeline",
+                    "count": 100,
+                    "created_at": "2026-03-26T12:00:00Z",
+                    "updated_at": "2026-03-26T12:00:00Z",
+                    "shipments": [],
+                    "statements": []
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
         }
       }
     },
