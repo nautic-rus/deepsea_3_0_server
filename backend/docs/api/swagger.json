@@ -58,7 +58,7 @@
     },
     {
       "name": "equipment",
-      "description": ""
+      "description": "CRUD операции с оборудованием проектов"
     },
     {
       "name": "issue_statuses",
@@ -90,7 +90,7 @@
     },
     {
       "name": "materials",
-      "description": ""
+      "description": "CRUD операции с материалами и генерация складских кодов"
     },
     {
       "name": "page_permissions",
@@ -119,6 +119,10 @@
     {
       "name": "specifications",
       "description": ""
+    },
+    {
+      "name": "suppliers",
+      "description": "CRUD операции с поставщиками оборудования"
     },
     {
       "name": "stages",
@@ -198,6 +202,210 @@
             "nullable": true
           },
           "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Equipment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Уникальный идентификатор оборудования"
+          },
+          "equipment_code": {
+            "type": "string",
+            "description": "Уникальный код оборудования"
+          },
+          "name": {
+            "type": "string",
+            "description": "Наименование оборудования"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Описание оборудования"
+          },
+          "sfi_code_id": {
+            "type": "integer",
+            "description": "ID SFI-кода классификации"
+          },
+          "project_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID проекта"
+          },
+          "supplier_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID поставщика"
+          },
+          "manufacturer": {
+            "type": "string",
+            "nullable": true,
+            "description": "Производитель"
+          },
+          "model": {
+            "type": "string",
+            "nullable": true,
+            "description": "Модель"
+          },
+          "serial_number": {
+            "type": "string",
+            "nullable": true,
+            "description": "Серийный номер"
+          },
+          "installation_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Дата установки"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "description": "Статус оборудования (например active)"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true,
+            "description": "Местоположение"
+          },
+          "technical_specifications": {
+            "type": "string",
+            "nullable": true,
+            "description": "Технические характеристики"
+          },
+          "created_by": {
+            "type": "integer",
+            "description": "ID пользователя-создателя"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Material": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Уникальный идентификатор материала"
+          },
+          "stock_code": {
+            "type": "string",
+            "description": "Уникальный складской код (формат NR + 14 цифр)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Наименование материала"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Описание материала"
+          },
+          "directory_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID директории (справочника)"
+          },
+          "unit_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID единицы измерения"
+          },
+          "category_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID категории"
+          },
+          "manufacturer": {
+            "type": "string",
+            "nullable": true,
+            "description": "Производитель"
+          },
+          "created_by": {
+            "type": "integer",
+            "description": "ID пользователя-создателя"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Supplier": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Уникальный идентификатор поставщика"
+          },
+          "name": {
+            "type": "string",
+            "description": "Наименование поставщика"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Уникальный код поставщика"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Описание поставщика"
+          },
+          "contact_person": {
+            "type": "string",
+            "nullable": true,
+            "description": "Контактное лицо"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true,
+            "description": "Email"
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true,
+            "description": "Телефон"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "description": "Адрес"
+          },
+          "website": {
+            "type": "string",
+            "nullable": true,
+            "description": "Веб-сайт"
+          },
+          "country": {
+            "type": "string",
+            "nullable": true,
+            "description": "Страна"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Активен ли поставщик"
+          },
+          "created_by": {
+            "type": "integer",
+            "description": "ID пользователя-создателя"
+          },
+          "updated_by": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID пользователя, обновившего запись"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
             "type": "string",
             "format": "date-time"
           }
@@ -5231,6 +5439,7 @@
           "equipment"
         ],
         "summary": "Список оборудования",
+        "description": "Возвращает список оборудования с возможностью фильтрации по проекту, поставщику, статусу и текстовому поиску. Поддерживается пагинация.",
         "security": [
           {
             "bearerAuth": []
@@ -5239,18 +5448,119 @@
         "x-permissions": [
           "equipment.view"
         ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Фильтр по ID проекта"
+          },
+          {
+            "in": "query",
+            "name": "supplier_id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Фильтр по ID поставщика"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Фильтр по статусу (например active)"
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поиск по name и description (ILIKE)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Номер страницы (по умолчанию 1)"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50
+            },
+            "description": "Количество записей на странице (по умолчанию 50)"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Список оборудования",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Equipment"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 1,
+                      "equipment_code": "EQ-001",
+                      "name": "Главный двигатель",
+                      "description": "Дизельный двигатель MAN 6S60ME-C8.5",
+                      "sfi_code_id": 10,
+                      "project_id": 1,
+                      "supplier_id": 2,
+                      "manufacturer": "MAN Energy Solutions",
+                      "model": "6S60ME-C8.5",
+                      "serial_number": "SN-2024-001",
+                      "installation_date": "2025-06-15",
+                      "status": "active",
+                      "location": "Машинное отделение",
+                      "technical_specifications": "Мощность 8000 кВт",
+                      "created_by": 1,
+                      "created_at": "2025-01-10T12:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission equipment.view"
           }
-        },
-        "parameters": []
+        }
       },
       "post": {
         "tags": [
           "equipment"
         ],
         "summary": "Создать оборудование",
+        "description": "Создаёт новую запись оборудования. Обязательные поля: equipment_code, name, sfi_code_id.",
         "security": [
           {
             "bearerAuth": []
@@ -5261,18 +5571,114 @@
         ],
         "parameters": [],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "required": [
+                  "equipment_code",
+                  "name",
+                  "sfi_code_id"
+                ],
+                "properties": {
+                  "equipment_code": {
+                    "type": "string",
+                    "description": "Уникальный код оборудования"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Наименование"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sfi_code_id": {
+                    "type": "integer",
+                    "description": "ID SFI-кода"
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "supplier_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "manufacturer": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "model": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "serial_number": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "installation_date": {
+                    "type": "string",
+                    "format": "date",
+                    "nullable": true
+                  },
+                  "status": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "location": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "technical_specifications": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
               },
-              "example": {}
+              "example": {
+                "equipment_code": "EQ-002",
+                "name": "Вспомогательный генератор",
+                "description": "Дизель-генератор Caterpillar",
+                "sfi_code_id": 10,
+                "project_id": 1,
+                "supplier_id": 2,
+                "manufacturer": "Caterpillar",
+                "model": "C32",
+                "serial_number": "SN-2024-002",
+                "installation_date": "2025-07-01",
+                "status": "active",
+                "location": "Генераторное отделение",
+                "technical_specifications": "Мощность 1500 кВт"
+              }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created"
+            "description": "Оборудование создано",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Equipment"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields (equipment_code, name, sfi_code_id)"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission equipment.create"
           }
         }
       }
@@ -5282,7 +5688,8 @@
         "tags": [
           "equipment"
         ],
-        "summary": "Получить оборудование",
+        "summary": "Получить оборудование по ID",
+        "description": "Возвращает одну запись оборудования по идентификатору.",
         "security": [
           {
             "bearerAuth": []
@@ -5299,12 +5706,32 @@
             "schema": {
               "type": "integer"
             },
-            "example": "{{id}}"
+            "description": "ID оборудования",
+            "example": 1
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Запись оборудования",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Equipment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission equipment.view"
+          },
+          "404": {
+            "description": "Equipment not found"
           }
         }
       },
@@ -5313,6 +5740,7 @@
           "equipment"
         ],
         "summary": "Обновить оборудование",
+        "description": "Частичное обновление записи оборудования. Передаются только изменяемые поля.",
         "security": [
           {
             "bearerAuth": []
@@ -5329,22 +5757,102 @@
             "schema": {
               "type": "integer"
             },
-            "example": "{{id}}"
+            "description": "ID оборудования",
+            "example": 1
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "equipment_code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sfi_code_id": {
+                    "type": "integer"
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "supplier_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "manufacturer": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "model": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "serial_number": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "installation_date": {
+                    "type": "string",
+                    "format": "date",
+                    "nullable": true
+                  },
+                  "status": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "location": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "technical_specifications": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
               },
-              "example": {}
+              "example": {
+                "name": "Главный двигатель (обновлено)",
+                "status": "maintenance"
+              }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Обновлённая запись",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Equipment"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission equipment.update"
+          },
+          "404": {
+            "description": "Equipment not found"
           }
         }
       },
@@ -5353,6 +5861,7 @@
           "equipment"
         ],
         "summary": "Удалить оборудование",
+        "description": "Soft-delete записи оборудования (устанавливает is_active = false). При невозможности — полное удаление.",
         "security": [
           {
             "bearerAuth": []
@@ -5369,12 +5878,38 @@
             "schema": {
               "type": "integer"
             },
-            "example": "{{id}}"
+            "description": "ID оборудования",
+            "example": 1
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Оборудование удалено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Equipment deleted"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission equipment.delete"
+          },
+          "404": {
+            "description": "Equipment not found"
           }
         }
       }
@@ -7855,6 +8390,7 @@
           "materials"
         ],
         "summary": "Список материалов",
+        "description": "Возвращает список материалов с возможностью фильтрации по директории, единице измерения, категории и текстовому поиску. Поддерживается пагинация.",
         "security": [
           {
             "bearerAuth": []
@@ -7863,18 +8399,113 @@
         "x-permissions": [
           "materials.view"
         ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory_id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Фильтр по ID директории (справочника)"
+          },
+          {
+            "in": "query",
+            "name": "unit_id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Фильтр по ID единицы измерения"
+          },
+          {
+            "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Фильтр по ID категории"
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поиск по name и description (ILIKE)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Номер страницы (по умолчанию 1)"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50
+            },
+            "description": "Количество записей на странице (по умолчанию 50)"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Список материалов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Material"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 1,
+                      "stock_code": "NR00000000000001",
+                      "name": "Труба стальная 100мм",
+                      "description": "Труба стальная бесшовная ГОСТ 8732-78",
+                      "directory_id": 5,
+                      "unit_id": 2,
+                      "category_id": 3,
+                      "manufacturer": "СтальПром",
+                      "created_by": 1,
+                      "created_at": "2025-01-15T10:30:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission materials.view"
           }
-        },
-        "parameters": []
+        }
       },
       "post": {
         "tags": [
           "materials"
         ],
         "summary": "Создать материал",
+        "description": "Создаёт новый материал. Обязательное поле: name. Если stock_code не передан — генерируется автоматически (формат NR + 14 цифр).",
         "security": [
           {
             "bearerAuth": []
@@ -7885,18 +8516,80 @@
         ],
         "parameters": [],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "stock_code": {
+                    "type": "string",
+                    "description": "Складской код (опционально — генерируется автоматически)"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Наименование материала"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "directory_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "unit_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "category_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "manufacturer": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
               },
-              "example": {}
+              "example": {
+                "name": "Труба стальная 100мм",
+                "description": "Труба стальная бесшовная ГОСТ 8732-78",
+                "directory_id": 5,
+                "unit_id": 2,
+                "category_id": 3,
+                "manufacturer": "СтальПром"
+              }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created"
+            "description": "Материал создан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Material"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields (name)"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission materials.create"
           }
         }
       }
@@ -7906,8 +8599,8 @@
         "tags": [
           "materials"
         ],
-        "summary": "Получить следующий код склада",
-        "description": "Возвращает следующий доступный stock code для материалов.",
+        "summary": "Получить следующий складской код",
+        "description": "Возвращает следующий доступный stock_code для материалов. Формат: NR + 14 цифр (например NR00000000000001). Вычисляется как MAX текущего кода + 1.",
         "security": [
           {
             "bearerAuth": []
@@ -7918,19 +8611,29 @@
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Следующий складской код",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "stock_code": {
-                      "type": "string"
+                      "type": "string",
+                      "description": "Следующий доступный складской код"
                     }
                   }
+                },
+                "example": {
+                  "stock_code": "NR00000000000042"
                 }
               }
             }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission materials.view"
           }
         }
       }
@@ -7940,7 +8643,8 @@
         "tags": [
           "materials"
         ],
-        "summary": "Получить материал",
+        "summary": "Получить материал по ID",
+        "description": "Возвращает одну запись материала по идентификатору.",
         "security": [
           {
             "bearerAuth": []
@@ -7957,12 +8661,32 @@
             "schema": {
               "type": "integer"
             },
-            "example": "{{id}}"
+            "description": "ID материала",
+            "example": 1
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Запись материала",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Material"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission materials.view"
+          },
+          "404": {
+            "description": "Material not found"
           }
         }
       },
@@ -7971,6 +8695,7 @@
           "materials"
         ],
         "summary": "Обновить материал",
+        "description": "Частичное обновление записи материала. Передаются только изменяемые поля.",
         "security": [
           {
             "bearerAuth": []
@@ -7987,22 +8712,78 @@
             "schema": {
               "type": "integer"
             },
-            "example": "{{id}}"
+            "description": "ID материала",
+            "example": 1
           }
         ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "stock_code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "directory_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "unit_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "category_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "manufacturer": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
               },
-              "example": {}
+              "example": {
+                "name": "Труба стальная 150мм",
+                "manufacturer": "МеталлТрейд"
+              }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Обновлённая запись",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Material"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission materials.update"
+          },
+          "404": {
+            "description": "Material not found"
           }
         }
       },
@@ -8011,6 +8792,7 @@
           "materials"
         ],
         "summary": "Удалить материал",
+        "description": "Soft-delete материала (устанавливает is_active = false). При невозможности — полное удаление.",
         "security": [
           {
             "bearerAuth": []
@@ -8027,12 +8809,38 @@
             "schema": {
               "type": "integer"
             },
-            "example": "{{id}}"
+            "description": "ID материала",
+            "example": 1
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Материал удалён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Material deleted"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission materials.delete"
+          },
+          "404": {
+            "description": "Material not found"
           }
         }
       }
@@ -11567,6 +12375,449 @@
           },
           "404": {
             "description": "User not found"
+          }
+        }
+      }
+    },
+    "/api/suppliers": {
+      "get": {
+        "tags": [
+          "suppliers"
+        ],
+        "summary": "Список поставщиков",
+        "description": "Возвращает список поставщиков с возможностью фильтрации по активности, стране и текстовому поиску. Поддерживается пагинация.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "suppliers.view"
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "is_active",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Фильтр по активности поставщика"
+          },
+          {
+            "in": "query",
+            "name": "country",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Фильтр по стране"
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Поиск по name, description и code (ILIKE)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Номер страницы (по умолчанию 1)"
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50
+            },
+            "description": "Количество записей на странице (по умолчанию 50)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список поставщиков",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Supplier"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 1,
+                      "name": "MAN Energy Solutions",
+                      "code": "MAN-001",
+                      "description": "Поставщик судовых двигателей",
+                      "contact_person": "Иван Петров",
+                      "email": "sales@man-es.com",
+                      "phone": "+49 821 322-0",
+                      "address": "Stadtbachstr. 1, 86153 Augsburg, Germany",
+                      "website": "https://www.man-es.com",
+                      "country": "Germany",
+                      "is_active": true,
+                      "created_by": 1,
+                      "updated_by": null,
+                      "created_at": "2025-01-10T09:00:00.000Z",
+                      "updated_at": "2025-01-10T09:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission suppliers.view"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "suppliers"
+        ],
+        "summary": "Создать поставщика",
+        "description": "Создаёт нового поставщика. Обязательное поле: name.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "suppliers.create"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Наименование поставщика"
+                  },
+                  "code": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Уникальный код поставщика"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "contact_person": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "email": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "phone": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "address": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "website": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "country": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                }
+              },
+              "example": {
+                "name": "Caterpillar Marine",
+                "code": "CAT-001",
+                "description": "Поставщик генераторов и двигателей",
+                "contact_person": "John Smith",
+                "email": "marine@cat.com",
+                "phone": "+1 309 675-1000",
+                "address": "501 SW Jefferson Ave, Peoria, IL 61602, USA",
+                "website": "https://www.caterpillar.com",
+                "country": "USA",
+                "is_active": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Поставщик создан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Supplier"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required field: name"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission suppliers.create"
+          }
+        }
+      }
+    },
+    "/api/suppliers/{id}": {
+      "get": {
+        "tags": [
+          "suppliers"
+        ],
+        "summary": "Получить поставщика по ID",
+        "description": "Возвращает одну запись поставщика по идентификатору.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "suppliers.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID поставщика",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Запись поставщика",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Supplier"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission suppliers.view"
+          },
+          "404": {
+            "description": "Supplier not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "suppliers"
+        ],
+        "summary": "Обновить поставщика",
+        "description": "Частичное обновление записи поставщика. Передаются только изменяемые поля.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "suppliers.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID поставщика",
+            "example": 1
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "contact_person": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "email": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "phone": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "address": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "website": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "country": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "contact_person": "Jane Doe",
+                "email": "jane@cat.com",
+                "phone": "+1 309 675-2000"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Обновлённая запись",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Supplier"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission suppliers.update"
+          },
+          "404": {
+            "description": "Supplier not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "suppliers"
+        ],
+        "summary": "Удалить поставщика",
+        "description": "Soft-delete поставщика (устанавливает is_active = false).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "suppliers.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID поставщика",
+            "example": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Поставщик удалён",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Supplier deleted"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission suppliers.delete"
+          },
+          "404": {
+            "description": "Supplier not found"
           }
         }
       }

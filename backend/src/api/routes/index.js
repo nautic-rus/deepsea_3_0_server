@@ -19,6 +19,7 @@ const issueHistoryController = require('../controllers/issueHistoryController');
 const documentHistoryController = require('../controllers/documentHistoryController');
 const materialsController = require('../controllers/materialsController');
 const equipmentController = require('../controllers/equipmentController');
+const suppliersController = require('../controllers/suppliersController');
 const materialKitsController = require('../controllers/materialKitsController');
 const specificationsController = require('../controllers/specificationsController');
 const stagesController = require('../controllers/stagesController');
@@ -305,6 +306,13 @@ router.get('/equipment/:id', authMiddleware, equipmentController.get);
 router.post('/equipment', authMiddleware, equipmentController.create);
 router.put('/equipment/:id', authMiddleware, equipmentController.update);
 router.delete('/equipment/:id', authMiddleware, equipmentController.delete);
+
+// ===== Suppliers routes =====
+router.get('/suppliers', authMiddleware, suppliersController.list);
+router.get('/suppliers/:id', authMiddleware, suppliersController.get);
+router.post('/suppliers', authMiddleware, suppliersController.create);
+router.put('/suppliers/:id', authMiddleware, suppliersController.update);
+router.delete('/suppliers/:id', authMiddleware, suppliersController.delete);
 
 // ===== Specifications routes =====
 router.get('/specifications', authMiddleware, specificationsController.list);
