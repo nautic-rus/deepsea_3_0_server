@@ -206,6 +206,32 @@
       }
     },
     "schemas": {
+          "Unit": {
+            "type": "object",
+            "description": "Unit of measurement — record from units table",
+            "properties": {
+              "id": { "type": "integer", "description": "Unit ID" },
+              "name": { "type": "string", "description": "Unit name" },
+              "code": { "type": "string", "nullable": true, "description": "Unit code" },
+              "symbol": { "type": "string", "nullable": true, "description": "Unit symbol" },
+              "description": { "type": "string", "nullable": true, "description": "Description" },
+              "kei": { "type": "integer", "nullable": true, "description": "КЕИ — дополнительное целочисленное поле (КЕИ)" },
+              "created_at": { "type": "string", "format": "date-time", "description": "Created at" },
+              "updated_at": { "type": "string", "format": "date-time", "nullable": true, "description": "Updated at" }
+            }
+          },
+          "UnitCreate": {
+            "type": "object",
+            "description": "Request body for creating/updating a unit",
+            "properties": {
+              "name": { "type": "string", "description": "Unit name" },
+              "code": { "type": "string", "nullable": true },
+              "symbol": { "type": "string", "nullable": true },
+              "description": { "type": "string", "nullable": true },
+              "kei": { "type": "integer", "nullable": true }
+            },
+            "required": ["name"]
+          },
       "AuditLog": {
         "type": "object",
         "properties": {
@@ -2890,6 +2916,83 @@
     }
   },
   "paths": {
+        "/api/units": {
+          "get": {
+            "tags": ["units"],
+            "summary": "List of units",
+            "description": "Returns a list of units with optional text search by name. Pagination via page/limit.",
+            "security": [{"bearerAuth": []}],
+            "parameters": [
+              {"name": "search", "in": "query", "description": "Search by name (ILIKE)", "schema": {"type": "string"}},
+              {"name": "page", "in": "query", "description": "Page number (default 1)", "schema": {"type": "integer", "default": 1}},
+              {"name": "limit", "in": "query", "description": "Records per page (if not specified — no limit)", "schema": {"type": "integer"}}
+            ],
+            "responses": {
+              "200": {
+                "description": "List of units",
+                "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Unit"}}}}
+              },
+              "401": {"description": "Authentication required"}
+            }
+          },
+          "post": {
+            "tags": ["units"],
+            "summary": "Create unit",
+            "description": "Creates a new unit. Required field: name.",
+            "security": [{"bearerAuth": []}],
+            "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UnitCreate"}}}},
+            "responses": {
+              "201": {"description": "Unit created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Unit"}}}},
+              "400": {"description": "No fields provided"},
+              "401": {"description": "Authentication required"}
+            }
+          }
+        },
+        "/api/units/{id}": {
+          "get": {
+            "tags": ["units"],
+            "summary": "Get unit by ID",
+            "description": "Returns a single unit record by identifier.",
+            "security": [{"bearerAuth": []}],
+            "parameters": [
+              {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}, "description": "Unit ID"}
+            ],
+            "responses": {
+              "200": {"description": "Unit record", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Unit"}}}},
+              "401": {"description": "Authentication required"},
+              "404": {"description": "Not found"}
+            }
+          },
+          "put": {
+            "tags": ["units"],
+            "summary": "Update unit",
+            "description": "Partial update of a unit. Only changed fields are passed (name, code, symbol, description, kei).",
+            "security": [{"bearerAuth": []}],
+            "parameters": [
+              {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}, "description": "Unit ID"}
+            ],
+            "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/UnitCreate"}}}},
+            "responses": {
+              "200": {"description": "Updated record", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Unit"}}}},
+              "401": {"description": "Authentication required"},
+              "404": {"description": "Not found"}
+            }
+          },
+          "delete": {
+            "tags": ["units"],
+            "summary": "Delete unit",
+            "description": "Soft-delete of unit (is_active = false). If not possible — full deletion.",
+            "security": [{"bearerAuth": []}],
+            "parameters": [
+              {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}, "description": "Unit ID"}
+            ],
+            "responses": {
+              "200": {"description": "Unit deleted", "content": {"application/json": {"schema": {"type": "object", "properties": {"success": {"type": "boolean"}}}}}},
+              "401": {"description": "Authentication required"},
+              "404": {"description": "Not found"}
+            }
+          }
+        },
     "/api/materials": {
       "get": {
         "tags": [
