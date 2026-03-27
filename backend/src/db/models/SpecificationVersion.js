@@ -7,9 +7,12 @@ class SpecificationVersion {
     const where = [];
     const values = [];
     let idx = 1;
-    if (specification_id) { where.push(`specification_id = $${idx++}`); values.push(specification_id); }
+    if (specification_id) { where.push(`sv.specification_id = $${idx++}`); values.push(specification_id); }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT id, specification_id, version, notes, created_by, created_at FROM specification_version ${whereSql} ORDER BY id DESC`;
+    let q = `SELECT sv.id, sv.specification_id, sv.version, sv.notes, sv.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, sv.created_at
+      FROM specification_version sv
+      LEFT JOIN users cu ON cu.id = sv.created_by
+      ${whereSql} ORDER BY sv.id DESC`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -22,7 +25,10 @@ class SpecificationVersion {
   }
 
   static async findById(id) {
-    const q = `SELECT id, specification_id, version, notes, created_by, created_at FROM specification_version WHERE id = $1 LIMIT 1`;
+    const q = `SELECT sv.id, sv.specification_id, sv.version, sv.notes, sv.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, sv.created_at
+      FROM specification_version sv
+      LEFT JOIN users cu ON cu.id = sv.created_by
+      WHERE sv.id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }

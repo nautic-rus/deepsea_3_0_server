@@ -10,7 +10,16 @@ class Specification {
     if (project_id) { where.push(`project_id = $${idx++}`); values.push(project_id); }
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT id, project_id, document_id, code, name, description, version, created_by, created_at FROM specification ${whereSql} ORDER BY id`;
+    let q = `SELECT specification.id, specification.code, specification.name, specification.description, specification.created_at,
+      row_to_json(p.*) AS project,
+      row_to_json(d.*) AS document,
+      json_build_object('id', u.id, 'username', u.username, 'first_name', u.first_name, 'last_name', u.last_name, 'email', u.email, 'avatar_id', u.avatar_id) AS created_by,
+      (SELECT version FROM specification_version sv WHERE sv.specification_id = specification.id ORDER BY sv.created_at DESC LIMIT 1) AS version
+      FROM specification
+      LEFT JOIN projects p ON p.id = specification.project_id
+      LEFT JOIN documents d ON d.id = specification.document_id
+      LEFT JOIN users u ON u.id = specification.created_by
+      ${whereSql} ORDER BY specification.id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -23,48 +32,43 @@ class Specification {
   }
 
   static async findById(id) {
-    const q = `SELECT id, project_id, document_id, code, name, description, version, created_by, created_at FROM specification WHERE id = $1 LIMIT 1`;
+    const q = `SELECT specification.id, specification.code, specification.name, specification.description, specification.created_at,
+      row_to_json(p.*) AS project,
+      row_to_json(d.*) AS document,
+      json_build_object('id', u.id, 'username', u.username, 'first_name', u.first_name, 'last_name', u.last_name, 'email', u.email, 'avatar_id', u.avatar_id) AS created_by,
+      (SELECT version FROM specification_version sv WHERE sv.specification_id = specification.id ORDER BY sv.created_at DESC LIMIT 1) AS version
+      FROM specification
+      LEFT JOIN projects p ON p.id = specification.project_id
+      LEFT JOIN documents d ON d.id = specification.document_id
+      LEFT JOIN users u ON u.id = specification.created_by
+      WHERE specification.id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
 
   static async create(fields) {
-    const q = `INSERT INTO specification (project_id, document_id, code, name, description, version, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, project_id, document_id, code, name, description, version, created_by, created_at`;
-    const vals = [fields.project_id, fields.document_id, fields.code, fields.name, fields.description, fields.version, fields.created_by];
+    const q = `INSERT INTO specification (project_id, document_id, code, name, description, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, project_id, document_id, code, name, description, created_by, created_at`;
+    const vals = [fields.project_id, fields.document_id, fields.code, fields.name, fields.description, fields.created_by];
     const res = await pool.query(q, vals);
     const spec = res.rows[0];
-    // record initial version in specification_version table
-    try {
-      if (spec && spec.version) {
-        await pool.query(`INSERT INTO specification_version (specification_id, version, notes, created_by) VALUES ($1,$2,$3,$4)`, [spec.id, spec.version, null, spec.created_by]);
-      }
-    } catch (e) {
-      // don't break main flow if version table isn't available
-    }
-    return spec;
+    if (!spec || !spec.id) return spec;
+    return await Specification.findById(spec.id);
   }
 
   static async update(id, fields) {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['document_id','code','name','description','version'].forEach((k) => {
+    ['document_id','code','name','description'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Specification.findById(id);
-    const q = `UPDATE specification SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, project_id, document_id, code, name, description, version, created_by, created_at`;
+    const q = `UPDATE specification SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, project_id, document_id, code, name, description, created_by, created_at`;
     values.push(id);
     const res = await pool.query(q, values);
     const updated = res.rows[0] || null;
-    // if version was provided, insert a new version record
-    try {
-      if (updated && fields.version !== undefined) {
-        await pool.query(`INSERT INTO specification_version (specification_id, version, notes, created_by) VALUES ($1,$2,$3,$4)`, [updated.id, fields.version, null, updated.created_by]);
-      }
-    } catch (e) {
-      // ignore failures related to version recording
-    }
-    return updated;
+    if (!updated) return null;
+    return await Specification.findById(updated.id);
   }
 
   static async softDelete(id) {

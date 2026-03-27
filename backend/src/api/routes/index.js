@@ -32,6 +32,7 @@ const multer = require('multer');
 const _upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 200 * 1024 * 1024 } });
 const statementsController = require('../controllers/statementsController');
 const specificationPartsController = require('../controllers/specificationPartsController');
+const materialsDirectoriesController = require('../controllers/materialsDirectoriesController');
 const statementsVersionController = require('../controllers/statementsVersionController');
 const statementsPartsController = require('../controllers/statementsPartsController');
 const permissionsController = require('../controllers/permissionsController');
@@ -293,6 +294,12 @@ router.post('/documents/directories', authMiddleware, documentsController.create
 router.put('/documents/directories/:id', authMiddleware, documentsController.updateDirectory);
 // DELETE /api/documents/directories/:id - delete
 router.delete('/documents/directories/:id', authMiddleware, documentsController.deleteDirectory);
+// Materials directories (CRUD)
+router.get('/materials/directories', authMiddleware, materialsDirectoriesController.list);
+router.get('/materials/directories/:id', authMiddleware, materialsDirectoriesController.get);
+router.post('/materials/directories', authMiddleware, materialsDirectoriesController.create);
+router.put('/materials/directories/:id', authMiddleware, materialsDirectoriesController.update);
+router.delete('/materials/directories/:id', authMiddleware, materialsDirectoriesController.remove);
 // Document types
 router.get('/document_types', authMiddleware, documentsController.listTypes);
 router.get('/document_types/:id', authMiddleware, documentsController.getType);

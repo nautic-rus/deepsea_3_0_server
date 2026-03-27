@@ -1,6 +1,7 @@
 const MaterialKit = require('../../db/models/MaterialKit');
 const MaterialKitItem = require('../../db/models/MaterialKitItem');
 const Material = require('../../db/models/Material');
+const SpecificationPart = require('../../db/models/SpecificationPart');
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 
@@ -116,27 +117,23 @@ class MaterialKitsService {
       await client.query('BEGIN');
       // load kit items
       const items = await MaterialKitItem.list({ kit_id: Number(kit_id), page: 1, limit: 10000 });
-      const inserted = [];
+      const insertedIds = [];
       for (const it of items) {
-        let stock_code = it.stock_code;
-        let name = null;
-        let description = null;
-        if (it.material_id) {
-          const m = await Material.findById(it.material_id);
-          if (m) { stock_code = stock_code || m.stock_code; name = m.name; description = m.description; }
-        } else if (stock_code) {
-          const res = await client.query('SELECT id, stock_code, name, description FROM materials WHERE stock_code = $1 LIMIT 1', [stock_code]);
+        let material_id = it.material_id || null;
+        if (!material_id && it.stock_code) {
+          const res = await client.query('SELECT id FROM materials WHERE stock_code = $1 LIMIT 1', [it.stock_code]);
           const m = res.rows[0];
-          if (m) { name = m.name; description = m.description; }
+          if (m) material_id = m.id;
         }
-        if (!name) name = it.notes || 'Kit item';
-        const q = `INSERT INTO specification_parts (specification_version_id, part_code, stock_code, name, description, quantity, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, specification_version_id, part_code, stock_code, name, description, quantity, created_at`;
-        const vals = [Number(specification_version_id), it.part_code || null, stock_code || null, name, description || null, it.quantity || 1, actor.id];
+        const q = `INSERT INTO specification_parts (specification_version_id, part_code, material_id, quantity, created_by, source) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, specification_version_id, part_code, material_id, quantity, source, created_at`;
+        const vals = [Number(specification_version_id), it.part_code || null, material_id, it.quantity || 1, actor.id, 'import'];
         const r = await client.query(q, vals);
-        inserted.push(r.rows[0]);
+        if (r.rows && r.rows[0] && r.rows[0].id) insertedIds.push(r.rows[0].id);
       }
       await client.query('COMMIT');
-      return inserted;
+      // return enriched specification_part rows
+      const enriched = await Promise.all(insertedIds.map(id => SpecificationPart.findById(id)));
+      return enriched;
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;

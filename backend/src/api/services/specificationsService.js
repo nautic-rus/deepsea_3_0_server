@@ -1,4 +1,5 @@
 const Specification = require('../../db/models/Specification');
+const SpecificationVersion = require('../../db/models/SpecificationVersion');
 const { hasPermission } = require('./permissionChecker');
 
 /**
@@ -24,6 +25,9 @@ class SpecificationsService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const s = await Specification.findById(Number(id));
     if (!s) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
+    const versions = await SpecificationVersion.list({ specification_id: Number(id), limit: 1000 });
+    // attach versions array to returned object
+    s.versions = versions.map(v => ({ id: v.id, version: v.version, notes: v.notes, created_by: v.created_by, created_by_first_name: v.created_by_first_name, created_by_last_name: v.created_by_last_name, created_at: v.created_at }));
     return s;
   }
 
