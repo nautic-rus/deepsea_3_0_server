@@ -101,6 +101,10 @@
       "description": "CRUD operations for materials"
     },
     {
+      "name": "materials_directories",
+      "description": "CRUD operations for materials directories"
+    },
+    {
       "name": "notifications",
       "description": "Notification events and methods management"
     },
@@ -2119,94 +2123,94 @@
       },
       "Material": {
         "type": "object",
-        "description": "Материал — запись из таблицы materials (с вложенными объектами для связей)",
+        "description": "Material — record from materials table (with nested objects for relations)",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "ID материала"
+            "description": "Material ID"
           },
           "stock_code": {
             "type": "string",
-            "description": "Складской код (формат NR + 14 цифр)"
+            "description": "Stock code (format NR + 14 digits)"
           },
           "name": {
             "type": "string",
-            "description": "Наименование материала"
+            "description": "Material name"
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Описание материала"
+            "description": "Material description"
           },
           "directory": {
             "type": "object",
             "nullable": true,
-            "description": "Директория (справочник)",
+            "description": "Directory (reference)",
             "properties": {
               "id": {
                 "type": "integer",
-                "description": "ID директории"
+                "description": "Directory ID"
               },
               "name": {
                 "type": "string",
-                "description": "Название директории"
+                "description": "Directory name"
               }
             }
           },
           "unit": {
             "type": "object",
             "nullable": true,
-            "description": "Единица измерения",
+            "description": "Unit of measurement",
             "properties": {
               "id": {
                 "type": "integer",
-                "description": "ID единицы измерения"
+                "description": "Unit ID"
               },
               "name": {
                 "type": "string",
-                "description": "Название единицы измерения"
+                "description": "Unit name"
               }
             }
           },
           "weight": {
             "type": "number",
             "nullable": true,
-            "description": "Вес материала"
+            "description": "Material weight"
           },
           "created_by": {
             "type": "object",
             "nullable": true,
-            "description": "Создатель",
+            "description": "Created by",
             "properties": {
               "id": {
                 "type": "integer",
-                "description": "ID пользователя"
+                "description": "User ID"
               },
               "name": {
                 "type": "string",
                 "nullable": true,
-                "description": "ФИО пользователя"
+                "description": "User full name"
               }
             }
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "description": "Дата создания"
+            "description": "Created at"
           },
           "updated_by": {
             "type": "object",
             "nullable": true,
-            "description": "Кто обновил",
+            "description": "Updated by",
             "properties": {
               "id": {
                 "type": "integer",
-                "description": "ID пользователя"
+                "description": "User ID"
               },
               "name": {
                 "type": "string",
                 "nullable": true,
-                "description": "ФИО пользователя"
+                "description": "User full name"
               }
             }
           },
@@ -2214,36 +2218,36 @@
             "type": "string",
             "format": "date-time",
             "nullable": true,
-            "description": "Дата обновления"
+            "description": "Updated at"
           },
           "statement_materials": {
             "type": "array",
             "items": {
               "type": "integer"
             },
-            "description": "Массив ID связанных ведомостей (statement_id)"
+            "description": "Array of related statement IDs (statement_id)"
           },
           "shipment_materials": {
             "type": "array",
             "items": {
               "type": "integer"
             },
-            "description": "Массив ID связанных поставок (shipment_id)"
+            "description": "Array of related shipment IDs (shipment_id)"
           }
         }
       },
       "MaterialCreate": {
         "type": "object",
-        "description": "Тело запроса для создания/обновления материала",
+        "description": "Request body for creating/updating a material",
         "properties": {
           "stock_code": {
             "type": "string",
             "nullable": true,
-            "description": "Складской код (генерируется автоматически если не передан)"
+            "description": "Stock code (auto-generated if not provided)"
           },
           "name": {
             "type": "string",
-            "description": "Наименование материала"
+            "description": "Material name"
           },
           "description": {
             "type": "string",
@@ -2264,16 +2268,16 @@
           "count": {
             "type": "integer",
             "nullable": true,
-            "description": "Количество"
+            "description": "Quantity"
           },
           "shipments": {
             "type": "array",
-            "description": "Привязка к поставкам — массив ID или объектов { shipment_id }. При обновлении полностью пересинхронизирует связи.",
+            "description": "Shipment links — array of IDs or { shipment_id } objects. On update fully resynchronizes links.",
             "items": {
               "oneOf": [
                 {
                   "type": "integer",
-                  "description": "ID поставки"
+                  "description": "Shipment ID"
                 },
                 {
                   "type": "object",
@@ -2288,12 +2292,12 @@
           },
           "statements": {
             "type": "array",
-            "description": "Привязка к ведомостям — массив ID или объектов { statement_id }. При обновлении полностью пересинхронизирует связи.",
+            "description": "Statement links — array of IDs or { statement_id } objects. On update fully resynchronizes links.",
             "items": {
               "oneOf": [
                 {
                   "type": "integer",
-                  "description": "ID ведомости"
+                  "description": "Statement ID"
                 },
                 {
                   "type": "object",
@@ -2311,80 +2315,178 @@
           "name"
         ]
       },
-      "Equipment": {
+      "MaterialsDirectory": {
         "type": "object",
-        "description": "Оборудование — запись из таблицы equipment",
+        "description": "Materials directory — record from materials_directories table",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "ID оборудования"
-          },
-          "equipment_code": {
-            "type": "string",
-            "description": "Уникальный код оборудования"
+            "description": "Directory ID"
           },
           "name": {
             "type": "string",
-            "description": "Наименование оборудования"
+            "description": "Directory name"
+          },
+          "path": {
+            "type": "string",
+            "nullable": true,
+            "description": "Directory path"
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Parent directory ID"
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Описание"
+            "description": "Directory description"
+          },
+          "order_index": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Order index for sorting"
+          },
+          "created_by": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Creator user ID"
+          },
+          "updated_by": {
+            "type": "integer",
+            "nullable": true,
+            "description": "User ID who updated the record"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Created at"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Updated at"
+          },
+          "created_by_full_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Creator full name"
+          },
+          "updated_by_full_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Updater full name"
+          }
+        }
+      },
+      "MaterialsDirectoryCreate": {
+        "type": "object",
+        "description": "Request body for creating/updating a materials directory",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Directory name"
+          },
+          "path": {
+            "type": "string",
+            "nullable": true,
+            "description": "Directory path"
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Parent directory ID"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Directory description"
+          },
+          "order_index": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Order index for sorting"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "Equipment": {
+        "type": "object",
+        "description": "Equipment — record from equipment table",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Equipment ID"
+          },
+          "equipment_code": {
+            "type": "string",
+            "description": "Unique equipment code"
+          },
+          "name": {
+            "type": "string",
+            "description": "Equipment name"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Description"
           },
           "sfi_code_id": {
             "type": "integer",
-            "description": "ID SFI-кода классификации"
+            "description": "SFI classification code ID"
           },
           "project_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID проекта"
+            "description": "Project ID"
           },
           "supplier_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID поставщика"
+            "description": "Supplier ID"
           },
           "manufacturer": {
             "type": "string",
             "nullable": true,
-            "description": "Производитель"
+            "description": "Manufacturer"
           },
           "model": {
             "type": "string",
             "nullable": true,
-            "description": "Модель"
+            "description": "Model"
           },
           "serial_number": {
             "type": "string",
             "nullable": true,
-            "description": "Серийный номер"
+            "description": "Serial number"
           },
           "installation_date": {
             "type": "string",
             "format": "date",
             "nullable": true,
-            "description": "Дата установки"
+            "description": "Installation date"
           },
           "status": {
             "type": "string",
             "nullable": true,
-            "description": "Статус (active, maintenance и т.д.)"
+            "description": "Status (active, maintenance, etc.)"
           },
           "location": {
             "type": "string",
             "nullable": true,
-            "description": "Местоположение"
+            "description": "Location"
           },
           "technical_specifications": {
             "type": "string",
             "nullable": true,
-            "description": "Технические характеристики"
+            "description": "Technical specifications"
           },
           "created_by": {
             "type": "integer",
-            "description": "ID создателя"
+            "description": "Creator ID"
           },
           "created_at": {
             "type": "string",
@@ -2394,30 +2496,30 @@
       },
       "Supplier": {
         "type": "object",
-        "description": "Поставщик — запись из таблицы suppliers",
+        "description": "Supplier — record from suppliers table",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "ID поставщика"
+            "description": "Supplier ID"
           },
           "name": {
             "type": "string",
-            "description": "Наименование поставщика"
+            "description": "Supplier name"
           },
           "code": {
             "type": "string",
             "nullable": true,
-            "description": "Уникальный код поставщика"
+            "description": "Unique supplier code"
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Описание"
+            "description": "Description"
           },
           "contact_person": {
             "type": "string",
             "nullable": true,
-            "description": "Контактное лицо"
+            "description": "Contact person"
           },
           "email": {
             "type": "string",
@@ -2427,35 +2529,35 @@
           "phone": {
             "type": "string",
             "nullable": true,
-            "description": "Телефон"
+            "description": "Phone"
           },
           "address": {
             "type": "string",
             "nullable": true,
-            "description": "Адрес"
+            "description": "Address"
           },
           "website": {
             "type": "string",
             "nullable": true,
-            "description": "Веб-сайт"
+            "description": "Website"
           },
           "country": {
             "type": "string",
             "nullable": true,
-            "description": "Страна"
+            "description": "Country"
           },
           "is_active": {
             "type": "boolean",
-            "description": "Активен ли поставщик"
+            "description": "Whether the supplier is active"
           },
           "created_by": {
             "type": "integer",
-            "description": "ID создателя"
+            "description": "Creator ID"
           },
           "updated_by": {
             "type": "integer",
             "nullable": true,
-            "description": "ID обновившего"
+            "description": "Updater ID"
           },
           "created_at": {
             "type": "string",
@@ -2469,7 +2571,7 @@
       },
       "ShipmentMaterial": {
         "type": "object",
-        "description": "Материал в поставке (связь shipment_materials)",
+        "description": "Material in shipment (shipment_materials relation)",
         "properties": {
           "id": {
             "type": "integer"
@@ -2491,42 +2593,42 @@
       },
       "Shipment": {
         "type": "object",
-        "description": "Поставка — запись из таблицы shipments",
+        "description": "Shipment — record from shipments table",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "ID поставки"
+            "description": "Shipment ID"
           },
           "project_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID проекта"
+            "description": "Project ID"
           },
           "supplier_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID поставщика"
+            "description": "Supplier ID"
           },
           "equipment_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID оборудования"
+            "description": "Equipment ID"
           },
           "code": {
             "type": "string",
             "nullable": true,
-            "description": "Код поставки"
+            "description": "Shipment code"
           },
           "received_at": {
             "type": "string",
             "format": "date-time",
             "nullable": true,
-            "description": "Дата получения"
+            "description": "Received date"
           },
           "created_by": {
             "type": "integer",
             "nullable": true,
-            "description": "ID создателя"
+            "description": "Creator ID"
           },
           "created_at": {
             "type": "string",
@@ -2536,55 +2638,55 @@
       },
       "Statement": {
         "type": "object",
-        "description": "Ведомость — запись из таблицы statements",
+        "description": "Statement — record from statements table",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "ID ведомости"
+            "description": "Statement ID"
           },
           "document_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID документа"
+            "description": "Document ID"
           },
           "parent_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID родительской ведомости"
+            "description": "Parent statement ID"
           },
           "project_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID проекта"
+            "description": "Project ID"
           },
           "code": {
             "type": "string",
             "nullable": true,
-            "description": "Код ведомости"
+            "description": "Statement code"
           },
           "name": {
             "type": "string",
-            "description": "Наименование ведомости"
+            "description": "Statement name"
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Описание"
+            "description": "Description"
           },
           "created_by": {
             "type": "integer",
-            "description": "ID создателя"
+            "description": "Creator ID"
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "description": "Дата создания"
+            "description": "Created at"
           }
         }
       },
       "StatementCreate": {
         "type": "object",
-        "description": "Тело запроса для создания/обновления ведомости",
+        "description": "Request body for creating/updating a statement",
         "required": [
           "document_id",
           "name"
@@ -2592,79 +2694,79 @@
         "properties": {
           "document_id": {
             "type": "integer",
-            "description": "ID документа (обязательно)"
+            "description": "Document ID (required)"
           },
           "parent_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID родительской ведомости"
+            "description": "Parent statement ID"
           },
           "project_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID проекта"
+            "description": "Project ID"
           },
           "code": {
             "type": "string",
             "nullable": true,
-            "description": "Код ведомости"
+            "description": "Statement code"
           },
           "name": {
             "type": "string",
-            "description": "Наименование ведомости (обязательно)"
+            "description": "Statement name (required)"
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Описание"
+            "description": "Description"
           }
         }
       },
       "Stage": {
         "type": "object",
-        "description": "Этап проекта — запись из таблицы stages",
+        "description": "Project stage — record from stages table",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "ID этапа"
+            "description": "Stage ID"
           },
           "project_id": {
             "type": "integer",
-            "description": "ID проекта"
+            "description": "Project ID"
           },
           "name": {
             "type": "string",
-            "description": "Наименование этапа"
+            "description": "Stage name"
           },
           "code": {
             "type": "string",
             "nullable": true,
-            "description": "Код этапа"
+            "description": "Stage code"
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Описание"
+            "description": "Description"
           },
           "end_date": {
             "type": "string",
             "format": "date",
-            "description": "Дата окончания"
+            "description": "End date"
           },
           "order_index": {
             "type": "integer",
-            "description": "Порядковый индекс для сортировки"
+            "description": "Order index for sorting"
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "description": "Дата создания"
+            "description": "Created at"
           }
         }
       },
       "StageCreate": {
         "type": "object",
-        "description": "Тело запроса для создания этапа",
+        "description": "Request body for creating a stage",
         "required": [
           "project_id",
           "name",
@@ -2673,83 +2775,83 @@
         "properties": {
           "project_id": {
             "type": "integer",
-            "description": "ID проекта (обязательно)"
+            "description": "Project ID (required)"
           },
           "name": {
             "type": "string",
-            "description": "Наименование этапа (обязательно)"
+            "description": "Stage name (required)"
           },
           "code": {
             "type": "string",
             "nullable": true,
-            "description": "Код этапа"
+            "description": "Stage code"
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Описание"
+            "description": "Description"
           },
           "end_date": {
             "type": "string",
             "format": "date",
-            "description": "Дата окончания (обязательно)"
+            "description": "End date (required)"
           },
           "order_index": {
             "type": "integer",
-            "description": "Порядковый индекс (по умолчанию 0)"
+            "description": "Order index (default 0)"
           }
         }
       },
       "Specification": {
         "type": "object",
-        "description": "Спецификация — запись из таблицы specification",
+        "description": "Specification — record from specification table",
         "properties": {
           "id": {
             "type": "integer",
-            "description": "ID спецификации"
+            "description": "Specification ID"
           },
           "project_id": {
             "type": "integer",
-            "description": "ID проекта"
+            "description": "Project ID"
           },
           "document_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID документа"
+            "description": "Document ID"
           },
           "code": {
             "type": "string",
             "nullable": true,
-            "description": "Код спецификации"
+            "description": "Specification code"
           },
           "name": {
             "type": "string",
-            "description": "Наименование спецификации"
+            "description": "Specification name"
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Описание"
+            "description": "Description"
           },
           "version": {
             "type": "string",
             "nullable": true,
-            "description": "Версия"
+            "description": "Version"
           },
           "created_by": {
             "type": "integer",
-            "description": "ID создателя"
+            "description": "Creator ID"
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
-            "description": "Дата создания"
+            "description": "Created at"
           }
         }
       },
       "SpecificationCreate": {
         "type": "object",
-        "description": "Тело запроса для создания спецификации",
+        "description": "Request body for creating a specification",
         "required": [
           "project_id",
           "name"
@@ -2757,31 +2859,31 @@
         "properties": {
           "project_id": {
             "type": "integer",
-            "description": "ID проекта (обязательно)"
+            "description": "Project ID (required)"
           },
           "document_id": {
             "type": "integer",
             "nullable": true,
-            "description": "ID документа"
+            "description": "Document ID"
           },
           "code": {
             "type": "string",
             "nullable": true,
-            "description": "Код спецификации"
+            "description": "Specification code"
           },
           "name": {
             "type": "string",
-            "description": "Наименование (обязательно)"
+            "description": "Name (required)"
           },
           "description": {
             "type": "string",
             "nullable": true,
-            "description": "Описание"
+            "description": "Description"
           },
           "version": {
             "type": "string",
             "nullable": true,
-            "description": "Версия (при создании записывается в specification_version)"
+            "description": "Version (on creation stored in specification_version)"
           }
         }
       }
@@ -2793,8 +2895,8 @@
         "tags": [
           "materials"
         ],
-        "summary": "Список материалов",
-        "description": "Возвращает список материалов с фильтрацией по директории, единице измерения, ведомости, поставке и текстовому поиску. Пагинация через page/limit.",
+        "summary": "List of materials",
+        "description": "Returns a list of materials filtered by directory, unit, statement, shipment, and text search. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -2807,7 +2909,7 @@
           {
             "name": "directory_id",
             "in": "query",
-            "description": "Фильтр по ID директории",
+            "description": "Filter by directory ID",
             "schema": {
               "type": "integer"
             }
@@ -2815,7 +2917,7 @@
           {
             "name": "unit_id",
             "in": "query",
-            "description": "Фильтр по ID единицы измерения",
+            "description": "Filter by unit ID",
             "schema": {
               "type": "integer"
             }
@@ -2823,7 +2925,7 @@
           {
             "name": "statement_id",
             "in": "query",
-            "description": "Фильтр по ID ведомости (через связь statement_materials)",
+            "description": "Filter by statement ID (via statement_materials relation)",
             "schema": {
               "type": "integer"
             }
@@ -2831,7 +2933,7 @@
           {
             "name": "shipment_id",
             "in": "query",
-            "description": "Фильтр по ID поставки (через связь shipment_materials)",
+            "description": "Filter by shipment ID (via shipment_materials relation)",
             "schema": {
               "type": "integer"
             }
@@ -2839,7 +2941,7 @@
           {
             "name": "search",
             "in": "query",
-            "description": "Поиск по name и description (ILIKE)",
+            "description": "Search by name and description (ILIKE)",
             "schema": {
               "type": "string"
             }
@@ -2847,7 +2949,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Номер страницы (по умолчанию 1)",
+            "description": "Page number (default 1)",
             "schema": {
               "type": "integer",
               "default": 1
@@ -2856,7 +2958,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Записей на странице (если не указан — без лимита)",
+            "description": "Records per page (if not specified — no limit)",
             "schema": {
               "type": "integer"
             }
@@ -2864,7 +2966,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Список материалов",
+            "description": "List of materials",
             "content": {
               "application/json": {
                 "schema": {
@@ -2883,20 +2985,20 @@
                     {
                       "id": 1,
                       "stock_code": "NR00000000000001",
-                      "name": "Труба стальная 100мм",
-                      "description": "Бесшовная ГОСТ 8732-78",
+                      "name": "Steel pipe 100mm",
+                      "description": "Seamless GOST 8732-78",
                       "directory": {
                         "id": 5,
-                        "name": "Трубы"
+                        "name": "Pipes"
                       },
                       "unit": {
                         "id": 2,
-                        "name": "шт"
+                        "name": "pcs"
                       },
                       "weight": 12.5,
                       "created_by": {
                         "id": 1,
-                        "name": "Иван Петров"
+                        "name": "Ivan Petrov"
                       },
                       "created_at": "2026-01-15T10:30:00.000Z",
                       "updated_by": null,
@@ -2926,8 +3028,8 @@
         "tags": [
           "materials"
         ],
-        "summary": "Создать материал",
-        "description": "Создаёт новый материал. Обязательное поле: name. stock_code генерируется автоматически (NR + 14 цифр) если не передан. Опционально можно передать массивы shipments и statements для привязки. При конфликте stock_code автоматически повторяет попытку до 5 раз.",
+        "summary": "Create material",
+        "description": "Creates a new material. Required field: name. stock_code is auto-generated (NR + 14 digits) if not provided. Optionally, shipments and statements arrays can be passed for linking. On stock_code conflict, automatically retries up to 5 times.",
         "security": [
           {
             "bearerAuth": []
@@ -2944,11 +3046,11 @@
                 "$ref": "#/components/schemas/MaterialCreate"
               },
               "example": {
-                "name": "Труба стальная 100мм",
-                "description": "Бесшовная ГОСТ 8732-78",
+                "name": "Steel pipe 100mm",
+                "description": "Seamless GOST 8732-78",
                 "directory_id": 5,
                 "unit_id": 2,
-                "manufacturer": "СтальПром",
+                "manufacturer": "SteelProm",
                 "count": 100,
                 "shipments": [
                   1,
@@ -2965,7 +3067,7 @@
         },
         "responses": {
           "201": {
-            "description": "Материал создан",
+            "description": "Material created",
             "content": {
               "application/json": {
                 "schema": {
@@ -2980,20 +3082,20 @@
                   "data": {
                     "id": 1,
                     "stock_code": "NR00000000000001",
-                    "name": "Труба стальная 100мм",
-                    "description": "Бесшовная ГОСТ 8732-78",
+                    "name": "Steel pipe 100mm",
+                    "description": "Seamless GOST 8732-78",
                     "directory": {
                       "id": 5,
-                      "name": "Трубы"
+                      "name": "Pipes"
                     },
                     "unit": {
                       "id": 2,
-                      "name": "шт"
+                      "name": "pcs"
                     },
                     "weight": null,
                     "created_by": {
                       "id": 1,
-                      "name": "Иван Петров"
+                      "name": "Ivan Petrov"
                     },
                     "created_at": "2026-01-15T10:30:00.000Z",
                     "updated_by": null,
@@ -3027,8 +3129,8 @@
         "tags": [
           "materials"
         ],
-        "summary": "Получить материал по ID",
-        "description": "Возвращает одну запись материала по идентификатору. Ответ содержит вложенные объекты directory, unit, created_by, updated_by и массивы statement_materials, shipment_materials.",
+        "summary": "Get material by ID",
+        "description": "Returns a single material record by identifier. Response contains nested objects directory, unit, created_by, updated_by and arrays statement_materials, shipment_materials.",
         "security": [
           {
             "bearerAuth": []
@@ -3045,12 +3147,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID материала"
+            "description": "Material ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Запись материала",
+            "description": "Material record",
             "content": {
               "application/json": {
                 "schema": {
@@ -3059,20 +3161,20 @@
                 "example": {
                   "id": 1,
                   "stock_code": "NR00000000000001",
-                  "name": "Труба стальная 100мм",
-                  "description": "Бесшовная ГОСТ 8732-78",
+                  "name": "Steel pipe 100mm",
+                  "description": "Seamless GOST 8732-78",
                   "directory": {
                     "id": 5,
-                    "name": "Трубы"
+                    "name": "Pipes"
                   },
                   "unit": {
                     "id": 2,
-                    "name": "шт"
+                    "name": "pcs"
                   },
                   "weight": 12.5,
                   "created_by": {
                     "id": 1,
-                    "name": "Иван Петров"
+                    "name": "Ivan Petrov"
                   },
                   "created_at": "2026-01-15T10:30:00.000Z",
                   "updated_by": null,
@@ -3105,8 +3207,8 @@
         "tags": [
           "materials"
         ],
-        "summary": "Обновить материал",
-        "description": "Частичное обновление материала. Передаются только изменяемые поля (stock_code, name, description, directory_id, unit_id, manufacturer, count). Опционально можно передать массивы shipments и statements для пересинхронизации связей (полная замена).",
+        "summary": "Update material",
+        "description": "Partial update of a material. Only changed fields are passed (stock_code, name, description, directory_id, unit_id, manufacturer, count). Optionally, shipments and statements arrays can be passed to resynchronize links (full replacement).",
         "security": [
           {
             "bearerAuth": []
@@ -3123,7 +3225,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID материала"
+            "description": "Material ID"
           }
         ],
         "requestBody": {
@@ -3133,9 +3235,9 @@
                 "$ref": "#/components/schemas/MaterialCreate"
               },
               "example": {
-                "name": "Труба стальная 150мм",
+                "name": "Steel pipe 150mm",
                 "count": 200,
-                "manufacturer": "МеталлТрейд",
+                "manufacturer": "MetalTrade",
                 "shipments": [
                   1,
                   3
@@ -3146,7 +3248,7 @@
         },
         "responses": {
           "200": {
-            "description": "Обновлённая запись",
+            "description": "Updated record",
             "content": {
               "application/json": {
                 "schema": {
@@ -3161,25 +3263,25 @@
                   "data": {
                     "id": 1,
                     "stock_code": "NR00000000000001",
-                    "name": "Труба стальная 150мм",
-                    "description": "Бесшовная ГОСТ 8732-78",
+                    "name": "Steel pipe 150mm",
+                    "description": "Seamless GOST 8732-78",
                     "directory": {
                       "id": 5,
-                      "name": "Трубы"
+                      "name": "Pipes"
                     },
                     "unit": {
                       "id": 2,
-                      "name": "шт"
+                      "name": "pcs"
                     },
                     "weight": 12.5,
                     "created_by": {
                       "id": 1,
-                      "name": "Иван Петров"
+                      "name": "Ivan Petrov"
                     },
                     "created_at": "2026-01-15T10:30:00.000Z",
                     "updated_by": {
                       "id": 2,
-                      "name": "Анна Сидорова"
+                      "name": "Anna Sidorova"
                     },
                     "updated_at": "2026-02-20T14:00:00.000Z",
                     "statement_materials": [
@@ -3212,8 +3314,8 @@
         "tags": [
           "materials"
         ],
-        "summary": "Удалить материал",
-        "description": "Soft-delete материала (is_active = false). При невозможности — полное удаление.",
+        "summary": "Delete material",
+        "description": "Soft-delete of material (is_active = false). If not possible — full deletion.",
         "security": [
           {
             "bearerAuth": []
@@ -3230,12 +3332,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID материала"
+            "description": "Material ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Материал удалён",
+            "description": "Material deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -3267,13 +3369,338 @@
         }
       }
     },
+    "/api/materials/directories": {
+      "get": {
+        "tags": [
+          "materials_directories"
+        ],
+        "summary": "List of materials directories",
+        "description": "Returns a list of materials directories with text search by name. Pagination via page/limit.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search by name (ILIKE)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default 1)",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Records per page (if not specified — no limit)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of materials directories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MaterialsDirectory"
+                  }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "name": "Pipes",
+                    "path": "/pipes",
+                    "parent_id": null,
+                    "description": "Directory for pipes",
+                    "order_index": 1,
+                    "created_by": 1,
+                    "updated_by": null,
+                    "created_at": "2026-01-15T10:30:00.000Z",
+                    "updated_at": null,
+                    "created_by_full_name": "Petrov Ivan Sergeevich",
+                    "updated_by_full_name": null
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "materials_directories"
+        ],
+        "summary": "Create materials directory",
+        "description": "Creates a new materials directory. Required field: name.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialsDirectoryCreate"
+              },
+              "example": {
+                "name": "Pipes",
+                "path": "/pipes",
+                "parent_id": null,
+                "description": "Directory for pipes",
+                "order_index": 1
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Directory created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialsDirectory"
+                },
+                "example": {
+                  "id": 1,
+                  "name": "Pipes",
+                  "path": "/pipes",
+                  "parent_id": null,
+                  "description": "Directory for pipes",
+                  "order_index": 1,
+                  "created_by": 1,
+                  "updated_by": null,
+                  "created_at": "2026-01-15T10:30:00.000Z",
+                  "updated_at": null,
+                  "created_by_full_name": "Petrov Ivan Sergeevich",
+                  "updated_by_full_name": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No fields provided"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/materials/directories/{id}": {
+      "get": {
+        "tags": [
+          "materials_directories"
+        ],
+        "summary": "Get materials directory by ID",
+        "description": "Returns a single materials directory record by identifier.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Directory ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Directory record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialsDirectory"
+                },
+                "example": {
+                  "id": 1,
+                  "name": "Pipes",
+                  "path": "/pipes",
+                  "parent_id": null,
+                  "description": "Directory for pipes",
+                  "order_index": 1,
+                  "created_by": 1,
+                  "updated_by": null,
+                  "created_at": "2026-01-15T10:30:00.000Z",
+                  "updated_at": null,
+                  "created_by_full_name": "Petrov Ivan Sergeevich",
+                  "updated_by_full_name": null
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "materials_directories"
+        ],
+        "summary": "Update materials directory",
+        "description": "Partial update of a materials directory. Only changed fields are passed (name, path, parent_id, description, order_index).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Directory ID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialsDirectoryCreate"
+              },
+              "example": {
+                "name": "Steel pipes",
+                "description": "Updated description"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialsDirectory"
+                },
+                "example": {
+                  "id": 1,
+                  "name": "Steel pipes",
+                  "path": "/pipes",
+                  "parent_id": null,
+                  "description": "Updated description",
+                  "order_index": 1,
+                  "created_by": 1,
+                  "updated_by": 2,
+                  "created_at": "2026-01-15T10:30:00.000Z",
+                  "updated_at": "2026-02-20T14:00:00.000Z",
+                  "created_by_full_name": "Petrov Ivan Sergeevich",
+                  "updated_by_full_name": "Sidorova Anna Pavlovna"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "materials_directories"
+        ],
+        "summary": "Delete materials directory",
+        "description": "Soft-delete of directory (is_active = false). If not possible — full deletion.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Directory ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Directory deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/shipments": {
       "get": {
         "tags": [
           "shipments"
         ],
-        "summary": "Список поставок",
-        "description": "Возвращает список поставок с фильтрацией по проекту, поставщику, оборудованию и текстовому поиску. Пагинация через page/limit.",
+        "summary": "List of shipments",
+        "description": "Returns a list of shipments filtered by project, supplier, equipment, and text search. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -3286,7 +3713,7 @@
           {
             "in": "query",
             "name": "project_id",
-            "description": "Фильтр по ID проекта",
+            "description": "Filter by project ID",
             "schema": {
               "type": "integer"
             }
@@ -3294,7 +3721,7 @@
           {
             "in": "query",
             "name": "supplier_id",
-            "description": "Фильтр по ID поставщика",
+            "description": "Filter by supplier ID",
             "schema": {
               "type": "integer"
             }
@@ -3302,7 +3729,7 @@
           {
             "in": "query",
             "name": "equipment_id",
-            "description": "Фильтр по ID оборудования",
+            "description": "Filter by equipment ID",
             "schema": {
               "type": "integer"
             }
@@ -3310,7 +3737,7 @@
           {
             "in": "query",
             "name": "search",
-            "description": "Поиск по code и id (ILIKE)",
+            "description": "Search by code and id (ILIKE)",
             "schema": {
               "type": "string"
             }
@@ -3318,7 +3745,7 @@
           {
             "in": "query",
             "name": "page",
-            "description": "Номер страницы (по умолчанию 1)",
+            "description": "Page number (default 1)",
             "schema": {
               "type": "integer",
               "default": 1
@@ -3327,7 +3754,7 @@
           {
             "in": "query",
             "name": "limit",
-            "description": "Записей на странице (если не указан — без лимита)",
+            "description": "Records per page (if not specified — no limit)",
             "schema": {
               "type": "integer"
             }
@@ -3335,7 +3762,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Список поставок",
+            "description": "List of shipments",
             "content": {
               "application/json": {
                 "schema": {
@@ -3378,8 +3805,8 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Создать поставку",
-        "description": "Создаёт новую запись поставки. Все поля опциональны.",
+        "summary": "Create shipment",
+        "description": "Creates a new shipment record. All fields are optional.",
         "security": [
           {
             "bearerAuth": []
@@ -3398,28 +3825,28 @@
                   "project_id": {
                     "type": "integer",
                     "nullable": true,
-                    "description": "ID проекта"
+                    "description": "Project ID"
                   },
                   "supplier_id": {
                     "type": "integer",
                     "nullable": true,
-                    "description": "ID поставщика"
+                    "description": "Supplier ID"
                   },
                   "equipment_id": {
                     "type": "integer",
                     "nullable": true,
-                    "description": "ID оборудования"
+                    "description": "Equipment ID"
                   },
                   "code": {
                     "type": "string",
                     "nullable": true,
-                    "description": "Код поставки"
+                    "description": "Shipment code"
                   },
                   "received_at": {
                     "type": "string",
                     "format": "date-time",
                     "nullable": true,
-                    "description": "Дата получения"
+                    "description": "Received date"
                   }
                 }
               },
@@ -3434,7 +3861,7 @@
         },
         "responses": {
           "201": {
-            "description": "Поставка создана",
+            "description": "Shipment created",
             "content": {
               "application/json": {
                 "schema": {
@@ -3465,8 +3892,8 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Получить поставку по ID",
-        "description": "Возвращает одну запись поставки по идентификатору.",
+        "summary": "Get shipment by ID",
+        "description": "Returns a single shipment record by identifier.",
         "security": [
           {
             "bearerAuth": []
@@ -3483,12 +3910,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID поставки"
+            "description": "Shipment ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Запись поставки",
+            "description": "Shipment record",
             "content": {
               "application/json": {
                 "schema": {
@@ -3515,8 +3942,8 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Обновить поставку",
-        "description": "Частичное обновление поставки. Передаются только изменяемые поля.",
+        "summary": "Update shipment",
+        "description": "Partial update of a shipment. Only changed fields are passed.",
         "security": [
           {
             "bearerAuth": []
@@ -3533,7 +3960,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID поставки"
+            "description": "Shipment ID"
           }
         ],
         "requestBody": {
@@ -3575,7 +4002,7 @@
         },
         "responses": {
           "200": {
-            "description": "Обновлённая запись",
+            "description": "Updated record",
             "content": {
               "application/json": {
                 "schema": {
@@ -3607,8 +4034,8 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Удалить поставку",
-        "description": "Soft-delete поставки (is_active = false). При невозможности — полное удаление.",
+        "summary": "Delete shipment",
+        "description": "Soft-delete of shipment (is_active = false). If not possible — full deletion.",
         "security": [
           {
             "bearerAuth": []
@@ -3625,12 +4052,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID поставки"
+            "description": "Shipment ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Поставка удалена",
+            "description": "Shipment deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -3667,8 +4094,8 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Список материалов в поставке",
-        "description": "Возвращает список записей shipment_materials для указанной поставки.",
+        "summary": "List of materials in shipment",
+        "description": "Returns a list of shipment_materials records for the specified shipment.",
         "security": [
           {
             "bearerAuth": []
@@ -3685,12 +4112,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID поставки"
+            "description": "Shipment ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Список материалов в поставке",
+            "description": "List of materials in shipment",
             "content": {
               "application/json": {
                 "schema": {
@@ -3733,8 +4160,8 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Добавить материал в поставку",
-        "description": "Создаёт новую связь shipment_materials. Обязательное поле: material_id.",
+        "summary": "Add material to shipment",
+        "description": "Creates a new shipment_materials link. Required field: material_id.",
         "security": [
           {
             "bearerAuth": []
@@ -3751,7 +4178,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID поставки"
+            "description": "Shipment ID"
           }
         ],
         "requestBody": {
@@ -3766,11 +4193,11 @@
                 "properties": {
                   "material_id": {
                     "type": "integer",
-                    "description": "ID материала"
+                    "description": "Material ID"
                   },
                   "quantity": {
                     "type": "number",
-                    "description": "Количество (по умолчанию 0)"
+                    "description": "Quantity (default 0)"
                   }
                 }
               },
@@ -3783,7 +4210,7 @@
         },
         "responses": {
           "201": {
-            "description": "Материал добавлен в поставку",
+            "description": "Material added to shipment",
             "content": {
               "application/json": {
                 "schema": {
@@ -3823,8 +4250,8 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Обновить материал в поставке",
-        "description": "Обновляет запись shipment_materials. Можно изменить shipment_id, material_id, quantity.",
+        "summary": "Update material in shipment",
+        "description": "Updates a shipment_materials record. Can change shipment_id, material_id, quantity.",
         "security": [
           {
             "bearerAuth": []
@@ -3841,7 +4268,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID записи shipment_materials"
+            "description": "shipment_materials record ID"
           }
         ],
         "requestBody": {
@@ -3869,7 +4296,7 @@
         },
         "responses": {
           "200": {
-            "description": "Обновлённая запись",
+            "description": "Updated record",
             "content": {
               "application/json": {
                 "schema": {
@@ -3910,8 +4337,8 @@
         "tags": [
           "shipments"
         ],
-        "summary": "Удалить материал из поставки",
-        "description": "Удаляет запись shipment_materials (полное удаление).",
+        "summary": "Remove material from shipment",
+        "description": "Deletes a shipment_materials record (full deletion).",
         "security": [
           {
             "bearerAuth": []
@@ -3928,12 +4355,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID записи shipment_materials"
+            "description": "shipment_materials record ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Запись удалена",
+            "description": "Record deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -8889,8 +9316,8 @@
         "tags": [
           "equipment"
         ],
-        "summary": "Список оборудования",
-        "description": "Возвращает список оборудования с фильтрацией по проекту, поставщику, статусу и текстовому поиску. Пагинация через page/limit.",
+        "summary": "List of equipment",
+        "description": "Returns a list of equipment filtered by project, supplier, status, and text search. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -8903,7 +9330,7 @@
           {
             "name": "project_id",
             "in": "query",
-            "description": "Фильтр по ID проекта",
+            "description": "Filter by project ID",
             "schema": {
               "type": "integer"
             }
@@ -8911,7 +9338,7 @@
           {
             "name": "supplier_id",
             "in": "query",
-            "description": "Фильтр по ID поставщика",
+            "description": "Filter by supplier ID",
             "schema": {
               "type": "integer"
             }
@@ -8919,7 +9346,7 @@
           {
             "name": "status",
             "in": "query",
-            "description": "Фильтр по статусу (например active)",
+            "description": "Filter by status (e.g. active)",
             "schema": {
               "type": "string"
             }
@@ -8927,7 +9354,7 @@
           {
             "name": "search",
             "in": "query",
-            "description": "Поиск по name и description (ILIKE)",
+            "description": "Search by name and description (ILIKE)",
             "schema": {
               "type": "string"
             }
@@ -8935,7 +9362,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Номер страницы (по умолчанию 1)",
+            "description": "Page number (default 1)",
             "schema": {
               "type": "integer",
               "default": 1
@@ -8944,7 +9371,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Записей на странице (если не указан — без лимита)",
+            "description": "Records per page (if not specified — no limit)",
             "schema": {
               "type": "integer"
             }
@@ -8952,7 +9379,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Список оборудования",
+            "description": "List of equipment",
             "content": {
               "application/json": {
                 "schema": {
@@ -8971,8 +9398,8 @@
                     {
                       "id": 1,
                       "equipment_code": "EQ-001",
-                      "name": "Главный двигатель",
-                      "description": "Дизельный двигатель MAN 6S60ME-C8.5",
+                      "name": "Main engine",
+                      "description": "Diesel engine MAN 6S60ME-C8.5",
                       "sfi_code_id": 10,
                       "project_id": 1,
                       "supplier_id": 2,
@@ -8981,8 +9408,8 @@
                       "serial_number": "SN-2024-001",
                       "installation_date": "2025-06-15",
                       "status": "active",
-                      "location": "Машинное отделение",
-                      "technical_specifications": "Мощность 8000 кВт",
+                      "location": "Engine room",
+                      "technical_specifications": "Power 8000 kW",
                       "created_by": 1,
                       "created_at": "2025-01-10T12:00:00.000Z"
                     }
@@ -9003,8 +9430,8 @@
         "tags": [
           "equipment"
         ],
-        "summary": "Создать оборудование",
-        "description": "Создаёт новую запись оборудования. Обязательные поля: equipment_code, name, sfi_code_id.",
+        "summary": "Create equipment",
+        "description": "Creates a new equipment record. Required fields: equipment_code, name, sfi_code_id.",
         "security": [
           {
             "bearerAuth": []
@@ -9027,11 +9454,11 @@
                 "properties": {
                   "equipment_code": {
                     "type": "string",
-                    "description": "Уникальный код оборудования"
+                    "description": "Unique equipment code"
                   },
                   "name": {
                     "type": "string",
-                    "description": "Наименование"
+                    "description": "Name"
                   },
                   "description": {
                     "type": "string",
@@ -9039,7 +9466,7 @@
                   },
                   "sfi_code_id": {
                     "type": "integer",
-                    "description": "ID SFI-кода"
+                    "description": "SFI code ID"
                   },
                   "project_id": {
                     "type": "integer",
@@ -9082,8 +9509,8 @@
               },
               "example": {
                 "equipment_code": "EQ-002",
-                "name": "Вспомогательный генератор",
-                "description": "Дизель-генератор Caterpillar",
+                "name": "Auxiliary generator",
+                "description": "Diesel generator Caterpillar",
                 "sfi_code_id": 10,
                 "project_id": 1,
                 "supplier_id": 2,
@@ -9092,15 +9519,15 @@
                 "serial_number": "SN-2024-002",
                 "installation_date": "2025-07-01",
                 "status": "active",
-                "location": "Генераторное отделение",
-                "technical_specifications": "Мощность 1500 кВт"
+                "location": "Generator room",
+                "technical_specifications": "Power 1500 kW"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Оборудование создано",
+            "description": "Equipment created",
             "content": {
               "application/json": {
                 "schema": {
@@ -9131,8 +9558,8 @@
         "tags": [
           "equipment"
         ],
-        "summary": "Получить оборудование по ID",
-        "description": "Возвращает одну запись оборудования по идентификатору.",
+        "summary": "Get equipment by ID",
+        "description": "Returns a single equipment record by identifier.",
         "security": [
           {
             "bearerAuth": []
@@ -9149,12 +9576,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID оборудования"
+            "description": "Equipment ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Запись оборудования",
+            "description": "Equipment record",
             "content": {
               "application/json": {
                 "schema": {
@@ -9181,8 +9608,8 @@
         "tags": [
           "equipment"
         ],
-        "summary": "Обновить оборудование",
-        "description": "Частичное обновление записи оборудования. Передаются только изменяемые поля.",
+        "summary": "Update equipment",
+        "description": "Partial update of an equipment record. Only changed fields are passed.",
         "security": [
           {
             "bearerAuth": []
@@ -9199,7 +9626,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID оборудования"
+            "description": "Equipment ID"
           }
         ],
         "requestBody": {
@@ -9261,7 +9688,7 @@
                 }
               },
               "example": {
-                "name": "Главный двигатель (обновлено)",
+                "name": "Main engine (updated)",
                 "status": "maintenance"
               }
             }
@@ -9269,7 +9696,7 @@
         },
         "responses": {
           "200": {
-            "description": "Обновлённая запись",
+            "description": "Updated record",
             "content": {
               "application/json": {
                 "schema": {
@@ -9301,8 +9728,8 @@
         "tags": [
           "equipment"
         ],
-        "summary": "Удалить оборудование",
-        "description": "Soft-delete записи оборудования (is_active = false). При невозможности — полное удаление.",
+        "summary": "Delete equipment",
+        "description": "Soft-delete of equipment record (is_active = false). If not possible — full deletion.",
         "security": [
           {
             "bearerAuth": []
@@ -9319,12 +9746,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID оборудования"
+            "description": "Equipment ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Оборудование удалено",
+            "description": "Equipment deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -11911,8 +12338,8 @@
         "tags": [
           "materials"
         ],
-        "summary": "Получить следующий складской код",
-        "description": "Возвращает следующий доступный stock_code для материалов. Формат: NR + 14 цифр. Вычисляется как MAX текущего кода + 1.",
+        "summary": "Get next stock code",
+        "description": "Returns the next available stock_code for materials. Format: NR + 14 digits. Calculated as MAX of current code + 1.",
         "security": [
           {
             "bearerAuth": []
@@ -11923,7 +12350,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Следующий складской код",
+            "description": "Next stock code",
             "content": {
               "application/json": {
                 "schema": {
@@ -11931,7 +12358,7 @@
                   "properties": {
                     "stock_code": {
                       "type": "string",
-                      "description": "Следующий доступный складской код"
+                      "description": "Next available stock code"
                     }
                   }
                 },
@@ -11955,8 +12382,8 @@
         "tags": [
           "suppliers"
         ],
-        "summary": "Список поставщиков",
-        "description": "Возвращает список поставщиков с фильтрацией по активности, стране и текстовому поиску. Пагинация через page/limit.",
+        "summary": "List of suppliers",
+        "description": "Returns a list of suppliers filtered by activity, country, and text search. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -11969,7 +12396,7 @@
           {
             "name": "is_active",
             "in": "query",
-            "description": "Фильтр по активности",
+            "description": "Filter by activity status",
             "schema": {
               "type": "boolean"
             }
@@ -11977,7 +12404,7 @@
           {
             "name": "country",
             "in": "query",
-            "description": "Фильтр по стране",
+            "description": "Filter by country",
             "schema": {
               "type": "string"
             }
@@ -11985,7 +12412,7 @@
           {
             "name": "search",
             "in": "query",
-            "description": "Поиск по name, description и code (ILIKE)",
+            "description": "Search by name, description and code (ILIKE)",
             "schema": {
               "type": "string"
             }
@@ -11993,7 +12420,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Номер страницы (по умолчанию 1)",
+            "description": "Page number (default 1)",
             "schema": {
               "type": "integer",
               "default": 1
@@ -12002,7 +12429,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Записей на странице (по умолчанию 50)",
+            "description": "Records per page (default 50)",
             "schema": {
               "type": "integer",
               "default": 50
@@ -12011,7 +12438,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Список поставщиков",
+            "description": "List of suppliers",
             "content": {
               "application/json": {
                 "schema": {
@@ -12031,8 +12458,8 @@
                       "id": 1,
                       "name": "MAN Energy Solutions",
                       "code": "MAN-001",
-                      "description": "Поставщик судовых двигателей",
-                      "contact_person": "Иван Петров",
+                      "description": "Marine engine supplier",
+                      "contact_person": "Ivan Petrov",
                       "email": "sales@man-es.com",
                       "phone": "+49 821 322-0",
                       "address": "Stadtbachstr. 1, Augsburg, Germany",
@@ -12061,8 +12488,8 @@
         "tags": [
           "suppliers"
         ],
-        "summary": "Создать поставщика",
-        "description": "Создаёт нового поставщика. Обязательное поле: name.",
+        "summary": "Create supplier",
+        "description": "Creates a new supplier. Required field: name.",
         "security": [
           {
             "bearerAuth": []
@@ -12083,12 +12510,12 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "description": "Наименование поставщика"
+                    "description": "Supplier name"
                   },
                   "code": {
                     "type": "string",
                     "nullable": true,
-                    "description": "Уникальный код"
+                    "description": "Unique code"
                   },
                   "description": {
                     "type": "string",
@@ -12127,7 +12554,7 @@
               "example": {
                 "name": "Caterpillar Marine",
                 "code": "CAT-001",
-                "description": "Поставщик генераторов",
+                "description": "Generator supplier",
                 "contact_person": "John Smith",
                 "email": "marine@cat.com",
                 "phone": "+1 309 675-1000",
@@ -12139,7 +12566,7 @@
         },
         "responses": {
           "201": {
-            "description": "Поставщик создан",
+            "description": "Supplier created",
             "content": {
               "application/json": {
                 "schema": {
@@ -12170,8 +12597,8 @@
         "tags": [
           "suppliers"
         ],
-        "summary": "Получить поставщика по ID",
-        "description": "Возвращает одну запись поставщика по идентификатору.",
+        "summary": "Get supplier by ID",
+        "description": "Returns a single supplier record by identifier.",
         "security": [
           {
             "bearerAuth": []
@@ -12188,12 +12615,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID поставщика"
+            "description": "Supplier ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Запись поставщика",
+            "description": "Supplier record",
             "content": {
               "application/json": {
                 "schema": {
@@ -12220,8 +12647,8 @@
         "tags": [
           "suppliers"
         ],
-        "summary": "Обновить поставщика",
-        "description": "Частичное обновление поставщика. Передаются только изменяемые поля.",
+        "summary": "Update supplier",
+        "description": "Partial update of a supplier. Only changed fields are passed.",
         "security": [
           {
             "bearerAuth": []
@@ -12238,7 +12665,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID поставщика"
+            "description": "Supplier ID"
           }
         ],
         "requestBody": {
@@ -12296,7 +12723,7 @@
         },
         "responses": {
           "200": {
-            "description": "Обновлённая запись",
+            "description": "Updated record",
             "content": {
               "application/json": {
                 "schema": {
@@ -12328,8 +12755,8 @@
         "tags": [
           "suppliers"
         ],
-        "summary": "Удалить поставщика",
-        "description": "Soft-delete поставщика (is_active = false).",
+        "summary": "Delete supplier",
+        "description": "Soft-delete of supplier (is_active = false).",
         "security": [
           {
             "bearerAuth": []
@@ -12346,12 +12773,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID поставщика"
+            "description": "Supplier ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Поставщик удалён",
+            "description": "Supplier deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -14667,8 +15094,8 @@
         "tags": [
           "specifications"
         ],
-        "summary": "Список спецификаций",
-        "description": "Возвращает список спецификаций с фильтрацией по project_id и текстовому поиску. Пагинация через page/limit.",
+        "summary": "List of specifications",
+        "description": "Returns a list of specifications filtered by project_id and text search. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -14681,7 +15108,7 @@
           {
             "name": "project_id",
             "in": "query",
-            "description": "Фильтр по ID проекта",
+            "description": "Filter by project ID",
             "schema": {
               "type": "integer"
             }
@@ -14689,7 +15116,7 @@
           {
             "name": "search",
             "in": "query",
-            "description": "Поиск по name и description (ILIKE)",
+            "description": "Search by name and description (ILIKE)",
             "schema": {
               "type": "string"
             }
@@ -14697,7 +15124,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Номер страницы (по умолчанию 1)",
+            "description": "Page number (default 1)",
             "schema": {
               "type": "integer",
               "default": 1
@@ -14706,7 +15133,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Записей на странице (если не указан — без лимита)",
+            "description": "Records per page (if not specified — no limit)",
             "schema": {
               "type": "integer"
             }
@@ -14714,7 +15141,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Список спецификаций",
+            "description": "List of specifications",
             "content": {
               "application/json": {
                 "schema": {
@@ -14735,8 +15162,8 @@
                       "project_id": 1,
                       "document_id": 5,
                       "code": "SPEC-001",
-                      "name": "Спецификация главного двигателя",
-                      "description": "Техническая спецификация MAN 6S60ME",
+                      "name": "Main engine specification",
+                      "description": "Technical specification MAN 6S60ME",
                       "version": "v1.0",
                       "created_by": 2,
                       "created_at": "2026-01-15T10:00:00.000Z"
@@ -14758,8 +15185,8 @@
         "tags": [
           "specifications"
         ],
-        "summary": "Создать спецификацию",
-        "description": "Создаёт новую спецификацию. Обязательные поля: project_id, name. При указании version также создаётся запись в specification_version.",
+        "summary": "Create specification",
+        "description": "Creates a new specification. Required fields: project_id, name. If version is specified, a record is also created in specification_version.",
         "security": [
           {
             "bearerAuth": []
@@ -14779,8 +15206,8 @@
                 "project_id": 1,
                 "document_id": 5,
                 "code": "SPEC-002",
-                "name": "Спецификация генератора",
-                "description": "Техническая спецификация Caterpillar C32",
+                "name": "Generator specification",
+                "description": "Technical specification Caterpillar C32",
                 "version": "v1.0"
               }
             }
@@ -14788,7 +15215,7 @@
         },
         "responses": {
           "201": {
-            "description": "Спецификация создана",
+            "description": "Specification created",
             "content": {
               "application/json": {
                 "schema": {
@@ -14805,8 +15232,8 @@
                     "project_id": 1,
                     "document_id": 5,
                     "code": "SPEC-002",
-                    "name": "Спецификация генератора",
-                    "description": "Техническая спецификация Caterpillar C32",
+                    "name": "Generator specification",
+                    "description": "Technical specification Caterpillar C32",
                     "version": "v1.0",
                     "created_by": 2,
                     "created_at": "2026-02-01T12:00:00.000Z"
@@ -14832,8 +15259,8 @@
         "tags": [
           "specifications"
         ],
-        "summary": "Получить спецификацию по ID",
-        "description": "Возвращает одну запись спецификации по идентификатору.",
+        "summary": "Get specification by ID",
+        "description": "Returns a single specification record by identifier.",
         "security": [
           {
             "bearerAuth": []
@@ -14850,12 +15277,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID спецификации"
+            "description": "Specification ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Запись спецификации",
+            "description": "Specification record",
             "content": {
               "application/json": {
                 "schema": {
@@ -14866,8 +15293,8 @@
                   "project_id": 1,
                   "document_id": 5,
                   "code": "SPEC-001",
-                  "name": "Спецификация главного двигателя",
-                  "description": "Техническая спецификация MAN 6S60ME",
+                  "name": "Main engine specification",
+                  "description": "Technical specification MAN 6S60ME",
                   "version": "v1.0",
                   "created_by": 2,
                   "created_at": "2026-01-15T10:00:00.000Z"
@@ -14893,8 +15320,8 @@
         "tags": [
           "specifications"
         ],
-        "summary": "Обновить спецификацию",
-        "description": "Частичное обновление спецификации. Изменяемые поля: document_id, code, name, description, version. При изменении version создаётся новая запись в specification_version.",
+        "summary": "Update specification",
+        "description": "Partial update of a specification. Changeable fields: document_id, code, name, description, version. If version changes, a new record is created in specification_version.",
         "security": [
           {
             "bearerAuth": []
@@ -14911,7 +15338,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID спецификации"
+            "description": "Specification ID"
           }
         ],
         "requestBody": {
@@ -14939,7 +15366,7 @@
                 }
               },
               "example": {
-                "name": "Спецификация главного двигателя (обновлено)",
+                "name": "Main engine specification (updated)",
                 "version": "v2.0"
               }
             }
@@ -14947,7 +15374,7 @@
         },
         "responses": {
           "200": {
-            "description": "Обновлённая запись",
+            "description": "Updated record",
             "content": {
               "application/json": {
                 "schema": {
@@ -14964,8 +15391,8 @@
                     "project_id": 1,
                     "document_id": 5,
                     "code": "SPEC-001",
-                    "name": "Спецификация главного двигателя (обновлено)",
-                    "description": "Техническая спецификация MAN 6S60ME",
+                    "name": "Main engine specification (updated)",
+                    "description": "Technical specification MAN 6S60ME",
                     "version": "v2.0",
                     "created_by": 2,
                     "created_at": "2026-01-15T10:00:00.000Z"
@@ -14992,8 +15419,8 @@
         "tags": [
           "specifications"
         ],
-        "summary": "Удалить спецификацию",
-        "description": "Soft-delete спецификации (is_active = false). При невозможности — полное удаление.",
+        "summary": "Delete specification",
+        "description": "Soft-delete of specification (is_active = false). If not possible — full deletion.",
         "security": [
           {
             "bearerAuth": []
@@ -15010,12 +15437,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID спецификации"
+            "description": "Specification ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Спецификация удалена",
+            "description": "Specification deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -15052,8 +15479,8 @@
         "tags": [
           "stages"
         ],
-        "summary": "Список этапов",
-        "description": "Возвращает список этапов проекта с фильтрацией по project_id и текстовому поиску. Сортировка по order_index. Пагинация через page/limit.",
+        "summary": "List of stages",
+        "description": "Returns a list of project stages filtered by project_id and text search. Sorted by order_index. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -15066,7 +15493,7 @@
           {
             "name": "project_id",
             "in": "query",
-            "description": "Фильтр по ID проекта",
+            "description": "Filter by project ID",
             "schema": {
               "type": "integer"
             }
@@ -15074,7 +15501,7 @@
           {
             "name": "search",
             "in": "query",
-            "description": "Поиск по name и description (ILIKE)",
+            "description": "Search by name and description (ILIKE)",
             "schema": {
               "type": "string"
             }
@@ -15082,7 +15509,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Номер страницы (по умолчанию 1)",
+            "description": "Page number (default 1)",
             "schema": {
               "type": "integer",
               "default": 1
@@ -15091,7 +15518,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Записей на странице (если не указан — без лимита)",
+            "description": "Records per page (if not specified — no limit)",
             "schema": {
               "type": "integer"
             }
@@ -15099,7 +15526,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Список этапов",
+            "description": "List of stages",
             "content": {
               "application/json": {
                 "schema": {
@@ -15118,9 +15545,9 @@
                     {
                       "id": 1,
                       "project_id": 1,
-                      "name": "Проектирование",
+                      "name": "Design",
                       "code": "STG-001",
-                      "description": "Этап проектирования судна",
+                      "description": "Ship design stage",
                       "end_date": "2026-06-30",
                       "order_index": 1,
                       "created_at": "2026-01-10T10:00:00.000Z"
@@ -15142,8 +15569,8 @@
         "tags": [
           "stages"
         ],
-        "summary": "Создать этап",
-        "description": "Создаёт новый этап проекта. Обязательные поля: project_id, name, end_date.",
+        "summary": "Create stage",
+        "description": "Creates a new project stage. Required fields: project_id, name, end_date.",
         "security": [
           {
             "bearerAuth": []
@@ -15161,9 +15588,9 @@
               },
               "example": {
                 "project_id": 1,
-                "name": "Проектирование",
+                "name": "Design",
                 "code": "STG-001",
-                "description": "Этап проектирования судна",
+                "description": "Ship design stage",
                 "end_date": "2026-06-30",
                 "order_index": 1
               }
@@ -15172,7 +15599,7 @@
         },
         "responses": {
           "201": {
-            "description": "Этап создан",
+            "description": "Stage created",
             "content": {
               "application/json": {
                 "schema": {
@@ -15187,9 +15614,9 @@
                   "data": {
                     "id": 1,
                     "project_id": 1,
-                    "name": "Проектирование",
+                    "name": "Design",
                     "code": "STG-001",
-                    "description": "Этап проектирования судна",
+                    "description": "Ship design stage",
                     "end_date": "2026-06-30",
                     "order_index": 1,
                     "created_at": "2026-01-10T10:00:00.000Z"
@@ -15215,8 +15642,8 @@
         "tags": [
           "stages"
         ],
-        "summary": "Получить этап по ID",
-        "description": "Возвращает одну запись этапа по идентификатору.",
+        "summary": "Get stage by ID",
+        "description": "Returns a single stage record by identifier.",
         "security": [
           {
             "bearerAuth": []
@@ -15233,12 +15660,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID этапа"
+            "description": "Stage ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Запись этапа",
+            "description": "Stage record",
             "content": {
               "application/json": {
                 "schema": {
@@ -15247,9 +15674,9 @@
                 "example": {
                   "id": 1,
                   "project_id": 1,
-                  "name": "Проектирование",
+                  "name": "Design",
                   "code": "STG-001",
-                  "description": "Этап проектирования судна",
+                  "description": "Ship design stage",
                   "end_date": "2026-06-30",
                   "order_index": 1,
                   "created_at": "2026-01-10T10:00:00.000Z"
@@ -15275,8 +15702,8 @@
         "tags": [
           "stages"
         ],
-        "summary": "Обновить этап",
-        "description": "Частичное обновление этапа. Изменяемые поля: name, code, description, end_date, order_index.",
+        "summary": "Update stage",
+        "description": "Partial update of a stage. Changeable fields: name, code, description, end_date, order_index.",
         "security": [
           {
             "bearerAuth": []
@@ -15293,7 +15720,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID этапа"
+            "description": "Stage ID"
           }
         ],
         "requestBody": {
@@ -15321,7 +15748,7 @@
                 }
               },
               "example": {
-                "name": "Проектирование (обновлено)",
+                "name": "Design (updated)",
                 "end_date": "2026-09-30"
               }
             }
@@ -15329,7 +15756,7 @@
         },
         "responses": {
           "200": {
-            "description": "Обновлённая запись",
+            "description": "Updated record",
             "content": {
               "application/json": {
                 "schema": {
@@ -15344,9 +15771,9 @@
                   "data": {
                     "id": 1,
                     "project_id": 1,
-                    "name": "Проектирование (обновлено)",
+                    "name": "Design (updated)",
                     "code": "STG-001",
-                    "description": "Этап проектирования судна",
+                    "description": "Ship design stage",
                     "end_date": "2026-09-30",
                     "order_index": 1,
                     "created_at": "2026-01-10T10:00:00.000Z"
@@ -15373,8 +15800,8 @@
         "tags": [
           "stages"
         ],
-        "summary": "Удалить этап",
-        "description": "Soft-delete этапа (is_active = false). При невозможности — полное удаление.",
+        "summary": "Delete stage",
+        "description": "Soft-delete of stage (is_active = false). If not possible — full deletion.",
         "security": [
           {
             "bearerAuth": []
@@ -15391,12 +15818,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID этапа"
+            "description": "Stage ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Этап удалён",
+            "description": "Stage deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -15433,8 +15860,8 @@
         "tags": [
           "statements"
         ],
-        "summary": "Список ведомостей",
-        "description": "Возвращает список ведомостей с текстовым поиском по name и description. Пагинация через page/limit.",
+        "summary": "List of statements",
+        "description": "Returns a list of statements with text search by name and description. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -15447,7 +15874,7 @@
           {
             "name": "search",
             "in": "query",
-            "description": "Поиск по name и description (ILIKE)",
+            "description": "Search by name and description (ILIKE)",
             "schema": {
               "type": "string"
             }
@@ -15455,7 +15882,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Номер страницы (по умолчанию 1)",
+            "description": "Page number (default 1)",
             "schema": {
               "type": "integer",
               "default": 1
@@ -15464,7 +15891,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Записей на странице (если не указан — без лимита)",
+            "description": "Records per page (if not specified — no limit)",
             "schema": {
               "type": "integer"
             }
@@ -15472,7 +15899,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Список ведомостей",
+            "description": "List of statements",
             "content": {
               "application/json": {
                 "schema": {
@@ -15516,8 +15943,8 @@
         "tags": [
           "statements"
         ],
-        "summary": "Создать ведомость",
-        "description": "Создаёт новую ведомость. Обязательные поля: document_id, name.",
+        "summary": "Create statement",
+        "description": "Creates a new statement. Required fields: document_id, name.",
         "security": [
           {
             "bearerAuth": []
@@ -15546,7 +15973,7 @@
         },
         "responses": {
           "201": {
-            "description": "Ведомость создана",
+            "description": "Statement created",
             "content": {
               "application/json": {
                 "schema": {
@@ -15590,8 +16017,8 @@
         "tags": [
           "statements"
         ],
-        "summary": "Получить ведомость по ID",
-        "description": "Возвращает одну запись ведомости по идентификатору.",
+        "summary": "Get statement by ID",
+        "description": "Returns a single statement record by identifier.",
         "security": [
           {
             "bearerAuth": []
@@ -15608,12 +16035,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID ведомости"
+            "description": "Statement ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Запись ведомости",
+            "description": "Statement record",
             "content": {
               "application/json": {
                 "schema": {
@@ -15651,8 +16078,8 @@
         "tags": [
           "statements"
         ],
-        "summary": "Обновить ведомость",
-        "description": "Частичное обновление ведомости. Передаются только изменяемые поля: document_id, parent_id, project_id, code, name, description.",
+        "summary": "Update statement",
+        "description": "Partial update of a statement. Only changed fields are passed: document_id, parent_id, project_id, code, name, description.",
         "security": [
           {
             "bearerAuth": []
@@ -15669,7 +16096,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID ведомости"
+            "description": "Statement ID"
           }
         ],
         "requestBody": {
@@ -15709,7 +16136,7 @@
         },
         "responses": {
           "200": {
-            "description": "Обновлённая запись",
+            "description": "Updated record",
             "content": {
               "application/json": {
                 "schema": {
@@ -15754,8 +16181,8 @@
         "tags": [
           "statements"
         ],
-        "summary": "Удалить ведомость",
-        "description": "Soft-delete ведомости (is_active = false). При невозможности — полное удаление.",
+        "summary": "Delete statement",
+        "description": "Soft-delete of statement (is_active = false). If not possible — full deletion.",
         "security": [
           {
             "bearerAuth": []
@@ -15772,12 +16199,12 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID ведомости"
+            "description": "Statement ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "Ведомость удалена",
+            "description": "Statement deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -17635,7 +18062,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID вопроса клиента"
+            "description": "Customer question ID"
           },
           {
             "in": "query",
@@ -17710,7 +18137,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "ID вопроса клиента"
+            "description": "Customer question ID"
           }
         ],
         "requestBody": {
