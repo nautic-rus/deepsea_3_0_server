@@ -95,6 +95,8 @@ class NotificationTemplateService {
     if (!ctx.support_email) ctx.support_email = process.env.SUPPORT_EMAIL || '';
     // loginUrl is commonly used in user-created/password templates
     if (!ctx.loginUrl && process.env.FRONTEND_URL) ctx.loginUrl = `${process.env.FRONTEND_URL.replace(/\/$/, '')}/login`;
+    // Provide frontend root URL (system URL) for templates that need the app root
+    if (!ctx.frontendUrl && process.env.FRONTEND_URL) ctx.frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
     // Ensure actor.full_name exists for templates expecting ФИО
     if (ctx.actor && !ctx.actor.full_name) {
       try {
