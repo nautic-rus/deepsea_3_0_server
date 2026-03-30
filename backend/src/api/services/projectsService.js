@@ -2,6 +2,8 @@ const Project = require('../../db/models/Project');
 const Role = require('../../db/models/Role');
 const UserRole = require('../../db/models/UserRole');
 const { hasPermission } = require('./permissionChecker');
+const Permission = require('../../db/models/Permission');
+const { hasPermissionForProject } = require('./permissionChecker');
 
 /**
  * ProjectsService
@@ -62,6 +64,13 @@ class ProjectsService {
     const projects = await Project.listForUser(actor.id, query);
     // Attach participants for each project: id, full_name, url_avatar (exclude email and phone)
     const pool = require('../../db/connection');
+    // Preload available permission codes to compute per-project permissions for the actor
+    let allPermissions = [];
+    try {
+      allPermissions = await Permission.list();
+    } catch (e) {
+      allPermissions = [];
+    }
     for (const p of projects) {
       try {
         const q = `SELECT u.id, u.email, u.phone, u.avatar_id,
@@ -74,6 +83,23 @@ class ProjectsService {
       } catch (e) {
         p.participants = [];
       } 
+      // Compute permissions available to the actor for this specific project
+      try {
+        const perms = [];
+        for (const perm of allPermissions) {
+          try {
+            // hasPermissionForProject handles actor.permissions shortcut and DB checks
+            // eslint-disable-next-line no-await-in-loop
+            const allowed = await hasPermissionForProject(actor, perm.code, p.id);
+            if (allowed) perms.push(perm.code);
+          } catch (inner) {
+            // ignore individual permission check failures
+          }
+        }
+        p.permissions = perms;
+      } catch (e) {
+        p.permissions = [];
+      }
     }
     return projects;
   }

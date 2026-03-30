@@ -212,9 +212,7 @@ class AuthController {
         organization_id: user.organization_id || null,
         organization: user.organization_name || null,
         rc_username: rc_username,
-        is_active: user.is_active,
-        // List of permission codes available to the user (normalized lower-case strings)
-        permissions: Array.isArray(user.permissions) ? user.permissions : []
+        is_active: user.is_active
       };
 
       res.status(200).json(out);
