@@ -62,7 +62,10 @@ class NotificationDispatcher {
     } = opts;
 
     // 1. Get all potential recipients
-    const allRecipients = await UserNotificationSetting.getRecipientsForEvent(projectId, eventCode);
+    // Pass through target_user_id if provided in opts so model can special-case project_invite
+    const allRecipients = await UserNotificationSetting.getRecipientsForEvent(projectId, eventCode, {
+      target_user_id: opts && (opts.target_user_id || opts.user_id) ? (opts.target_user_id || opts.user_id) : null
+    });
     if (!allRecipients || allRecipients.length === 0) return;
 
     // 2. Filter: keep only participants, optionally exclude actor

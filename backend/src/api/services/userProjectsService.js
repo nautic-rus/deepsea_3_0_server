@@ -1,6 +1,8 @@
 const UserRole = require('../../db/models/UserRole');
 const Role = require('../../db/models/Role');
 const Project = require('../../db/models/Project');
+const User = require('../../db/models/User');
+const NotificationDispatcher = require('./notificationDispatcher');
 const { hasPermission } = require('./permissionChecker');
 
 /**
@@ -80,6 +82,27 @@ class UserProjectsService {
       }
       const assigned = await UserRole.assign(userId, roleObj.id, projectId);
       if (assigned) results.push(assigned);
+    }
+
+    // After successful assignment(s), dispatch project_invite notification to the user
+    try {
+      const targetUser = await User.findById(userId);
+      const projectObj = project || (await Project.findById(projectId));
+      const templateContext = { project: projectObj || null, actor: actor || null, user: targetUser || null };
+      NotificationDispatcher.dispatch({
+        eventCode: 'project_invite',
+        projectId: Number(projectId),
+        actor: actor || null,
+        entity: projectObj ? { id: projectObj.id, code: projectObj.code, title: projectObj.name || null } : null,
+        templateContext,
+        participantIds: [Number(userId)],
+        target_user_id: Number(userId),
+        excludeActor: false
+      });
+    } catch (e) {
+      // Non-fatal: log and continue
+      // eslint-disable-next-line no-console
+      console.warn('Failed to dispatch project_invite notification for user', userId, e && e.message ? e.message : e);
     }
     return results;
   }
