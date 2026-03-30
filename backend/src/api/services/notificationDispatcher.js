@@ -77,6 +77,37 @@ class NotificationDispatcher {
     });
     if (recipients.length === 0) return;
 
+    // Special-case: project_invite should ignore user settings and deliver
+    // only an email to the target user (no center notification, no Rocket.Chat).
+    if (String(eventCode).toLowerCase() === 'project_invite') {
+      const uniqueByUser = new Map();
+      for (const r of recipients) {
+        const uid = Number(r.user_id);
+        if (!uid) continue;
+        // prefer rows that include an email
+        if (!uniqueByUser.has(uid) && r.email) uniqueByUser.set(uid, r);
+        else if (!uniqueByUser.has(uid)) uniqueByUser.set(uid, r);
+      }
+
+      for (const [uid, r] of uniqueByUser.entries()) {
+        try {
+          if (!r.email) continue;
+          const rendered = await TemplateService.render(eventCode, 'email', templateContext);
+          const subject = rendered.subject || fallbackSubject || `Notification: ${eventCode}`;
+          try {
+            await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
+          } catch (mailErr) {
+            console.error('Failed to send project_invite email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
+          }
+        } catch (err) {
+          console.error('Failed to process project_invite recipient', r.user_id, err && err.message ? err.message : err);
+        }
+      }
+
+      // Do not proceed with standard dispatch behavior for project_invite
+      return;
+    }
+
     // 3. Build unified notification data once, then resolve FK names
     const notifData = buildNotificationData(actor, entity, content);
     const entityCode = entity && entity.code ? entity.code : null;
