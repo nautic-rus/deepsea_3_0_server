@@ -63,10 +63,12 @@ class PagesService {
       // ensure permissions is an array (DB may return different shapes in edge cases)
         const perms = Array.isArray(node.permissions) ? node.permissions : (node.permissions ? [node.permissions] : []);
       if (!perms || perms.length === 0) {
-        // If a page has no permissions assigned in page_permissions, deny by default.
-        // This prevents returning all pages when page_permissions table is empty.
-        allowed = false;
-        if (debug) console.debug(`pagesService: page ${node.id} denied (no perms defined)`);
+        // If a page has no permissions assigned in page_permissions, allow by default
+        // (treat as a public page). Historically the service denied by default,
+        // which hid pages that are intentionally public. Make this explicit
+        // so clients receive those pages.
+        allowed = true;
+        if (debug) console.debug(`pagesService: page ${node.id} allowed (no perms defined - public)`);
       } else {
           for (const perm of perms) {
             const code = (perm && typeof perm === 'object') ? perm.code : perm;
@@ -76,7 +78,21 @@ class PagesService {
           }
         if (debug && !allowed) console.debug(`pagesService: page ${node.id} denied (no matching perms)`);
       }
-      if (!allowed) return null;
+      if (!allowed) {
+        // parent denied — still check children and promote any allowed children
+        if (node.children && node.children.length > 0) {
+          const promoted = [];
+          for (const ch of node.children) {
+            const childOut = await filterAndSanitize(ch);
+            if (childOut) {
+              if (Array.isArray(childOut)) promoted.push(...childOut);
+              else promoted.push(childOut);
+            }
+          }
+          if (promoted.length) return promoted; // return array of promoted children
+        }
+        return null;
+      }
 
       const out = {
         id: node.id,
@@ -93,7 +109,9 @@ class PagesService {
         const children = [];
         for (const ch of node.children) {
           const childOut = await filterAndSanitize(ch);
-          if (childOut) children.push(childOut);
+          if (!childOut) continue;
+          if (Array.isArray(childOut)) children.push(...childOut);
+          else children.push(childOut);
         }
         if (children.length) out.children = children;
       }
@@ -107,7 +125,9 @@ class PagesService {
 
     for (const root of roots) {
       const sanitizedRoot = await filterAndSanitize(root);
-      if (sanitizedRoot) allowedPages.push(sanitizedRoot);
+      if (!sanitizedRoot) continue;
+      if (Array.isArray(sanitizedRoot)) allowedPages.push(...sanitizedRoot);
+      else allowedPages.push(sanitizedRoot);
     }
 
     const sanitized = allowedPages;
@@ -116,12 +136,13 @@ class PagesService {
   }
 
   static async _isPageAllowed(user, page) {
-    // If page.permissions is empty, deny by default (explicit permissions required)
+    // If page.permissions is empty, allow by default (public page)
     const perms = Array.isArray(page.permissions) ? page.permissions : (page.permissions ? [page.permissions] : []);
-    if (!perms || perms.length === 0) return false;
+    if (!perms || perms.length === 0) return true;
     // allow if user has at least one of the permissions listed
     for (const perm of perms) {
-      if (await hasPermission(user, perm)) return true;
+      const code = (perm && typeof perm === 'object') ? perm.code : perm;
+      if (await hasPermission(user, code)) return true;
     }
     return false;
   }
