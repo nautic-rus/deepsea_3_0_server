@@ -18,6 +18,62 @@ const EmailService = require('./emailService');
 const RocketChatService = require('./rocketChatService');
 
 class NotificationDispatcher {
+  static EXTERNAL_DUPLICATE_WINDOW_MS = 60 * 1000;
+
+  static EXTERNAL_EVENT_GROUPS = {
+    document_uploaded: 'document_uploaded_group',
+    document_uploaded_in_project: 'document_uploaded_group',
+    document_updated: 'document_updated_group',
+    document_updated_in_project: 'document_updated_group',
+    question_updated: 'question_updated_group',
+    question_updated_in_project: 'question_updated_group'
+  };
+
+  static _recentExternalDeliveries = new Map();
+
+  static _normalizeMessagePart(value) {
+    if (value === undefined || value === null) return '';
+    return String(value).replace(/\s+/g, ' ').trim();
+  }
+
+  static _reserveExternalDeliveryKey({ eventCode, methodCode, userId, projectId, entityId, target, subject, body }) {
+    const normalizedEvent = NotificationDispatcher.EXTERNAL_EVENT_GROUPS[String(eventCode)] || String(eventCode);
+    const normalizedMethod = String(methodCode || '').toLowerCase();
+    const normalizedTarget = NotificationDispatcher._normalizeMessagePart(target).toLowerCase();
+    const normalizedSubject = NotificationDispatcher._normalizeMessagePart(subject);
+    const normalizedBody = NotificationDispatcher._normalizeMessagePart(body);
+    const key = [
+      normalizedEvent,
+      normalizedMethod,
+      Number(userId) || 0,
+      Number(projectId) || 0,
+      Number(entityId) || 0,
+      normalizedTarget,
+      normalizedSubject,
+      normalizedBody
+    ].join('||');
+
+    const now = Date.now();
+    const expiresAt = NotificationDispatcher._recentExternalDeliveries.get(key);
+    if (expiresAt && expiresAt > now) return null;
+
+    NotificationDispatcher._recentExternalDeliveries.set(key, now + NotificationDispatcher.EXTERNAL_DUPLICATE_WINDOW_MS);
+
+    // Best-effort cleanup of expired keys to keep the map bounded.
+    if (NotificationDispatcher._recentExternalDeliveries.size > 2000) {
+      for (const [k, exp] of NotificationDispatcher._recentExternalDeliveries.entries()) {
+        if (!exp || exp <= now) NotificationDispatcher._recentExternalDeliveries.delete(k);
+      }
+    }
+
+    return key;
+  }
+
+  static _releaseExternalDeliveryKey(key) {
+    if (!key) return;
+    NotificationDispatcher._recentExternalDeliveries.delete(key);
+  }
+
   /**
    * Dispatch notifications for an event.
    *
@@ -156,10 +212,26 @@ class NotificationDispatcher {
           }
           const rendered = await TemplateService.render(eventCode, 'rocket_chat', templateContext);
           const text = rendered.text || rendered.html || fallbackText;
-          if (r.rc_username) {
-            await RocketChatService.sendMessage({ channel: `@${r.rc_username}`, text });
-          } else if (r.rc_user_id) {
-            await RocketChatService.sendMessage({ channel: r.rc_user_id, text });
+          const channel = r.rc_username ? `@${r.rc_username}` : (r.rc_user_id || null);
+          if (!channel) continue;
+
+          const dedupKey = NotificationDispatcher._reserveExternalDeliveryKey({
+            eventCode,
+            methodCode: 'rocket_chat',
+            userId: uid,
+            projectId,
+            entityId: entity && entity.id,
+            target: channel,
+            subject: '',
+            body: text
+          });
+          if (!dedupKey) continue;
+
+          try {
+            await RocketChatService.sendMessage({ channel, text });
+          } catch (rcErr) {
+            NotificationDispatcher._releaseExternalDeliveryKey(dedupKey);
+            throw rcErr;
           }
         } else if (r.method_code === 'email') {
           if (!isActive) {
@@ -168,9 +240,25 @@ class NotificationDispatcher {
           }
           const rendered = await TemplateService.render(eventCode, 'email', templateContext);
           const subject = rendered.subject || fallbackSubject || `Notification: ${eventCode}`;
+          const toEmail = r.email ? String(r.email).trim() : '';
+          if (!toEmail) continue;
+
+          const dedupKey = NotificationDispatcher._reserveExternalDeliveryKey({
+            eventCode,
+            methodCode: 'email',
+            userId: uid,
+            projectId,
+            entityId: entity && entity.id,
+            target: toEmail,
+            subject,
+            body: rendered.text || rendered.html || ''
+          });
+          if (!dedupKey) continue;
+
           try {
-            await EmailService.sendMail({ to: r.email, subject, text: rendered.text, html: rendered.html });
+            await EmailService.sendMail({ to: toEmail, subject, text: rendered.text, html: rendered.html });
           } catch (mailErr) {
+            NotificationDispatcher._releaseExternalDeliveryKey(dedupKey);
             console.error('Failed to send email to', r.email, mailErr && mailErr.message ? mailErr.message : mailErr);
           }
         }
