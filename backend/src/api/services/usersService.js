@@ -371,18 +371,12 @@ class UsersService {
     const offset = limit ? (page - 1) * limit : 0;
 
     // Search (username/email/phone)
-    const search = query.search ? `%${query.search.trim()}%` : null;
+    const searchTerm = query.search ? query.search.trim() : null;
+    const is_active = Object.prototype.hasOwnProperty.call(query, 'is_active') ? query.is_active : undefined;
 
-    let where = '';
-    const params = [];
-    if (search) {
-      params.push(search, search, search);
-      where = `WHERE username ILIKE $${params.length - 2} OR email ILIKE $${params.length - 1} OR phone ILIKE $${params.length}`;
-    }
-
-    // Delegate DB work to User model
-    const total = await User.countUsers(query.search ? query.search.trim() : null);
-    const data = await User.listUsers({ search: query.search ? query.search.trim() : null, limit, offset });
+    // Delegate DB work to User model (pass is_active filter if provided)
+    const total = await User.countUsers(searchTerm, is_active);
+    const data = await User.listUsers({ search: searchTerm, limit, offset, is_active });
 
     return {
       data,

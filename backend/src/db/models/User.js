@@ -302,13 +302,18 @@ class User {
   /**
    * Посчитать пользователей с опциональным поиском
    */
-  static async countUsers(search) {
-    let where = '';
+  static async countUsers(search, is_active) {
     const params = [];
+    const whereParts = [];
     if (search) {
-      params.push(search, search, search);
-      where = `WHERE username ILIKE $1 OR email ILIKE $2 OR phone ILIKE $3`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      whereParts.push(`(username ILIKE $${params.length - 2} OR email ILIKE $${params.length - 1} OR phone ILIKE $${params.length})`);
     }
+    if (typeof is_active === 'boolean') {
+      params.push(is_active);
+      whereParts.push(`is_active = $${params.length}`);
+    }
+    const where = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
     const query = `SELECT COUNT(*) AS total FROM users ${where}`;
     const res = await pool.query(query, params);
     return parseInt(res.rows[0].total, 10) || 0;
@@ -317,14 +322,20 @@ class User {
   /**
    * Вернуть список пользователей с пагинацией и поиском
    */
-  static async listUsers({ search = null, limit, offset = 0 } = {}) {
+  static async listUsers({ search = null, limit, offset = 0, is_active } = {}) {
     const params = [];
-    let where = '';
-    // Build WHERE clause with dynamic parameter positions
+    const whereParts = [];
+    // Build WHERE clauses with dynamic parameter positions
     if (search) {
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
-      where = `WHERE u.username ILIKE $1 OR u.email ILIKE $2 OR u.phone ILIKE $3`;
+      whereParts.push(`(u.username ILIKE $${params.length - 2} OR u.email ILIKE $${params.length - 1} OR u.phone ILIKE $${params.length})`);
     }
+    if (typeof is_active === 'boolean') {
+      params.push(is_active);
+      whereParts.push(`u.is_active = $${params.length}`);
+    }
+
+    const where = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
 
     // Note: join department and job_title to return textual names
     let paging = '';

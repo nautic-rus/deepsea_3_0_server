@@ -656,6 +656,17 @@
           }
         }
       },
+      "JobTitle": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "is_active": { "type": "boolean", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
       "Document": {
         "type": "object",
         "properties": {
@@ -16901,6 +16912,15 @@
               "type": "string"
             },
             "description": "Search by username/email/phone (ILIKE)"
+          }
+          ,
+          {
+            "in": "query",
+            "name": "is_active",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Filter by active status (true|false). Accepts 'true'/'false' or '1'/'0'."
           }
         ],
         "responses": {

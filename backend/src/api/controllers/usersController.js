@@ -139,6 +139,14 @@ class UsersController {
     try {
       const query = req.query || {};
       const actor = req.user || null;
+      // Normalize is_active query param: accept 'true'/'false' or '1'/'0'
+      if (Object.prototype.hasOwnProperty.call(query, 'is_active')) {
+        const v = query.is_active;
+        if (v === 'true' || v === '1' || v === 1 || v === true) query.is_active = true;
+        else if (v === 'false' || v === '0' || v === 0 || v === false) query.is_active = false;
+        else delete query.is_active;
+      }
+
       const result = await UsersService.listUsers(query, actor);
 
       res.status(200).json(result);
