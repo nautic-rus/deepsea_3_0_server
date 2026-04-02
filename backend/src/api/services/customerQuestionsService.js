@@ -122,12 +122,16 @@ class CustomerQuestionsService {
     const typeId = q.type ? q.type.id : null;
     const projectId = q.project ? q.project.id : null;
 
-    // Ensure actor belongs to the question's project
-    if (projectId) {
-      const Project = require('../../db/models/Project');
-      const assigned = await Project.isUserAssigned(projectId, actor.id);
-      if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    // Customer questions without a project are treated as orphaned legacy records
+    // and must not be exposed through the API.
+    if (!projectId) {
+      const err = new Error('Customer question not found'); err.statusCode = 404; throw err;
     }
+
+    // Ensure actor belongs to the question's project
+    const Project = require('../../db/models/Project');
+    const assigned = await Project.isUserAssigned(projectId, actor.id);
+    if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
 
     // Fetch available statuses via work flow transitions from current status
     try {

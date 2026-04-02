@@ -32,12 +32,29 @@ class CustomerQuestion {
       where.push(`status_id IN (SELECT id FROM customer_question_status WHERE is_final = $${idx++})`);
       values.push(is_closed);
     }
-    if (project_id !== undefined && project_id !== null) { where.push(`(cq.project_id IS NULL OR cq.project_id = $${idx++})`); values.push(project_id); }
-    // allowed_project_ids: only include questions that belong to these projects (or have no project)
+    if (project_id !== undefined && project_id !== null) {
+      const projectIds = Array.isArray(project_id)
+        ? project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
+        : [Number(project_id)].filter(p => !Number.isNaN(p));
+
+      if (projectIds.length === 0) {
+        return [];
+      }
+
+      if (projectIds.length === 1) {
+        where.push(`cq.project_id = $${idx++}`);
+        values.push(projectIds[0]);
+      } else {
+        where.push(`cq.project_id = ANY($${idx}::int[])`);
+        values.push(projectIds);
+        idx++;
+      }
+    }
+    // allowed_project_ids: only include questions that belong to these projects
     if (filters.allowed_project_ids !== undefined && filters.allowed_project_ids !== null) {
       const arr = Array.isArray(filters.allowed_project_ids) ? filters.allowed_project_ids.map(p => Number(p)).filter(p => !Number.isNaN(p)) : [Number(filters.allowed_project_ids)].filter(p => !Number.isNaN(p));
       if (arr.length === 0) return [];
-      where.push(`(cq.project_id IS NULL OR cq.project_id = ANY($${idx}::int[]))`);
+      where.push(`cq.project_id = ANY($${idx}::int[])`);
       values.push(arr);
       idx++;
     }
