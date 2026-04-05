@@ -35,6 +35,10 @@ class UsersService {
       is_verified
     } = userData;
 
+    // Normalize email and username to lowercase for consistency
+    if (email) email = String(email).toLowerCase().trim();
+    if (username) username = String(username).toLowerCase().trim();
+
     // Helper: generate a strong password with required character classes
     function generateStrongPassword(length = 16) {
       const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';

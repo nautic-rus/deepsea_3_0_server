@@ -21,7 +21,6 @@ const issueHistoryController = require('../controllers/issueHistoryController');
 const documentHistoryController = require('../controllers/documentHistoryController');
 const customerQuestionHistoryController = require('../controllers/customerQuestionHistoryController');
 const materialsController = require('../controllers/materialsController');
-const equipmentController = require('../controllers/equipmentController');
 const materialKitsController = require('../controllers/materialKitsController');
 const unitsController = require('../controllers/unitsController');
 const shipmentsController = require('../controllers/shipmentsController');
@@ -398,12 +397,7 @@ router.delete('/material_kits/items/:id', authMiddleware, materialKitsController
 // apply kit to specification version
 router.post('/material_kits/:id/apply', authMiddleware, materialKitsController.apply);
 
-// ===== Equipment routes =====
-router.get('/equipment', authMiddleware, equipmentController.list);
-router.get('/equipment/:id', authMiddleware, equipmentController.get);
-router.post('/equipment', authMiddleware, equipmentController.create);
-router.put('/equipment/:id', authMiddleware, equipmentController.update);
-router.delete('/equipment/:id', authMiddleware, equipmentController.delete);
+// Equipment endpoints removed — merged into materials/equipment_materials
 
 // ===== Shipments routes =====
 router.get('/shipments', authMiddleware, shipmentsController.list);

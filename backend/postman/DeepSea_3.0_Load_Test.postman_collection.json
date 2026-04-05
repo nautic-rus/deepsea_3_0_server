@@ -48,7 +48,6 @@
 		{ "key": "material_kit_id", "value": "1", "type": "string" },
 		{ "key": "material_kit_item_id", "value": "1", "type": "string" },
 
-		{ "key": "equipment_id", "value": "1", "type": "string" },
 		{ "key": "specification_id", "value": "1", "type": "string" },
 		{ "key": "specialization_id", "value": "1", "type": "string" },
 		{ "key": "stage_id", "value": "1", "type": "string" },
@@ -1631,32 +1630,7 @@
 				}
 			]
 		},
-		{
-			"name": "Equipment",
-			"item": [
-				{
-					"name": "List Equipment",
-					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/equipment?limit={{limit}}&offset={{offset}}", "host": ["{{base_url}}"], "path": ["equipment"], "query": [{ "key": "limit", "value": "{{limit}}" }, { "key": "offset", "value": "{{offset}}" }] } }
-				},
-				{
-					"name": "Get Equipment",
-					"request": { "method": "GET", "header": [], "url": { "raw": "{{base_url}}/equipment/{{equipment_id}}", "host": ["{{base_url}}"], "path": ["equipment", "{{equipment_id}}"] } }
-				},
-				{
-					"name": "Create Equipment",
-					"event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["var json = pm.response.json();", "if (json.id) pm.collectionVariables.set('equipment_id', json.id);"] } }],
-					"request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Equip_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/equipment", "host": ["{{base_url}}"], "path": ["equipment"] } }
-				},
-				{
-					"name": "Update Equipment",
-					"request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Equip_Updated_{{timestamp}}\"\n}" }, "url": { "raw": "{{base_url}}/equipment/{{equipment_id}}", "host": ["{{base_url}}"], "path": ["equipment", "{{equipment_id}}"] } }
-				},
-				{
-					"name": "Delete Equipment",
-					"request": { "method": "DELETE", "header": [], "url": { "raw": "{{base_url}}/equipment/{{equipment_id}}", "host": ["{{base_url}}"], "path": ["equipment", "{{equipment_id}}"] } }
-				}
-			]
-		},
+
 		{
 			"name": "Specifications",
 			"item": [

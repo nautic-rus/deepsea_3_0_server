@@ -138,7 +138,7 @@ class MaterialsService {
 
     const q = `
       SELECT LPAD(CAST(COALESCE(MAX(CAST(SUBSTRING(stock_code FROM 3) AS BIGINT)), 0) + 1 AS TEXT), 14, '0') AS next_num
-      FROM materials
+      FROM equipment_materials
       WHERE stock_code ~ '^NR[0-9]{14}$'
     `;
     const res = await pool.query(q);

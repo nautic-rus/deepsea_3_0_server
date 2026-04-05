@@ -17,9 +17,13 @@ class AuthController {
    */
   static async login(req, res, next) {
     try {
-  const { username, email, password } = req.body;
+  let { username, email, password } = req.body || {};
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('user-agent') || '';
+
+  // Normalize username/email to lowercase and trim
+  username = username ? String(username).toLowerCase().trim() : null;
+  email = email ? String(email).toLowerCase().trim() : null;
 
   // Allow login by username OR email. Pass identifier to service.
   const identifier = username || email || null;
@@ -226,7 +230,7 @@ class AuthController {
    */
   static async requestPasswordReset(req, res, next) {
     try {
-      const { email } = req.body || {};
+      const email = req.body && req.body.email ? String(req.body.email).toLowerCase().trim() : null;
       const PasswordResetService = require('../services/passwordResetService');
       await PasswordResetService.createTokenForEmail(email);
       // Always return 200 to avoid email enumeration

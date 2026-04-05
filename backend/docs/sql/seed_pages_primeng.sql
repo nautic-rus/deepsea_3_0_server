@@ -13,7 +13,7 @@ VALUES
   ('documents', '/documents', 'menu.documents', 'Documents', 'pi pi-file', 20),
   ('issues', '/issues', 'menu.issues', 'Issues', 'pi pi-exclamation-triangle', 30),
   ('materials', '/materials', 'menu.materials', 'Materials', 'pi pi-tags', 40),
-  ('equipment', '/equipment', 'menu.equipment', 'Equipment', 'pi pi-wrench', 50),
+  -- equipment page removed (merged into materials/equipment_materials)
   ('specifications', '/specifications', 'menu.specifications', 'Specifications', 'pi pi-file', 60),
   ('stages', '/stages', 'menu.stages', 'Stages', 'pi pi-calendar', 70),
   ('storage', '/storage', 'menu.storage', 'Storage', 'pi pi-database', 80),
@@ -132,13 +132,7 @@ WHERE NOT EXISTS (
 );
 
 -- equipment -> equipment.view
-WITH p AS (SELECT id FROM pages WHERE key = 'equipment'),
-     perm AS (SELECT id FROM permissions WHERE code = 'equipment.view')
-INSERT INTO page_permissions (page_id, permission_id)
-SELECT p.id, perm.id FROM p, perm
-WHERE NOT EXISTS (
-  SELECT 1 FROM page_permissions pp WHERE pp.page_id = p.id AND pp.permission_id = perm.id
-);
+-- equipment page permissions removed (handled by migration)
 
 -- specifications -> specifications.view
 WITH p AS (SELECT id FROM pages WHERE key = 'specifications'),

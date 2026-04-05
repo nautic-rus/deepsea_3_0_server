@@ -21,7 +21,10 @@ class UsersController {
    */
   static async createUser(req, res, next) {
     try {
-      const userData = req.body;
+      const userData = req.body || {};
+      // Normalize email and username to lowercase for consistency
+      if (userData.email) userData.email = String(userData.email).toLowerCase().trim();
+      if (userData.username) userData.username = String(userData.username).toLowerCase().trim();
       // Передаём объект текущего пользователя (если установлен middleware аутентификации)
       const actor = req.user || null;
       const newUser = await UsersService.createUser(userData, actor);
