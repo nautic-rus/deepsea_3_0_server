@@ -432,7 +432,7 @@ class DocumentsService {
   }
 
   static async attachFileToDocument(id, storageId, actor, metadata = {}) {
-    const requiredPermission = 'documents.update';
+    const requiredPermission = 'documents.upload_files';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
