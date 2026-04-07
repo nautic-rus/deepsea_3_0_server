@@ -435,7 +435,7 @@ class DocumentsService {
     const requiredPermission = 'documents.upload_files';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.upload_files'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id)) || (storageId === undefined || storageId === null)) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
 
     const existing = await Document.findById(Number(id));
