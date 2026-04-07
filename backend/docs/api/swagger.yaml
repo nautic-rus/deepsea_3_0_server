@@ -18,37 +18,43 @@ tags: []
       security:
         - bearerAuth: []
       parameters:
-        - in: query
-          name: project_id
-          required: false
-          schema:
-            type: integer
-          description: Optional project id to filter settings
-      responses:
-        '200':
-          description: Notification settings matrix
-          content:
-            application/json:
-    Material:
-      type: object
-      properties:
-        id:
-          type: integer
-        stock_code:
-          type: string
-          nullable: true
-        title:
-          type: string
-        description:
-          type: string
-          nullable: true
-        count:
-          type: integer
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
+        Shipment:
+          type: object
+          properties:
+            id:
+              type: integer
+            project_id:
+              type: integer
+              nullable: true
+            supplier_id:
+              type: integer
+              nullable: true
+            code:
+              type: string
+              nullable: true
+            model:
+              type: string
+              nullable: true
+            manufacturer:
+              type: string
+              nullable: true
+            description:
+              type: string
+              nullable: true
+            received_at:
+              type: string
+              format: date-time
+              nullable: true
+            created_by:
+              type: integer
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+              nullable: true
           type: string
           format: date-time
         shipments:
@@ -81,8 +87,18 @@ tags: []
           format: date-time
           nullable: true
         created_by:
-          type: integer
+          type: object
           nullable: true
+          description: Creator info
+          properties:
+            id:
+              type: integer
+            full_name:
+              type: string
+              nullable: true
+            avatar_id:
+              type: integer
+              nullable: true
         created_at:
           type: string
           format: date-time
@@ -4819,11 +4835,6 @@ paths:
         - statements.view
       parameters:
         - in: query
-          name: document_id
-          required: false
-          schema:
-            type: integer
-        - in: query
           name: project_id
           required: false
           schema:
@@ -4843,9 +4854,7 @@ paths:
                       properties:
                         id:
                           type: integer
-                        document_id:
-                          type: integer
-                          nullable: true
+                        # document_id removed
                         parent_id:
                           type: integer
                           nullable: true
@@ -4878,7 +4887,6 @@ paths:
               example:
                 data:
                   - id: 1
-                    document_id: 1
                     parent_id: null
                     project_id: 12
                     code: "ST-001"
@@ -4903,16 +4911,13 @@ paths:
           application/json:
             schema:
               type: object
-              properties:
+                properties:
                 parent_id:
                   type: integer
                   example: 1
                 project_id:
                   type: integer
                   example: 12
-                document_id:
-                  type: integer
-                  example: 1
                 code:
                   type: string
                 name:
@@ -4924,7 +4929,6 @@ paths:
             example:
               parent_id: null
               project_id: 12
-              document_id: 1
               code: "ST-010"
               name: "Monthly materials statement"
               description: "Statement for March"
@@ -4948,9 +4952,7 @@ paths:
                       project_id:
                         type: integer
                         nullable: true
-                      document_id:
-                        type: integer
-                        nullable: true
+                      # document_id removed
                       code:
                         type: string
                         nullable: true
@@ -4972,7 +4974,6 @@ paths:
                   id: 10
                   parent_id: null
                   project_id: 12
-                  document_id: 1
                   code: "ST-010"
                   name: "Monthly materials statement"
                   description: "Created statement"

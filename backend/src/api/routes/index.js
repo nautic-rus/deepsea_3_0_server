@@ -411,10 +411,7 @@ router.delete('/shipments/:id/files/:storage_id', authMiddleware, shipmentsContr
 router.get('/shipments/:id/files', authMiddleware, shipmentsController.listFiles);
 
 // ===== Shipment items (materials in shipment) =====
-router.get('/shipments/:shipment_id/items', authMiddleware, shipmentsController.listItems);
-router.post('/shipments/:shipment_id/items', authMiddleware, shipmentsController.createItem);
-router.put('/shipments/items/:id', authMiddleware, shipmentsController.updateItem);
-router.delete('/shipments/items/:id', authMiddleware, shipmentsController.deleteItem);
+// Removed: endpoints for managing shipment items are deprecated.
 
 // ===== Suppliers routes =====
 router.get('/suppliers', authMiddleware, suppliersController.list);

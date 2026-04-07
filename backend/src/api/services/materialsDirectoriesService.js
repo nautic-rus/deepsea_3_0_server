@@ -114,6 +114,16 @@ class MaterialsDirectoriesService {
 
   static async remove(req) {
     const id = req.params.id;
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+
+    // Prevent deletion if any materials are linked to this directory
+    const chk = await pool.query('SELECT 1 FROM equipment_materials WHERE directory_id = $1 LIMIT 1', [Number(id)]);
+    if (chk && chk.rowCount > 0) {
+      const err = new Error('Directory contains materials and cannot be deleted');
+      err.statusCode = 400;
+      throw err;
+    }
+
     return await MaterialsDirectory.softDelete(id);
   }
 }

@@ -9,7 +9,12 @@ class Statement {
     let idx = 1;
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT id, document_id, parent_id, project_id, code, name, description, created_by, created_at FROM statements ${whereSql} ORDER BY id`;
+    let q = `SELECT s.id, s.parent_id, s.project_id, s.code, s.name, s.description,
+      json_build_object('id', u.id, 'full_name', concat_ws(' ', u.first_name, u.last_name), 'avatar_id', u.avatar_id) AS created_by,
+      s.created_at
+      FROM statements s
+      LEFT JOIN users u ON u.id = s.created_by
+      ${whereSql} ORDER BY s.id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -22,30 +27,37 @@ class Statement {
   }
 
   static async findById(id) {
-    const q = `SELECT id, document_id, parent_id, project_id, code, name, description, created_by, created_at FROM statements WHERE id = $1 LIMIT 1`;
+    const q = `SELECT s.id, s.parent_id, s.project_id, s.code, s.name, s.description,
+      json_build_object('id', u.id, 'full_name', concat_ws(' ', u.first_name, u.last_name), 'avatar_id', u.avatar_id) AS created_by,
+      s.created_at
+      FROM statements s
+      LEFT JOIN users u ON u.id = s.created_by
+      WHERE s.id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
 
   static async create(fields) {
-    const q = `INSERT INTO statements (document_id, parent_id, project_id, code, name, description, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, document_id, parent_id, project_id, code, name, description, created_by, created_at`;
-    const vals = [fields.document_id || null, fields.parent_id || null, fields.project_id || null, fields.code, fields.name, fields.description, fields.created_by];
+    const q = `INSERT INTO statements (parent_id, project_id, code, name, description, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`;
+    const vals = [fields.parent_id || null, fields.project_id || null, fields.code, fields.name, fields.description, fields.created_by];
     const res = await pool.query(q, vals);
-    return res.rows[0];
+    if (!res.rows[0]) return null;
+    return await Statement.findById(res.rows[0].id);
   }
 
   static async update(id, fields) {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['document_id','parent_id','project_id','code','name','description'].forEach((k) => {
+    ['parent_id','project_id','code','name','description'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Statement.findById(id);
-    const q = `UPDATE statements SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, document_id, parent_id, project_id, code, name, description, created_by, created_at`;
+    const q = `UPDATE statements SET ${parts.join(', ')} WHERE id = $${idx}`;
     values.push(id);
     const res = await pool.query(q, values);
-    return res.rows[0] || null;
+    // return enriched row
+    return await Statement.findById(id);
   }
 
   static async softDelete(id) {

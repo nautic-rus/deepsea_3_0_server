@@ -1,4 +1,5 @@
 const Supplier = require('../../db/models/Supplier');
+const Shipment = require('../../db/models/Shipment');
 const { hasPermission } = require('./permissionChecker');
 
 /**
@@ -24,6 +25,14 @@ class SuppliersService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const s = await Supplier.findById(Number(id));
     if (!s) { const err = new Error('Supplier not found'); err.statusCode = 404; throw err; }
+    // Attach shipments where this supplier participates
+    try {
+      const shipments = await Shipment.list({ supplier_id: Number(id) });
+      s.shipments = shipments;
+    } catch (err) {
+      // if shipments lookup fails, return supplier without shipments
+      s.shipments = [];
+    }
     return s;
   }
 

@@ -171,6 +171,12 @@
             "type": "string",
             "format": "date-time"
           }
+        ,
+        "shipments": {
+          "type": "array",
+          "description": "Shipments where supplier participates",
+          "items": { "$ref": "#/components/schemas/Shipment" }
+        }
         }
       },
       "CustomerQuestionType": {
@@ -204,6 +210,11 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "shipments": {
+            "type": "array",
+            "description": "Shipments where supplier participates",
+            "items": { "$ref": "#/components/schemas/Shipment" }
           }
         }
       },
@@ -255,10 +266,6 @@
           },
           "project": {
             "$ref": "#/components/schemas/Project",
-            "nullable": true
-          },
-          "order_index": {
-            "type": "integer",
             "nullable": true
           },
           "created_at": {
@@ -2376,16 +2383,27 @@
             "nullable": true,
             "description": "Supplier ID"
           },
-          "equipment_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Equipment ID"
-          },
+              
           "code": {
             "type": "string",
             "nullable": true,
             "description": "Shipment code"
           },
+              "model": {
+                "type": "string",
+                "nullable": true,
+                "description": "Model name or number"
+              },
+              "manufacturer": {
+                "type": "string",
+                "nullable": true,
+                "description": "Manufacturer"
+              },
+              "description": {
+                "type": "string",
+                "nullable": true,
+                "description": "Description"
+              },
           "received_at": {
             "type": "string",
             "format": "date-time",
@@ -2393,9 +2411,14 @@
             "description": "Received date"
           },
           "created_by": {
-            "type": "integer",
+            "type": "object",
             "nullable": true,
-            "description": "Creator ID"
+            "description": "Creator info",
+            "properties": {
+              "id": { "type": "integer" },
+              "full_name": { "type": "string", "nullable": true },
+              "avatar_id": { "type": "integer", "nullable": true }
+            }
           },
           "created_at": {
             "type": "string",
@@ -2416,11 +2439,7 @@
             "type": "integer",
             "description": "Statement ID"
           },
-          "document_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Document ID"
-          },
+          
           "parent_id": {
             "type": "integer",
             "nullable": true,
@@ -2460,14 +2479,9 @@
         "type": "object",
         "description": "Request body for creating/updating a statement",
         "required": [
-          "document_id",
           "name"
         ],
         "properties": {
-          "document_id": {
-            "type": "integer",
-            "description": "Document ID (required)"
-          },
           "parent_id": {
             "type": "integer",
             "nullable": true,
@@ -2862,7 +2876,7 @@
                         {
                           "id": 7,
                           "statement": { "code": "ST-01", "name": "Statement A", "project_id": 3 },
-                          "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001" } ]
+                          "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001", "model": "M-100", "manufacturer": "ACME", "description": "Initial shipment" } ]
                         }
                       ]
                     }
@@ -3015,7 +3029,7 @@
                   "created_at": "2026-01-15T10:30:00.000Z",
                   "updated_by": null,
                   "updated_at": null,
-                  "projects": [ { "id": 7, "statement": { "code": "ST-01", "name": "Statement A", "project_id": 3 }, "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001" } ] } ]
+                  "projects": [ { "id": 7, "statement": { "code": "ST-01", "name": "Statement A", "project_id": 3 }, "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001", "model": "M-100", "manufacturer": "ACME", "description": "Initial shipment" } ] } ]
                 }
               }
             }
@@ -3107,12 +3121,12 @@
                     "created_at": "2026-01-15T10:30:00.000Z",
                     "updated_by": { "id": 2, "name": "Anna Sidorova", "avatar_id": 15 },
                     "updated_at": "2026-02-20T14:00:00.000Z",
-                    "projects": [
+                        "projects": [
                       {
                         "id": 7,
                         "created_at": "2026-02-10T09:00:00.000Z",
                         "statement": { "id": 11, "code": "ST-01", "name": "Statement A", "project_id": 3 },
-                        "shipments": { "id": 1, "supplier_id": 2, "code": "SH-2026-001" }
+                        "shipments": { "id": 1, "supplier_id": 2, "code": "SH-2026-001", "model": "M-100", "manufacturer": "ACME", "description": "Initial shipment" }
                       }
                     ]
                   }
@@ -3523,7 +3537,7 @@
           "shipments"
         ],
         "summary": "List of shipments",
-        "description": "Returns a list of shipments filtered by supplier, equipment, and text search. Pagination via page/limit.",
+        "description": "Returns a list of shipments filtered by supplier and text search. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -3537,14 +3551,6 @@
             "in": "query",
             "name": "supplier_id",
             "description": "Filter by supplier ID",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "equipment_id",
-            "description": "Filter by equipment ID",
             "schema": {
               "type": "integer"
             }
@@ -3596,7 +3602,6 @@
                     {
                       "id": 1,
                       "supplier_id": 2,
-                      "equipment_id": null,
                       "code": "SH-2026-001",
                       "received_at": "2026-04-01T10:00:00.000Z",
                       "created_by": 1,
@@ -3642,11 +3647,7 @@
                     "nullable": true,
                     "description": "Supplier ID"
                   },
-                  "equipment_id": {
-                    "type": "integer",
-                    "nullable": true,
-                    "description": "Equipment ID"
-                  },
+                  
                   "code": {
                     "type": "string",
                     "nullable": true,
@@ -3783,10 +3784,7 @@
                     "type": "integer",
                     "nullable": true
                   },
-                  "equipment_id": {
-                    "type": "integer",
-                    "nullable": true
-                  },
+                  
                   "code": {
                     "type": "string",
                     "nullable": true
@@ -4149,309 +4147,7 @@
         }
       }
     },
-    "/api/shipments/{shipment_id}/items": {
-      "get": {
-        "tags": [
-          "shipments"
-        ],
-        "summary": "List of materials in shipment",
-        "description": "Returns a list of shipment_materials records for the specified shipment.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "shipments.view"
-        ],
-        "parameters": [
-          {
-            "name": "shipment_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Shipment ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "List of materials in shipment",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/ShipmentMaterial"
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "data": [
-                    {
-                      "id": 1,
-                      "shipment_id": 1,
-                      "material_id": 5,
-                      "quantity": 100,
-                      "created_at": "2026-03-20T08:00:00.000Z"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid shipment_id"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Forbidden — missing permission shipments.view"
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "shipments"
-        ],
-        "summary": "Add material to shipment",
-        "description": "Creates a new shipment_materials link. Required field: material_id.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "shipments.update"
-        ],
-        "parameters": [
-          {
-            "name": "shipment_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Shipment ID"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "material_id"
-                ],
-                "properties": {
-                  "material_id": {
-                    "type": "integer",
-                    "description": "Material ID"
-                  },
-                  "quantity": {
-                    "type": "number",
-                    "description": "Quantity (default 0)"
-                  }
-                }
-              },
-              "example": {
-                "material_id": 5,
-                "quantity": 100
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Material added to shipment",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/ShipmentMaterial"
-                    }
-                  }
-                },
-                "example": {
-                  "data": {
-                    "id": 1,
-                    "shipment_id": 1,
-                    "material_id": 5,
-                    "quantity": 100,
-                    "created_at": "2026-03-20T08:00:00.000Z"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Missing material_id or invalid shipment_id"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Forbidden — missing permission shipments.update"
-          }
-        }
-      }
-    },
-    "/api/shipments/items/{id}": {
-      "put": {
-        "tags": [
-          "shipments"
-        ],
-        "summary": "Update material in shipment",
-        "description": "Updates a shipment_materials record. Can change shipment_id, material_id, quantity.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "shipments.update"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "shipment_materials record ID"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "shipment_id": {
-                    "type": "integer"
-                  },
-                  "material_id": {
-                    "type": "integer"
-                  },
-                  "quantity": {
-                    "type": "number"
-                  }
-                }
-              },
-              "example": {
-                "quantity": 200
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Updated record",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/ShipmentMaterial"
-                    }
-                  }
-                },
-                "example": {
-                  "data": {
-                    "id": 1,
-                    "shipment_id": 1,
-                    "material_id": 5,
-                    "quantity": 200,
-                    "created_at": "2026-03-20T08:00:00.000Z"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid id"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Forbidden — missing permission shipments.update"
-          },
-          "404": {
-            "description": "Item not found"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "shipments"
-        ],
-        "summary": "Remove material from shipment",
-        "description": "Deletes a shipment_materials record (full deletion).",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "shipments.update"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "shipment_materials record ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Record deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "example": {
-                  "message": "Shipment item deleted"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid id"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Forbidden — missing permission shipments.update"
-          },
-          "404": {
-            "description": "Item not found"
-          }
-        }
-      }
-    },
+    
     "/api/audit_logs": {
       "get": {
         "tags": [
@@ -15977,7 +15673,6 @@
                   "data": [
                     {
                       "id": 1,
-                      "document_id": 1,
                       "parent_id": null,
                       "project_id": 12,
                       "code": "ST-001",
@@ -16004,7 +15699,7 @@
           "statements"
         ],
         "summary": "Create statement",
-        "description": "Creates a new statement. Required fields: document_id, name.",
+        "description": "Creates a new statement. Required field: name.",
         "security": [
           {
             "bearerAuth": []
@@ -16021,7 +15716,6 @@
                 "$ref": "#/components/schemas/StatementCreate"
               },
               "example": {
-                "document_id": 1,
                 "parent_id": null,
                 "project_id": 12,
                 "code": "ST-010",
@@ -16044,10 +15738,9 @@
                     }
                   }
                 },
-                "example": {
+                  "example": {
                   "data": {
                     "id": 10,
-                    "document_id": 1,
                     "parent_id": null,
                     "project_id": 12,
                     "code": "ST-010",
@@ -16061,7 +15754,7 @@
             }
           },
           "400": {
-            "description": "Missing required fields (document_id, name)"
+            "description": "Missing required fields (name)"
           },
           "401": {
             "description": "Authentication required"
@@ -16108,7 +15801,6 @@
                 },
                 "example": {
                   "id": 1,
-                  "document_id": 1,
                   "parent_id": null,
                   "project_id": 12,
                   "code": "ST-001",
@@ -16139,7 +15831,7 @@
           "statements"
         ],
         "summary": "Update statement",
-        "description": "Partial update of a statement. Only changed fields are passed: document_id, parent_id, project_id, code, name, description.",
+        "description": "Partial update of a statement. Only changed fields are passed: parent_id, project_id, code, name, description.",
         "security": [
           {
             "bearerAuth": []
@@ -16165,9 +15857,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "document_id": {
-                    "type": "integer"
-                  },
+                  
                   "parent_id": {
                     "type": "integer",
                     "nullable": true

@@ -32,7 +32,7 @@ class StatementsService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission statements.create'); err.statusCode = 403; throw err; }
-    if (!fields || !fields.document_id || !fields.name) { const err = new Error('Missing required fields'); err.statusCode = 400; throw err; }
+    if (!fields || !fields.name) { const err = new Error('Missing required fields'); err.statusCode = 400; throw err; }
     if (!fields.created_by) fields.created_by = actor.id;
     return await Statement.create(fields);
   }
