@@ -11,7 +11,7 @@ class MaterialsDirectory {
     let q = `SELECT md.id, md.name, md.path, md.parent_id, md.description, md.order_index, md.created_by, md.updated_by, md.created_at, md.updated_at,
       concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name) AS created_by_full_name,
       concat_ws(' ', uu.last_name, uu.first_name, uu.middle_name) AS updated_by_full_name
-      FROM materials_directories md
+      FROM equipment_materials_directories md
       LEFT JOIN users cu ON cu.id = md.created_by
       LEFT JOIN users uu ON uu.id = md.updated_by
       ${whereSql}
@@ -31,7 +31,7 @@ class MaterialsDirectory {
     const q = `SELECT md.id, md.name, md.path, md.parent_id, md.description, md.order_index, md.created_by, md.updated_by, md.created_at, md.updated_at,
       concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name) AS created_by_full_name,
       concat_ws(' ', uu.last_name, uu.first_name, uu.middle_name) AS updated_by_full_name
-      FROM materials_directories md
+      FROM equipment_materials_directories md
       LEFT JOIN users cu ON cu.id = md.created_by
       LEFT JOIN users uu ON uu.id = md.updated_by
       WHERE md.id = $1 LIMIT 1`;
@@ -53,7 +53,7 @@ class MaterialsDirectory {
       }
     }
     if (cols.length === 0) throw new Error('No fields provided');
-    const q = `INSERT INTO materials_directories (${cols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING id`;
+    const q = `INSERT INTO equipment_materials_directories (${cols.join(',')}) VALUES (${placeholders.join(',')}) RETURNING id`;
     const res = await pool.query(q, values);
     const r = res.rows[0];
     if (!r) return null;
@@ -68,7 +68,7 @@ class MaterialsDirectory {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await MaterialsDirectory.findById(id);
-    const q = `UPDATE materials_directories SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id`;
+    const q = `UPDATE equipment_materials_directories SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id`;
     values.push(id);
     const res = await pool.query(q, values);
     const r = res.rows[0];
@@ -78,11 +78,11 @@ class MaterialsDirectory {
 
   static async softDelete(id) {
     try {
-      const q = `UPDATE materials_directories SET is_active = false WHERE id = $1`;
+      const q = `UPDATE equipment_materials_directories SET is_active = false WHERE id = $1`;
       const res = await pool.query(q, [id]);
       if (res.rowCount > 0) return true;
     } catch (err) {}
-    const q2 = `DELETE FROM materials_directories WHERE id = $1`;
+    const q2 = `DELETE FROM equipment_materials_directories WHERE id = $1`;
     const res2 = await pool.query(q2, [id]);
     return res2.rowCount > 0;
   }

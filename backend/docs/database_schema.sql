@@ -29,52 +29,7 @@ DECLARE
   cnt INTEGER := 0;
 BEGIN
   SELECT COALESCE(SUM(blocking_count),0) INTO cnt FROM vw_document_blocking_links WHERE document_id = d_id;
-  RETURN cnt = 0;
-END;
-$$;
-
-
-ALTER FUNCTION public.can_close_document(d_id integer) OWNER TO postgres;
-
---
--- Name: can_close_issue(integer); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION public.can_close_issue(i_id integer) RETURNS boolean
-    LANGUAGE plpgsql STABLE
-    AS $$
-DECLARE
-  cnt INTEGER := 0;
-BEGIN
-  SELECT COALESCE(SUM(blocking_count),0) INTO cnt FROM vw_issue_blocking_links WHERE issue_id = i_id;
-  RETURN cnt = 0;
-END;
-$$;
-
-
-ALTER FUNCTION public.can_close_issue(i_id integer) OWNER TO postgres;
-
---
--- Name: prevent_delete_if_protected(); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION public.prevent_delete_if_protected() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.is_protected IS TRUE THEN
-    RAISE EXCEPTION 'Cannot delete protected row from %', TG_TABLE_NAME;
-  END IF;
-  RETURN OLD;
-END;
-$$;
-
-
-ALTER FUNCTION public.prevent_delete_if_protected() OWNER TO postgres;
-
---
--- Name: user_notification_settings_updated_at_trigger(); Type: FUNCTION; Schema: public; Owner: postgres
---
+-- RENAMED: `materials_directories` -> `equipment_materials_directories` (see equipment_materials_directories block later in this file)
 
 CREATE FUNCTION public.user_notification_settings_updated_at_trigger() RETURNS trigger
     LANGUAGE plpgsql
@@ -83,16 +38,9 @@ BEGIN
   NEW.updated_at = CURRENT_TIMESTAMP;
   RETURN NEW;
 END;
-$$;
+-- RENAMED: `materials_directories` -> `equipment_materials_directories` (see equipment_materials_directories block later in this file)
 
-
-ALTER FUNCTION public.user_notification_settings_updated_at_trigger() OWNER TO postgres;
-
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
-
---
+ALTER SEQUENCE public.notification_events_id_seq OWNER TO postgres;
 -- Name: audit_logs; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -997,6 +945,8 @@ CREATE TABLE public.equipment_materials (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     weight integer DEFAULT 0,
     sfi_code_id integer,
+    -- type of the record: 'material' or 'equipment'
+    "type" public.equipment_materials_type DEFAULT 'material'::public.equipment_materials_type,
     status character varying(50) DEFAULT 'active'::character varying
 );
 
@@ -1031,6 +981,9 @@ ALTER SEQUENCE public.equipment_materials_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE public.equipment_materials_id_seq OWNED BY public.equipment_materials.id;
 
+-- ENUM type for equipment_materials.type
+CREATE TYPE public.equipment_materials_type AS ENUM ('material','equipment');
+
 
 --
 -- Name: equipment_materials_projects; Type: TABLE; Schema: public; Owner: postgres
@@ -1041,7 +994,7 @@ CREATE TABLE public.equipment_materials_projects (
     equipment_material_id integer NOT NULL,
     project_id integer NOT NULL,
     statement_id integer,
-    supplier_id integer,
+    shipments_id integer,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -1388,6 +1341,46 @@ ALTER SEQUENCE public.issue_storage_id_seq OWNER TO postgres;
 
 ALTER SEQUENCE public.issue_storage_id_seq OWNED BY public.issue_storage.id;
 
+-- Name: shipments_storage; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.shipments_storage (
+    id integer NOT NULL,
+    shipment_id integer NOT NULL,
+    storage_id integer NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.shipments_storage OWNER TO postgres;
+
+--
+-- Name: TABLE shipments_storage; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON TABLE public.shipments_storage IS 'Связь между отгрузками и файлами в хранилище (вложения)';
+
+--
+-- Name: shipments_storage_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.shipments_storage_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.shipments_storage_id_seq OWNER TO postgres;
+
+--
+-- Name: shipments_storage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.shipments_storage_id_seq OWNED BY public.shipments_storage.id;
+
 
 --
 -- Name: issue_type; Type: TABLE; Schema: public; Owner: postgres
@@ -1611,78 +1604,11 @@ ALTER SEQUENCE public.material_kits_id_seq OWNED BY public.material_kits.id;
 
 
 --
--- Name: materials_directories; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.materials_directories (
-    id integer NOT NULL,
-    name character varying(255) NOT NULL,
-    path text,
-    parent_id integer,
-    description text,
-    order_index integer DEFAULT 0,
-    created_by integer NOT NULL,
-    updated_by integer,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.materials_directories OWNER TO postgres;
-
---
--- Name: TABLE materials_directories; Type: COMMENT; Schema: public; Owner: postgres
---
-
-COMMENT ON TABLE public.materials_directories IS 'Таблица дерева директорий для хранения материалов';
+-- RENAMED: `materials_directories` -> `equipment_materials_directories` (see equipment_materials_directories block later in this file)
 
 
 --
--- Name: materials_directories_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.materials_directories_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.materials_directories_id_seq OWNER TO postgres;
-
---
--- Name: materials_directories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.materials_directories_id_seq OWNED BY public.materials_directories.id;
-
-
---
--- Name: notification_events; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.notification_events (
-    id integer NOT NULL,
-    code character varying(100) NOT NULL,
-    name character varying(200) NOT NULL,
-    description text,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    status boolean DEFAULT true NOT NULL,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    is_protected boolean DEFAULT false NOT NULL
-);
-
-
-ALTER TABLE public.notification_events OWNER TO postgres;
-
---
--- Name: notification_events_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.notification_events_id_seq
-    AS integer
+-- RENAMED: `materials_directories` -> `equipment_materials_directories` (see equipment_materials_directories block later in this file)
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -2267,45 +2193,7 @@ ALTER SEQUENCE public.specializations_id_seq OWNED BY public.specializations.id;
 
 
 --
--- Name: specification; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.specification (
-    id integer NOT NULL,
-    project_id integer NOT NULL,
-    document_id integer,
-    code character varying(100),
-    name character varying(255) NOT NULL,
-    description text,
-    created_by integer NOT NULL,
-    updated_by integer,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.specification OWNER TO postgres;
-
---
--- Name: TABLE specification; Type: COMMENT; Schema: public; Owner: postgres
---
-
-COMMENT ON TABLE public.specification IS 'Таблица спецификаций (привязана к одному проекту)';
-
-
---
--- Name: specification_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.specification_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
+-- DROPPED: statements_specification table and related sequence (removed by migration)
 ALTER SEQUENCE public.specification_id_seq OWNER TO postgres;
 
 --
@@ -2444,44 +2332,7 @@ ALTER SEQUENCE public.stages_id_seq OWNED BY public.stages.id;
 
 
 --
--- Name: statement_materials; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.statement_materials (
-    id integer NOT NULL,
-    statement_id integer NOT NULL,
-    material_id integer NOT NULL,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.statement_materials OWNER TO postgres;
-
---
--- Name: statement_materials_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.statement_materials_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.statement_materials_id_seq OWNER TO postgres;
-
---
--- Name: statement_materials_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.statement_materials_id_seq OWNED BY public.statement_materials.id;
-
-
---
--- Name: statements; Type: TABLE; Schema: public; Owner: postgres
---
+-- DROPPED: statements_specification table and related sequence (removed by migration)
 
 CREATE TABLE public.statements (
     id integer NOT NULL,
@@ -2617,38 +2468,7 @@ ALTER SEQUENCE public.statements_specification_id_seq OWNED BY public.statements
 
 
 --
--- Name: statements_version; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.statements_version (
-    id integer NOT NULL,
-    statement_id integer NOT NULL,
-    version character varying(50),
-    notes text,
-    created_by integer NOT NULL,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
-);
-
-
-ALTER TABLE public.statements_version OWNER TO postgres;
-
---
--- Name: statements_version_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.statements_version_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.statements_version_id_seq OWNER TO postgres;
-
---
--- Name: statements_version_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+-- DROPPED: statement_materials table and related sequence (removed by migration)
 --
 
 ALTER SEQUENCE public.statements_version_id_seq OWNED BY public.statements_version.id;
@@ -3501,7 +3321,8 @@ ALTER TABLE ONLY public.material_kits ALTER COLUMN id SET DEFAULT nextval('publi
 -- Name: materials_directories id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.materials_directories ALTER COLUMN id SET DEFAULT nextval('public.materials_directories_id_seq'::regclass);
+ALTER TABLE ONLY public.equipment_materials_directories ALTER COLUMN id SET DEFAULT nextval('public.equipment_materials_directories_id_seq'::regclass);
+
 
 
 --
@@ -3864,7 +3685,7 @@ ALTER TABLE ONLY public.department
 -- Name: materials_directories directories_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
-ALTER TABLE ONLY public.materials_directories
+ALTER TABLE ONLY public.equipment_materials_directories
     ADD CONSTRAINT directories_pkey PRIMARY KEY (id);
 
 
@@ -4101,9 +3922,6 @@ ALTER TABLE ONLY public.issue_status
 
 
 --
--- Name: issue_storage issue_storage_issue_id_storage_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
 ALTER TABLE ONLY public.issue_storage
     ADD CONSTRAINT issue_storage_issue_id_storage_id_key UNIQUE (issue_id, storage_id);
 
@@ -4114,6 +3932,19 @@ ALTER TABLE ONLY public.issue_storage
 
 ALTER TABLE ONLY public.issue_storage
     ADD CONSTRAINT issue_storage_pkey PRIMARY KEY (id);
+
+-- Name: shipments_storage shipments_storage_shipment_id_storage_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+--
+ALTER TABLE ONLY public.shipments_storage
+    ADD CONSTRAINT shipments_storage_shipment_id_storage_id_key UNIQUE (shipment_id, storage_id);
+
+
+-- Name: shipments_storage shipments_storage_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+--
+ALTER TABLE ONLY public.shipments_storage
+    ADD CONSTRAINT shipments_storage_pkey PRIMARY KEY (id);
 
 
 --
@@ -4882,28 +4713,28 @@ CREATE INDEX idx_department_manager_id ON public.department USING btree (manager
 -- Name: idx_directories_created_by; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_directories_created_by ON public.materials_directories USING btree (created_by);
+CREATE INDEX idx_directories_created_by ON public.equipment_materials_directories USING btree (created_by);
 
 
 --
 -- Name: idx_directories_order_index; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_directories_order_index ON public.materials_directories USING btree (order_index);
+CREATE INDEX idx_directories_order_index ON public.equipment_materials_directories USING btree (order_index);
 
 
 --
 -- Name: idx_directories_path; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_directories_path ON public.materials_directories USING btree (path);
+CREATE INDEX idx_directories_path ON public.equipment_materials_directories USING btree (path);
 
 
 --
 -- Name: idx_directories_updated_by; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_directories_updated_by ON public.materials_directories USING btree (updated_by);
+CREATE INDEX idx_directories_updated_by ON public.equipment_materials_directories USING btree (updated_by);
 
 
 --
@@ -5400,54 +5231,54 @@ CREATE INDEX idx_materials_created_by ON public.equipment_materials USING btree 
 -- Name: idx_materials_directories_parent_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_materials_directories_parent_id ON public.materials_directories USING btree (parent_id);
+CREATE INDEX idx_materials_directories_parent_id ON public.equipment_materials_directories USING btree (parent_id);
 
 
 --
--- Name: idx_materials_directory_id; Type: INDEX; Schema: public; Owner: postgres
---
+-- Name: equipment_materials_directories; Type: TABLE; Schema: public; Owner: postgres
 
-CREATE INDEX idx_materials_directory_id ON public.equipment_materials USING btree (directory_id);
+CREATE TABLE public.equipment_materials_directories (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    path text,
+    parent_id integer,
+    description text,
+    order_index integer DEFAULT 0,
+    created_by integer NOT NULL,
+    updated_by integer,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
 
 
---
--- Name: idx_materials_stock_code; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_materials_stock_code ON public.equipment_materials USING btree (stock_code);
-
-
---
--- Name: idx_materials_unit_id; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_materials_unit_id ON public.equipment_materials USING btree (unit_id);
-
+ALTER TABLE public.equipment_materials_directories OWNER TO postgres;
 
 --
--- Name: idx_materials_updated_by; Type: INDEX; Schema: public; Owner: postgres
+-- Name: TABLE equipment_materials_directories; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_materials_updated_by ON public.equipment_materials USING btree (updated_by);
-
-
---
--- Name: idx_password_reset_tokens_token; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_password_reset_tokens_token ON public.password_reset_tokens USING btree (token);
-
+COMMENT ON TABLE public.equipment_materials_directories IS 'Таблица дерева директорий для хранения материалов';
 
 --
--- Name: idx_password_reset_tokens_user_id; Type: INDEX; Schema: public; Owner: postgres
+-- Name: equipment_materials_directories_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
-CREATE INDEX idx_password_reset_tokens_user_id ON public.password_reset_tokens USING btree (user_id);
+CREATE SEQUENCE public.equipment_materials_directories_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
+ALTER SEQUENCE public.equipment_materials_directories_id_seq OWNER TO postgres;
+
 --
--- Name: idx_projects_code; Type: INDEX; Schema: public; Owner: postgres
+-- Name: equipment_materials_directories_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
+
+ALTER SEQUENCE public.equipment_materials_directories_id_seq OWNED BY public.equipment_materials_directories.id;
 
 CREATE INDEX idx_projects_code ON public.projects USING btree (code);
 
@@ -6445,7 +6276,7 @@ ALTER TABLE ONLY public.equipment_materials_projects
 --
 
 ALTER TABLE ONLY public.equipment_materials_projects
-    ADD CONSTRAINT equipment_materials_projects_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES public.suppliers(id) ON DELETE SET NULL;
+    ADD CONSTRAINT equipment_materials_projects_shipments_id_fkey FOREIGN KEY (shipments_id) REFERENCES public.shipments(id) ON DELETE SET NULL;
 
 
 --
@@ -6630,6 +6461,20 @@ ALTER TABLE ONLY public.issue_storage
 
 ALTER TABLE ONLY public.issue_storage
     ADD CONSTRAINT issue_storage_storage_id_fkey FOREIGN KEY (storage_id) REFERENCES public.storage(id) ON DELETE CASCADE;
+
+
+-- Name: shipments_storage shipments_storage_shipment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+--
+ALTER TABLE ONLY public.shipments_storage
+    ADD CONSTRAINT shipments_storage_shipment_id_fkey FOREIGN KEY (shipment_id) REFERENCES public.shipments(id) ON DELETE CASCADE;
+
+
+-- Name: shipments_storage shipments_storage_storage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+--
+ALTER TABLE ONLY public.shipments_storage
+    ADD CONSTRAINT shipments_storage_storage_id_fkey FOREIGN KEY (storage_id) REFERENCES public.storage(id) ON DELETE CASCADE;
 
 
 --

@@ -405,6 +405,10 @@ router.get('/shipments/:id', authMiddleware, shipmentsController.get);
 router.post('/shipments', authMiddleware, shipmentsController.create);
 router.put('/shipments/:id', authMiddleware, shipmentsController.update);
 router.delete('/shipments/:id', authMiddleware, shipmentsController.delete);
+router.post('/shipments/:id/files', authMiddleware, _upload.single('file'), shipmentsController.attachFile);
+router.post('/shipments/:id/files/local', authMiddleware, _upload.single('file'), shipmentsController.attachLocalFile);
+router.delete('/shipments/:id/files/:storage_id', authMiddleware, shipmentsController.detachFile);
+router.get('/shipments/:id/files', authMiddleware, shipmentsController.listFiles);
 
 // ===== Shipment items (materials in shipment) =====
 router.get('/shipments/:shipment_id/items', authMiddleware, shipmentsController.listItems);

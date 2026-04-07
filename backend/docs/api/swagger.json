@@ -101,8 +101,8 @@
       "description": "CRUD operations for materials"
     },
     {
-      "name": "materials_directories",
-      "description": "CRUD operations for material directories"
+      "name": "equipment_materials_directories",
+      "description": "CRUD operations for equipment/material directories"
     },
     {
       "name": "organizations",
@@ -111,6 +111,10 @@
     {
       "name": "shipments",
       "description": "CRUD operations for shipments"
+    },
+    {
+      "name": "suppliers",
+      "description": "CRUD operations for suppliers"
     },
     {
       "name": "storage",
@@ -1802,38 +1806,19 @@
       },
       "Material": {
         "type": "object",
-        "description": "Material — record from materials table (with nested objects for relations)",
+        "description": "Material or equipment record from equipment_materials table",
         "properties": {
-          "id": {
-            "type": "integer",
-            "description": "Material ID"
-          },
-          "stock_code": {
-            "type": "string",
-            "description": "Stock code (format NR + 14 digits)"
-          },
-          "name": {
-            "type": "string",
-            "description": "Material name"
-          },
-          "description": {
-            "type": "string",
-            "nullable": true,
-            "description": "Material description"
-          },
+          "id": { "type": "integer", "description": "Material ID" },
+          "stock_code": { "type": "string", "description": "Stock code (format NR + 14 digits)" },
+          "name": { "type": "string", "description": "Material name" },
+          "description": { "type": "string", "nullable": true, "description": "Material description" },
           "directory": {
             "type": "object",
             "nullable": true,
             "description": "Directory (reference)",
             "properties": {
-              "id": {
-                "type": "integer",
-                "description": "Directory ID"
-              },
-              "name": {
-                "type": "string",
-                "description": "Directory name"
-              }
+              "id": { "type": "integer", "description": "Directory ID" },
+              "name": { "type": "string", "description": "Directory name" }
             }
           },
           "unit": {
@@ -1841,83 +1826,81 @@
             "nullable": true,
             "description": "Unit of measurement",
             "properties": {
-              "id": {
-                "type": "integer",
-                "description": "Unit ID"
-              },
-              "name": {
-                "type": "string",
-                "description": "Unit name"
-              }
+              "id": { "type": "integer", "description": "Unit ID" },
+              "name": { "type": "string", "description": "Unit name" }
             }
           },
-          "weight": {
-            "type": "number",
+          "weight": { "type": "number", "nullable": true, "description": "Material weight" },
+          "sfi_code": {
+            "type": "object",
             "nullable": true,
-            "description": "Material weight"
+            "description": "SFI classification object",
+            "properties": {
+              "id": { "type": "integer", "nullable": true },
+              "code": { "type": "string" },
+              "name_ru": { "type": "string", "nullable": true },
+              "name_en": { "type": "string", "nullable": true }
+            }
           },
+          "type": { "type": "string", "enum": ["material","equipment"], "description": "Entity type" },
+          "status": { "type": "string", "nullable": true, "description": "Record status" },
           "created_by": {
             "type": "object",
             "nullable": true,
             "description": "Created by",
             "properties": {
-              "id": {
-                "type": "integer",
-                "description": "User ID"
-              },
-              "name": {
-                "type": "string",
-                "nullable": true,
-                "description": "User full name"
-              }
+              "id": { "type": "integer", "description": "User ID" },
+              "name": { "type": "string", "nullable": true, "description": "User full name" },
+              "avatar_id": { "type": "integer", "nullable": true }
             }
           },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Created at"
-          },
+          "created_at": { "type": "string", "format": "date-time", "description": "Created at" },
           "updated_by": {
             "type": "object",
             "nullable": true,
             "description": "Updated by",
             "properties": {
-              "id": {
-                "type": "integer",
-                "description": "User ID"
-              },
-              "name": {
-                "type": "string",
-                "nullable": true,
-                "description": "User full name"
-              }
+              "id": { "type": "integer", "description": "User ID" },
+              "name": { "type": "string", "nullable": true, "description": "User full name" },
+              "avatar_id": { "type": "integer", "nullable": true }
             }
           },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "Updated at"
-          },
-          "statement_materials": {
+          "updated_at": { "type": "string", "format": "date-time", "nullable": true, "description": "Updated at" },
+          "projects": {
             "type": "array",
+            "description": "Linked projects from equipment_materials_projects",
             "items": {
-              "type": "integer"
-            },
-            "description": "Array of related statement IDs (statement_id)"
-          },
-          "shipment_materials": {
-            "type": "array",
-            "items": {
-              "type": "integer"
-            },
-            "description": "Array of related shipment IDs (shipment_id)"
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "created_at": { "type": "string", "format": "date-time", "nullable": true },
+                "statement": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "id": { "type": "integer", "nullable": true },
+                    "code": { "type": "string", "nullable": true },
+                    "name": { "type": "string", "nullable": true },
+                    "project_id": { "type": "integer", "nullable": true }
+                  }
+                },
+                "shipments": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "id": { "type": "integer", "nullable": true },
+                    "supplier_id": { "type": "integer", "nullable": true },
+                    "code": { "type": "string", "nullable": true }
+                  }
+                }
+              }
+            }
           }
         }
       },
       "MaterialCreate": {
         "type": "object",
-        "description": "Request body for creating/updating a material",
+        "description": "Request body for creating/updating an equipment_materials record",
         "properties": {
           "stock_code": {
             "type": "string",
@@ -1934,20 +1917,34 @@
           },
           "directory_id": {
             "type": "integer",
-            "nullable": true
+            "description": "Directory ID from equipment_materials_directories"
           },
           "unit_id": {
             "type": "integer",
             "nullable": true
           },
-          "manufacturer": {
-            "type": "string",
-            "nullable": true
+          "weight": {
+            "type": "number",
+            "nullable": true,
+            "description": "Weight"
           },
-          "count": {
+          "sfi_code_id": {
             "type": "integer",
             "nullable": true,
-            "description": "Quantity"
+            "description": "SFI code identifier"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "material",
+              "equipment"
+            ],
+            "description": "Entity type"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "description": "Record status"
           },
           "shipments": {
             "type": "array",
@@ -1968,20 +1965,79 @@
                 }
               ]
             }
+          }
+        },
+        "required": [
+          "name",
+          "directory_id"
+        ]
+      },
+      "MaterialUpdate": {
+        "type": "object",
+        "description": "Request body for partial update of an equipment_materials record",
+        "properties": {
+          "stock_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stock code"
           },
-          "statements": {
+          "name": {
+            "type": "string",
+            "description": "Material name"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "directory_id": {
+            "type": "integer",
+            "description": "Directory ID from equipment_materials_directories"
+          },
+          "unit_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "weight": {
+            "type": "number",
+            "nullable": true,
+            "description": "Weight"
+          },
+          "sfi_code_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "SFI code identifier"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "material",
+              "equipment"
+            ],
+            "description": "Entity type"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "description": "Record status"
+          },
+          "updated_by": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Updater user ID"
+          },
+          "shipments": {
             "type": "array",
-            "description": "Statement links — array of IDs or { statement_id } objects. On update fully resynchronizes links.",
+            "description": "Shipment links - array of IDs or { shipment_id } objects. On update fully resynchronizes links.",
             "items": {
               "oneOf": [
                 {
                   "type": "integer",
-                  "description": "Statement ID"
+                  "description": "Shipment ID"
                 },
                 {
                   "type": "object",
                   "properties": {
-                    "statement_id": {
+                    "shipment_id": {
                       "type": "integer"
                     }
                   }
@@ -1989,14 +2045,11 @@
               ]
             }
           }
-        },
-        "required": [
-          "name"
-        ]
+        }
       },
       "MaterialsDirectory": {
         "type": "object",
-        "description": "Materials directory — record from materials_directories table",
+        "description": "Directory record from equipment_materials_directories table",
         "properties": {
           "id": {
             "type": "integer",
@@ -2061,16 +2114,11 @@
       },
       "MaterialsDirectoryCreate": {
         "type": "object",
-        "description": "Request body for creating/updating a materials directory",
+        "description": "Request body for creating/updating an equipment_materials_directories record (server generates `path`)",
         "properties": {
           "name": {
             "type": "string",
             "description": "Directory name"
-          },
-          "path": {
-            "type": "string",
-            "nullable": true,
-            "description": "Directory path"
           },
           "parent_id": {
             "type": "integer",
@@ -2270,6 +2318,51 @@
           }
         }
       },
+      "ShipmentStorageFile": {
+        "type": "object",
+        "description": "File attached to shipment via shipments_storage",
+        "properties": {
+          "storage_id": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "bucket_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "object_key": {
+            "type": "string",
+            "nullable": true
+          },
+          "file_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "file_size": {
+            "type": "integer",
+            "nullable": true
+          },
+          "mime_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "storage_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploaded_by": {
+            "type": "integer",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "Shipment": {
         "type": "object",
         "description": "Shipment — record from shipments table",
@@ -2277,11 +2370,6 @@
           "id": {
             "type": "integer",
             "description": "Shipment ID"
-          },
-          "project_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "Project ID"
           },
           "supplier_id": {
             "type": "integer",
@@ -2312,6 +2400,11 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         }
       },
@@ -2652,7 +2745,7 @@
           "materials"
         ],
         "summary": "List of materials",
-        "description": "Returns a list of materials filtered by directory, unit, statement, shipment, and text search. Pagination via page/limit.",
+        "description": "Returns a list of equipment_materials records filtered by directory, unit, shipment, type, status, and text search. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -2679,19 +2772,31 @@
             }
           },
           {
-            "name": "statement_id",
-            "in": "query",
-            "description": "Filter by statement ID (via statement_materials relation)",
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
             "name": "shipment_id",
             "in": "query",
             "description": "Filter by shipment ID (via shipment_materials relation)",
             "schema": {
               "type": "integer"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filter by entity type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "material",
+                "equipment"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by record status",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -2743,28 +2848,22 @@
                       "stock_code": "NR00000000000001",
                       "name": "Steel pipe 100mm",
                       "description": "Seamless GOST 8732-78",
-                      "directory": {
-                        "id": 5,
-                        "name": "Pipes"
-                      },
-                      "unit": {
-                        "id": 2,
-                        "name": "pcs"
-                      },
+                      "directory": { "id": 5, "name": "Pipes" },
+                      "unit": { "id": 2, "name": "pcs" },
                       "weight": 12.5,
-                      "created_by": {
-                        "id": 1,
-                        "name": "Ivan Petrov"
-                      },
+                      "sfi_code": { "code": "120", "name_ru": "Секция", "name_en": "Section" },
+                      "type": "material",
+                      "status": "active",
+                      "created_by": { "id": 1, "name": "Ivan Petrov", "avatar_id": 12 },
                       "created_at": "2026-01-15T10:30:00.000Z",
                       "updated_by": null,
                       "updated_at": null,
-                      "statement_materials": [
-                        10,
-                        15
-                      ],
-                      "shipment_materials": [
-                        1
+                      "projects": [
+                        {
+                          "id": 7,
+                          "statement": { "code": "ST-01", "name": "Statement A", "project_id": 3 },
+                          "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001" } ]
+                        }
                       ]
                     }
                   ]
@@ -2785,7 +2884,7 @@
           "materials"
         ],
         "summary": "Create material",
-        "description": "Creates a new material. Required field: name. stock_code is auto-generated (NR + 14 digits) if not provided. Optionally, shipments and statements arrays can be passed for linking. On stock_code conflict, automatically retries up to 5 times.",
+        "description": "Creates a new equipment_materials record. Required fields: name, directory_id. stock_code is auto-generated (NR + 14 digits) if not provided. Optionally, shipments can be passed for linking. On stock_code conflict, automatically retries up to 5 times.",
         "security": [
           {
             "bearerAuth": []
@@ -2806,17 +2905,10 @@
                 "description": "Seamless GOST 8732-78",
                 "directory_id": 5,
                 "unit_id": 2,
-                "manufacturer": "SteelProm",
-                "count": 100,
-                "shipments": [
-                  1,
-                  2
-                ],
-                "statements": [
-                  {
-                    "statement_id": 10
-                  }
-                ]
+                "weight": 100,
+                "sfi_code_id": 120,
+                "type": "material",
+                "status": "active"
               }
             }
           }
@@ -2840,28 +2932,22 @@
                     "stock_code": "NR00000000000001",
                     "name": "Steel pipe 100mm",
                     "description": "Seamless GOST 8732-78",
-                    "directory": {
-                      "id": 5,
-                      "name": "Pipes"
-                    },
-                    "unit": {
-                      "id": 2,
-                      "name": "pcs"
-                    },
-                    "weight": null,
-                    "created_by": {
-                      "id": 1,
-                      "name": "Ivan Petrov"
-                    },
+                    "directory": { "id": 5, "name": "Pipes" },
+                    "unit": { "id": 2, "name": "pcs" },
+                    "weight": 100,
+                    "sfi_code": { "code": "120", "name_ru": "Секция", "name_en": "Section" },
+                    "type": "material",
+                    "status": "active",
+                    "created_by": { "id": 1, "name": "Ivan Petrov", "avatar_id": 12 },
                     "created_at": "2026-01-15T10:30:00.000Z",
                     "updated_by": null,
                     "updated_at": null,
-                    "statement_materials": [
-                      10
-                    ],
-                    "shipment_materials": [
-                      1,
-                      2
+                    "projects": [
+                      {
+                        "id": 7,
+                        "statement": { "code": "ST-01", "name": "Statement A", "project_id": 3 },
+                        "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001" } ]
+                      }
                     ]
                   }
                 }
@@ -2869,7 +2955,7 @@
             }
           },
           "400": {
-            "description": "Missing required fields (name)"
+            "description": "Missing required fields: name, directory_id"
           },
           "401": {
             "description": "Authentication required"
@@ -2886,7 +2972,7 @@
           "materials"
         ],
         "summary": "Get material by ID",
-        "description": "Returns a single material record by identifier. Response contains nested objects directory, unit, created_by, updated_by and arrays statement_materials, shipment_materials.",
+        "description": "Returns a single equipment_materials record by identifier. Response contains nested objects directory, unit, created_by, updated_by and array shipment_materials.",
         "security": [
           {
             "bearerAuth": []
@@ -2919,28 +3005,17 @@
                   "stock_code": "NR00000000000001",
                   "name": "Steel pipe 100mm",
                   "description": "Seamless GOST 8732-78",
-                  "directory": {
-                    "id": 5,
-                    "name": "Pipes"
-                  },
-                  "unit": {
-                    "id": 2,
-                    "name": "pcs"
-                  },
+                  "directory": { "id": 5, "name": "Pipes" },
+                  "unit": { "id": 2, "name": "pcs" },
                   "weight": 12.5,
-                  "created_by": {
-                    "id": 1,
-                    "name": "Ivan Petrov"
-                  },
+                  "sfi_code": { "code": "120", "name_ru": "Секция", "name_en": "Section" },
+                  "type": "material",
+                  "status": "active",
+                  "created_by": { "id": 1, "name": "Ivan Petrov", "avatar_id": 12 },
                   "created_at": "2026-01-15T10:30:00.000Z",
                   "updated_by": null,
                   "updated_at": null,
-                  "statement_materials": [
-                    10
-                  ],
-                  "shipment_materials": [
-                    1
-                  ]
+                  "projects": [ { "id": 7, "statement": { "code": "ST-01", "name": "Statement A", "project_id": 3 }, "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001" } ] } ]
                 }
               }
             }
@@ -2964,7 +3039,7 @@
           "materials"
         ],
         "summary": "Update material",
-        "description": "Partial update of a material. Only changed fields are passed (stock_code, name, description, directory_id, unit_id, manufacturer, count). Optionally, shipments and statements arrays can be passed to resynchronize links (full replacement).",
+        "description": "Partial update of an equipment_materials record. Only changed fields are passed. Optionally, shipments can be passed to resynchronize links (full replacement).",
         "security": [
           {
             "bearerAuth": []
@@ -2988,16 +3063,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MaterialCreate"
+                "$ref": "#/components/schemas/MaterialUpdate"
               },
               "example": {
                 "name": "Steel pipe 150mm",
-                "count": 200,
-                "manufacturer": "MetalTrade",
-                "shipments": [
-                  1,
-                  3
-                ]
+                "description": "Updated description",
+                "directory_id": 5,
+                "unit_id": 2,
+                "weight": 200,
+                "sfi_code_id": 120,
+                "type": "equipment",
+                "status": "active"
               }
             }
           }
@@ -3020,32 +3096,24 @@
                     "id": 1,
                     "stock_code": "NR00000000000001",
                     "name": "Steel pipe 150mm",
-                    "description": "Seamless GOST 8732-78",
-                    "directory": {
-                      "id": 5,
-                      "name": "Pipes"
-                    },
-                    "unit": {
-                      "id": 2,
-                      "name": "pcs"
-                    },
-                    "weight": 12.5,
-                    "created_by": {
-                      "id": 1,
-                      "name": "Ivan Petrov"
-                    },
+                    "description": "Updated description",
+                    "directory": { "id": 5, "name": "Pipes" },
+                    "unit": { "id": 2, "name": "pcs" },
+                    "weight": 200,
+                    "sfi_code": { "id": 120, "code": "120", "name_ru": "Секция", "name_en": "Section" },
+                    "type": "equipment",
+                    "status": "active",
+                    "created_by": { "id": 1, "name": "Ivan Petrov", "avatar_id": 12 },
                     "created_at": "2026-01-15T10:30:00.000Z",
-                    "updated_by": {
-                      "id": 2,
-                      "name": "Anna Sidorova"
-                    },
+                    "updated_by": { "id": 2, "name": "Anna Sidorova", "avatar_id": 15 },
                     "updated_at": "2026-02-20T14:00:00.000Z",
-                    "statement_materials": [
-                      10
-                    ],
-                    "shipment_materials": [
-                      1,
-                      3
+                    "projects": [
+                      {
+                        "id": 7,
+                        "created_at": "2026-02-10T09:00:00.000Z",
+                        "statement": { "id": 11, "code": "ST-01", "name": "Statement A", "project_id": 3 },
+                        "shipments": { "id": 1, "supplier_id": 2, "code": "SH-2026-001" }
+                      }
                     ]
                   }
                 }
@@ -3128,10 +3196,10 @@
     "/api/materials/directories": {
       "get": {
         "tags": [
-          "materials_directories"
+          "equipment_materials_directories"
         ],
-        "summary": "List of materials directories",
-        "description": "Returns a list of materials directories with text search by name. Pagination via page/limit.",
+        "summary": "List of equipment/material directories",
+        "description": "Returns a list of equipment_materials_directories records with text search by name. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -3166,7 +3234,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of materials directories",
+            "description": "List of equipment/material directories",
             "content": {
               "application/json": {
                 "schema": {
@@ -3204,10 +3272,10 @@
       },
       "post": {
         "tags": [
-          "materials_directories"
+          "equipment_materials_directories"
         ],
-        "summary": "Create materials directory",
-        "description": "Creates a new materials directory. Required field: name.",
+        "summary": "Create equipment/material directory",
+        "description": "Creates a new equipment_materials_directories record. Required field: name.",
         "security": [
           {
             "bearerAuth": []
@@ -3222,7 +3290,6 @@
               },
               "example": {
                 "name": "Pipes",
-                "path": "/pipes",
                 "parent_id": null,
                 "description": "Directory for pipes",
                 "order_index": 1
@@ -3270,10 +3337,10 @@
     "/api/materials/directories/{id}": {
       "get": {
         "tags": [
-          "materials_directories"
+          "equipment_materials_directories"
         ],
-        "summary": "Get materials directory by ID",
-        "description": "Returns a single materials directory record by identifier.",
+        "summary": "Get equipment/material directory by ID",
+        "description": "Returns a single equipment_materials_directories record by identifier.",
         "security": [
           {
             "bearerAuth": []
@@ -3328,10 +3395,10 @@
       },
       "put": {
         "tags": [
-          "materials_directories"
+          "equipment_materials_directories"
         ],
-        "summary": "Update materials directory",
-        "description": "Partial update of a materials directory. Only changed fields are passed (name, path, parent_id, description, order_index).",
+        "summary": "Update equipment/material directory",
+        "description": "Partial update of an equipment_materials_directories record. Only changed fields are passed.",
         "security": [
           {
             "bearerAuth": []
@@ -3399,9 +3466,9 @@
       },
       "delete": {
         "tags": [
-          "materials_directories"
+          "equipment_materials_directories"
         ],
-        "summary": "Delete materials directory",
+        "summary": "Delete equipment/material directory",
         "description": "Soft-delete of directory (is_active = false). If not possible — full deletion.",
         "security": [
           {
@@ -3456,7 +3523,7 @@
           "shipments"
         ],
         "summary": "List of shipments",
-        "description": "Returns a list of shipments filtered by project, supplier, equipment, and text search. Pagination via page/limit.",
+        "description": "Returns a list of shipments filtered by supplier, equipment, and text search. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -3466,14 +3533,6 @@
           "shipments.view"
         ],
         "parameters": [
-          {
-            "in": "query",
-            "name": "project_id",
-            "description": "Filter by project ID",
-            "schema": {
-              "type": "integer"
-            }
-          },
           {
             "in": "query",
             "name": "supplier_id",
@@ -3536,13 +3595,13 @@
                   "data": [
                     {
                       "id": 1,
-                      "project_id": 1,
                       "supplier_id": 2,
                       "equipment_id": null,
                       "code": "SH-2026-001",
                       "received_at": "2026-04-01T10:00:00.000Z",
                       "created_by": 1,
-                      "created_at": "2026-03-20T08:00:00.000Z"
+                      "created_at": "2026-03-20T08:00:00.000Z",
+                      "updated_at": "2026-03-20T08:00:00.000Z"
                     }
                   ]
                 }
@@ -3578,11 +3637,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "project_id": {
-                    "type": "integer",
-                    "nullable": true,
-                    "description": "Project ID"
-                  },
                   "supplier_id": {
                     "type": "integer",
                     "nullable": true,
@@ -3607,7 +3661,6 @@
                 }
               },
               "example": {
-                "project_id": 1,
                 "supplier_id": 2,
                 "code": "SH-2026-002",
                 "received_at": "2026-05-01T12:00:00.000Z"
@@ -3726,10 +3779,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "project_id": {
-                    "type": "integer",
-                    "nullable": true
-                  },
                   "supplier_id": {
                     "type": "integer",
                     "nullable": true
@@ -3838,6 +3887,261 @@
           },
           "403": {
             "description": "Forbidden — missing permission shipments.delete"
+          },
+          "404": {
+            "description": "Shipment not found"
+          }
+        }
+      }
+    },
+    "/api/shipments/{id}/files": {
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Attach file to shipment",
+        "description": "Attaches an existing storage file to a shipment, or uploads a multipart file and attaches it.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Shipment ID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "storage_id": {
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "integer"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "example": {
+                "storage_id": 42
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "File attached to shipment"
+          },
+          "400": {
+            "description": "Invalid id or storage_id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission shipments.update"
+          },
+          "404": {
+            "description": "Shipment or storage item not found"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "List shipment attachments",
+        "description": "Returns files attached to a shipment through shipments_storage.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Shipment ID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment attachments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ShipmentStorageFile"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission shipments.view"
+          },
+          "404": {
+            "description": "Shipment not found"
+          }
+        }
+      }
+    },
+    "/api/shipments/{id}/files/local": {
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Upload local file and attach to shipment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Shipment ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "File uploaded and attached"
+          },
+          "400": {
+            "description": "Missing file or invalid id"
+          }
+        }
+      }
+    },
+    "/api/shipments/{id}/files/{storage_id}": {
+      "delete": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Detach file from shipment",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "storage_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File detached"
+          },
+          "400": {
+            "description": "Invalid id or storage_id"
           },
           "404": {
             "description": "Shipment not found"
