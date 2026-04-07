@@ -70,7 +70,109 @@
     },
     {
       "name": "issue_statuses",
-    
+      "description": "CRUD operations for issue statuses"
+    },
+    {
+      "name": "issue_types",
+      "description": "CRUD operations for issue types"
+    },
+    {
+      "name": "issue_work_flow",
+      "description": "CRUD operations for issue workflow transitions"
+    },
+    {
+      "name": "issues",
+      "description": "CRUD operations for issues"
+    },
+    {
+      "name": "job_titles",
+      "description": "CRUD operations for job titles"
+    },
+    {
+      "name": "links",
+      "description": "Operations for creating and deleting entity links"
+    },
+    {
+      "name": "material_kits",
+      "description": "CRUD operations for material kits"
+    },
+    {
+      "name": "materials",
+      "description": "CRUD operations for materials"
+    },
+    {
+      "name": "materials_directories",
+      "description": "CRUD operations for material directories"
+    },
+    {
+      "name": "organizations",
+      "description": "CRUD operations for organizations"
+    },
+    {
+      "name": "shipments",
+      "description": "CRUD operations for shipments"
+    },
+    {
+      "name": "storage",
+      "description": "CRUD operations for storage"
+    },
+    {
+      "name": "units",
+      "description": "CRUD operations for units"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "CustomerQuestionStatus": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_initial": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "is_final": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "order_index": {
+            "type": "integer",
+            "nullable": true
+          },
+          "project_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CustomerQuestionType": {
+        "type": "object",
+        "properties": {
+          "id": {
             "type": "integer"
           },
           "name": {
@@ -88,10 +190,6 @@
             "nullable": true
           },
           "order_index": {
-            "type": "integer",
-            "nullable": true
-          },
-          "project_id": {
             "type": "integer",
             "nullable": true
           },
