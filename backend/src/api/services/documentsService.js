@@ -175,12 +175,16 @@ class DocumentsService {
         }
 
         d.allowed_statuses = allowedStatuses;
+        // Backwards-compatible alias: expose as `available_statuses` as well
+        d.available_statuses = d.allowed_statuses;
       } else {
         d.allowed_statuses = [];
+        d.available_statuses = [];
       }
     } catch (e) {
       console.error('Failed to load allowed document statuses', e && e.message ? e.message : e);
       d.allowed_statuses = [];
+      d.available_statuses = [];
     }
 
     // Attach display-friendly fields (same as for listDocuments)

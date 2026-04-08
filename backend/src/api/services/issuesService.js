@@ -197,13 +197,17 @@ class IssuesService {
         }
 
         i.allowed_statuses = allowed;
+        // Backwards-compatible alias: expose as `available_statuses` as well
+        i.available_statuses = i.allowed_statuses;
       } else {
         i.allowed_statuses = [];
+        i.available_statuses = [];
       }
     } catch (e) {
       // don't break the request if lookup fails; log and continue
       console.error('Failed to load allowed issue statuses', e && e.message ? e.message : e);
       i.allowed_statuses = [];
+      i.available_statuses = [];
     }
 
     // Add lightweight textual display fields for UI (do not attach full objects)
