@@ -5,17 +5,42 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+function getJwtConfig() {
+  return {
+    secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+    refreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-in-production',
+    expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+    refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d'
+  };
+}
+
+function parseDurationToMilliseconds(raw) {
+  const value = String(raw || '').trim();
+  const match = value.match(/^(\d+)([smhd])$/i);
+  if (!match) return 0;
+  const amount = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  switch (unit) {
+    case 's':
+      return amount * 1000;
+    case 'm':
+      return amount * 60 * 1000;
+    case 'h':
+      return amount * 60 * 60 * 1000;
+    case 'd':
+      return amount * 24 * 60 * 60 * 1000;
+    default:
+      return 0;
+  }
+}
 
 /**
  * Генерация access токена
  */
 function generateAccessToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN
+  const config = getJwtConfig();
+  return jwt.sign(payload, config.secret, {
+    expiresIn: config.expiresIn
   });
 }
 
@@ -31,7 +56,7 @@ function generateRefreshToken() {
  */
 function verifyAccessToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, getJwtConfig().secret);
   } catch (error) {
     throw new Error('Invalid or expired token');
   }
@@ -42,7 +67,7 @@ function verifyAccessToken(token) {
  */
 function verifyRefreshToken(token) {
   try {
-    return jwt.verify(token, JWT_REFRESH_SECRET);
+    return jwt.verify(token, getJwtConfig().refreshSecret);
   } catch (error) {
     throw new Error('Invalid or expired refresh token');
   }
@@ -52,21 +77,11 @@ function verifyRefreshToken(token) {
  * Получить время истечения токена
  */
 function getTokenExpiration() {
-  const expiresIn = JWT_EXPIRES_IN;
+  const expiresIn = getJwtConfig().expiresIn;
   const now = new Date();
-  
-  // Парсинг времени (например, '24h', '7d')
-  let milliseconds = 0;
-  if (expiresIn.endsWith('h')) {
-    milliseconds = parseInt(expiresIn) * 60 * 60 * 1000;
-  } else if (expiresIn.endsWith('d')) {
-    milliseconds = parseInt(expiresIn) * 24 * 60 * 60 * 1000;
-  } else if (expiresIn.endsWith('m')) {
-    milliseconds = parseInt(expiresIn) * 60 * 1000;
-  } else if (expiresIn.endsWith('s')) {
-    milliseconds = parseInt(expiresIn) * 1000;
-  }
-  
+
+  const milliseconds = parseDurationToMilliseconds(expiresIn);
+
   return new Date(now.getTime() + milliseconds);
 }
 
@@ -76,8 +91,12 @@ module.exports = {
   verifyAccessToken,
   verifyRefreshToken,
   getTokenExpiration,
-  JWT_EXPIRES_IN,
-  REFRESH_TOKEN_EXPIRES_IN
+  get JWT_EXPIRES_IN() {
+    return getJwtConfig().expiresIn;
+  },
+  get REFRESH_TOKEN_EXPIRES_IN() {
+    return getJwtConfig().refreshExpiresIn;
+  }
 };
 
 

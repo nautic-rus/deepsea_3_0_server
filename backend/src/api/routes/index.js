@@ -52,6 +52,7 @@ const customerQuestionWorkFlowsController = require('../controllers/customerQues
 const issueWorkFlowsController = require('../controllers/issueWorkFlowsController');
 const notificationEventsController = require('../controllers/notificationEventsController');
 const notificationMethodsController = require('../controllers/notificationMethodsController');
+const environmentSettingsController = require('../controllers/environmentSettingsController');
 const wikiArticlesController = require('../controllers/wikiArticlesController');
 const wikiArticleStorageController = require('../controllers/wikiArticleStorageController');
 const wikiSectionsController = require('../controllers/wikiSectionsController');
@@ -75,6 +76,12 @@ router.get('/auth/me', authMiddleware, authController.me);
 router.post('/auth/request_password_reset', authController.requestPasswordReset);
 // POST /api/auth/reset_password
 router.post('/auth/reset_password', authController.resetPassword);
+
+// ===== Environment settings routes =====
+router.get('/environment_settings', authMiddleware, environmentSettingsController.list);
+router.get('/environment_settings/:key', authMiddleware, environmentSettingsController.get);
+router.put('/environment_settings/:key', authMiddleware, environmentSettingsController.update);
+router.patch('/environment_settings', authMiddleware, environmentSettingsController.updateMany);
 
 // ===== Users routes =====
 // POST /api/create_users

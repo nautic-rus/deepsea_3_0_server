@@ -6,9 +6,15 @@ const database = require('./database');
 
 module.exports = {
   database,
-  port: process.env.PORT ,
-  host: process.env.HOST ,
-  env: process.env.NODE_ENV,
+  get port() {
+    return process.env.PORT;
+  },
+  get host() {
+    return process.env.HOST;
+  },
+  get env() {
+    return process.env.NODE_ENV;
+  }
 };
 
 

@@ -4,17 +4,28 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', 'env') });
 
-// Initialize file logger early so console output is captured
-require('./utils/logger');
+const { initializeEnvironmentSettings } = require('./config/environmentSettings');
 
-const app = require('./app');
-const config = require('./config');
+async function startServer() {
+  await initializeEnvironmentSettings();
 
-const PORT = config.port || 3000;
-const HOST = config.host || '0.0.0.0';
+  // Initialize file logger after DB-backed settings are applied to process.env.
+  require('./utils/logger');
 
-app.listen(PORT, HOST, () => {
-  console.log(`Server is running on http://${HOST}:${PORT}`);
-  console.log(`Environment: ${config.env}`);
+  const app = require('./app');
+  const config = require('./config');
+
+  const port = config.port || 3000;
+  const host = config.host || '0.0.0.0';
+
+  app.listen(port, host, () => {
+    console.log(`Server is running on http://${host}:${port}`);
+    console.log(`Environment: ${config.env}`);
+  });
+}
+
+startServer().catch((error) => {
+  console.error('Failed to start server', error && (error.stack || error.message || error));
+  process.exit(1);
 });
 

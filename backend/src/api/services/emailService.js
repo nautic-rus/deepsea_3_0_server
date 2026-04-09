@@ -6,26 +6,40 @@
 
 const nodemailer = require('nodemailer');
 
-const smtpHost = process.env.SMTP_HOST;
-const smtpPort = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined;
-const smtpUser = process.env.SMTP_USER;
-const smtpPass = process.env.SMTP_PASS;
-const smtpSecure = process.env.SMTP_SECURE === 'true';
-const emailFrom = process.env.EMAIL_FROM || (smtpUser || 'no-reply@example.com');
-
 let transporter = null;
+let transporterSignature = null;
+
+function getSmtpConfig() {
+  return {
+    host: process.env.SMTP_HOST || '',
+    port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : undefined,
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
+    from: process.env.EMAIL_FROM || (process.env.SMTP_USER || 'no-reply@example.com')
+  };
+}
+
 function getTransporter() {
-  if (transporter) return transporter;
-  if (!smtpHost || !smtpPort) {
+  const smtpConfig = getSmtpConfig();
+  const signature = JSON.stringify([smtpConfig.host, smtpConfig.port, smtpConfig.user, smtpConfig.pass, smtpConfig.secure]);
+
+  if (!smtpConfig.host || !smtpConfig.port) {
+    transporter = null;
+    transporterSignature = null;
     // leave transporter null — sendMail will reject if called
     return null;
   }
+
+  if (transporter && transporterSignature === signature) return transporter;
+
   transporter = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: !!smtpSecure,
-    auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined
+    host: smtpConfig.host,
+    port: smtpConfig.port,
+    secure: !!smtpConfig.secure,
+    auth: smtpConfig.user && smtpConfig.pass ? { user: smtpConfig.user, pass: smtpConfig.pass } : undefined
   });
+  transporterSignature = signature;
 
   return transporter;
 }
@@ -36,12 +50,13 @@ class EmailService {
    */
   static async sendMail(options = {}) {
     const t = getTransporter();
+    const smtpConfig = getSmtpConfig();
     if (!t) {
       throw new Error('SMTP not configured (set SMTP_HOST and SMTP_PORT)');
     }
 
     const mail = {
-      from: options.from || emailFrom,
+      from: options.from || smtpConfig.from,
       to: options.to,
       subject: options.subject || '',
       text: options.text || undefined,

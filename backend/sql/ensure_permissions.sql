@@ -23,6 +23,8 @@ INSERT INTO permissions (name, code, description) VALUES ('documents.update', 'd
 INSERT INTO permissions (name, code, description) VALUES ('documents.update_all', 'documents.update_all', NULL) ON CONFLICT (code) DO NOTHING;
 INSERT INTO permissions (name, code, description) VALUES ('documents.view', 'documents.view', NULL) ON CONFLICT (code) DO NOTHING;
 INSERT INTO permissions (name, code, description) VALUES ('documents.view_all', 'documents.view_all', NULL) ON CONFLICT (code) DO NOTHING;
+INSERT INTO permissions (name, code, description) VALUES ('environment_settings.update', 'environment_settings.update', NULL) ON CONFLICT (code) DO NOTHING;
+INSERT INTO permissions (name, code, description) VALUES ('environment_settings.view', 'environment_settings.view', NULL) ON CONFLICT (code) DO NOTHING;
 -- equipment permissions removed: merged into equipment_materials (handled by migration)
 INSERT INTO permissions (name, code, description) VALUES ('groups.create', 'groups.create', NULL) ON CONFLICT (code) DO NOTHING;
 INSERT INTO permissions (name, code, description) VALUES ('groups.delete', 'groups.delete', NULL) ON CONFLICT (code) DO NOTHING;
