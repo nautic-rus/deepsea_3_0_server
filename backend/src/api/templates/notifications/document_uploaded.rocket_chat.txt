@@ -1,4 +1,4 @@
-:white_check_mark: Файл добавлен к документу!
+:white_check_mark: Файлы добавлены к документу!
 
 *Проект: *{{project.code}}
 *Номер: *{{document.code}}

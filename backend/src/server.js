@@ -9,6 +9,7 @@ if (!process.env.NODE_ENV) {
 }
 
 const { initializeEnvironmentSettings } = require('./config/environmentSettings');
+const documentUploadAggregator = require('./workers/documentUploadAggregator');
 
 async function startServer() {
   await initializeEnvironmentSettings();
@@ -21,6 +22,8 @@ async function startServer() {
 
   const port = config.port || 3000;
   const host = config.host || '0.0.0.0';
+
+  documentUploadAggregator.start();
 
   app.listen(port, host, () => {
     console.log(`Server is running on http://${host}:${port}`);

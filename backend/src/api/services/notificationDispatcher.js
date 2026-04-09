@@ -94,11 +94,15 @@ class NotificationDispatcher {
     // Fire-and-forget: run the heavy work asynchronously
     (async () => {
       try {
-        await NotificationDispatcher._doDispatch(opts);
+        await NotificationDispatcher.dispatchAsync(opts);
       } catch (err) {
         console.error(`Error dispatching notifications for ${opts.eventCode}:`, err && err.stack ? err.stack : err);
       }
     })();
+  }
+
+  static async dispatchAsync(opts) {
+    await NotificationDispatcher._doDispatch(opts);
   }
 
   /** Internal: the actual async work */

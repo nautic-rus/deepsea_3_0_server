@@ -7,6 +7,7 @@ const DocumentMessage = require('../../db/models/DocumentMessage');
 const DocumentStorage = require('../../db/models/DocumentStorage');
 const Storage = require('../../db/models/Storage');
 const ProtectionService = require('./protectionService');
+const DocumentUploadNotificationService = require('./documentUploadNotificationService');
 
 /**
  * DocumentsService
@@ -497,50 +498,14 @@ class DocumentsService {
     if (attached) attachedArr.push(attached);
   }
     // Do not record a history entry for file attachment per request.
-    // Notify: document_uploaded
-    {
-      const Project = require('../../db/models/Project');
-      let _projForAttach = null;
-      try { _projForAttach = await Project.findById(Number(existing.project_id)); } catch (e) { _projForAttach = null; }
-      const frontendRoot = process.env.FRONTEND_URL || '';
-      const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
-      const storage_item = storageItems[0] || null;
-      NotificationDispatcher.dispatch({
-        eventCode: 'document_uploaded',
-        projectId: existing.project_id,
-        actor,
-        entity: { id: existing.id, code: 'document', title: existing.title },
-        content: { value: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr },
-        // Notify only document participants: author (created_by) and assignee (assigne_to)
-        participantIds: [existing.created_by, existing.assigne_to],
-        templateContext: {
-          project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) || null },
-          document: existing, actor, documentUrl,
-          storage_items: storageItems, storage_item, storage_file_list: storageItems.map(s => s.file_name).join('\n')
-        },
-        fallbackText: `Document uploaded: ${existing.title}`,
-        fallbackSubject: `Document uploaded ${existing.title}`
-      });
-
-      // Notify: document_uploaded_in_project
-      const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [existing.project_id]);
-      const projectParticipantIds = (prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean);
-      NotificationDispatcher.dispatch({
-        eventCode: 'document_uploaded_in_project',
-        projectId: existing.project_id,
-        actor,
-        entity: { id: existing.id, code: 'document', title: existing.title },
-        content: { value: (attachedArr && attachedArr.length === 1) ? attachedArr[0] : attachedArr },
-        participantIds: projectParticipantIds,
-        templateContext: {
-          project: { id: existing.project_id, code: (_projForAttach && _projForAttach.code) || null },
-          document: existing, actor, documentUrl,
-          storage_items: storageItems, storage_item, storage_file_list: storageItems.map(s => s.file_name).join('\n')
-        },
-        fallbackText: `Document uploaded: ${existing.title}`,
-        fallbackSubject: `Document uploaded ${existing.title}`
-      });
-    }
+    // Buffer upload notifications so consecutive file uploads for the same
+    // document collapse into a single message after a quiet period.
+    await DocumentUploadNotificationService.queueUploads({
+      document: existing,
+      actor,
+      attachedEntries: attachedArr,
+      storageItems
+    });
 
   // Return attached items. If single item was attached, return the object for
   // backward compatibility; otherwise return the array of attached objects.
