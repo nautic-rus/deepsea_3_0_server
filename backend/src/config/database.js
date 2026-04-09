@@ -32,9 +32,10 @@ const config = {
   },
 };
 
-// Получаем текущее окружение
-const env = process.env.NODE_ENV;
+// Получаем текущее окружение. Если NODE_ENV не задан, используем development,
+// чтобы pg не проваливался в свои системные значения по умолчанию.
+const env = (process.env.NODE_ENV || 'development').trim();
 
-// Экспортируем конфиг для текущего окружения
-module.exports = config[env];
+// Экспортируем конфиг для текущего окружения с безопасным fallback.
+module.exports = config[env] || config.development;
 

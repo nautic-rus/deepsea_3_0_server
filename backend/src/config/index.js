@@ -13,7 +13,7 @@ module.exports = {
     return process.env.HOST;
   },
   get env() {
-    return process.env.NODE_ENV;
+    return process.env.NODE_ENV || 'development';
   }
 };
 
