@@ -110,8 +110,9 @@ app.use(cors({
   exposedHeaders: ['Content-Disposition'],
   optionsSuccessStatus: 204
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+const bodyLimit = '30mb';
+app.use(express.json({ limit: bodyLimit }));
+app.use(express.urlencoded({ extended: true, limit: bodyLimit }));
 // Parse cookies (used for HttpOnly token cookies)
 app.use(cookieParser());
 
