@@ -14549,6 +14549,122 @@
         }
       }
     },
+    "/api/roles/assign": {
+      "post": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Assign global role(s) to a user",
+        "description": "Assign one or more global roles to a user (stored in user_roles with project_id = NULL). Requires roles.update.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "roles.update"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "user_id"
+                ],
+                "properties": {
+                  "user_id": {
+                    "type": "integer"
+                  },
+                  "role_ids": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "description": "Array of role ids"
+                  },
+                  "role_id": { "type": "integer", "description": "Single role id (alternative to role_ids)" }
+                }
+              },
+              "example": {
+                "user_id": 123,
+                "role_ids": [4, 5]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Roles assigned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing or invalid parameters" },
+          "403": { "description": "Forbidden - missing permission roles.update" }
+        }
+      }
+    },
+    "/api/roles/unassign": {
+      "delete": {
+        "tags": [
+          "roles"
+        ],
+        "summary": "Unassign global role(s) from a user",
+        "description": "Remove one or more global roles from a user (project_id = NULL). If roles omitted, removes all global roles for the user. Requires roles.update.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "roles.update"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [ "user_id" ],
+                "properties": {
+                  "user_id": { "type": "integer" },
+                  "role_ids": { "type": "array", "items": { "type": "integer" }, "description": "Array of role ids to remove" },
+                  "role_id": { "type": "integer", "description": "Single role id to remove" }
+                }
+              },
+              "example": { "user_id": 123, "role_id": 4 }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "data": { "type": "object", "properties": { "removed_count": { "type": "integer" } } } }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing or invalid parameters" },
+          "403": { "description": "Forbidden - missing permission roles.update" }
+        }
+      }
+    },
     "/api/specializations": {
       "post": {
         "tags": [

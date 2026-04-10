@@ -18,6 +18,48 @@ class RolesController {
   }
 
   /**
+   * Assign one or more global roles to a user (POST /roles/assign)
+   * Body: { user_id: number, roles: ["name"|id] | "name" | id }
+   */
+  static async assignUser(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const body = req.body || {};
+      let userId = body.user_id || body.userId || null;
+      if (!userId && userId !== 0) { const err = new Error('user_id required'); err.statusCode = 400; throw err; }
+
+      // Accept numeric role ids only: `role_id` (single) or `role_ids` (array)
+      let roles = null;
+      if (Array.isArray(body.role_ids)) roles = body.role_ids;
+      else if (body.role_id !== undefined && body.role_id !== null) roles = body.role_id;
+
+      const result = await RolesService.assignToUser(Number(userId), actor, roles);
+      res.status(201).json({ data: result });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * Unassign global role(s) from a user (DELETE /roles/unassign)
+   * Body: { user_id: number, roles: ["name"|id] | "name" | id }
+   * If `roles` omitted — removes all global roles for the user.
+   */
+  static async unassignUser(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const body = req.body || {};
+      let userId = body.user_id || body.userId || null;
+      if (!userId && userId !== 0) { const err = new Error('user_id required'); err.statusCode = 400; throw err; }
+
+      let roles = null;
+      if (Array.isArray(body.role_ids)) roles = body.role_ids;
+      else if (body.role_id !== undefined && body.role_id !== null) roles = body.role_id;
+
+      const result = await RolesService.unassignFromUser(Number(userId), actor, roles);
+      res.json({ data: result });
+    } catch (err) { next(err); }
+  }
+
+  /**
    * Get a role by id.
    */
   static async get(req, res, next) {

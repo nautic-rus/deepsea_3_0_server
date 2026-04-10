@@ -154,6 +154,10 @@ router.delete('/organizations/:id', authMiddleware, organizationsController.dele
 router.get('/roles', authMiddleware, rolesController.list);
 // POST /api/roles
 router.post('/roles', authMiddleware, rolesController.create);
+// POST /api/roles/assign - assign global role(s) to a user (project_id = NULL)
+router.post('/roles/assign', authMiddleware, rolesController.assignUser);
+// DELETE /api/roles/unassign - remove global role(s) from a user (project_id = NULL)
+router.delete('/roles/unassign', authMiddleware, rolesController.unassignUser);
 // PUT /api/roles/:id
 router.put('/roles/:id', authMiddleware, rolesController.update);
 // DELETE /api/roles/:id

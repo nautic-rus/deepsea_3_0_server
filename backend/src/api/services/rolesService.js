@@ -225,6 +225,92 @@ class RolesService {
 
     return { removed: !!removed };
   }
+
+  /**
+   * Assign one or more global roles to a user (project_id = NULL)
+   * Accepts role ids (numbers) or role names (strings). Returns array of created assignments.
+   */
+  static async assignToUser(userId, actor, roles = null) {
+    const requiredPermission = 'roles.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission roles.update'); err.statusCode = 403; throw err; }
+
+    if (!userId || Number.isNaN(Number(userId)) || Number(userId) <= 0) { const err = new Error('Invalid user id'); err.statusCode = 400; throw err; }
+
+    // Normalize roles similar to project assignment behavior
+    // Accept only numeric role ids. If roles omitted, use 'member' role id (findOrCreate internally).
+    const UserRole = require('../../db/models/UserRole');
+    const results = [];
+    let ids = [];
+    if (!roles) {
+      // find or create 'member' role and use its id
+      const memberRole = await Role.findOrCreate({ name: 'member', description: 'Global role: member' });
+      ids = [memberRole.id];
+    } else {
+      const arr = Array.isArray(roles) ? roles : [roles];
+      for (const r of arr) {
+        if (r === null || r === undefined) continue;
+        if (typeof r === 'number' || (typeof r === 'string' && /^\d+$/.test(String(r).trim()))) {
+          ids.push(Number(r));
+        } else {
+          const err = new Error('roles must be numeric role id(s)'); err.statusCode = 400; throw err;
+        }
+      }
+    }
+
+    if (ids.length === 0) { const err = new Error('No role_id provided'); err.statusCode = 400; throw err; }
+
+    for (const rid of ids) {
+      const roleObj = await Role.findById(rid);
+      if (!roleObj) { const err = new Error(`Role not found: ${rid}`); err.statusCode = 404; throw err; }
+      const assigned = await UserRole.assign(Number(userId), roleObj.id, null);
+      if (assigned) results.push(assigned);
+    }
+    return results;
+  }
+
+  /**
+   * Unassign one or more global roles from a user (project_id = NULL)
+   * If `roles` is null, remove all global role assignments for the user.
+   */
+  static async unassignFromUser(userId, actor, roles = null) {
+    const requiredPermission = 'roles.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission roles.update'); err.statusCode = 403; throw err; }
+
+    if (!userId || Number.isNaN(Number(userId)) || Number(userId) <= 0) { const err = new Error('Invalid user id'); err.statusCode = 400; throw err; }
+
+    const pool = require('../../db/connection');
+    const UserRole = require('../../db/models/UserRole');
+
+    // If roles not provided, delete all global (project_id IS NULL) assignments for this user
+    if (!roles) {
+      const q = `DELETE FROM user_roles WHERE user_id = $1 AND project_id IS NULL`;
+      const res = await pool.query(q, [Number(userId)]);
+      return { removed_count: res.rowCount };
+    }
+
+    // Normalize roles list and remove specified assignments
+    const arr = Array.isArray(roles) ? roles : [roles];
+    const ids = [];
+    for (const r of arr) {
+      if (r === null || r === undefined) continue;
+      if (typeof r === 'number' || (typeof r === 'string' && /^\d+$/.test(String(r).trim()))) ids.push(Number(r));
+      else { const err = new Error('roles must be numeric role id(s)'); err.statusCode = 400; throw err; }
+    }
+    if (ids.length === 0) return { removed_count: 0 };
+
+    let removed_count = 0;
+    for (const rid of ids) {
+      const roleObj = await Role.findById(rid);
+      if (!roleObj) { const err = new Error(`Role not found: ${rid}`); err.statusCode = 404; throw err; }
+      const removed = await UserRole.unassign(Number(userId), roleObj.id, null);
+      if (removed) removed_count += 1;
+    }
+    return { removed_count };
+  }
 }
 
 module.exports = RolesService;
