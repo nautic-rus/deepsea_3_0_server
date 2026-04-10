@@ -382,6 +382,29 @@ class UsersService {
     const total = await User.countUsers(searchTerm, is_active);
     const data = await User.listUsers({ search: searchTerm, limit, offset, is_active });
 
+    // Attach global roles (user_roles where project_id IS NULL) to each user in data
+    if (data && data.length) {
+      const ids = data.map(u => Number(u.id)).filter(n => Number.isFinite(n) && n > 0);
+      if (ids.length) {
+        const pool = require('../../db/connection');
+        const q = `SELECT ur.user_id, ur.role_id, r.name AS role_name
+          FROM user_roles ur
+          JOIN roles r ON r.id = ur.role_id
+          WHERE ur.project_id IS NULL AND ur.user_id = ANY($1::int[])`;
+        const res = await pool.query(q, [ids]);
+        const rolesByUser = new Map();
+        for (const row of (res.rows || [])) {
+          const uid = Number(row.user_id);
+          if (!rolesByUser.has(uid)) rolesByUser.set(uid, []);
+          rolesByUser.get(uid).push({ role_id: row.role_id, name: row.role_name });
+        }
+        for (const u of data) {
+          const uid = Number(u.id);
+          u.global_roles = rolesByUser.get(uid) || [];
+        }
+      }
+    }
+
     return {
       data,
       meta: {
