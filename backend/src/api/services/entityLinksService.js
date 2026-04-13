@@ -1,4 +1,10 @@
 const EntityLink = require('../../db/models/EntityLink');
+const Issue = require('../../db/models/Issue');
+const Document = require('../../db/models/Document');
+const CustomerQuestion = require('../../db/models/CustomerQuestion');
+const Project = require('../../db/models/Project');
+const IssueStatus = require('../../db/models/IssueStatus');
+const DocumentStatus = require('../../db/models/DocumentStatus');
 const { hasPermission } = require('./permissionChecker');
 
 class EntityLinksService {
@@ -93,7 +99,94 @@ class EntityLinksService {
     }
 
     const rows = await EntityLink.find(filters);
-    return rows;
+
+    // Enrich each link with the full entity data for active and passive sides.
+    // Resolve each referenced entity from its corresponding table based on type.
+    const cache = {};
+
+    const normalize = async (type, data) => {
+      if (!data) return null;
+      if (type === 'issue') {
+        let status = null;
+        let project = null;
+        if (data.status_id) {
+          try { status = await IssueStatus.findById(data.status_id); } catch (e) { status = null; }
+        }
+        if (data.project_id) {
+          try { const p = await Project.findById(data.project_id); if (p) project = { id: p.id, code: p.code || null, name: p.name || null }; } catch (e) { project = { id: data.project_id }; }
+        }
+        return {
+          id: data.id,
+          type: 'issue',
+          title: data.title || null,
+          description: data.description || null,
+          project: project,
+          created_at: data.created_at || null,
+          code: data.code || null,
+          status: status ? { name: status.name || null, code: status.code || null } : null,
+        };
+      }
+      if (type === 'document') {
+        let status = null;
+        let project = null;
+        if (data.status_id) {
+          try { status = await DocumentStatus.findById(data.status_id); } catch (e) { status = null; }
+        }
+        if (data.project_id) {
+          try { const p = await Project.findById(data.project_id); if (p) project = { id: p.id, code: p.code || null, name: p.name || null }; } catch (e) { project = { id: data.project_id }; }
+        }
+        return {
+          id: data.id,
+          type: 'document',
+          title: data.title || null,
+          description: data.description || data.comment || null,
+          project: project,
+          created_at: data.created_at || null,
+          code: data.code || null,
+          status: status ? { name: status.name || null, code: status.code || null } : null,
+        };
+      }
+      if (type === 'qna') {
+        const st = data.status || null;
+        return {
+          id: data.id,
+          type: 'qna',
+          title: data.question_title || null,
+          description: data.question_text || null,
+          project: data.project || null,
+          created_at: data.created_at || null,
+          code: data.code || null,
+          status: st ? { name: st.name || null, code: st.code || null } : null,
+        };
+      }
+      return null;
+    };
+
+    const fetchEntity = async (type, id) => {
+      if (!type || !id) return null;
+      const key = `${type}:${id}`;
+      if (Object.prototype.hasOwnProperty.call(cache, key)) return cache[key];
+      try {
+        let res = null;
+        if (type === 'issue') res = await Issue.findById(id);
+        else if (type === 'document') res = await Document.findById(id);
+        else if (type === 'qna') res = await CustomerQuestion.findById(id);
+        else res = null;
+        cache[key] = await normalize(type, res);
+        return cache[key];
+      } catch (e) {
+        cache[key] = null;
+        return null;
+      }
+    };
+
+    const enriched = await Promise.all((rows || []).map(async (r) => {
+      const active_entity = await fetchEntity(r.active_type, r.active_id);
+      const passive_entity = await fetchEntity(r.passive_type, r.passive_id);
+      return Object.assign({}, r, { active_entity, passive_entity });
+    }));
+
+    return enriched;
   }
 }
 
