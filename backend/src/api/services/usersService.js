@@ -9,7 +9,7 @@ const User = require('../../db/models/User');
 const pool = require('../../db/connection');
 const { hashPassword, validatePassword } = require('../../utils/password');
 const crypto = require('crypto');
-const { hasPermission } = require('./permissionChecker');
+const { hasPermission, getPermissionProjectScope } = require('./permissionChecker');
 const NotificationTemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
 
@@ -214,18 +214,23 @@ class UsersService {
 
     // projects assigned to user (via user_roles)
     const projectIds = await Project.listAssignedProjectIds(uid);
-    const projects_count = (projectIds || []).length;
+
+    const projectViewScope = await getPermissionProjectScope(actor, 'projects.view');
+    const visibleProjectIds = projectViewScope.hasGlobal
+      ? (projectIds || [])
+      : (projectIds || []).filter(pid => projectViewScope.projectIds.includes(pid));
+    const projects_count = visibleProjectIds.length;
 
     // Fetch project details (code, name, description, status, owner full name)
     let projects = [];
     let projects_active = 0;
-    if (projectIds && projectIds.length) {
+    if (visibleProjectIds.length) {
       const q = `SELECT p.id, p.code, p.name, p.description, p.status,
         concat_ws(' ', u.last_name, u.first_name, u.middle_name) AS owner_full_name
         FROM projects p
         LEFT JOIN users u ON u.id = p.owner_id
         WHERE p.id = ANY($1::int[])`;
-      const projRes = await pool.query(q, [projectIds]);
+      const projRes = await pool.query(q, [visibleProjectIds]);
       projects = (projRes.rows || []).map(r => ({
         code: r.code,
         name: r.name,
@@ -236,35 +241,87 @@ class UsersService {
       projects_active = projects.filter(p => p.status === 'active').length;
     }
 
+    const issuesViewScope = await getPermissionProjectScope(actor, 'issues.view');
+    const documentsViewScope = await getPermissionProjectScope(actor, 'documents.view');
+    const customerQuestionsViewScope = await getPermissionProjectScope(actor, 'customer_questions.view');
+
     // issues: total, open (status.is_final != true), added last 7 days (author)
-    const issuesTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE (assignee_id = $1 OR author_id = $1) AND is_active = true`, [uid]);
-    const issues_total = Number(issuesTotalRes.rows[0] ? issuesTotalRes.rows[0].cnt : 0);
+    let issues_total = 0;
+    let issues_open = 0;
+    let issues_last_week = 0;
+    if (issuesViewScope.hasGlobal || issuesViewScope.projectIds.length > 0) {
+      if (issuesViewScope.hasGlobal) {
+        const issuesTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE (assignee_id = $1 OR author_id = $1) AND is_active = true`, [uid]);
+        issues_total = Number(issuesTotalRes.rows[0] ? issuesTotalRes.rows[0].cnt : 0);
 
-    const issuesOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues i JOIN issue_status s ON i.status_id = s.id WHERE (i.assignee_id = $1 OR i.author_id = $1) AND (s.is_final IS NOT TRUE) AND i.is_active = true`, [uid]);
-    const issues_open = Number(issuesOpenRes.rows[0] ? issuesOpenRes.rows[0].cnt : 0);
+        const issuesOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues i JOIN issue_status s ON i.status_id = s.id WHERE (i.assignee_id = $1 OR i.author_id = $1) AND (s.is_final IS NOT TRUE) AND i.is_active = true`, [uid]);
+        issues_open = Number(issuesOpenRes.rows[0] ? issuesOpenRes.rows[0].cnt : 0);
 
-    const issuesWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE author_id = $1 AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
-    const issues_last_week = Number(issuesWeekRes.rows[0] ? issuesWeekRes.rows[0].cnt : 0);
+        const issuesWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE author_id = $1 AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
+        issues_last_week = Number(issuesWeekRes.rows[0] ? issuesWeekRes.rows[0].cnt : 0);
+      } else {
+        const issuesTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE (assignee_id = $1 OR author_id = $1) AND project_id = ANY($2::int[]) AND is_active = true`, [uid, issuesViewScope.projectIds]);
+        issues_total = Number(issuesTotalRes.rows[0] ? issuesTotalRes.rows[0].cnt : 0);
+
+        const issuesOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues i JOIN issue_status s ON i.status_id = s.id WHERE (i.assignee_id = $1 OR i.author_id = $1) AND i.project_id = ANY($2::int[]) AND (s.is_final IS NOT TRUE) AND i.is_active = true`, [uid, issuesViewScope.projectIds]);
+        issues_open = Number(issuesOpenRes.rows[0] ? issuesOpenRes.rows[0].cnt : 0);
+
+        const issuesWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM issues WHERE author_id = $1 AND project_id = ANY($2::int[]) AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid, issuesViewScope.projectIds]);
+        issues_last_week = Number(issuesWeekRes.rows[0] ? issuesWeekRes.rows[0].cnt : 0);
+      }
+    }
 
     // documents: total, open (document_status.is_final != true), added last 7 days (created_by)
-    const docsTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND is_active = true`, [uid]);
-    const documents_total = Number(docsTotalRes.rows[0] ? docsTotalRes.rows[0].cnt : 0);
+    let documents_total = 0;
+    let documents_open = 0;
+    let documents_last_week = 0;
+    if (documentsViewScope.hasGlobal || documentsViewScope.projectIds.length > 0) {
+      if (documentsViewScope.hasGlobal) {
+        const docsTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND is_active = true`, [uid]);
+        documents_total = Number(docsTotalRes.rows[0] ? docsTotalRes.rows[0].cnt : 0);
 
-    const docsOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents d JOIN document_status s ON d.status_id = s.id WHERE (d.created_by = $1 OR d.responsible_id = $1) AND (s.is_final IS NOT TRUE) AND d.is_active = true`, [uid]);
-    const documents_open = Number(docsOpenRes.rows[0] ? docsOpenRes.rows[0].cnt : 0);
+        const docsOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents d JOIN document_status s ON d.status_id = s.id WHERE (d.created_by = $1 OR d.responsible_id = $1) AND (s.is_final IS NOT TRUE) AND d.is_active = true`, [uid]);
+        documents_open = Number(docsOpenRes.rows[0] ? docsOpenRes.rows[0].cnt : 0);
 
-    const docsWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
-    const documents_last_week = Number(docsWeekRes.rows[0] ? docsWeekRes.rows[0].cnt : 0);
+        const docsWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
+        documents_last_week = Number(docsWeekRes.rows[0] ? docsWeekRes.rows[0].cnt : 0);
+      } else {
+        const docsTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND project_id = ANY($2::int[]) AND is_active = true`, [uid, documentsViewScope.projectIds]);
+        documents_total = Number(docsTotalRes.rows[0] ? docsTotalRes.rows[0].cnt : 0);
+
+        const docsOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents d JOIN document_status s ON d.status_id = s.id WHERE (d.created_by = $1 OR d.responsible_id = $1) AND d.project_id = ANY($2::int[]) AND (s.is_final IS NOT TRUE) AND d.is_active = true`, [uid, documentsViewScope.projectIds]);
+        documents_open = Number(docsOpenRes.rows[0] ? docsOpenRes.rows[0].cnt : 0);
+
+        const docsWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM documents WHERE (created_by = $1 OR responsible_id = $1) AND project_id = ANY($2::int[]) AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid, documentsViewScope.projectIds]);
+        documents_last_week = Number(docsWeekRes.rows[0] ? docsWeekRes.rows[0].cnt : 0);
+      }
+    }
 
     // customer questions: total, open (status.is_final != true), added last 7 days (asked_by)
-    const cqTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE (asked_by = $1 OR answered_by = $1) AND is_active = true`, [uid]);
-    const customer_questions_total = Number(cqTotalRes.rows[0] ? cqTotalRes.rows[0].cnt : 0);
+    let customer_questions_total = 0;
+    let customer_questions_open = 0;
+    let customer_questions_last_week = 0;
+    if (customerQuestionsViewScope.hasGlobal || customerQuestionsViewScope.projectIds.length > 0) {
+      if (customerQuestionsViewScope.hasGlobal) {
+        const cqTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE (asked_by = $1 OR answered_by = $1) AND is_active = true`, [uid]);
+        customer_questions_total = Number(cqTotalRes.rows[0] ? cqTotalRes.rows[0].cnt : 0);
 
-    const cqOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions cq JOIN customer_question_status cs ON cq.status_id = cs.id WHERE (cq.asked_by = $1 OR cq.answered_by = $1) AND (cs.is_final IS NOT TRUE) AND cq.is_active = true`, [uid]);
-    const customer_questions_open = Number(cqOpenRes.rows[0] ? cqOpenRes.rows[0].cnt : 0);
+        const cqOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions cq JOIN customer_question_status cs ON cq.status_id = cs.id WHERE (cq.asked_by = $1 OR cq.answered_by = $1) AND (cs.is_final IS NOT TRUE) AND cq.is_active = true`, [uid]);
+        customer_questions_open = Number(cqOpenRes.rows[0] ? cqOpenRes.rows[0].cnt : 0);
 
-    const cqWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE asked_by = $1 AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
-    const customer_questions_last_week = Number(cqWeekRes.rows[0] ? cqWeekRes.rows[0].cnt : 0);
+        const cqWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE asked_by = $1 AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid]);
+        customer_questions_last_week = Number(cqWeekRes.rows[0] ? cqWeekRes.rows[0].cnt : 0);
+      } else {
+        const cqTotalRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE (asked_by = $1 OR answered_by = $1) AND project_id = ANY($2::int[]) AND is_active = true`, [uid, customerQuestionsViewScope.projectIds]);
+        customer_questions_total = Number(cqTotalRes.rows[0] ? cqTotalRes.rows[0].cnt : 0);
+
+        const cqOpenRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions cq JOIN customer_question_status cs ON cq.status_id = cs.id WHERE (cq.asked_by = $1 OR cq.answered_by = $1) AND cq.project_id = ANY($2::int[]) AND (cs.is_final IS NOT TRUE) AND cq.is_active = true`, [uid, customerQuestionsViewScope.projectIds]);
+        customer_questions_open = Number(cqOpenRes.rows[0] ? cqOpenRes.rows[0].cnt : 0);
+
+        const cqWeekRes = await pool.query(`SELECT COUNT(*) AS cnt FROM customer_questions WHERE asked_by = $1 AND project_id = ANY($2::int[]) AND created_at >= (NOW() - INTERVAL '7 days') AND is_active = true`, [uid, customerQuestionsViewScope.projectIds]);
+        customer_questions_last_week = Number(cqWeekRes.rows[0] ? cqWeekRes.rows[0].cnt : 0);
+      }
+    }
 
     return {
       projects: {

@@ -60,4 +60,23 @@ async function hasPermissionForProject(actor, permissionCode, projectId) {
   }
 }
 
-module.exports = { hasPermission, hasPermissionForProject };
+/**
+ * Return permission scope for user by permission code:
+ * - hasGlobal: true when permission is granted by a global role
+ * - projectIds: project ids where permission is granted by project roles
+ */
+async function getPermissionProjectScope(actor, permissionCode) {
+  if (!actor || !actor.id || !permissionCode) {
+    return { hasGlobal: false, projectIds: [] };
+  }
+
+  try {
+    return await Permission.getPermissionScopeForUser(actor.id, permissionCode);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('permissionChecker.getPermissionProjectScope error:', err.message);
+    return { hasGlobal: false, projectIds: [] };
+  }
+}
+
+module.exports = { hasPermission, hasPermissionForProject, getPermissionProjectScope };

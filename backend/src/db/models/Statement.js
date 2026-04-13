@@ -2,12 +2,26 @@ const pool = require('../connection');
 
 class Statement {
   static async list(filters = {}) {
-    const { page = 1, limit, search } = filters;
+    const { page = 1, limit, search, project_id, allowed_project_ids } = filters;
     const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
     let idx = 1;
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
+    if (project_id !== undefined && project_id !== null) {
+      const projectIds = Array.isArray(project_id)
+        ? project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
+        : [Number(project_id)].filter(p => !Number.isNaN(p));
+      if (projectIds.length === 0) return [];
+      where.push(`s.project_id = ANY($${idx++}::int[])`);
+      values.push(projectIds);
+    }
+    if (Array.isArray(allowed_project_ids) && allowed_project_ids.length > 0) {
+      const projectIds = allowed_project_ids.map(p => Number(p)).filter(p => !Number.isNaN(p));
+      if (projectIds.length === 0) return [];
+      where.push(`s.project_id = ANY($${idx++}::int[])`);
+      values.push(projectIds);
+    }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     let q = `SELECT s.id, s.parent_id, s.project_id, s.code, s.name, s.description,
       json_build_object('id', u.id, 'full_name', concat_ws(' ', u.first_name, u.last_name), 'avatar_id', u.avatar_id) AS created_by,

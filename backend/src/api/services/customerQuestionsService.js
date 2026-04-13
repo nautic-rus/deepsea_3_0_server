@@ -2,7 +2,7 @@ const pool = require('../../db/connection');
 const CustomerQuestion = require('../../db/models/CustomerQuestion');
 const CustomerQuestionStorage = require('../../db/models/CustomerQuestionStorage');
 const Storage = require('../../db/models/Storage');
-const { hasPermission } = require('./permissionChecker');
+const { hasPermission, hasPermissionForProject, getPermissionProjectScope } = require('./permissionChecker');
 const NotificationDispatcher = require('./notificationDispatcher');
 const HistoryService = require('./historyService');
 const ProtectionService = require('./protectionService');
@@ -79,11 +79,16 @@ class CustomerQuestionsService {
   static async listCustomerQuestions(query = {}, actor) {
     const requiredPermission = 'customer_questions.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.view'); err.statusCode = 403; throw err; }
-    // Enforce that the actor belongs to the project(s) requested.
-    const Project = require('../../db/models/Project');
-    const projectIds = await Project.listAssignedProjectIds(actor.id);
+    const permissionScope = await getPermissionProjectScope(actor, requiredPermission);
+    if (!permissionScope.hasGlobal && permissionScope.projectIds.length === 0) {
+      const err = new Error('Forbidden: missing permission customer_questions.view'); err.statusCode = 403; throw err;
+    }
+
+    if (permissionScope.hasGlobal) {
+      return CustomerQuestion.list(query);
+    }
+
+    const projectIds = permissionScope.projectIds;
 
     if (query.project_id !== undefined && query.project_id !== null) {
       const requestedProjectIds = Array.isArray(query.project_id)
@@ -94,9 +99,9 @@ class CustomerQuestionsService {
         const err = new Error('Invalid project_id'); err.statusCode = 400; throw err;
       }
 
-      const notAssigned = requestedProjectIds.find(pid => !projectIds.includes(pid));
-      if (notAssigned !== undefined) {
-        const err = new Error('Forbidden: user is not assigned to the requested project'); err.statusCode = 403; throw err;
+      const forbiddenProject = requestedProjectIds.find(pid => !projectIds.includes(pid));
+      if (forbiddenProject !== undefined) {
+        const err = new Error('Forbidden: missing permission customer_questions.view for requested project'); err.statusCode = 403; throw err;
       }
 
       query.project_id = requestedProjectIds.length === 1 ? requestedProjectIds[0] : requestedProjectIds;
@@ -191,9 +196,12 @@ class CustomerQuestionsService {
   static async createCustomerQuestion(fields, actor) {
     const requiredPermission = 'customer_questions.create';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.question_text) { const err = new Error('Missing required field: question_text'); err.statusCode = 400; throw err; }
+    const targetProjectId = fields.project_id !== undefined && fields.project_id !== null ? Number(fields.project_id) : null;
+    const allowed = targetProjectId
+      ? await hasPermissionForProject(actor, requiredPermission, targetProjectId)
+      : await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.create for target project'); err.statusCode = 403; throw err; }
     // default asked_by
     if (!fields.asked_by) fields.asked_by = actor.id;
     // resolve status -> status_id if provided as string/code
@@ -238,11 +246,19 @@ class CustomerQuestionsService {
   static async updateCustomerQuestion(id, fields, actor) {
     const requiredPermission = 'customer_questions.update';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const existing = await CustomerQuestion.findById(Number(id));
     if (!existing) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
+    const currentProjectId = existing.project ? Number(existing.project.id) : null;
+    const allowedCurrent = currentProjectId
+      ? await hasPermissionForProject(actor, requiredPermission, currentProjectId)
+      : await hasPermission(actor, requiredPermission);
+    if (!allowedCurrent) { const err = new Error('Forbidden: missing permission customer_questions.update for this project'); err.statusCode = 403; throw err; }
+
+    if (fields.project_id !== undefined && fields.project_id !== null && Number(fields.project_id) !== Number(currentProjectId)) {
+      const allowedTarget = await hasPermissionForProject(actor, requiredPermission, Number(fields.project_id));
+      if (!allowedTarget) { const err = new Error('Forbidden: missing permission customer_questions.update for target project'); err.statusCode = 403; throw err; }
+    }
     // resolve status -> status_id if provided as string/code
     if (fields.status !== undefined && fields.status !== null) {
       const s = fields.status;
@@ -306,9 +322,14 @@ class CustomerQuestionsService {
   static async deleteCustomerQuestion(id, actor) {
     const requiredPermission = 'customer_questions.delete';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const existing = await CustomerQuestion.findById(Number(id));
+    if (!existing) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
+    const projectId = existing.project ? Number(existing.project.id) : null;
+    const allowed = projectId
+      ? await hasPermissionForProject(actor, requiredPermission, projectId)
+      : await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.delete for this project'); err.statusCode = 403; throw err; }
     const ok = await CustomerQuestion.softDelete(Number(id));
     if (!ok) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
     return { success: true };

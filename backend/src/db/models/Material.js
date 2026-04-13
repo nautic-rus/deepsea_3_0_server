@@ -2,7 +2,7 @@ const pool = require('../connection');
 
 class Material {
   static async list(filters = {}) {
-    const { directory_id, unit_id, shipment_id, type, status, page = 1, limit, search } = filters;
+    const { directory_id, unit_id, shipment_id, type, status, project_id, allowed_project_ids, page = 1, limit, search } = filters;
     const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
@@ -13,6 +13,32 @@ class Material {
     if (status) { where.push(`m.status = $${idx++}`); values.push(status); }
     if (search) { where.push(`(m.name ILIKE $${idx} OR m.description ILIKE $${idx} OR m.stock_code ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     if (shipment_id) { where.push(`EXISTS (SELECT 1 FROM shipment_materials sh WHERE sh.material_id = m.id AND sh.shipment_id = $${idx++})`); values.push(shipment_id); }
+    if (project_id !== undefined && project_id !== null) {
+      const projectIds = Array.isArray(project_id)
+        ? project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
+        : [Number(project_id)].filter(p => !Number.isNaN(p));
+      if (projectIds.length === 0) return [];
+      where.push(`EXISTS (
+        SELECT 1
+        FROM equipment_materials_projects emp
+        JOIN statements s ON s.id = emp.statement_id
+        WHERE emp.equipment_material_id = m.id
+          AND s.project_id = ANY($${idx++}::int[])
+      )`);
+      values.push(projectIds);
+    }
+    if (Array.isArray(allowed_project_ids) && allowed_project_ids.length > 0) {
+      const projectIds = allowed_project_ids.map(p => Number(p)).filter(p => !Number.isNaN(p));
+      if (projectIds.length === 0) return [];
+      where.push(`EXISTS (
+        SELECT 1
+        FROM equipment_materials_projects emp
+        JOIN statements s ON s.id = emp.statement_id
+        WHERE emp.equipment_material_id = m.id
+          AND s.project_id = ANY($${idx++}::int[])
+      )`);
+      values.push(projectIds);
+    }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     let q = `SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, m.weight, m.sfi_code_id, sc.code AS sfi_code_code, sc.name_ru AS sfi_code_name_ru, sc.name_en AS sfi_code_name_en, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
         FROM equipment_materials m

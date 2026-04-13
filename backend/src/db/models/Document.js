@@ -38,7 +38,17 @@ class Document {
 
     // Exact / equality filters
     if (id !== undefined) { where.push(`id = $${idx++}`); values.push(id); }
-    if (project_id !== undefined) { where.push(`project_id = $${idx++}`); values.push(project_id); }
+    if (project_id !== undefined && project_id !== null) {
+      if (Array.isArray(project_id)) {
+        const projectIds = project_id.map(p => Number(p)).filter(p => !Number.isNaN(p));
+        if (projectIds.length === 0) return [];
+        where.push(`project_id = ANY($${idx++}::int[])`);
+        values.push(projectIds);
+      } else {
+        where.push(`project_id = $${idx++}`);
+        values.push(project_id);
+      }
+    }
     if (stage_id !== undefined) { where.push(`stage_id = $${idx++}`); values.push(stage_id); }
     if (specialization_id !== undefined) { where.push(`specialization_id = $${idx++}`); values.push(specialization_id); }
     if (directory_id !== undefined) {

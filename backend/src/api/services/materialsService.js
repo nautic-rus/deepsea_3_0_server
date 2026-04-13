@@ -1,6 +1,6 @@
 const Material = require('../../db/models/Material');
 const pool = require('../../db/connection');
-const { hasPermission } = require('./permissionChecker');
+const { hasPermission, hasPermissionForProject, getPermissionProjectScope } = require('./permissionChecker');
 
 /**
  * MaterialsService
@@ -9,12 +9,50 @@ const { hasPermission } = require('./permissionChecker');
  * generation and basic CRUD. Applies permission checks before DB actions.
  */
 class MaterialsService {
+  static async _listLinkedProjectIds(materialId) {
+    const q = `
+      SELECT DISTINCT s.project_id
+      FROM equipment_materials_projects emp
+      JOIN statements s ON s.id = emp.statement_id
+      WHERE emp.equipment_material_id = $1
+        AND s.project_id IS NOT NULL
+    `;
+    const res = await pool.query(q, [Number(materialId)]);
+    return (res.rows || []).map(r => Number(r.project_id)).filter(n => !Number.isNaN(n));
+  }
+
   static async listMaterials(query = {}, actor) {
     const requiredPermission = 'materials.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission materials.view'); err.statusCode = 403; throw err; }
-    return await Material.list(query);
+    const permissionScope = await getPermissionProjectScope(actor, requiredPermission);
+    if (!permissionScope.hasGlobal && permissionScope.projectIds.length === 0) {
+      const err = new Error('Forbidden: missing permission materials.view'); err.statusCode = 403; throw err;
+    }
+
+    if (permissionScope.hasGlobal) {
+      return await Material.list(query);
+    }
+
+    const allowedProjectIds = permissionScope.projectIds;
+    if (query.project_id !== undefined && query.project_id !== null) {
+      const requestedProjectIds = Array.isArray(query.project_id)
+        ? query.project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
+        : [Number(query.project_id)].filter(p => !Number.isNaN(p));
+
+      if (requestedProjectIds.length === 0) {
+        const err = new Error('Invalid project_id'); err.statusCode = 400; throw err;
+      }
+
+      const forbiddenProject = requestedProjectIds.find(pid => !allowedProjectIds.includes(pid));
+      if (forbiddenProject !== undefined) {
+        const err = new Error('Forbidden: missing permission materials.view for requested project'); err.statusCode = 403; throw err;
+      }
+
+      query.project_id = requestedProjectIds.length === 1 ? requestedProjectIds[0] : requestedProjectIds;
+    }
+
+    const filters = Object.assign({}, query, { allowed_project_ids: allowedProjectIds });
+    return await Material.list(filters);
   }
 
   static async getMaterialById(id, actor) {
@@ -31,9 +69,12 @@ class MaterialsService {
   static async createMaterial(fields, actor) {
     const requiredPermission = 'materials.create';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission materials.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.name || !fields.directory_id) { const err = new Error('Missing required fields: name, directory_id'); err.statusCode = 400; throw err; }
+    const targetProjectId = fields.project_id !== undefined && fields.project_id !== null ? Number(fields.project_id) : null;
+    const allowed = targetProjectId
+      ? await hasPermissionForProject(actor, requiredPermission, targetProjectId)
+      : await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission materials.create'); err.statusCode = 403; throw err; }
     if (!fields.created_by) fields.created_by = actor.id;
 
     const maxAttempts = 5;
@@ -69,9 +110,19 @@ class MaterialsService {
   static async updateMaterial(id, fields, actor) {
     const requiredPermission = 'materials.update';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission materials.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const existing = await Material.findById(Number(id));
+    if (!existing) { const err = new Error('Material not found'); err.statusCode = 404; throw err; }
+    const linkedProjectIds = await MaterialsService._listLinkedProjectIds(Number(id));
+    if (linkedProjectIds.length > 0) {
+      for (const projectId of linkedProjectIds) {
+        const allowedInProject = await hasPermissionForProject(actor, requiredPermission, projectId);
+        if (!allowedInProject) { const err = new Error('Forbidden: missing permission materials.update for one or more linked projects'); err.statusCode = 403; throw err; }
+      }
+    } else {
+      const allowed = await hasPermission(actor, requiredPermission);
+      if (!allowed) { const err = new Error('Forbidden: missing permission materials.update'); err.statusCode = 403; throw err; }
+    }
     const updated = await Material.update(Number(id), fields);
     if (!updated) { const err = new Error('Material not found'); err.statusCode = 404; throw err; }
 
@@ -102,9 +153,19 @@ class MaterialsService {
   static async deleteMaterial(id, actor) {
     const requiredPermission = 'materials.delete';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission materials.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const existing = await Material.findById(Number(id));
+    if (!existing) { const err = new Error('Material not found'); err.statusCode = 404; throw err; }
+    const linkedProjectIds = await MaterialsService._listLinkedProjectIds(Number(id));
+    if (linkedProjectIds.length > 0) {
+      for (const projectId of linkedProjectIds) {
+        const allowedInProject = await hasPermissionForProject(actor, requiredPermission, projectId);
+        if (!allowedInProject) { const err = new Error('Forbidden: missing permission materials.delete for one or more linked projects'); err.statusCode = 403; throw err; }
+      }
+    } else {
+      const allowed = await hasPermission(actor, requiredPermission);
+      if (!allowed) { const err = new Error('Forbidden: missing permission materials.delete'); err.statusCode = 403; throw err; }
+    }
     // prevent deletion if material is linked in equipment_materials_projects
     const chk = await pool.query('SELECT 1 FROM equipment_materials_projects WHERE material_id = $1 LIMIT 1', [Number(id)]);
     if (chk && chk.rowCount > 0) {

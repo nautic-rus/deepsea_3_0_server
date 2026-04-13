@@ -40,6 +40,26 @@ class Permission {
   }
 
   /**
+   * Возвращает область действия разрешения пользователя:
+   * - hasGlobal: есть ли глобальная роль с этим разрешением (project_id IS NULL)
+   * - projectIds: список project_id, где разрешение выдано проектной ролью
+   */
+  static async getPermissionScopeForUser(userId, permissionCode) {
+    const query = `
+      SELECT ur.project_id
+      FROM user_roles ur
+      JOIN role_permissions rp ON ur.role_id = rp.role_id
+      JOIN permissions p ON rp.permission_id = p.id
+      WHERE ur.user_id = $1 AND p.code = $2
+    `;
+    const res = await pool.query(query, [userId, permissionCode]);
+    const rows = res.rows || [];
+    const hasGlobal = rows.some(r => r.project_id === null);
+    const projectIds = [...new Set(rows.map(r => r.project_id).filter(pid => pid !== null))];
+    return { hasGlobal, projectIds };
+  }
+
+  /**
    * Список всех разрешений
    */
   static async list() {
