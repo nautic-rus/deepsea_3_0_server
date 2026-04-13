@@ -1,11 +1,13 @@
 const EntityLink = require('../../db/models/EntityLink');
-const Issue = require('../../db/models/Issue');
+const Issue = require('../../db/models/Issue'); // No change, keeping for context
 const Document = require('../../db/models/Document');
 const CustomerQuestion = require('../../db/models/CustomerQuestion');
 const Project = require('../../db/models/Project');
 const IssueStatus = require('../../db/models/IssueStatus');
 const DocumentStatus = require('../../db/models/DocumentStatus');
 const { hasPermission } = require('./permissionChecker');
+const IssueType = require('../../db/models/IssueType');
+const DocumentType = require('../../db/models/DocumentType');
 
 class EntityLinksService {
   /**
@@ -109,15 +111,19 @@ class EntityLinksService {
       if (type === 'issue') {
         let status = null;
         let project = null;
+        let typeName = null;
         if (data.status_id) {
           try { status = await IssueStatus.findById(data.status_id); } catch (e) { status = null; }
+        }
+        if (data.type_id) {
+          try { const t = await IssueType.findById(data.type_id); if (t) typeName = t.name || null; } catch (e) { typeName = null; }
         }
         if (data.project_id) {
           try { const p = await Project.findById(data.project_id); if (p) project = { id: p.id, code: p.code || null, name: p.name || null }; } catch (e) { project = { id: data.project_id }; }
         }
         return {
           id: data.id,
-          type: 'issue',
+          type: typeName,
           title: data.title || null,
           description: data.description || null,
           project: project,
@@ -129,15 +135,19 @@ class EntityLinksService {
       if (type === 'document') {
         let status = null;
         let project = null;
+        let typeName = null;
         if (data.status_id) {
           try { status = await DocumentStatus.findById(data.status_id); } catch (e) { status = null; }
+        }
+        if (data.type_id) {
+          try { const t = await DocumentType.findById(data.type_id); if (t) typeName = t.name || null; } catch (e) { typeName = null; }
         }
         if (data.project_id) {
           try { const p = await Project.findById(data.project_id); if (p) project = { id: p.id, code: p.code || null, name: p.name || null }; } catch (e) { project = { id: data.project_id }; }
         }
         return {
           id: data.id,
-          type: 'document',
+          type: typeName,
           title: data.title || null,
           description: data.description || data.comment || null,
           project: project,
@@ -148,9 +158,10 @@ class EntityLinksService {
       }
       if (type === 'qna') {
         const st = data.status || null;
+        const typeName = (data.type && data.type.name) ? data.type.name : null;
         return {
           id: data.id,
-          type: 'qna',
+          type: typeName,
           title: data.question_title || null,
           description: data.question_text || null,
           project: data.project || null,
