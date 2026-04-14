@@ -11,7 +11,6 @@ jobs:
     env:
       NODE_VERSION: '24.11.1'
       OUTPUT_DIR: 'backend'
-      SSH_PORT: '22'  # Добавлен порт SSH (по умолчанию 22, измените если нужно)
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -35,7 +34,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p ${{ env.SSH_PORT }} -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to server (rsync)
         run: |
@@ -44,13 +43,13 @@ jobs:
             --exclude '.env' \
             --exclude 'uploads' \
             --exclude 'logs' \
-            -e "ssh -i ~/.ssh/id_rsa -p ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no" \
+            -e "ssh -i ~/.ssh/id_rsa -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no" \
             ${{ env.OUTPUT_DIR }}/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.TARGET_DIR_BACK }}
 
       - name: Remote restart (optional)
         run: |
-          ssh -i ~/.ssh/id_rsa -p ${{ env.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+          ssh -i ~/.ssh/id_rsa -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
             "cd '${{ secrets.TARGET_DIR_BACK }}' && \
              docker ps -a --filter \"name=deepsea-watcher\" -q | xargs -r docker rm -f || true && \
              docker compose pull || true && \
