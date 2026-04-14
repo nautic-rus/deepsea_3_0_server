@@ -7,7 +7,13 @@ class WikiArticlesService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission wiki.articles.view'); err.statusCode = 403; throw err; }
-    return await WikiArticle.list(query);
+    // normalize organization filters: allow organization_id or organization_ids (CSV or array)
+    const q = Object.assign({}, query);
+    if (q.organization_id !== undefined) q.organization_id = Number(q.organization_id);
+    if (q.organization_ids && typeof q.organization_ids === 'string') {
+      q.organization_ids = q.organization_ids.split(',').map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n));
+    }
+    return await WikiArticle.list(q);
   }
 
   static async getArticleById(id, actor) {

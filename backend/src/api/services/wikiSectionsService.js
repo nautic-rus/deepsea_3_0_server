@@ -7,7 +7,11 @@ class WikiSectionsService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission wiki.sections.view'); err.statusCode = 403; throw err; }
-    return await WikiSection.list(query);
+    const q = Object.assign({}, query);
+    // normalize project_id: allow 'null' string to mean sections without project
+    if (q.project_id === 'null') q.project_id = 'null';
+    else if (q.project_id !== undefined) q.project_id = Number(q.project_id);
+    return await WikiSection.list(q);
   }
 
   static async getSectionById(id, actor) {

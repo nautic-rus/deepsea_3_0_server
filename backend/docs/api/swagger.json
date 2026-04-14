@@ -123,6 +123,14 @@
     {
       "name": "units",
       "description": "CRUD operations for units"
+    },
+    {
+      "name": "environment_settings",
+      "description": "View and update environment settings"
+    },
+    {
+      "name": "wiki",
+      "description": "Wiki sections, articles and storage links"
     }
   ],
   "components": {
@@ -4629,6 +4637,285 @@
         "parameters": []
       }
     },
+    "/api/environment_settings": {
+      "get": {
+        "tags": [
+          "environment_settings"
+        ],
+        "summary": "List environment settings",
+        "description": "Returns environment settings available to the current user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "environment_settings.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "nullable": true
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission environment_settings.view"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "environment_settings"
+        ],
+        "summary": "Bulk update environment settings",
+        "description": "Updates multiple environment settings and reports whether a restart is required.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "environment_settings.update"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "settings"
+                ],
+                "properties": {
+                  "settings": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "key",
+                        "value"
+                      ],
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "nullable": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requires_restart": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission environment_settings.update"
+          }
+        }
+      }
+    },
+    "/api/environment_settings/{key}": {
+      "get": {
+        "tags": [
+          "environment_settings"
+        ],
+        "summary": "Get environment setting by key",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "environment_settings.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Environment setting key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "nullable": true
+                        },
+                        "description": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission environment_settings.view"
+          },
+          "404": {
+            "description": "Setting not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "environment_settings"
+        ],
+        "summary": "Update environment setting",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "environment_settings.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Environment setting key"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "value"
+                ],
+                "properties": {
+                  "value": {
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "requires_restart": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission environment_settings.update"
+          },
+          "404": {
+            "description": "Setting not found"
+          }
+        }
+      }
+    },
     "/api/customer_question_statuses": {
       "post": {
         "tags": [
@@ -6011,6 +6298,82 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/customer_questions/{id}/files/local": {
+      "post": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "Upload local file and attach to customer question",
+        "description": "Uploads a multipart file to local storage and attaches it to the customer question.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Customer question ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StorageRef"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or customer question id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission customer_questions.update"
+          },
+          "404": {
+            "description": "Customer question not found"
           }
         }
       }
@@ -8583,6 +8946,82 @@
         }
       }
     },
+    "/api/documents/{id}/files/local": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Upload local file and attach to document",
+        "description": "Uploads a multipart file to local storage and attaches it to the document.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Document ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StorageRef"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or document id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission documents.update"
+          },
+          "404": {
+            "description": "Document not found"
+          }
+        }
+      }
+    },
     "/api/documents/{id}/files/{storage_id}": {
       "delete": {
         "tags": [
@@ -11138,6 +11577,82 @@
           },
           "403": {
             "description": "Forbidden - missing permission issues.view"
+          },
+          "404": {
+            "description": "Issue not found"
+          }
+        }
+      }
+    },
+    "/api/issues/{id}/files/local": {
+      "post": {
+        "tags": [
+          "issues"
+        ],
+        "summary": "Upload local file and attach to issue",
+        "description": "Uploads a multipart file to local storage and immediately attaches it to the issue.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "issues.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Issue ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Attached",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StorageRef"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or issue id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission issues.update"
           },
           "404": {
             "description": "Issue not found"
@@ -14603,7 +15118,19 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "integer" },
+                          "title": { "type": "string" },
+                          "slug": { "type": "string" },
+                          "summary": { "type": "string", "nullable": true },
+                          "section_id": { "type": "integer", "nullable": true },
+                          "is_published": { "type": "boolean" },
+                          "version": { "type": "string", "nullable": true },
+                          "created_by": { "type": "integer", "nullable": true },
+                          "published_at": { "type": "string", "format": "date-time", "nullable": true },
+                          "organizations": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" } } }, "nullable": true }
+                        }
                       }
                     }
                   }
@@ -19286,6 +19813,622 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/wiki/articles": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "List wiki articles",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.articles.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Create wiki article",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.articles.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "title",
+                  "slug",
+                  "content",
+                  "section_id"
+                ],
+                  "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "section_id": {
+                    "type": "integer"
+                  },
+                  "organizations": {
+                    "type": "array",
+                    "items": { "type": "integer" },
+                    "description": "Array of organization IDs to attach to the article"
+                  },
+                  "created_by": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/wiki/articles/{id}": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Get wiki article by id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.articles.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer" },
+                    "title": { "type": "string" },
+                    "slug": { "type": "string" },
+                    "content": { "type": "string" },
+                    "summary": { "type": "string", "nullable": true },
+                    "section_id": { "type": "integer", "nullable": true },
+                    "is_published": { "type": "boolean" },
+                    "version": { "type": "string", "nullable": true },
+                    "created_by": { "type": "integer", "nullable": true },
+                    "published_at": { "type": "string", "format": "date-time", "nullable": true },
+                    "organizations": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" } } }, "nullable": true }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Article not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Update wiki article",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.articles.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "slug": { "type": "string" },
+                  "content": { "type": "string" },
+                  "summary": { "type": "string", "nullable": true },
+                  "section_id": { "type": "integer" },
+                  "is_published": { "type": "boolean" },
+                  "version": { "type": "string" },
+                  "updated_by": { "type": "integer" },
+                  "organizations": { "type": "array", "items": { "type": "integer" }, "description": "Replace article organizations with this list" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated"
+          },
+          "404": {
+            "description": "Article not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Delete wiki article",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.articles.delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Article not found"
+          }
+        }
+      }
+    },
+    "/api/wiki/sections": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "List wiki sections",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.sections.view"
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Project id to filter sections or the string 'null' to list global sections"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Create wiki section",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.sections.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "slug"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Optional project id to bind the section to a project (null = global)"
+                  },
+                  "created_by": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/wiki/sections/{id}": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Get wiki section by id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.sections.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer" },
+                    "name": { "type": "string" },
+                    "slug": { "type": "string" },
+                    "description": { "type": "string", "nullable": true },
+                    "project_id": { "type": "integer", "nullable": true }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Section not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Update wiki section",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.sections.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated"
+          },
+          "404": {
+            "description": "Section not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Delete wiki section",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.sections.delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Section not found"
+          }
+        }
+      }
+    },
+    "/api/wiki/articles/{article_id}/storage": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "List wiki article storage links",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.storage.view"
+        ],
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Attach storage item to wiki article",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.storage.create"
+        ],
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "article_id",
+                  "storage_id"
+                ],
+                "properties": {
+                  "article_id": {
+                    "type": "integer",
+                    "description": "Wiki article ID; should match the path parameter"
+                  },
+                  "storage_id": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        }
+      }
+    },
+    "/api/wiki/articles/storage/{id}": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Get wiki article storage link by id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.storage.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Record not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Delete wiki article storage link",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "wiki.storage.delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Record not found"
           }
         }
       }
