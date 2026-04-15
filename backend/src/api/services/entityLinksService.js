@@ -103,6 +103,8 @@ class EntityLinksService {
     // Enrich each link with the full entity data for active and passive sides.
     // Resolve each referenced entity from its corresponding table based on type.
     const cache = {};
+    const rawCache = {};
+    const permissionCache = {};
 
     const normalize = async (type, data) => {
       if (!data) return null;
@@ -168,64 +170,85 @@ class EntityLinksService {
           status: st ? { name: st.name || null, code: st.code || null } : null,
         };
       }
+      if (type === 'customer_question') {
+        const st = data.status || null;
+        const typeName = (data.type && data.type.name) ? data.type.name : null;
+        return {
+          id: data.id,
+          type: typeName,
+          title: data.question_title || null,
+          description: data.question_text || null,
+          project: data.project || null,
+          created_at: data.created_at || null,
+          code: data.code || null,
+          status: st ? { name: st.name || null, code: st.code || null } : null,
+        };
+      }
       return null;
+    };
+
+    const fetchEntityRaw = async (type, id) => {
+      if (!type || !id) return null;
+      const key = `${type}:${id}`;
+      if (Object.prototype.hasOwnProperty.call(rawCache, key)) return rawCache[key];
+      try {
+        let res = null;
+        if (type === 'issue') res = await Issue.findById(id);
+        else if (type === 'document') res = await Document.findById(id);
+        else if (type === 'qna' || type === 'customer_question') res = await CustomerQuestion.findById(id);
+        else res = null;
+        rawCache[key] = res || null;
+        return rawCache[key];
+      } catch (e) {
+        rawCache[key] = null;
+        return null;
+      }
     };
 
     const fetchEntity = async (type, id) => {
       if (!type || !id) return null;
       const key = `${type}:${id}`;
       if (Object.prototype.hasOwnProperty.call(cache, key)) return cache[key];
-      try {
-        let res = null;
-        if (type === 'issue') res = await Issue.findById(id);
-        else if (type === 'document') res = await Document.findById(id);
-        else if (type === 'qna') res = await CustomerQuestion.findById(id);
-        else res = null;
-        cache[key] = await normalize(type, res);
-        return cache[key];
-      } catch (e) {
-        cache[key] = null;
-        return null;
-      }
+      const raw = await fetchEntityRaw(type, id);
+      cache[key] = await normalize(type, raw);
+      return cache[key];
     };
 
-    // Enrich and filter according to per-entity view permissions
-    const enrichedAll = await Promise.all((rows || []).map(async (r) => {
+    const canViewEntity = async (type, id) => {
+      // Keep backward compatibility for unknown entity types.
+      if (!type || !id) return false;
+
+      let permissionCode = null;
+      if (type === 'issue') permissionCode = 'issues.view';
+      else if (type === 'document') permissionCode = 'documents.view';
+      else if (type === 'qna' || type === 'customer_question') permissionCode = 'customer_questions.view';
+      else return true;
+
+      const raw = await fetchEntityRaw(type, id);
+      if (!raw) return false;
+
+      const projectId = raw.project_id || (raw.project && raw.project.id ? raw.project.id : null);
+      const cacheKey = `${permissionCode}:${projectId || 'global'}`;
+      if (Object.prototype.hasOwnProperty.call(permissionCache, cacheKey)) return permissionCache[cacheKey];
+
+      const allowed = projectId
+        ? await hasPermissionForProject(actor, permissionCode, projectId)
+        : await hasPermission(actor, permissionCode);
+      permissionCache[cacheKey] = !!allowed;
+      return permissionCache[cacheKey];
+    };
+
+    const enriched = await Promise.all((rows || []).map(async (r) => {
+      const canViewActive = await canViewEntity(r.active_type, r.active_id);
+      const canViewPassive = await canViewEntity(r.passive_type, r.passive_id);
+      if (!canViewActive || !canViewPassive) return null;
+
       const active_entity = await fetchEntity(r.active_type, r.active_id);
       const passive_entity = await fetchEntity(r.passive_type, r.passive_id);
       return Object.assign({}, r, { active_entity, passive_entity });
     }));
 
-    // Helper: check if actor can view an entity of given type and project
-    const canViewEntity = async (etype, projectObj) => {
-      switch (etype) {
-        case 'issue':
-          if (await hasPermission(actor, 'issues.view')) return true;
-          if (projectObj && projectObj.id) return await hasPermissionForProject(actor, 'issues.view', projectObj.id);
-          return false;
-        case 'document':
-          if (await hasPermission(actor, 'documents.view')) return true;
-          if (projectObj && projectObj.id) return await hasPermissionForProject(actor, 'documents.view', projectObj.id);
-          return false;
-        case 'qna':
-          if (await hasPermission(actor, 'customer_questions.view')) return true;
-          if (projectObj && projectObj.id) return await hasPermissionForProject(actor, 'customer_questions.view', projectObj.id);
-          return false;
-        default:
-          // Unknown entity types: be conservative and require no extra permission
-          return true;
-      }
-    };
-
-    const filtered = [];
-    for (const item of enrichedAll) {
-      const aOk = item.active_entity ? await canViewEntity(item.active_type, item.active_entity.project) : true;
-      const pOk = item.passive_entity ? await canViewEntity(item.passive_type, item.passive_entity.project) : true;
-      // Include link only if actor can view both sides (avoid leaking existence of unseen entities)
-      if (aOk && pOk) filtered.push(item);
-    }
-
-    return filtered;
+    return enriched.filter(Boolean);
   }
 }
 
