@@ -5,7 +5,7 @@ const CustomerQuestion = require('../../db/models/CustomerQuestion');
 const Project = require('../../db/models/Project');
 const IssueStatus = require('../../db/models/IssueStatus');
 const DocumentStatus = require('../../db/models/DocumentStatus');
-const { hasPermission } = require('./permissionChecker');
+const { hasPermission, hasPermissionForProject } = require('./permissionChecker');
 const IssueType = require('../../db/models/IssueType');
 const DocumentType = require('../../db/models/DocumentType');
 
@@ -82,8 +82,6 @@ class EntityLinksService {
    */
   static async listLinks(query = {}, actor) {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, 'issues.view');
-    if (!allowed) { const err = new Error('Forbidden: missing permission links.view'); err.statusCode = 403; throw err; }
 
     const filters = {};
     const mapNum = ['id', 'active_id', 'passive_id', 'created_by'];
@@ -191,13 +189,43 @@ class EntityLinksService {
       }
     };
 
-    const enriched = await Promise.all((rows || []).map(async (r) => {
+    // Enrich and filter according to per-entity view permissions
+    const enrichedAll = await Promise.all((rows || []).map(async (r) => {
       const active_entity = await fetchEntity(r.active_type, r.active_id);
       const passive_entity = await fetchEntity(r.passive_type, r.passive_id);
       return Object.assign({}, r, { active_entity, passive_entity });
     }));
 
-    return enriched;
+    // Helper: check if actor can view an entity of given type and project
+    const canViewEntity = async (etype, projectObj) => {
+      switch (etype) {
+        case 'issue':
+          if (await hasPermission(actor, 'issues.view')) return true;
+          if (projectObj && projectObj.id) return await hasPermissionForProject(actor, 'issues.view', projectObj.id);
+          return false;
+        case 'document':
+          if (await hasPermission(actor, 'documents.view')) return true;
+          if (projectObj && projectObj.id) return await hasPermissionForProject(actor, 'documents.view', projectObj.id);
+          return false;
+        case 'qna':
+          if (await hasPermission(actor, 'customer_questions.view')) return true;
+          if (projectObj && projectObj.id) return await hasPermissionForProject(actor, 'customer_questions.view', projectObj.id);
+          return false;
+        default:
+          // Unknown entity types: be conservative and require no extra permission
+          return true;
+      }
+    };
+
+    const filtered = [];
+    for (const item of enrichedAll) {
+      const aOk = item.active_entity ? await canViewEntity(item.active_type, item.active_entity.project) : true;
+      const pOk = item.passive_entity ? await canViewEntity(item.passive_type, item.passive_entity.project) : true;
+      // Include link only if actor can view both sides (avoid leaking existence of unseen entities)
+      if (aOk && pOk) filtered.push(item);
+    }
+
+    return filtered;
   }
 }
 
