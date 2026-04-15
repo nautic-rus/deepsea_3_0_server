@@ -9,9 +9,15 @@ class CustomerQuestionHistoryController {
       const actor = req.user;
       const questionId = Number(req.params.id);
       if (!questionId || Number.isNaN(questionId)) { const err = new Error('Invalid question id'); err.statusCode = 400; throw err; }
-      // Enforce permissions by reusing service that checks access
+      // Enforce base access checks by reusing service
       const QuestionsService = require('../services/customerQuestionsService');
-      await QuestionsService.getCustomerQuestionById(questionId, actor);
+      const question = await QuestionsService.getCustomerQuestionById(questionId, actor);
+      // Additionally require customer_questions.history permission (global or for the question's project)
+      const { hasPermission, hasPermissionForProject } = require('../services/permissionChecker');
+      const requiredPermission = 'customer_questions.history';
+      const hasGlobal = await hasPermission(actor, requiredPermission);
+      const hasProject = question && question.project_id ? await hasPermissionForProject(actor, requiredPermission, question.project_id) : false;
+      if (!hasGlobal && !hasProject) { const err = new Error('Forbidden: missing permission customer_questions.history'); err.statusCode = 403; throw err; }
       let rows = await CustomerQuestionHistory.listByQuestion(questionId);
       if (!rows || rows.length === 0) return res.json([]);
 

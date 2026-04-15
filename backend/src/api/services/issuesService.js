@@ -743,22 +743,17 @@ class IssuesService {
    * @param {Object} actor
    */
   static async listIssueMessages(id, opts = {}, actor) {
-    const requiredPermission = 'issues.view';
+    const requiredPermission = 'issues.messages';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
     const existing = await Issue.findById(Number(id));
     if (!existing) { const err = new Error('Issue not found'); err.statusCode = 404; throw err; }
 
-    // Ensure actor belongs to the issue's project unless they have view_all
-    const canViewAll = await hasPermission(actor, 'issues.view_all');
-    if (!canViewAll && existing.project_id) {
-      const Project = require('../../db/models/Project');
-      const assigned = await Project.isUserAssigned(existing.project_id, actor.id);
-      if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
-    }
+    // Require messages permission either globally or for the issue's project
+    const hasGlobal = await hasPermission(actor, requiredPermission);
+    const hasProject = existing.project_id ? await hasPermissionForProject(actor, requiredPermission, existing.project_id) : false;
+    if (!hasGlobal && !hasProject) { const err = new Error(`Forbidden: missing permission ${requiredPermission}`); err.statusCode = 403; throw err; }
 
     const messages = await IssueMessage.listByIssue(Number(id), opts);
     if (!messages || messages.length === 0) return [];

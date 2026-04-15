@@ -608,20 +608,15 @@ class DocumentsService {
    * List messages for a document
    */
   static async listDocumentMessages(id, opts = {}, actor) {
-    const requiredPermission = 'documents.view';
+    const requiredPermission = 'documents.messages';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    // Allow if actor has global permission or project-scoped permission for the document's project
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const existing = await Document.findById(Number(id));
     if (!existing) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
-    // Ensure actor is assigned to project unless they have view_all
-    const canViewAll = await hasPermission(actor, 'documents.view_all');
-    if (!canViewAll && existing.project_id) {
-      const Project = require('../../db/models/Project');
-      const assigned = await Project.isUserAssigned(existing.project_id, actor.id);
-      if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
-    }
+    const hasGlobal = await hasPermission(actor, requiredPermission);
+    const hasProject = existing.project_id ? await hasPermissionForProject(actor, requiredPermission, existing.project_id) : false;
+    if (!hasGlobal && !hasProject) { const err = new Error(`Forbidden: missing permission ${requiredPermission}`); err.statusCode = 403; throw err; }
     const { limit, offset = 0 } = opts || {};
     const messages = await DocumentMessage.listByDocument(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) });
     if (!messages || messages.length === 0) return [];

@@ -127,3 +127,10 @@ INSERT INTO permissions (name, code, description) VALUES ('wiki.sections.view', 
 INSERT INTO permissions (name, code, description) VALUES ('wiki.storage.create', 'wiki.storage.create', NULL) ON CONFLICT (code) DO NOTHING;
 INSERT INTO permissions (name, code, description) VALUES ('wiki.storage.delete', 'wiki.storage.delete', NULL) ON CONFLICT (code) DO NOTHING;
 INSERT INTO permissions (name, code, description) VALUES ('wiki.storage.view', 'wiki.storage.view', NULL) ON CONFLICT (code) DO NOTHING;
+-- Message and history specific permissions for documents, issues and customer questions
+INSERT INTO permissions (name, code, description) VALUES ('documents.messages', 'documents.messages', NULL) ON CONFLICT (code) DO NOTHING;
+INSERT INTO permissions (name, code, description) VALUES ('documents.history', 'documents.history', NULL) ON CONFLICT (code) DO NOTHING;
+INSERT INTO permissions (name, code, description) VALUES ('issues.messages', 'issues.messages', NULL) ON CONFLICT (code) DO NOTHING;
+INSERT INTO permissions (name, code, description) VALUES ('issues.history', 'issues.history', NULL) ON CONFLICT (code) DO NOTHING;
+INSERT INTO permissions (name, code, description) VALUES ('customer_questions.messages', 'customer_questions.messages', NULL) ON CONFLICT (code) DO NOTHING;
+INSERT INTO permissions (name, code, description) VALUES ('customer_questions.history', 'customer_questions.history', NULL) ON CONFLICT (code) DO NOTHING;

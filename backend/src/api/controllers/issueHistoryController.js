@@ -2,6 +2,7 @@ const IssuesService = require('./issuesController') || require('../../api/contro
 const IssuesServiceSvc = require('../services/issuesService');
 const IssueHistory = require('../../db/models/IssueHistory');
 const pool = require('../../db/connection');
+const { hasPermission, hasPermissionForProject } = require('../services/permissionChecker');
 
 /**
  * Controller to expose issue history entries.
@@ -12,9 +13,14 @@ class IssueHistoryController {
       const actor = req.user;
       const issueId = Number(req.params.id);
       if (!issueId || Number.isNaN(issueId)) { const err = new Error('Invalid issue id'); err.statusCode = 400; throw err; }
-      // Reuse IssuesService.getIssueById to enforce permissions
+      // Reuse IssuesService.getIssueById to enforce base access checks
       const IssuesService = require('../services/issuesService');
-      await IssuesService.getIssueById(issueId, actor);
+      const issue = await IssuesService.getIssueById(issueId, actor);
+      // Additionally require issues.history permission (global or for the issue's project)
+      const requiredPermission = 'issues.history';
+      const hasGlobal = await hasPermission(actor, requiredPermission);
+      const hasProject = issue && issue.project_id ? await hasPermissionForProject(actor, requiredPermission, issue.project_id) : false;
+      if (!hasGlobal && !hasProject) { const err = new Error('Forbidden: missing permission issues.history'); err.statusCode = 403; throw err; }
       let rows = await IssueHistory.listByIssue(issueId);
       rows = (rows || []).filter(r => !/^updated[_\s]?at$/i.test(String(r.field_name)));
       if (!rows || rows.length === 0) return res.json([]);

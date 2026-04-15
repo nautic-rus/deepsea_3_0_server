@@ -443,14 +443,15 @@ class CustomerQuestionsService {
    * List messages for a customer question
    */
   static async listQuestionMessages(questionId, opts = {}, actor) {
-    const requiredPermission = 'customer_questions.view';
+    const requiredPermission = 'customer_questions.messages';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.view'); err.statusCode = 403; throw err; }
     if (!questionId || Number.isNaN(Number(questionId))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
     const existing = await CustomerQuestion.findById(Number(questionId));
     if (!existing) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
+    const hasGlobal = await hasPermission(actor, requiredPermission);
+    const hasProject = existing.project_id ? await hasPermissionForProject(actor, requiredPermission, existing.project_id) : false;
+    if (!hasGlobal && !hasProject) { const err = new Error(`Forbidden: missing permission ${requiredPermission}`); err.statusCode = 403; throw err; }
 
     const CustomerQuestionMessage = require('../../db/models/CustomerQuestionMessage');
     const messages = await CustomerQuestionMessage.listByQuestion(Number(questionId), opts);

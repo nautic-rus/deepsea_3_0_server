@@ -1,5 +1,6 @@
 const DocumentHistory = require('../../db/models/DocumentHistory');
 const pool = require('../../db/connection');
+const { hasPermission, hasPermissionForProject } = require('../services/permissionChecker');
 
 /**
  * Controller to expose document history entries.
@@ -10,9 +11,14 @@ class DocumentHistoryController {
       const actor = req.user;
       const documentId = Number(req.params.id);
       if (!documentId || Number.isNaN(documentId)) { const err = new Error('Invalid document id'); err.statusCode = 400; throw err; }
-      // Reuse DocumentsService.getDocumentById to enforce permissions
+      // Reuse DocumentsService.getDocumentById to enforce base access checks
       const DocumentsService = require('../services/documentsService');
-      await DocumentsService.getDocumentById(documentId, actor);
+      const doc = await DocumentsService.getDocumentById(documentId, actor);
+      // Additionally require documents.history permission (global or for the document's project)
+      const requiredPermission = 'documents.history';
+      const hasGlobal = await hasPermission(actor, requiredPermission);
+      const hasProject = doc && doc.project_id ? await hasPermissionForProject(actor, requiredPermission, doc.project_id) : false;
+      if (!hasGlobal && !hasProject) { const err = new Error('Forbidden: missing permission documents.history'); err.statusCode = 403; throw err; }
       let rows = await DocumentHistory.listByDocument(documentId);
       rows = (rows || []).filter(r => !/^updated[_\s]?at$/i.test(String(r.field_name)));
       if (!rows || rows.length === 0) return res.json([]);
