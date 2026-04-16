@@ -445,7 +445,7 @@ class DocumentsService {
 
     const existing = await Document.findById(Number(id));
     if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
-    // Normalize storage entries to array of objects: { storage_id, type_id, rev, archive, archive_data, user_id }
+    // Normalize storage entries to array of objects: { storage_id, type_id, rev, archive, archive_data, user_id, status_id, reason_id, comment }
     let entries = [];
     if (Array.isArray(storageId)) {
       if (storageId.length === 0) { const err = new Error('Empty storage list'); err.statusCode = 400; throw err; }
@@ -456,13 +456,36 @@ class DocumentsService {
           rev: typeof e.rev !== 'undefined' ? e.rev : metadata.rev,
           archive: typeof e.archive !== 'undefined' ? e.archive : metadata.archive,
           archive_data: typeof e.archive_data !== 'undefined' ? e.archive_data : metadata.archive_data,
-          user_id: typeof e.user_id !== 'undefined' ? e.user_id : metadata.user_id
+          user_id: typeof e.user_id !== 'undefined' ? e.user_id : metadata.user_id,
+          status_id: typeof e.status !== 'undefined' ? e.status : (typeof e.status_id !== 'undefined' ? e.status_id : metadata.status_id),
+          reason_id: typeof e.reason !== 'undefined' ? e.reason : (typeof e.reason_id !== 'undefined' ? e.reason_id : metadata.reason_id),
+          comment: typeof e.comment !== 'undefined' ? e.comment : metadata.comment
         }));
       } else {
-        entries = storageId.map((s) => ({ storage_id: Number(s), type_id: metadata.type_id, rev: metadata.rev, archive: metadata.archive, archive_data: metadata.archive_data, user_id: metadata.user_id }));
+        entries = storageId.map((s) => ({
+          storage_id: Number(s),
+          type_id: metadata.type_id,
+          rev: metadata.rev,
+          archive: metadata.archive,
+          archive_data: metadata.archive_data,
+          user_id: metadata.user_id,
+          status_id: metadata.status_id,
+          reason_id: metadata.reason_id,
+          comment: metadata.comment
+        }));
       }
     } else {
-      entries = [{ storage_id: Number(storageId), type_id: metadata.type_id, rev: metadata.rev, archive: metadata.archive, archive_data: metadata.archive_data, user_id: metadata.user_id }];
+      entries = [{
+        storage_id: Number(storageId),
+        type_id: metadata.type_id,
+        rev: metadata.rev,
+        archive: metadata.archive,
+        archive_data: metadata.archive_data,
+        user_id: metadata.user_id,
+        status_id: metadata.status_id,
+        reason_id: metadata.reason_id,
+        comment: metadata.comment
+      }];
     }
     const storageItems = [];
     for (const e of entries) {
@@ -490,7 +513,10 @@ class DocumentsService {
       rev: typeof e.rev !== 'undefined' ? (e.rev === null ? null : Number(e.rev)) : undefined,
       archive: typeof e.archive !== 'undefined' ? e.archive : undefined,
       archive_data: typeof e.archive_data !== 'undefined' ? e.archive_data : undefined,
-      user_id: typeof e.user_id !== 'undefined' ? (e.user_id === null ? null : Number(e.user_id)) : undefined
+      user_id: typeof e.user_id !== 'undefined' ? (e.user_id === null ? null : Number(e.user_id)) : undefined,
+      status_id: typeof e.status_id !== 'undefined' ? (e.status_id === null ? null : Number(e.status_id)) : undefined,
+      reason_id: typeof e.reason_id !== 'undefined' ? (e.reason_id === null ? null : Number(e.reason_id)) : undefined,
+      comment: typeof e.comment !== 'undefined' ? e.comment : undefined
     };
     // Ensure user_id is set to actor by default when not provided
     if (!payload.user_id && actor && actor.id) payload.user_id = actor.id;
@@ -547,7 +573,7 @@ class DocumentsService {
    * Update metadata for an attached file on a document.
    * @param {number} id - document id
    * @param {number} storageId - storage id
-   * @param {Object} metadata - metadata fields to update (type_id, rev, user_id, archive, archive_data)
+  * @param {Object} metadata - metadata fields to update (type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment)
    * @param {Object} actor - user performing the action
    */
   static async updateFileMetadata(id, storageId, metadata = {}, actor) {
@@ -595,11 +621,30 @@ class DocumentsService {
         mime_type: r.mime_type || null,
         file_size: r.file_size || null,
         type_name: r.type_name || null,
-        user: user
+        user: user,
+        status: r.status_id ? {
+          id: r.status_id,
+          code: r.status_code || null,
+          name: r.status_name || null,
+          description: r.status_description || null,
+          is_active: typeof r.status_is_active !== 'undefined' ? r.status_is_active : null,
+          created_at: r.status_created_at || null
+        } : null,
+        reason: r.reason_id ? {
+          id: r.reason_id,
+          code: r.reason_code || null,
+          name: r.reason_name || null,
+          description: r.reason_description || null,
+          is_active: typeof r.reason_is_active !== 'undefined' ? r.reason_is_active : null,
+          created_at: r.reason_created_at || null
+        } : null
       });
 
       // Remove raw user_* fields
       delete out.user_username; delete out.user_first_name; delete out.user_last_name; delete out.user_middle_name; delete out.user_email; delete out.user_avatar_id;
+      // Remove raw status/reason raw fields and legacy ids if desired
+      delete out.status_id; delete out.status_code; delete out.status_name; delete out.status_description; delete out.status_is_active; delete out.status_created_at;
+      delete out.reason_id; delete out.reason_code; delete out.reason_name; delete out.reason_description; delete out.reason_is_active; delete out.reason_created_at;
       return out;
     });
   }
@@ -858,6 +903,166 @@ class DocumentsService {
 
     const res = await pool.query('DELETE FROM documents_storage_type WHERE id = $1 RETURNING id', [Number(id)]);
     return res.rowCount > 0;
+  }
+
+  // ------------------ documents_storage_statuses CRUD ------------------
+  static async listStorageStatuses(actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    const res = await pool.query('SELECT * FROM documents_storage_statuses ORDER BY id');
+    return res.rows || [];
+  }
+
+  static async getStorageStatusById(id, actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const res = await pool.query('SELECT * FROM documents_storage_statuses WHERE id = $1 LIMIT 1', [Number(id)]);
+    return res.rows[0] || null;
+  }
+
+  static async createStorageStatus(fields, actor) {
+    const requiredPermission = 'documents.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.create'); err.statusCode = 403; throw err; }
+    if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
+    const q = 'INSERT INTO documents_storage_statuses (code, name, description, is_active) VALUES ($1,$2,$3,$4) RETURNING *';
+    const vals = [fields.code, fields.name, fields.description || null, typeof fields.is_active === 'undefined' ? true : !!fields.is_active];
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async updateStorageStatus(id, fields, actor) {
+    const requiredPermission = 'documents.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const parts = [];
+    const vals = [];
+    let idx = 1;
+    ['code','name','description','is_active'].forEach((k) => {
+      if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
+    });
+    if (parts.length === 0) {
+      const r = await pool.query('SELECT * FROM documents_storage_statuses WHERE id = $1 LIMIT 1', [Number(id)]);
+      return r.rows[0] || null;
+    }
+    const q = `UPDATE documents_storage_statuses SET ${parts.join(', ')} WHERE id = $${idx} RETURNING *`;
+    vals.push(Number(id));
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async deleteStorageStatus(id, actor) {
+    const requiredPermission = 'documents.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const used = await pool.query('SELECT 1 FROM documents_storage WHERE status_id = $1 LIMIT 1', [Number(id)]);
+    if (used.rowCount > 0) { const err = new Error('Cannot delete status: it is referenced by documents_storage entries'); err.statusCode = 400; throw err; }
+    await ProtectionService.assertNotProtected('documents_storage_statuses', Number(id));
+    const res = await pool.query('DELETE FROM documents_storage_statuses WHERE id = $1 RETURNING id', [Number(id)]);
+    return res.rowCount > 0;
+  }
+
+  // ------------------ documents_storage_reasons CRUD ------------------
+  static async listStorageReasons(actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    const res = await pool.query('SELECT * FROM documents_storage_reasons ORDER BY id');
+    return res.rows || [];
+  }
+
+  static async getStorageReasonById(id, actor) {
+    const requiredPermission = 'documents.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.view'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const res = await pool.query('SELECT * FROM documents_storage_reasons WHERE id = $1 LIMIT 1', [Number(id)]);
+    return res.rows[0] || null;
+  }
+
+  static async createStorageReason(fields, actor) {
+    const requiredPermission = 'documents.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.create'); err.statusCode = 403; throw err; }
+    if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
+    const q = 'INSERT INTO documents_storage_reasons (code, name, description, is_active) VALUES ($1,$2,$3,$4) RETURNING *';
+    const vals = [fields.code, fields.name, fields.description || null, typeof fields.is_active === 'undefined' ? true : !!fields.is_active];
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async updateStorageReason(id, fields, actor) {
+    const requiredPermission = 'documents.update';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.update'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const parts = [];
+    const vals = [];
+    let idx = 1;
+    ['code','name','description','is_active'].forEach((k) => {
+      if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); vals.push(fields[k]); }
+    });
+    if (parts.length === 0) {
+      const r = await pool.query('SELECT * FROM documents_storage_reasons WHERE id = $1 LIMIT 1', [Number(id)]);
+      return r.rows[0] || null;
+    }
+    const q = `UPDATE documents_storage_reasons SET ${parts.join(', ')} WHERE id = $${idx} RETURNING *`;
+    vals.push(Number(id));
+    const res = await pool.query(q, vals);
+    return res.rows[0] || null;
+  }
+
+  static async deleteStorageReason(id, actor) {
+    const requiredPermission = 'documents.delete';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission documents.delete'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const used = await pool.query('SELECT 1 FROM documents_storage WHERE reason_id = $1 LIMIT 1', [Number(id)]);
+    if (used.rowCount > 0) { const err = new Error('Cannot delete reason: it is referenced by documents_storage entries'); err.statusCode = 400; throw err; }
+    await ProtectionService.assertNotProtected('documents_storage_reasons', Number(id));
+    const res = await pool.query('DELETE FROM documents_storage_reasons WHERE id = $1 RETURNING id', [Number(id)]);
+    return res.rowCount > 0;
+  }
+
+  /**
+   * Bulk update status for multiple storage items linked in documents_storage.
+   * Body: { storage_ids: [1,2,3], status: <status_id|null> }
+   * Requires permission: documents.update_storage_status
+   */
+  static async bulkUpdateStorageStatus(storageIds = [], statusId = null, actor) {
+    const requiredPermission = 'documents.update_storage_status';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error(`Forbidden: missing permission ${requiredPermission}`); err.statusCode = 403; throw err; }
+
+    if (!Array.isArray(storageIds) || storageIds.length === 0) { const err = new Error('Invalid storage_ids'); err.statusCode = 400; throw err; }
+    const ids = storageIds.map(n => Number(n)).filter(n => !Number.isNaN(n));
+    if (ids.length === 0) { const err = new Error('Invalid storage_ids'); err.statusCode = 400; throw err; }
+
+    if (statusId !== null && statusId !== undefined) {
+      if (Number.isNaN(Number(statusId))) { const err = new Error('Invalid status id'); err.statusCode = 400; throw err; }
+      const chk = await pool.query('SELECT id FROM documents_storage_statuses WHERE id = $1 LIMIT 1', [Number(statusId)]);
+      if (chk.rowCount === 0) { const err = new Error('Status not found'); err.statusCode = 400; throw err; }
+    }
+
+    const q = 'UPDATE documents_storage SET status_id = $1 WHERE storage_id = ANY($2::int[]) RETURNING *';
+    const res = await pool.query(q, [statusId !== null ? Number(statusId) : null, ids]);
+    return res.rows || [];
   }
 
   /**

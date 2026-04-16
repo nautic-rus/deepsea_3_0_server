@@ -13,6 +13,8 @@ const groupsController = require('../controllers/groupsController');
 const organizationsController = require('../controllers/organizationsController');
 const rolesController = require('../controllers/rolesController');
 const projectsController = require('../controllers/projectsController');
+const projectCharacteristicsController = require('../controllers/projectCharacteristicsController');
+const projectImagesController = require('../controllers/projectImagesController');
 const issuesController = require('../controllers/issuesController');
 const documentsController = require('../controllers/documentsController');
 const documentWorkFlowsController = require('../controllers/documentWorkFlowsController');
@@ -184,6 +186,18 @@ router.post('/projects', authMiddleware, projectsController.create);
 router.put('/projects/:id', authMiddleware, projectsController.update);
 // DELETE /api/projects/:id
 router.delete('/projects/:id', authMiddleware, projectsController.delete);
+// Project characteristics
+// POST /api/projects/:id/characteristics - create or update characteristics
+router.post('/projects/:id/characteristics', authMiddleware, projectCharacteristicsController.upsert);
+router.put('/projects/:id/characteristics', authMiddleware, projectCharacteristicsController.upsert);
+router.delete('/projects/:id/characteristics', authMiddleware, projectCharacteristicsController.remove);
+// Project images
+// POST /api/projects/:id/images - add image (body: { storage_id, is_main, caption, sort_order })
+router.post('/projects/:id/images', authMiddleware, projectImagesController.create);
+// PUT /api/projects/images/:id - update image
+router.put('/projects/images/:id', authMiddleware, projectImagesController.update);
+// DELETE /api/projects/images/:id - delete image
+router.delete('/projects/images/:id', authMiddleware, projectImagesController.delete);
 // GET /api/projects/:id/assignments
 router.get('/projects/:id/assignments', authMiddleware, userProjectsController.listByProject);
 // POST /api/projects/assign
@@ -335,6 +349,18 @@ router.get('/document_storage_types/:id', authMiddleware, documentsController.ge
 router.post('/document_storage_types', authMiddleware, documentsController.createStorageType);
 router.put('/document_storage_types/:id', authMiddleware, documentsController.updateStorageType);
 router.delete('/document_storage_types/:id', authMiddleware, documentsController.deleteStorageType);
+// Documents storage statuses CRUD
+router.get('/documents_storage_statuses', authMiddleware, documentsController.listStorageStatuses);
+router.get('/documents_storage_statuses/:id', authMiddleware, documentsController.getStorageStatus);
+router.post('/documents_storage_statuses', authMiddleware, documentsController.createStorageStatus);
+router.put('/documents_storage_statuses/:id', authMiddleware, documentsController.updateStorageStatus);
+router.delete('/documents_storage_statuses/:id', authMiddleware, documentsController.deleteStorageStatus);
+// Documents storage reasons CRUD
+router.get('/documents_storage_reasons', authMiddleware, documentsController.listStorageReasons);
+router.get('/documents_storage_reasons/:id', authMiddleware, documentsController.getStorageReason);
+router.post('/documents_storage_reasons', authMiddleware, documentsController.createStorageReason);
+router.put('/documents_storage_reasons/:id', authMiddleware, documentsController.updateStorageReason);
+router.delete('/documents_storage_reasons/:id', authMiddleware, documentsController.deleteStorageReason);
 // GET /api/documents/:id
 router.get('/documents/:id', authMiddleware, documentsController.get);
 // POST /api/documents
@@ -360,6 +386,8 @@ router.post('/documents/:id/files/local', authMiddleware, _upload.single('file')
 router.delete('/documents/:id/files/:storage_id', authMiddleware, documentsController.detachFile);
 // GET /api/documents/:id/files - list files attached to document
 router.get('/documents/:id/files', authMiddleware, documentsController.listFiles);
+// POST /api/documents/files/status - bulk update status for storage items
+router.post('/documents/files/status', authMiddleware, documentsController.bulkUpdateFilesStatus);
 // Specializations (CRUD)
 router.get('/specializations', authMiddleware, specializationsController.list);
 router.get('/specializations/:id', authMiddleware, specializationsController.get);

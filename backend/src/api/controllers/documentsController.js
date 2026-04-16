@@ -77,7 +77,10 @@ class DocumentsController {
           type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
           rev: req.body && req.body.rev ? Number(req.body.rev) : undefined,
           archive: req.body && typeof req.body.archive !== 'undefined' ? (req.body.archive === 'true' || req.body.archive === true) : undefined,
-          archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined
+          archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined,
+          status_id: req.body && typeof req.body.status !== 'undefined' ? (req.body.status === null ? null : Number(req.body.status)) : undefined,
+          reason_id: req.body && typeof req.body.reason !== 'undefined' ? (req.body.reason === null ? null : Number(req.body.reason)) : undefined,
+          comment: req.body && typeof req.body.comment !== 'undefined' ? req.body.comment : undefined
         };
         const created = await DocumentsService.attachFileToDocument(Number(id), Number(createdStorage.id), actor, metadata);
         res.status(201).json({ data: created });
@@ -99,7 +102,10 @@ class DocumentsController {
         type_id: body && body.type_id ? Number(body.type_id) : undefined,
         rev: body && body.rev ? Number(body.rev) : undefined,
         archive: body && typeof body.archive !== 'undefined' ? (body.archive === 'true' || body.archive === true) : undefined,
-        archive_data: body && body.archive_data ? body.archive_data : undefined
+        archive_data: body && body.archive_data ? body.archive_data : undefined,
+        status_id: body && typeof body.status !== 'undefined' ? (body.status === null ? null : Number(body.status)) : undefined,
+        reason_id: body && typeof body.reason !== 'undefined' ? (body.reason === null ? null : Number(body.reason)) : undefined,
+        comment: body && typeof body.comment !== 'undefined' ? body.comment : undefined
       };
       const created = await DocumentsService.attachFileToDocument(Number(id), storagePayload, actor, metadata);
       res.status(201).json({ data: created });
@@ -122,7 +128,10 @@ class DocumentsController {
         rev: typeof req.body.rev !== 'undefined' ? (req.body.rev === null ? null : Number(req.body.rev)) : undefined,
         archive: typeof req.body.archive !== 'undefined' ? (req.body.archive === true || req.body.archive === 'true') : undefined,
         archive_data: typeof req.body.archive_data !== 'undefined' ? req.body.archive_data : undefined,
-        user_id: typeof req.body.user_id !== 'undefined' ? (req.body.user_id === null ? null : Number(req.body.user_id)) : undefined
+        user_id: typeof req.body.user_id !== 'undefined' ? (req.body.user_id === null ? null : Number(req.body.user_id)) : undefined,
+        status_id: typeof req.body.status !== 'undefined' ? (req.body.status === null ? null : Number(req.body.status)) : undefined,
+        reason_id: typeof req.body.reason !== 'undefined' ? (req.body.reason === null ? null : Number(req.body.reason)) : undefined,
+        comment: typeof req.body.comment !== 'undefined' ? req.body.comment : undefined
       };
 
       const updated = await DocumentsService.updateFileMetadata(Number(id), Number(storage_id), metadata, actor);
@@ -146,7 +155,10 @@ class DocumentsController {
         type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
         rev: req.body && req.body.rev ? Number(req.body.rev) : undefined,
         archive: req.body && typeof req.body.archive !== 'undefined' ? (req.body.archive === 'true' || req.body.archive === true) : undefined,
-        archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined
+        archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined,
+        status_id: req.body && typeof req.body.status !== 'undefined' ? (req.body.status === null ? null : Number(req.body.status)) : undefined,
+        reason_id: req.body && typeof req.body.reason !== 'undefined' ? (req.body.reason === null ? null : Number(req.body.reason)) : undefined,
+        comment: req.body && typeof req.body.comment !== 'undefined' ? req.body.comment : undefined
       };
       const created = await DocumentsService.attachFileToDocument(Number(id), Number(createdStorage.id), actor, metadata);
       res.status(201).json({ data: created });
@@ -173,8 +185,27 @@ class DocumentsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { limit, offset = 0 } = req.query || {};
-      const rows = await DocumentsService.listDocumentFiles(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) }, actor);
+      const { limit, offset = 0, status, reason, comment } = req.query || {};
+      const rows = await DocumentsService.listDocumentFiles(Number(id), {
+        limit: limit != null ? Number(limit) : undefined,
+        offset: Number(offset),
+        status_id: typeof status !== 'undefined' ? Number(status) : undefined,
+        reason_id: typeof reason !== 'undefined' ? Number(reason) : undefined,
+        comment: typeof comment !== 'undefined' ? String(comment) : undefined
+      }, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * POST /api/documents/files/status - bulk update status for storage items
+   * Body: { storage_ids: [1,2,3], status: <status_id|null> }
+   */
+  static async bulkUpdateFilesStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const { storage_ids = [], status = null } = req.body || {};
+      const rows = await DocumentsService.bulkUpdateStorageStatus(storage_ids, status, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
@@ -405,6 +436,100 @@ class DocumentsController {
       const ok = await DocumentsService.deleteStorageType(Number(id), actor);
       if (!ok) { const err = new Error('Storage type not found'); err.statusCode = 404; throw err; }
       res.json({ message: 'Storage type deleted' });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * GET /api/documents_storage_statuses - list storage statuses
+   */
+  static async listStorageStatuses(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await DocumentsService.listStorageStatuses(actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  static async getStorageStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const row = await DocumentsService.getStorageStatusById(id, actor);
+      if (!row) { const err = new Error('Status not found'); err.statusCode = 404; throw err; }
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  static async createStorageStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const created = await DocumentsService.createStorageStatus(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  static async updateStorageStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const updated = await DocumentsService.updateStorageStatus(Number(id), req.body || {}, actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  static async deleteStorageStatus(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const ok = await DocumentsService.deleteStorageStatus(Number(id), actor);
+      if (!ok) { const err = new Error('Status not found'); err.statusCode = 404; throw err; }
+      res.json({ message: 'Status deleted' });
+    } catch (err) { next(err); }
+  }
+
+  // Documents storage reasons
+  static async listStorageReasons(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await DocumentsService.listStorageReasons(actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  static async getStorageReason(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const row = await DocumentsService.getStorageReasonById(id, actor);
+      if (!row) { const err = new Error('Reason not found'); err.statusCode = 404; throw err; }
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  static async createStorageReason(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const created = await DocumentsService.createStorageReason(req.body || {}, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  static async updateStorageReason(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const updated = await DocumentsService.updateStorageReason(Number(id), req.body || {}, actor);
+      res.json({ data: updated });
+    } catch (err) { next(err); }
+  }
+
+  static async deleteStorageReason(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const ok = await DocumentsService.deleteStorageReason(Number(id), actor);
+      if (!ok) { const err = new Error('Reason not found'); err.statusCode = 404; throw err; }
+      res.json({ message: 'Reason deleted' });
     } catch (err) { next(err); }
   }
 

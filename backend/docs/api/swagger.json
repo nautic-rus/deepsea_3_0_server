@@ -49,6 +49,14 @@
       "description": "CRUD operations for document storage types"
     },
     {
+      "name": "documents_storage_reasons",
+      "description": "CRUD operations for documents storage reasons"
+    },
+    {
+      "name": "documents_storage_statuses",
+      "description": "CRUD operations for documents storage statuses"
+    },
+    {
       "name": "document_types",
       "description": "CRUD operations for document types"
     },
@@ -178,13 +186,14 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "shipments": {
+            "type": "array",
+            "description": "Shipments where supplier participates",
+            "items": {
+              "$ref": "#/components/schemas/Shipment"
+            }
           }
-        ,
-        "shipments": {
-          "type": "array",
-          "description": "Shipments where supplier participates",
-          "items": { "$ref": "#/components/schemas/Shipment" }
-        }
         }
       },
       "CustomerQuestionType": {
@@ -222,7 +231,9 @@
           "shipments": {
             "type": "array",
             "description": "Shipments where supplier participates",
-            "items": { "$ref": "#/components/schemas/Shipment" }
+            "items": {
+              "$ref": "#/components/schemas/Shipment"
+            }
           }
         }
       },
@@ -320,12 +331,29 @@
       "JobTitle": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer" },
-          "name": { "type": "string" },
-          "description": { "type": "string", "nullable": true },
-          "is_active": { "type": "boolean", "nullable": true },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time", "nullable": true }
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
         }
       },
       "Document": {
@@ -423,6 +451,26 @@
           "archive_data": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "status_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reason_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "status_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason_name": {
+            "type": "string",
             "nullable": true
           },
           "bucket_name": {
@@ -566,6 +614,81 @@
             "type": "string",
             "format": "date-time"
           }
+        }
+      },
+      "DocumentsStorageReason": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "DocumentsStorageStatus": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_active": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "BulkUpdateDocumentFilesStatus": {
+        "type": "object",
+        "required": [
+          "storage_ids"
+        ],
+        "properties": {
+          "storage_ids": {
+            "type": "array",
+            "items": { "type": "integer" }
+          },
+          "status": {
+            "type": "integer",
+            "nullable": true,
+            "description": "ID of status to set; null to clear"
+          }
+        },
+        "example": {
+          "storage_ids": [123, 456],
+          "status": 1
         }
       },
       "DocumentType": {
@@ -1823,17 +1946,36 @@
         "type": "object",
         "description": "Material or equipment record from equipment_materials table",
         "properties": {
-          "id": { "type": "integer", "description": "Material ID" },
-          "stock_code": { "type": "string", "description": "Stock code (format NR + 14 digits)" },
-          "name": { "type": "string", "description": "Material name" },
-          "description": { "type": "string", "nullable": true, "description": "Material description" },
+          "id": {
+            "type": "integer",
+            "description": "Material ID"
+          },
+          "stock_code": {
+            "type": "string",
+            "description": "Stock code (format NR + 14 digits)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Material name"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Material description"
+          },
           "directory": {
             "type": "object",
             "nullable": true,
             "description": "Directory (reference)",
             "properties": {
-              "id": { "type": "integer", "description": "Directory ID" },
-              "name": { "type": "string", "description": "Directory name" }
+              "id": {
+                "type": "integer",
+                "description": "Directory ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Directory name"
+              }
             }
           },
           "unit": {
@@ -1841,71 +1983,159 @@
             "nullable": true,
             "description": "Unit of measurement",
             "properties": {
-              "id": { "type": "integer", "description": "Unit ID" },
-              "name": { "type": "string", "description": "Unit name" }
+              "id": {
+                "type": "integer",
+                "description": "Unit ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Unit name"
+              }
             }
           },
-          "weight": { "type": "number", "nullable": true, "description": "Material weight" },
+          "weight": {
+            "type": "number",
+            "nullable": true,
+            "description": "Material weight"
+          },
           "sfi_code": {
             "type": "object",
             "nullable": true,
             "description": "SFI classification object",
             "properties": {
-              "id": { "type": "integer", "nullable": true },
-              "code": { "type": "string" },
-              "name_ru": { "type": "string", "nullable": true },
-              "name_en": { "type": "string", "nullable": true }
+              "id": {
+                "type": "integer",
+                "nullable": true
+              },
+              "code": {
+                "type": "string"
+              },
+              "name_ru": {
+                "type": "string",
+                "nullable": true
+              },
+              "name_en": {
+                "type": "string",
+                "nullable": true
+              }
             }
           },
-          "type": { "type": "string", "enum": ["material","equipment"], "description": "Entity type" },
-          "status": { "type": "string", "nullable": true, "description": "Record status" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "material",
+              "equipment"
+            ],
+            "description": "Entity type"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "description": "Record status"
+          },
           "created_by": {
             "type": "object",
             "nullable": true,
             "description": "Created by",
             "properties": {
-              "id": { "type": "integer", "description": "User ID" },
-              "name": { "type": "string", "nullable": true, "description": "User full name" },
-              "avatar_id": { "type": "integer", "nullable": true }
+              "id": {
+                "type": "integer",
+                "description": "User ID"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true,
+                "description": "User full name"
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
             }
           },
-          "created_at": { "type": "string", "format": "date-time", "description": "Created at" },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Created at"
+          },
           "updated_by": {
             "type": "object",
             "nullable": true,
             "description": "Updated by",
             "properties": {
-              "id": { "type": "integer", "description": "User ID" },
-              "name": { "type": "string", "nullable": true, "description": "User full name" },
-              "avatar_id": { "type": "integer", "nullable": true }
+              "id": {
+                "type": "integer",
+                "description": "User ID"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true,
+                "description": "User full name"
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
             }
           },
-          "updated_at": { "type": "string", "format": "date-time", "nullable": true, "description": "Updated at" },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Updated at"
+          },
           "projects": {
             "type": "array",
             "description": "Linked projects from equipment_materials_projects",
             "items": {
               "type": "object",
               "properties": {
-                "id": { "type": "integer" },
-                "created_at": { "type": "string", "format": "date-time", "nullable": true },
+                "id": {
+                  "type": "integer"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
                 "statement": {
                   "type": "object",
                   "nullable": true,
                   "properties": {
-                    "id": { "type": "integer", "nullable": true },
-                    "code": { "type": "string", "nullable": true },
-                    "name": { "type": "string", "nullable": true },
-                    "project_id": { "type": "integer", "nullable": true }
+                    "id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "code": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "name": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "project_id": {
+                      "type": "integer",
+                      "nullable": true
+                    }
                   }
                 },
                 "shipments": {
                   "type": "object",
                   "nullable": true,
                   "properties": {
-                    "id": { "type": "integer", "nullable": true },
-                    "supplier_id": { "type": "integer", "nullable": true },
-                    "code": { "type": "string", "nullable": true }
+                    "id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "supplier_id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "code": {
+                      "type": "string",
+                      "nullable": true
+                    }
                   }
                 }
               }
@@ -2391,27 +2621,26 @@
             "nullable": true,
             "description": "Supplier ID"
           },
-              
           "code": {
             "type": "string",
             "nullable": true,
             "description": "Shipment code"
           },
-              "model": {
-                "type": "string",
-                "nullable": true,
-                "description": "Model name or number"
-              },
-              "manufacturer": {
-                "type": "string",
-                "nullable": true,
-                "description": "Manufacturer"
-              },
-              "description": {
-                "type": "string",
-                "nullable": true,
-                "description": "Description"
-              },
+          "model": {
+            "type": "string",
+            "nullable": true,
+            "description": "Model name or number"
+          },
+          "manufacturer": {
+            "type": "string",
+            "nullable": true,
+            "description": "Manufacturer"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Description"
+          },
           "received_at": {
             "type": "string",
             "format": "date-time",
@@ -2423,9 +2652,17 @@
             "nullable": true,
             "description": "Creator info",
             "properties": {
-              "id": { "type": "integer" },
-              "full_name": { "type": "string", "nullable": true },
-              "avatar_id": { "type": "integer", "nullable": true }
+              "id": {
+                "type": "integer"
+              },
+              "full_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
             }
           },
           "created_at": {
@@ -2447,7 +2684,6 @@
             "type": "integer",
             "description": "Statement ID"
           },
-          
           "parent_id": {
             "type": "integer",
             "nullable": true,
@@ -2680,87 +2916,605 @@
             "description": "Version (on creation stored in specification_version)"
           }
         }
+      },
+      "ProjectCharacteristics": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "integer"
+          },
+          "vessel_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "loa": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "beam": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "draft": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "displacement": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "deadweight": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "net_cargo_capacity": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "gross_tonnage": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "speed_max": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "speed_service": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "main_engine_power_kw": {
+            "type": "integer",
+            "nullable": true
+          },
+          "range_nm": {
+            "type": "integer",
+            "nullable": true
+          },
+          "endurance_days": {
+            "type": "integer",
+            "nullable": true
+          },
+          "stability": {
+            "type": "string",
+            "nullable": true
+          },
+          "register_class": {
+            "type": "string",
+            "nullable": true
+          },
+          "ice_class": {
+            "type": "string",
+            "nullable": true
+          },
+          "crew_count": {
+            "type": "integer",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "example": {
+          "id": 1,
+          "project_id": 123,
+          "vessel_type": "сухогруз",
+          "loa": 185.5,
+          "beam": 32.2,
+          "draft": 9.1,
+          "displacement": 25000.5,
+          "deadweight": 18000,
+          "net_cargo_capacity": 16000,
+          "gross_tonnage": 12000,
+          "speed_max": 16.5,
+          "speed_service": 14,
+          "main_engine_power_kw": 7500,
+          "range_nm": 6000,
+          "endurance_days": 30,
+          "stability": "Good initial transverse stability",
+          "register_class": "Lloyd's Register",
+          "ice_class": "1A",
+          "crew_count": 22,
+          "description": "General cargo vessel for bulk shipments",
+          "created_at": "2026-04-01T12:00:00Z",
+          "updated_at": "2026-04-10T08:30:00Z"
+        }
+      },
+      "ProjectCharacteristicsCreate": {
+        "type": "object",
+        "properties": {
+          "vessel_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "loa": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "beam": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "draft": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "displacement": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "deadweight": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "net_cargo_capacity": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "gross_tonnage": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "speed_max": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "speed_service": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "main_engine_power_kw": {
+            "type": "integer",
+            "nullable": true
+          },
+          "range_nm": {
+            "type": "integer",
+            "nullable": true
+          },
+          "endurance_days": {
+            "type": "integer",
+            "nullable": true
+          },
+          "stability": {
+            "type": "string",
+            "nullable": true
+          },
+          "register_class": {
+            "type": "string",
+            "nullable": true
+          },
+          "ice_class": {
+            "type": "string",
+            "nullable": true
+          },
+          "crew_count": {
+            "type": "integer",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "example": {
+          "vessel_type": "танкер",
+          "loa": 240,
+          "beam": 42,
+          "draft": 14.5,
+          "deadweight": 60000,
+          "gross_tonnage": 30000,
+          "speed_service": 13.5,
+          "main_engine_power_kw": 20000,
+          "range_nm": 8000,
+          "endurance_days": 45,
+          "crew_count": 28,
+          "description": "A medium-range product tanker"
+        }
+      },
+      "ProjectImage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "integer"
+          },
+          "storage_id": {
+            "type": "integer"
+          },
+          "is_main": {
+            "type": "boolean"
+          },
+          "sort_order": {
+            "type": "integer"
+          },
+          "caption": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "file_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "mime_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "example": {
+          "id": 10,
+          "project_id": 123,
+          "storage_id": 555,
+          "is_main": true,
+          "sort_order": 0,
+          "caption": "Profile view of the vessel",
+          "url": "https://s3.example.com/bucket/object.jpg",
+          "file_name": "object.jpg",
+          "mime_type": "image/jpeg",
+          "created_at": "2026-04-10T09:00:00Z"
+        }
+      },
+      "ProjectImageCreate": {
+        "type": "object",
+        "required": [
+          "storage_id"
+        ],
+        "properties": {
+          "storage_id": {
+            "type": "integer"
+          },
+          "is_main": {
+            "type": "boolean"
+          },
+          "sort_order": {
+            "type": "integer"
+          },
+          "caption": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "example": {
+          "storage_id": 555,
+          "is_main": true,
+          "caption": "Profile",
+          "sort_order": 0
+        }
       }
     }
   },
   "paths": {
-        "/api/units": {
-          "get": {
-            "tags": ["units"],
-            "summary": "List of units",
-            "description": "Returns a list of units with optional text search by name. Pagination via page/limit.",
-            "security": [{"bearerAuth": []}],
-            "parameters": [
-              {"name": "search", "in": "query", "description": "Search by name (ILIKE)", "schema": {"type": "string"}},
-              {"name": "page", "in": "query", "description": "Page number (default 1)", "schema": {"type": "integer", "default": 1}},
-              {"name": "limit", "in": "query", "description": "Records per page (if not specified — no limit)", "schema": {"type": "integer"}}
-            ],
-            "responses": {
-              "200": {
-                "description": "List of units",
-                "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Unit"}}}}
+    "/api/documents/files/status": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Bulk update status for document files",
+        "description": "Update `status_id` for multiple storage entries linked to documents. Body: { storage_ids: [1,2], status: <id|null> }",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.update_storage_status"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkUpdateDocumentFilesStatus"
               },
-              "401": {"description": "Authentication required"}
-            }
-          },
-          "post": {
-            "tags": ["units"],
-            "summary": "Create unit",
-            "description": "Creates a new unit. Required field: name.",
-            "security": [{"bearerAuth": []}],
-            "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UnitCreate"}}}},
-            "responses": {
-              "201": {"description": "Unit created", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Unit"}}}},
-              "400": {"description": "No fields provided"},
-              "401": {"description": "Authentication required"}
+              "example": {
+                "storage_ids": [123, 456],
+                "status": 1
+              }
             }
           }
         },
-        "/api/units/{id}": {
-          "get": {
-            "tags": ["units"],
-            "summary": "Get unit by ID",
-            "description": "Returns a single unit record by identifier.",
-            "security": [{"bearerAuth": []}],
-            "parameters": [
-              {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}, "description": "Unit ID"}
-            ],
-            "responses": {
-              "200": {"description": "Unit record", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Unit"}}}},
-              "401": {"description": "Authentication required"},
-              "404": {"description": "Not found"}
+        "responses": {
+          "200": {
+            "description": "Updated entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DocumentFile"
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
-          "put": {
-            "tags": ["units"],
-            "summary": "Update unit",
-            "description": "Partial update of a unit. Only changed fields are passed (name, code, symbol, description, kei).",
-            "security": [{"bearerAuth": []}],
-            "parameters": [
-              {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}, "description": "Unit ID"}
-            ],
-            "requestBody": {"content": {"application/json": {"schema": {"$ref": "#/components/schemas/UnitCreate"}}}},
-            "responses": {
-              "200": {"description": "Updated record", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Unit"}}}},
-              "401": {"description": "Authentication required"},
-              "404": {"description": "Not found"}
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Authentication required" },
+          "403": { "description": "Forbidden — missing permission documents.update_storage_status" }
+        }
+      }
+    },
+    "/api/units": {
+      "get": {
+        "tags": [
+          "units"
+        ],
+        "summary": "List of units",
+        "description": "Returns a list of units with optional text search by name. Pagination via page/limit.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search by name (ILIKE)",
+            "schema": {
+              "type": "string"
             }
           },
-          "delete": {
-            "tags": ["units"],
-            "summary": "Delete unit",
-            "description": "Soft-delete of unit (is_active = false). If not possible — full deletion.",
-            "security": [{"bearerAuth": []}],
-            "parameters": [
-              {"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}, "description": "Unit ID"}
-            ],
-            "responses": {
-              "200": {"description": "Unit deleted", "content": {"application/json": {"schema": {"type": "object", "properties": {"success": {"type": "boolean"}}}}}},
-              "401": {"description": "Authentication required"},
-              "404": {"description": "Not found"}
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default 1)",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Records per page (if not specified — no limit)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of units",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Unit"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "units"
+        ],
+        "summary": "Create unit",
+        "description": "Creates a new unit. Required field: name.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnitCreate"
+              }
             }
           }
         },
+        "responses": {
+          "201": {
+            "description": "Unit created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Unit"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No fields provided"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/units/{id}": {
+      "get": {
+        "tags": [
+          "units"
+        ],
+        "summary": "Get unit by ID",
+        "description": "Returns a single unit record by identifier.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Unit ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unit record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Unit"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "units"
+        ],
+        "summary": "Update unit",
+        "description": "Partial update of a unit. Only changed fields are passed (name, code, symbol, description, kei).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Unit ID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnitCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Unit"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "units"
+        ],
+        "summary": "Delete unit",
+        "description": "Soft-delete of unit (is_active = false). If not possible — full deletion.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Unit ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unit deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/api/materials": {
       "get": {
         "tags": [
@@ -2870,21 +3624,48 @@
                       "stock_code": "NR00000000000001",
                       "name": "Steel pipe 100mm",
                       "description": "Seamless GOST 8732-78",
-                      "directory": { "id": 5, "name": "Pipes" },
-                      "unit": { "id": 2, "name": "pcs" },
+                      "directory": {
+                        "id": 5,
+                        "name": "Pipes"
+                      },
+                      "unit": {
+                        "id": 2,
+                        "name": "pcs"
+                      },
                       "weight": 12.5,
-                      "sfi_code": { "code": "120", "name_ru": "Секция", "name_en": "Section" },
+                      "sfi_code": {
+                        "code": "120",
+                        "name_ru": "Секция",
+                        "name_en": "Section"
+                      },
                       "type": "material",
                       "status": "active",
-                      "created_by": { "id": 1, "name": "Ivan Petrov", "avatar_id": 12 },
+                      "created_by": {
+                        "id": 1,
+                        "name": "Ivan Petrov",
+                        "avatar_id": 12
+                      },
                       "created_at": "2026-01-15T10:30:00.000Z",
                       "updated_by": null,
                       "updated_at": null,
                       "projects": [
                         {
                           "id": 7,
-                          "statement": { "code": "ST-01", "name": "Statement A", "project_id": 3 },
-                          "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001", "model": "M-100", "manufacturer": "ACME", "description": "Initial shipment" } ]
+                          "statement": {
+                            "code": "ST-01",
+                            "name": "Statement A",
+                            "project_id": 3
+                          },
+                          "shipments": [
+                            {
+                              "id": 1,
+                              "supplier_id": 2,
+                              "code": "SH-2026-001",
+                              "model": "M-100",
+                              "manufacturer": "ACME",
+                              "description": "Initial shipment"
+                            }
+                          ]
                         }
                       ]
                     }
@@ -2954,21 +3735,45 @@
                     "stock_code": "NR00000000000001",
                     "name": "Steel pipe 100mm",
                     "description": "Seamless GOST 8732-78",
-                    "directory": { "id": 5, "name": "Pipes" },
-                    "unit": { "id": 2, "name": "pcs" },
+                    "directory": {
+                      "id": 5,
+                      "name": "Pipes"
+                    },
+                    "unit": {
+                      "id": 2,
+                      "name": "pcs"
+                    },
                     "weight": 100,
-                    "sfi_code": { "code": "120", "name_ru": "Секция", "name_en": "Section" },
+                    "sfi_code": {
+                      "code": "120",
+                      "name_ru": "Секция",
+                      "name_en": "Section"
+                    },
                     "type": "material",
                     "status": "active",
-                    "created_by": { "id": 1, "name": "Ivan Petrov", "avatar_id": 12 },
+                    "created_by": {
+                      "id": 1,
+                      "name": "Ivan Petrov",
+                      "avatar_id": 12
+                    },
                     "created_at": "2026-01-15T10:30:00.000Z",
                     "updated_by": null,
                     "updated_at": null,
                     "projects": [
                       {
                         "id": 7,
-                        "statement": { "code": "ST-01", "name": "Statement A", "project_id": 3 },
-                        "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001" } ]
+                        "statement": {
+                          "code": "ST-01",
+                          "name": "Statement A",
+                          "project_id": 3
+                        },
+                        "shipments": [
+                          {
+                            "id": 1,
+                            "supplier_id": 2,
+                            "code": "SH-2026-001"
+                          }
+                        ]
                       }
                     ]
                   }
@@ -3027,17 +3832,50 @@
                   "stock_code": "NR00000000000001",
                   "name": "Steel pipe 100mm",
                   "description": "Seamless GOST 8732-78",
-                  "directory": { "id": 5, "name": "Pipes" },
-                  "unit": { "id": 2, "name": "pcs" },
+                  "directory": {
+                    "id": 5,
+                    "name": "Pipes"
+                  },
+                  "unit": {
+                    "id": 2,
+                    "name": "pcs"
+                  },
                   "weight": 12.5,
-                  "sfi_code": { "code": "120", "name_ru": "Секция", "name_en": "Section" },
+                  "sfi_code": {
+                    "code": "120",
+                    "name_ru": "Секция",
+                    "name_en": "Section"
+                  },
                   "type": "material",
                   "status": "active",
-                  "created_by": { "id": 1, "name": "Ivan Petrov", "avatar_id": 12 },
+                  "created_by": {
+                    "id": 1,
+                    "name": "Ivan Petrov",
+                    "avatar_id": 12
+                  },
                   "created_at": "2026-01-15T10:30:00.000Z",
                   "updated_by": null,
                   "updated_at": null,
-                  "projects": [ { "id": 7, "statement": { "code": "ST-01", "name": "Statement A", "project_id": 3 }, "shipments": [ { "id": 1, "supplier_id": 2, "code": "SH-2026-001", "model": "M-100", "manufacturer": "ACME", "description": "Initial shipment" } ] } ]
+                  "projects": [
+                    {
+                      "id": 7,
+                      "statement": {
+                        "code": "ST-01",
+                        "name": "Statement A",
+                        "project_id": 3
+                      },
+                      "shipments": [
+                        {
+                          "id": 1,
+                          "supplier_id": 2,
+                          "code": "SH-2026-001",
+                          "model": "M-100",
+                          "manufacturer": "ACME",
+                          "description": "Initial shipment"
+                        }
+                      ]
+                    }
+                  ]
                 }
               }
             }
@@ -3119,22 +3957,53 @@
                     "stock_code": "NR00000000000001",
                     "name": "Steel pipe 150mm",
                     "description": "Updated description",
-                    "directory": { "id": 5, "name": "Pipes" },
-                    "unit": { "id": 2, "name": "pcs" },
+                    "directory": {
+                      "id": 5,
+                      "name": "Pipes"
+                    },
+                    "unit": {
+                      "id": 2,
+                      "name": "pcs"
+                    },
                     "weight": 200,
-                    "sfi_code": { "id": 120, "code": "120", "name_ru": "Секция", "name_en": "Section" },
+                    "sfi_code": {
+                      "id": 120,
+                      "code": "120",
+                      "name_ru": "Секция",
+                      "name_en": "Section"
+                    },
                     "type": "equipment",
                     "status": "active",
-                    "created_by": { "id": 1, "name": "Ivan Petrov", "avatar_id": 12 },
+                    "created_by": {
+                      "id": 1,
+                      "name": "Ivan Petrov",
+                      "avatar_id": 12
+                    },
                     "created_at": "2026-01-15T10:30:00.000Z",
-                    "updated_by": { "id": 2, "name": "Anna Sidorova", "avatar_id": 15 },
+                    "updated_by": {
+                      "id": 2,
+                      "name": "Anna Sidorova",
+                      "avatar_id": 15
+                    },
                     "updated_at": "2026-02-20T14:00:00.000Z",
-                        "projects": [
+                    "projects": [
                       {
                         "id": 7,
                         "created_at": "2026-02-10T09:00:00.000Z",
-                        "statement": { "id": 11, "code": "ST-01", "name": "Statement A", "project_id": 3 },
-                        "shipments": { "id": 1, "supplier_id": 2, "code": "SH-2026-001", "model": "M-100", "manufacturer": "ACME", "description": "Initial shipment" }
+                        "statement": {
+                          "id": 11,
+                          "code": "ST-01",
+                          "name": "Statement A",
+                          "project_id": 3
+                        },
+                        "shipments": {
+                          "id": 1,
+                          "supplier_id": 2,
+                          "code": "SH-2026-001",
+                          "model": "M-100",
+                          "manufacturer": "ACME",
+                          "description": "Initial shipment"
+                        }
                       }
                     ]
                   }
@@ -3655,7 +4524,6 @@
                     "nullable": true,
                     "description": "Supplier ID"
                   },
-                  
                   "code": {
                     "type": "string",
                     "nullable": true,
@@ -3792,7 +4660,6 @@
                     "type": "integer",
                     "nullable": true
                   },
-                  
                   "code": {
                     "type": "string",
                     "nullable": true
@@ -4155,7 +5022,6 @@
         }
       }
     },
-    
     "/api/audit_logs": {
       "get": {
         "tags": [
@@ -7688,6 +8554,480 @@
         }
       }
     },
+    "/api/documents_storage_statuses": {
+      "post": {
+        "tags": [
+          "documents_storage_statuses"
+        ],
+        "summary": "Create documents storage status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "code"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DocumentsStorageStatus"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "documents_storage_statuses"
+        ],
+        "summary": "List documents storage statuses",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DocumentsStorageStatus"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents_storage_statuses/{id}": {
+      "put": {
+        "tags": [
+          "documents_storage_statuses"
+        ],
+        "summary": "Update documents storage status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DocumentsStorageStatus"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents_storage_statuses"
+        ],
+        "summary": "Delete documents storage status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "documents_storage_statuses"
+        ],
+        "summary": "Get documents storage status by ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsStorageStatus"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/documents_storage_reasons": {
+      "post": {
+        "tags": [
+          "documents_storage_reasons"
+        ],
+        "summary": "Create documents storage reason",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "code"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DocumentsStorageReason"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "documents_storage_reasons"
+        ],
+        "summary": "List documents storage reasons",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DocumentsStorageReason"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents_storage_reasons/{id}": {
+      "put": {
+        "tags": [
+          "documents_storage_reasons"
+        ],
+        "summary": "Update documents storage reason",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.update"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/DocumentsStorageReason"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents_storage_reasons"
+        ],
+        "summary": "Delete documents storage reason",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.delete"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "documents_storage_reasons"
+        ],
+        "summary": "Get documents storage reason by ID",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.view"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsStorageReason"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/api/document_types": {
       "post": {
         "tags": [
@@ -8661,6 +10001,18 @@
                         "type": "string",
                         "format": "date-time",
                         "description": "Archive timestamp (ISO)"
+                      },
+                      "status": {
+                        "type": "integer",
+                        "description": "Optional documents_storage_statuses id"
+                      },
+                      "reason": {
+                        "type": "integer",
+                        "description": "Optional documents_storage_reasons id"
+                      },
+                      "comment": {
+                        "type": "string",
+                        "description": "Optional file comment"
                       }
                     }
                   },
@@ -8692,6 +10044,18 @@
                         "type": "string",
                         "format": "date-time",
                         "description": "Archive timestamp (ISO)"
+                      },
+                      "status": {
+                        "type": "integer",
+                        "description": "Optional documents_storage_statuses id"
+                      },
+                      "reason": {
+                        "type": "integer",
+                        "description": "Optional documents_storage_reasons id"
+                      },
+                      "comment": {
+                        "type": "string",
+                        "description": "Optional file comment"
                       }
                     }
                   },
@@ -8721,6 +10085,18 @@
                           "type": "string",
                           "format": "date-time",
                           "description": "Archive timestamp (ISO)"
+                        },
+                        "status": {
+                          "type": "integer",
+                          "description": "Optional documents_storage_statuses id (per-item)"
+                        },
+                        "reason": {
+                          "type": "integer",
+                          "description": "Optional documents_storage_reasons id (per-item)"
+                        },
+                        "comment": {
+                          "type": "string",
+                          "description": "Optional file comment (per-item)"
                         }
                       }
                     }
@@ -8751,6 +10127,15 @@
                   "archive_data": {
                     "type": "string",
                     "format": "date-time"
+                  },
+                  "status": {
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "integer"
+                  },
+                  "comment": {
+                    "type": "string"
                   }
                 }
               }
@@ -8849,6 +10234,18 @@
                     "type": "string",
                     "nullable": true
                   },
+                  "status": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "reason": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "comment": {
+                    "type": "string",
+                    "nullable": true
+                  },
                   "user_id": {
                     "type": "integer",
                     "nullable": true
@@ -8867,7 +10264,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/StorageRef"
+                      "$ref": "#/components/schemas/DocumentFile"
                     }
                   }
                 }
@@ -8910,6 +10307,33 @@
               "type": "integer"
             },
             "description": "Document ID"
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by documents_storage_statuses id"
+          },
+          {
+            "in": "query",
+            "name": "reason",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by documents_storage_reasons id"
+          },
+          {
+            "in": "query",
+            "name": "comment",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filter by comment substring"
           }
         ],
         "responses": {
@@ -8923,7 +10347,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/StorageRef"
+                        "$ref": "#/components/schemas/DocumentFile"
                       }
                     }
                   }
@@ -15094,15 +16518,23 @@
                   },
                   "role_ids": {
                     "type": "array",
-                    "items": { "type": "integer" },
+                    "items": {
+                      "type": "integer"
+                    },
                     "description": "Array of role ids"
                   },
-                  "role_id": { "type": "integer", "description": "Single role id (alternative to role_ids)" }
+                  "role_id": {
+                    "type": "integer",
+                    "description": "Single role id (alternative to role_ids)"
+                  }
                 }
               },
               "example": {
                 "user_id": 123,
-                "role_ids": [4, 5]
+                "role_ids": [
+                  4,
+                  5
+                ]
               }
             }
           }
@@ -15120,16 +16552,54 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "id": { "type": "integer" },
-                          "title": { "type": "string" },
-                          "slug": { "type": "string" },
-                          "summary": { "type": "string", "nullable": true },
-                          "section_id": { "type": "integer", "nullable": true },
-                          "is_published": { "type": "boolean" },
-                          "version": { "type": "string", "nullable": true },
-                          "created_by": { "type": "integer", "nullable": true },
-                          "published_at": { "type": "string", "format": "date-time", "nullable": true },
-                          "organizations": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" } } }, "nullable": true }
+                          "id": {
+                            "type": "integer"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "slug": {
+                            "type": "string"
+                          },
+                          "summary": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "section_id": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "is_published": {
+                            "type": "boolean"
+                          },
+                          "version": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "created_by": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "published_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true
+                          },
+                          "organizations": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "integer"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "nullable": true
+                          }
                         }
                       }
                     }
@@ -15138,8 +16608,12 @@
               }
             }
           },
-          "400": { "description": "Missing or invalid parameters" },
-          "403": { "description": "Forbidden - missing permission roles.update" }
+          "400": {
+            "description": "Missing or invalid parameters"
+          },
+          "403": {
+            "description": "Forbidden - missing permission roles.update"
+          }
         }
       }
     },
@@ -15164,14 +16638,30 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [ "user_id" ],
+                "required": [
+                  "user_id"
+                ],
                 "properties": {
-                  "user_id": { "type": "integer" },
-                  "role_ids": { "type": "array", "items": { "type": "integer" }, "description": "Array of role ids to remove" },
-                  "role_id": { "type": "integer", "description": "Single role id to remove" }
+                  "user_id": {
+                    "type": "integer"
+                  },
+                  "role_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Array of role ids to remove"
+                  },
+                  "role_id": {
+                    "type": "integer",
+                    "description": "Single role id to remove"
+                  }
                 }
               },
-              "example": { "user_id": 123, "role_id": 4 }
+              "example": {
+                "user_id": 123,
+                "role_id": 4
+              }
             }
           }
         },
@@ -15182,13 +16672,26 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "properties": { "data": { "type": "object", "properties": { "removed_count": { "type": "integer" } } } }
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "removed_count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
           },
-          "400": { "description": "Missing or invalid parameters" },
-          "403": { "description": "Forbidden - missing permission roles.update" }
+          "400": {
+            "description": "Missing or invalid parameters"
+          },
+          "403": {
+            "description": "Forbidden - missing permission roles.update"
+          }
         }
       }
     },
@@ -16381,7 +17884,7 @@
                     }
                   }
                 },
-                  "example": {
+                "example": {
                   "data": {
                     "id": 10,
                     "parent_id": null,
@@ -16500,7 +18003,6 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  
                   "parent_id": {
                     "type": "integer",
                     "nullable": true
@@ -17191,8 +18693,7 @@
               "type": "string"
             },
             "description": "Search by username/email/phone (ILIKE)"
-          }
-          ,
+          },
           {
             "in": "query",
             "name": "is_active",
@@ -19877,7 +21378,7 @@
                   "content",
                   "section_id"
                 ],
-                  "properties": {
+                "properties": {
                   "title": {
                     "type": "string"
                   },
@@ -19892,7 +21393,9 @@
                   },
                   "organizations": {
                     "type": "array",
-                    "items": { "type": "integer" },
+                    "items": {
+                      "type": "integer"
+                    },
                     "description": "Array of organization IDs to attach to the article"
                   },
                   "created_by": {
@@ -19942,17 +21445,57 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer" },
-                    "title": { "type": "string" },
-                    "slug": { "type": "string" },
-                    "content": { "type": "string" },
-                    "summary": { "type": "string", "nullable": true },
-                    "section_id": { "type": "integer", "nullable": true },
-                    "is_published": { "type": "boolean" },
-                    "version": { "type": "string", "nullable": true },
-                    "created_by": { "type": "integer", "nullable": true },
-                    "published_at": { "type": "string", "format": "date-time", "nullable": true },
-                    "organizations": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "integer" }, "name": { "type": "string" } } }, "nullable": true }
+                    "id": {
+                      "type": "integer"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "string"
+                    },
+                    "summary": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "section_id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "is_published": {
+                      "type": "boolean"
+                    },
+                    "version": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "created_by": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "published_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "organizations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "nullable": true
+                    }
                   }
                 }
               }
@@ -19992,15 +21535,38 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "title": { "type": "string" },
-                  "slug": { "type": "string" },
-                  "content": { "type": "string" },
-                  "summary": { "type": "string", "nullable": true },
-                  "section_id": { "type": "integer" },
-                  "is_published": { "type": "boolean" },
-                  "version": { "type": "string" },
-                  "updated_by": { "type": "integer" },
-                  "organizations": { "type": "array", "items": { "type": "integer" }, "description": "Replace article organizations with this list" }
+                  "title": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "section_id": {
+                    "type": "integer"
+                  },
+                  "is_published": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "updated_by": {
+                    "type": "integer"
+                  },
+                  "organizations": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Replace article organizations with this list"
+                  }
                 }
               }
             }
@@ -20180,11 +21746,23 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer" },
-                    "name": { "type": "string" },
-                    "slug": { "type": "string" },
-                    "description": { "type": "string", "nullable": true },
-                    "project_id": { "type": "integer", "nullable": true }
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "slug": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "project_id": {
+                      "type": "integer",
+                      "nullable": true
+                    }
                   }
                 }
               }
@@ -20429,6 +22007,273 @@
           },
           "404": {
             "description": "Record not found"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/characteristics": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Create or update project characteristics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "projects.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCharacteristicsCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProjectCharacteristics"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Create or update project characteristics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "projects.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCharacteristicsCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProjectCharacteristics"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Delete project characteristics",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "projects.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/images": {
+      "post": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Add project image",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "projects.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectImageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProjectImage"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/images/{id}": {
+      "put": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Update project image",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "projects.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectImageCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProjectImage"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "projects"
+        ],
+        "summary": "Delete project image",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "projects.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
           }
         }
       }
