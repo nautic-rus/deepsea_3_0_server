@@ -23,6 +23,19 @@ class DocumentsController {
   }
 
   /**
+   * GET /api/documents/statistics - documents statistics grouped by specialization and stage
+   * Query: project_id (optional)
+   */
+  static async statistics(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const query = Object.assign({}, req.query || {});
+      const rows = await DocumentsService.getDocumentsStatistics(query || {}, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
    * Retrieve a single document by ID.
    */
   static async get(req, res, next) {

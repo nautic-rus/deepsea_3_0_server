@@ -309,6 +309,8 @@ router.delete('/notification_methods/:id', authMiddleware, notificationMethodsCo
 // ===== Documents routes =====
 // GET /api/documents
 router.get('/documents', authMiddleware, documentsController.list);
+// GET /api/documents/statistics - documents statistics grouped by specialization and stage
+router.get('/documents/statistics', authMiddleware, documentsController.statistics);
 // Document directories routes must be registered before '/documents/:id' to avoid
 // Express treating 'directories' as an :id parameter. Register them here.
 // GET /api/documents/directories - list document directories

@@ -61,6 +61,118 @@ class DocumentsService {
   }
 
   /**
+   * Get documents statistics grouped by specialization_id and stage_id.
+   * Returns counts of open/closed documents and percent closed.
+   * Supports filtering by project_id and respects permission/project scope.
+   */
+  static async getDocumentsStatistics(query = {}, actor) {
+    const requiredPermission = 'documents.statistics';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const permissionScope = await getPermissionProjectScope(actor, requiredPermission);
+    if (!permissionScope.hasGlobal && permissionScope.projectIds.length === 0) {
+      const err = new Error('Forbidden: missing permission documents.statistics'); err.statusCode = 403; throw err;
+    }
+
+    // Allow admins/global viewers to request across projects
+    const canViewAll = await hasPermission(actor, 'documents.view_all') || permissionScope.hasGlobal;
+
+    // Normalize and validate project filter
+    let projectFilterSql = '';
+    const values = [];
+    let idx = 1;
+    if (query.project_id !== undefined && query.project_id !== null) {
+      const requestedProjectIds = Array.isArray(query.project_id)
+        ? query.project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
+        : [Number(query.project_id)].filter(p => !Number.isNaN(p));
+      if (requestedProjectIds.length === 0) { const err = new Error('Invalid project_id'); err.statusCode = 400; throw err; }
+      // If user doesn't have global scope, ensure requested projects are allowed
+      if (!canViewAll) {
+        const forbidden = requestedProjectIds.find(pid => !permissionScope.projectIds.includes(pid));
+        if (forbidden !== undefined) { const err = new Error('Forbidden: missing permission for requested project'); err.statusCode = 403; throw err; }
+      }
+      projectFilterSql = ` AND d.project_id = ANY($${idx}::int[])`;
+      values.push(requestedProjectIds);
+      idx++;
+    } else if (!canViewAll) {
+      // Restrict to allowed projects
+      const allowedProjectIds = permissionScope.projectIds;
+      if (!allowedProjectIds || allowedProjectIds.length === 0) return [];
+      projectFilterSql = ` AND d.project_id = ANY($${idx}::int[])`;
+      values.push(allowedProjectIds);
+      idx++;
+    }
+
+    // Build two queries: one grouped by stage (including stage name), one by specialization
+    const qStages = `
+      SELECT d.stage_id, st.name AS stage_name,
+        COUNT(*)::int AS total_count,
+        SUM(CASE WHEN s.is_final THEN 1 ELSE 0 END)::int AS closed_count,
+        SUM(CASE WHEN s.is_final THEN 0 ELSE 1 END)::int AS open_count
+      FROM documents d
+      LEFT JOIN document_status s ON s.id = d.status_id
+      LEFT JOIN stages st ON st.id = d.stage_id
+      WHERE d.is_active = true ${projectFilterSql}
+      GROUP BY d.stage_id, st.name
+      ORDER BY st.name NULLS LAST
+    `;
+
+    const qSpecs = `
+      SELECT d.specialization_id, sp.name AS specialization_name,
+        COUNT(*)::int AS total_count,
+        SUM(CASE WHEN s.is_final THEN 1 ELSE 0 END)::int AS closed_count,
+        SUM(CASE WHEN s.is_final THEN 0 ELSE 1 END)::int AS open_count
+      FROM documents d
+      LEFT JOIN document_status s ON s.id = d.status_id
+      LEFT JOIN specializations sp ON sp.id = d.specialization_id
+      WHERE d.is_active = true ${projectFilterSql}
+      GROUP BY d.specialization_id, sp.name
+      ORDER BY sp.name NULLS LAST
+    `;
+
+    const qTotal = `
+      SELECT COUNT(*)::int AS total_count,
+        SUM(CASE WHEN s.is_final THEN 1 ELSE 0 END)::int AS closed_count,
+        SUM(CASE WHEN s.is_final THEN 0 ELSE 1 END)::int AS open_count
+      FROM documents d
+      LEFT JOIN document_status s ON s.id = d.status_id
+      WHERE d.is_active = true ${projectFilterSql}
+    `;
+
+    const [stRes, spRes, totalRes] = await Promise.all([pool.query(qStages, values), pool.query(qSpecs, values), pool.query(qTotal, values)]);
+
+    const computePercent = (it) => ({
+      ...it,
+      percent_closed: it.total_count > 0 ? Math.round((it.closed_count / it.total_count) * 10000) / 100 : 0
+    });
+
+    const stages = (stRes.rows || []).map(r => computePercent({
+      stage_id: r.stage_id === null ? null : Number(r.stage_id),
+      stage_name: r.stage_name || null,
+      total_count: Number(r.total_count) || 0,
+      closed_count: Number(r.closed_count) || 0,
+      open_count: Number(r.open_count) || 0
+    }));
+
+    const specializations = (spRes.rows || []).map(r => computePercent({
+      specialization_id: r.specialization_id === null ? null : Number(r.specialization_id),
+      specialization_name: r.specialization_name || null,
+      total_count: Number(r.total_count) || 0,
+      closed_count: Number(r.closed_count) || 0,
+      open_count: Number(r.open_count) || 0
+    }));
+
+    const totalRow = (totalRes.rows && totalRes.rows[0]) || { total_count: 0, closed_count: 0, open_count: 0 };
+    const overall = {
+      total_count: Number(totalRow.total_count) || 0,
+      closed_count: Number(totalRow.closed_count) || 0,
+      open_count: Number(totalRow.open_count) || 0,
+      percent_closed: (Number(totalRow.total_count) || 0) > 0 ? Math.round(((Number(totalRow.closed_count) || 0) / Number(totalRow.total_count)) * 10000) / 100 : 0
+    };
+
+    return { overall, stages, specializations };
+  }
+
+  /**
    * Attach display-friendly fields to documents list.
    * Adds: project_name, stage_name, stage_date, status_name, specialization_name, created_name
    */

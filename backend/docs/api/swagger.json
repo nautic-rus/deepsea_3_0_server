@@ -3223,6 +3223,89 @@
     }
   },
   "paths": {
+    "/api/documents/statistics": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Documents statistics grouped by specialization and stage",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "documents.statistics"
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Project ID for filtering (optional)",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 12
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "stages": {
+                          "type": "array",
+                          "items": {
+                              "type": "object",
+                              "properties": {
+                                "stage_id": { "type": "integer", "nullable": true },
+                                "stage_name": { "type": "string", "nullable": true },
+                                "total_count": { "type": "integer" },
+                                "closed_count": { "type": "integer" },
+                                "open_count": { "type": "integer" },
+                                "percent_closed": { "type": "number", "format": "float" }
+                              }
+                            }
+                        },
+                          "specializations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "specialization_id": { "type": "integer", "nullable": true },
+                              "total_count": { "type": "integer" },
+                              "closed_count": { "type": "integer" },
+                              "open_count": { "type": "integer" },
+                              "percent_closed": { "type": "number", "format": "float" }
+                            }
+                          }
+                        }
+                        ,
+                          "overall": {
+                            "type": "object",
+                            "properties": {
+                              "total_count": { "type": "integer" },
+                              "closed_count": { "type": "integer" },
+                              "open_count": { "type": "integer" },
+                              "percent_closed": { "type": "number", "format": "float" }
+                            }
+                          }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/files/status": {
       "post": {
         "tags": [
