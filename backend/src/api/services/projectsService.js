@@ -93,7 +93,9 @@ class ProjectsService {
   // controller enforces authentication via middleware).
   static async listProjectsForUser(query = {}, actor) {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const projects = await Project.listForUser(actor.id, query);
+    let projects = await Project.listForUser(actor.id, query);
+    // Exclude projects with status 'inactive' for the `/my_projects` endpoint
+    projects = projects.filter(p => ((p && p.status) || '').toString().toLowerCase() !== 'inactive');
     // Attach participants for each project: id, full_name, url_avatar (exclude email and phone)
     const pool = require('../../db/connection');
     // Preload available permission codes to compute per-project permissions for the actor
