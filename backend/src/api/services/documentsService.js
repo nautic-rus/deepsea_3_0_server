@@ -1172,7 +1172,10 @@ class DocumentsService {
       if (chk.rowCount === 0) { const err = new Error('Status not found'); err.statusCode = 400; throw err; }
     }
 
-    const q = 'UPDATE documents_storage SET status_id = $1 WHERE storage_id = ANY($2::int[]) RETURNING *';
+    const q = `UPDATE documents_storage SET
+      status_id = $1,
+      status_edit_date = CASE WHEN $1::int IS NOT NULL AND $1::int IS DISTINCT FROM status_id THEN now() ELSE status_edit_date END
+      WHERE storage_id = ANY($2::int[]) RETURNING *`;
     const res = await pool.query(q, [statusId !== null ? Number(statusId) : null, ids]);
     return res.rows || [];
   }
