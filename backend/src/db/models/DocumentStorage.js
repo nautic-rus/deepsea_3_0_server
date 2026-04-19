@@ -4,7 +4,7 @@ class DocumentStorage {
   static async attach({ document_id, storage_id }) {
     // Accept optional metadata: type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment
     const q = `INSERT INTO documents_storage (document_id, storage_id, type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment, status_edit_date)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, CASE WHEN $8 IS NOT NULL THEN now() ELSE NULL END)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, CASE WHEN $8::int IS NOT NULL THEN now() ELSE NULL END)
       ON CONFLICT (document_id, storage_id) DO UPDATE SET
         type_id = EXCLUDED.type_id,
         rev = EXCLUDED.rev,
@@ -97,7 +97,7 @@ class DocumentStorage {
       status_id = COALESCE($8, status_id),
       reason_id = COALESCE($9, reason_id),
       comment = COALESCE($10, comment),
-      status_edit_date = CASE WHEN $8 IS NOT NULL AND $8 IS DISTINCT FROM status_id THEN now() ELSE status_edit_date END
+        status_edit_date = CASE WHEN $8::int IS NOT NULL AND $8::int IS DISTINCT FROM status_id THEN now() ELSE status_edit_date END
       WHERE document_id = $1 AND storage_id = $2 RETURNING id, document_id, storage_id, type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment, status_edit_date`;
 
     const params = [
