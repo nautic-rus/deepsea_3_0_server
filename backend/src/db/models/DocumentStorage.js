@@ -3,18 +3,16 @@ const pool = require('../connection');
 class DocumentStorage {
   static async attach({ document_id, storage_id }) {
     // Accept optional metadata: type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment
-    const q = `INSERT INTO documents_storage (document_id, storage_id, type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment, status_edit_date)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, CASE WHEN $8::int IS NOT NULL THEN now() ELSE NULL END)
+    const q = `INSERT INTO documents_storage (document_id, storage_id, type_id, rev, user_id, archive, archive_data, reason_id, comment, status_edit_date)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NULL)
       ON CONFLICT (document_id, storage_id) DO UPDATE SET
         type_id = EXCLUDED.type_id,
         rev = EXCLUDED.rev,
         user_id = EXCLUDED.user_id,
         archive = EXCLUDED.archive,
         archive_data = EXCLUDED.archive_data,
-        status_id = EXCLUDED.status_id,
         reason_id = EXCLUDED.reason_id,
-        comment = EXCLUDED.comment,
-        status_edit_date = CASE WHEN EXCLUDED.status_id IS DISTINCT FROM documents_storage.status_id THEN now() ELSE documents_storage.status_edit_date END
+        comment = EXCLUDED.comment
       RETURNING id, document_id, storage_id, type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment, status_edit_date, created_at`;
 
     const params = [
@@ -25,7 +23,6 @@ class DocumentStorage {
       typeof arguments[0].user_id !== 'undefined' ? arguments[0].user_id : null,
       typeof arguments[0].archive !== 'undefined' ? arguments[0].archive : false,
       typeof arguments[0].archive_data !== 'undefined' ? arguments[0].archive_data : null,
-      typeof arguments[0].status_id !== 'undefined' ? arguments[0].status_id : null,
       typeof arguments[0].reason_id !== 'undefined' ? arguments[0].reason_id : null,
       typeof arguments[0].comment !== 'undefined' ? arguments[0].comment : null
     ];
