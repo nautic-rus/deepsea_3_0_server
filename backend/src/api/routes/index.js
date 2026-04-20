@@ -59,6 +59,7 @@ const wikiArticlesController = require('../controllers/wikiArticlesController');
 const wikiArticleStorageController = require('../controllers/wikiArticleStorageController');
 const wikiSectionsController = require('../controllers/wikiSectionsController');
 const timeLogsController = require('../controllers/timeLogsController');
+const searchController = require('../controllers/searchController');
 
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
@@ -176,6 +177,8 @@ router.get('/roles/permissions', authMiddleware, rolesController.getPermissionsB
 // ===== Projects routes =====
 // GET /api/projects
 router.get('/projects', authMiddleware, projectsController.list);
+// GET /api/search - unified full-text search across entities
+router.get('/search', authMiddleware, searchController.search);
 // GET /api/my_projects - list projects assigned to current user (no additional permission required)
 router.get('/my_projects', authMiddleware, projectsController.myProjects);
 // GET /api/projects/:id

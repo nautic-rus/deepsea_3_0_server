@@ -93,6 +93,10 @@
       "description": "CRUD operations for issues"
     },
     {
+      "name": "search",
+      "description": "Unified search across documents, issues and customer questions"
+    },
+    {
       "name": "job_titles",
       "description": "CRUD operations for job titles"
     },
@@ -3223,6 +3227,137 @@
     }
   },
   "paths": {
+    "/api/search": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Unified full-text search",
+        "description": "Searches across documents, issues and customer questions including related messages, files and links. Results are filtered by user permissions and project scope.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search text",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Alias for q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entities",
+            "in": "query",
+            "description": "Comma-separated entities to search: documents,issues,customer_questions",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "documents,issues"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Project id or comma-separated list of project ids",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "12,15"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of results (default 20, max 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Result offset",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "score": { "type": "number", "format": "float" },
+                          "entity_type": { "type": "string", "enum": ["documents", "issues", "customer_questions"] },
+                          "entity_id": { "type": "integer" },
+                          "project_id": { "type": "integer", "nullable": true },
+                          "title": { "type": "string", "nullable": true },
+                          "description": { "type": "string", "nullable": true },
+                          "code": { "type": "string", "nullable": true },
+                          "comment": { "type": "string", "nullable": true },
+                          "priority": { "type": "string", "nullable": true },
+                          "project_name": { "type": "string", "nullable": true },
+                          "project_code": { "type": "string", "nullable": true },
+                          "status_name": { "type": "string", "nullable": true },
+                          "type_name": { "type": "string", "nullable": true },
+                          "stage_name": { "type": "string", "nullable": true },
+                          "specialization_name": { "type": "string", "nullable": true },
+                          "author_name": { "type": "string", "nullable": true },
+                          "assignee_name": { "type": "string", "nullable": true },
+                          "responsible_name": { "type": "string", "nullable": true },
+                          "created_at": { "type": "string", "format": "date-time", "nullable": true },
+                          "updated_at": { "type": "string", "format": "date-time", "nullable": true }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "query": { "type": "string" },
+                        "total": { "type": "integer" },
+                        "limit": { "type": "integer" },
+                        "offset": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
     "/api/documents/statistics": {
       "get": {
         "tags": [
