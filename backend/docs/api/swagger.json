@@ -21668,6 +21668,11 @@
                   "section_id": {
                     "type": "integer"
                   },
+                  "cover_image_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "ID of the cover image (storage/file id)"
+                  },
                   "organizations": {
                     "type": "array",
                     "items": {
@@ -21751,6 +21756,10 @@
                       "type": "integer",
                       "nullable": true
                     },
+                    "cover_image_id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
                     "published_at": {
                       "type": "string",
                       "format": "date-time",
@@ -21815,6 +21824,10 @@
                   },
                   "slug": {
                     "type": "string"
+                  },
+                  "cover_image_id": {
+                    "type": "integer",
+                    "nullable": true
                   },
                   "content": {
                     "type": "string"

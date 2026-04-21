@@ -64,7 +64,7 @@ class WikiArticle {
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     // include aggregated organizations for each article (guard if join table doesn't exist yet)
-    let q = `SELECT wa.id, wa.title, wa.content, wa.summary, wa.section_id, wa.is_published, wa.version, wa.status, wa.created_by, wa.updated_by, wa.created_at, wa.updated_at, wa.published_at,
+    let q = `SELECT wa.id, wa.title, wa.content, wa.summary, wa.section_id, wa.is_published, wa.version, wa.status, wa.created_by, wa.updated_by, wa.created_at, wa.updated_at, wa.published_at, wa.cover_image_id,
       (CASE WHEN to_regclass('public.wiki_article_organizations') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(o.*)) FROM (SELECT o.id, o.name FROM wiki_article_organizations wao JOIN organizations o ON o.id = wao.organization_id WHERE wao.article_id = wa.id) o) END) AS organizations
       FROM wiki_articles wa ${whereSql} ORDER BY wa.id`;
     if (limit != null) {
@@ -79,7 +79,7 @@ class WikiArticle {
   }
 
   static async findById(id) {
-    const q = `SELECT wa.id, wa.title, wa.content, wa.summary, wa.section_id, wa.is_published, wa.version, wa.status, wa.created_by, wa.updated_by, wa.created_at, wa.updated_at, wa.published_at,
+    const q = `SELECT wa.id, wa.title, wa.content, wa.summary, wa.section_id, wa.is_published, wa.version, wa.status, wa.created_by, wa.updated_by, wa.created_at, wa.updated_at, wa.published_at, wa.cover_image_id,
       (CASE WHEN to_regclass('public.wiki_article_organizations') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(o.*)) FROM (SELECT o.id, o.name FROM wiki_article_organizations wao JOIN organizations o ON o.id = wao.organization_id WHERE wao.article_id = wa.id) o) END) AS organizations
       FROM wiki_articles wa WHERE wa.id = $1 AND (wa.status IS NULL OR wa.status <> 'deleted') LIMIT 1`;
     const res = await pool.query(q, [id]);
@@ -87,7 +87,7 @@ class WikiArticle {
   }
 
   static async create(fields) {
-    const allowed = ['title','content','summary','section_id','is_published','version','status','created_by','updated_by','published_at'];
+    const allowed = ['title','content','summary','section_id','is_published','version','status','created_by','updated_by','published_at','cover_image_id'];
     const cols = [];
     const placeholders = [];
     const values = [];
@@ -100,7 +100,7 @@ class WikiArticle {
       }
     }
     if (cols.length === 0) throw new Error('No fields provided for insert');
-    const q = `INSERT INTO wiki_articles (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, title, content, summary, section_id, is_published, version, status, created_by, updated_by, created_at, updated_at, published_at`;
+    const q = `INSERT INTO wiki_articles (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, title, content, summary, section_id, is_published, version, status, created_by, updated_by, created_at, updated_at, published_at, cover_image_id`;
     const res = await pool.query(q, values);
     const art = res.rows[0];
     // attach organizations if provided
@@ -130,11 +130,11 @@ class WikiArticle {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['title','content','summary','section_id','is_published','version','status','updated_by','published_at'].forEach((k) => {
+    ['title','content','summary','section_id','is_published','version','status','updated_by','published_at','cover_image_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await WikiArticle.findById(id);
-    const q = `UPDATE wiki_articles SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, title, content, summary, section_id, is_published, version, status, created_by, updated_by, created_at, updated_at, published_at`;
+    const q = `UPDATE wiki_articles SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, title, content, summary, section_id, is_published, version, status, created_by, updated_by, created_at, updated_at, published_at, cover_image_id`;
     values.push(id);
     const res = await pool.query(q, values);
     const updated = res.rows[0] || null;
