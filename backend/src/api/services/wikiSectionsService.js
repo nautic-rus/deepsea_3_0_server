@@ -1,4 +1,5 @@
 const WikiSection = require('../../db/models/WikiSection');
+const Project = require('../../db/models/Project');
 const { hasPermission } = require('./permissionChecker');
 
 class WikiSectionsService {
@@ -11,7 +12,22 @@ class WikiSectionsService {
     // normalize project_id: allow 'null' string to mean sections without project
     if (q.project_id === 'null') q.project_id = 'null';
     else if (q.project_id !== undefined) q.project_id = Number(q.project_id);
-    return await WikiSection.list(q);
+    // If a specific project_id is requested — ensure actor is assigned to that project (or has global view_all)
+    const canViewAll = await hasPermission(actor, 'projects.view_all');
+    if (q.project_id !== undefined && q.project_id !== null && q.project_id !== 'null' && q.project_id !== '') {
+      const pid = Number(q.project_id);
+      if (!canViewAll) {
+        const assigned = await Project.isUserAssigned(pid, actor.id);
+        if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+      }
+      return await WikiSection.list(q);
+    }
+
+    // No specific project filter: fetch sections and then filter to projects the user belongs to
+    const rows = await WikiSection.list(q);
+    if (canViewAll) return rows;
+    const assignedIds = await Project.listAssignedProjectIds(actor.id);
+    return rows.filter(r => (r.project_id === null || assignedIds.includes(r.project_id)));
   }
 
   static async getSectionById(id, actor) {
@@ -22,6 +38,12 @@ class WikiSectionsService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const s = await WikiSection.findById(Number(id));
     if (!s) { const err = new Error('Section not found'); err.statusCode = 404; throw err; }
+    // If section is project-scoped, ensure actor belongs to that project (or has view_all)
+    const canViewAll = await hasPermission(actor, 'projects.view_all');
+    if (s.project_id !== null && !canViewAll) {
+      const assigned = await Project.isUserAssigned(s.project_id, actor.id);
+      if (!assigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
+    }
     return s;
   }
 

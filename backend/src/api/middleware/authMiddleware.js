@@ -167,6 +167,10 @@ async function authMiddleware(req, res, next) {
       job_title_id: user.job_title_id,
       department: department,
       job_title: jobTitle,
+      group_id: user.group_id || null,
+      group_name: user.group_name || null,
+      organization_id: user.organization_id || null,
+      organization_name: user.organization_name || null,
       is_active: user.is_active,
       permissions
     };

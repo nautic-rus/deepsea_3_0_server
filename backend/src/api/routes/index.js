@@ -58,6 +58,8 @@ const environmentSettingsController = require('../controllers/environmentSetting
 const wikiArticlesController = require('../controllers/wikiArticlesController');
 const wikiArticleStorageController = require('../controllers/wikiArticleStorageController');
 const wikiSectionsController = require('../controllers/wikiSectionsController');
+const wikiArticleFavoritesController = require('../controllers/wikiArticleFavoritesController');
+const wikiArticleViewsController = require('../controllers/wikiArticleViewsController');
 const timeLogsController = require('../controllers/timeLogsController');
 const searchController = require('../controllers/searchController');
 
@@ -581,6 +583,14 @@ router.get('/wiki/articles/:article_id/storage', authMiddleware, wikiArticleStor
 router.get('/wiki/articles/storage/:id', authMiddleware, wikiArticleStorageController.get);
 router.post('/wiki/articles/:article_id/storage', authMiddleware, wikiArticleStorageController.create);
 router.delete('/wiki/articles/storage/:id', authMiddleware, wikiArticleStorageController.delete);
+
+// Wiki favorites for current user
+router.get('/wiki/favorites', authMiddleware, wikiArticleFavoritesController.listMine);
+router.post('/wiki/articles/:article_id/favorite', authMiddleware, wikiArticleFavoritesController.create);
+router.delete('/wiki/articles/:article_id/favorite', authMiddleware, wikiArticleFavoritesController.delete);
+
+// Recent views
+router.get('/wiki/views', authMiddleware, wikiArticleViewsController.listMine);
 
 // ===== User pages (menu) =====
 // GET /api/user/pages

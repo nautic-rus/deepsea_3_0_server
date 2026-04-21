@@ -4,7 +4,42 @@ class WikiArticlesController {
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
-      const rows = await WikiArticlesService.listArticles(req.query || {}, actor);
+      const query = Object.assign({}, req.query || {});
+      // Support arrays for certain numeric filter params: accept comma-separated strings or repeated query params
+      const multiParamsNum = ['section_id', 'created_by', 'organization_id', 'organization_ids'];
+      const multiParamsStr = ['status'];
+      for (const p of multiParamsNum) {
+        if (query[p] !== undefined && query[p] !== null) {
+          if (Array.isArray(query[p])) {
+            query[p] = query[p].map(v => Number(v));
+          } else if (String(query[p]).includes(',')) {
+            query[p] = String(query[p]).split(',').map(s => Number(s.trim())).filter(n => !Number.isNaN(n));
+          } else {
+            query[p] = Number(query[p]);
+          }
+        }
+      }
+      for (const p of multiParamsStr) {
+        if (query[p] !== undefined && query[p] !== null) {
+          if (Array.isArray(query[p])) {
+            query[p] = query[p].map(v => String(v));
+          } else if (String(query[p]).includes(',')) {
+            query[p] = String(query[p]).split(',').map(s => s.trim());
+          } else {
+            query[p] = String(query[p]);
+          }
+        }
+      }
+      // support my_article filter: if true, return articles where actor is author
+      if (query.my_article !== undefined && query.my_article !== null) {
+        const val = query.my_article === true || query.my_article === 'true' || query.my_article === '1';
+        if (val && actor && actor.id) {
+          query.created_by = actor.id;
+        }
+        delete query.my_article;
+      }
+
+      const rows = await WikiArticlesService.listArticles(query || {}, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }

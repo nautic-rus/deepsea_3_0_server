@@ -21550,6 +21550,69 @@
         "x-permissions": [
           "wiki.articles.view"
         ],
+        "parameters": [
+          {
+            "name": "section_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "created_by",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "organization_ids",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "description": "Comma-separated list of organization IDs" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "description": "Status or comma-separated list of statuses (e.g. active,archived)" }
+          },
+          {
+            "name": "my_article",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" },
+            "description": "If true, return articles created by current user"
+          },
+          {
+            "name": "is_published",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -21592,15 +21655,11 @@
                 "type": "object",
                 "required": [
                   "title",
-                  "slug",
                   "content",
                   "section_id"
                 ],
                 "properties": {
                   "title": {
-                    "type": "string"
-                  },
-                  "slug": {
                     "type": "string"
                   },
                   "content": {
@@ -21669,9 +21728,7 @@
                     "title": {
                       "type": "string"
                     },
-                    "slug": {
-                      "type": "string"
-                    },
+                    
                     "content": {
                       "type": "string"
                     },
@@ -22225,6 +22282,151 @@
           },
           "404": {
             "description": "Record not found"
+          }
+        }
+      }
+    },
+    "/api/wiki/favorites": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "List wiki favorites for current user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wiki/articles/{article_id}/favorite": {
+      "post": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Add article to favorites for current user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer" },
+                    "user_id": { "type": "integer" },
+                    "article_id": { "type": "integer" },
+                    "created_at": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "Remove article from favorites for current user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "article_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted"
+          },
+          "404": {
+            "description": "Favorite not found"
+          }
+        }
+      }
+    },
+    "/api/wiki/views": {
+      "get": {
+        "tags": [
+          "wiki"
+        ],
+        "summary": "List recent wiki article views for current user",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": { "type": "object" }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
