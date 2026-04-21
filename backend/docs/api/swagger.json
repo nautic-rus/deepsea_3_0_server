@@ -21756,6 +21756,10 @@
                       "type": "integer",
                       "nullable": true
                     },
+                    "is_favorite": {
+                      "type": "boolean",
+                      "description": "True if the article is in current user's favorites"
+                    },
                     "cover_image_id": {
                       "type": "integer",
                       "nullable": true

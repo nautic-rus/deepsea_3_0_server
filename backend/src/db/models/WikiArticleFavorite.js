@@ -41,6 +41,13 @@ class WikiArticleFavorite {
     return res.rows[0] || null;
   }
 
+  static async listByUserAndArticleIds(user_id, article_ids = []) {
+    if (!user_id || !Array.isArray(article_ids) || article_ids.length === 0) return [];
+    const q = `SELECT article_id FROM wiki_articles_favorites WHERE user_id = $1 AND article_id = ANY($2::int[])`;
+    const res = await pool.query(q, [user_id, article_ids]);
+    return res.rows;
+  }
+
   static async create(fields) {
     const q = `INSERT INTO wiki_articles_favorites (user_id, article_id) VALUES ($1,$2) RETURNING id, user_id, article_id, created_at`;
     const vals = [fields.user_id, fields.article_id];

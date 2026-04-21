@@ -1,5 +1,6 @@
 const WikiArticle = require('../../db/models/WikiArticle');
 const WikiArticleView = require('../../db/models/WikiArticleView');
+const WikiArticleFavorite = require('../../db/models/WikiArticleFavorite');
 const { hasPermission } = require('./permissionChecker');
 
 class WikiArticlesService {
@@ -17,7 +18,14 @@ class WikiArticlesService {
     // Pass viewer info so model can filter by user's organization (with exception for article author)
     q.viewer_id = actor.id;
     q.viewer_organization_id = actor.organization_id !== undefined ? actor.organization_id : null;
-    return await WikiArticle.list(q);
+    const rows = await WikiArticle.list(q);
+
+    const articleIds = rows.map((r) => Number(r.id)).filter((v) => !Number.isNaN(v));
+    if (articleIds.length === 0) return rows;
+
+    const favRows = await WikiArticleFavorite.listByUserAndArticleIds(actor.id, articleIds);
+    const favSet = new Set(favRows.map((r) => Number(r.article_id)));
+    return rows.map((r) => Object.assign({}, r, { is_favorite: favSet.has(Number(r.id)) }));
   }
 
   static async getArticleById(id, actor) {
@@ -46,6 +54,9 @@ class WikiArticlesService {
         if (e && e.statusCode === 403) throw e;
         const err = new Error('Forbidden: unable to verify organization membership'); err.statusCode = 403; throw err;
       }
+    const favorite = await WikiArticleFavorite.findByUserAndArticle(actor.id, Number(id));
+    a.is_favorite = !!favorite;
+
     // Log view for authenticated user; ignore errors from logging
     if (actor && actor.id) {
       (async () => {
