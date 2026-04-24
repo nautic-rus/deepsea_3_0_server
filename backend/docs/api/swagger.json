@@ -156,13 +156,10 @@
           "name": {
             "type": "string"
           },
-          "code": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string",
-            "nullable": true
-          },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
           "color": {
             "type": "string",
             "nullable": true
@@ -22043,14 +22040,10 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "name",
-                  "slug"
+                  "name"
                 ],
                 "properties": {
                   "name": {
-                    "type": "string"
-                  },
-                  "slug": {
                     "type": "string"
                   },
                   "description": {
@@ -22127,9 +22120,6 @@
                       "type": "integer"
                     },
                     "name": {
-                      "type": "string"
-                    },
-                    "slug": {
                       "type": "string"
                     },
                     "description": {
@@ -22213,13 +22203,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "slug": {
-                    "type": "string"
-                  },
-                  "description": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
                     "type": "string",
                     "nullable": true
                   },

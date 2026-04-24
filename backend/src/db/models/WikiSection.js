@@ -22,7 +22,7 @@ function normalizeIntArray(value) {
 
 class WikiSection {
   static async list(filters = {}) {
-    const { id, parent_id, name, slug, created_by, project_id, project_ids, organization_id, organization_ids, page = 1, limit } = filters;
+    const { id, parent_id, name, created_by, project_id, project_ids, organization_id, organization_ids, page = 1, limit } = filters;
     const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
@@ -86,10 +86,9 @@ class WikiSection {
     }
 
     if (name) { where.push(`ws.name ILIKE $${idx++}`); values.push(`%${name}%`); }
-    if (slug) { where.push(`ws.slug = $${idx++}`); values.push(slug); }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT ws.id, ws.name, ws.slug, ws.description, ws.parent_id, ws.order_index, ws.created_by, ws.updated_by, ws.created_at, ws.updated_at,
+    let q = `SELECT ws.id, ws.name, ws.description, ws.parent_id, ws.order_index, ws.created_by, ws.updated_by, ws.created_at, ws.updated_at,
       (CASE WHEN to_regclass('public.wiki_section_projects') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(p.*)) FROM (SELECT p.id, p.name, p.code FROM wiki_section_projects wsp JOIN projects p ON p.id = wsp.project_id WHERE wsp.section_id = ws.id ORDER BY p.id) p) END) AS projects,
       (CASE WHEN to_regclass('public.wiki_section_organizations') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(o.*)) FROM (SELECT o.id, o.name FROM wiki_section_organizations wso JOIN organizations o ON o.id = wso.organization_id WHERE wso.section_id = ws.id ORDER BY o.id) o) END) AS organizations
       FROM wiki_sections ws ${whereSql} ORDER BY ws.order_index, ws.id`;
@@ -105,7 +104,7 @@ class WikiSection {
   }
 
   static async findById(id) {
-    const q = `SELECT ws.id, ws.name, ws.slug, ws.description, ws.parent_id, ws.order_index, ws.created_by, ws.updated_by, ws.created_at, ws.updated_at,
+    const q = `SELECT ws.id, ws.name, ws.description, ws.parent_id, ws.order_index, ws.created_by, ws.updated_by, ws.created_at, ws.updated_at,
       (CASE WHEN to_regclass('public.wiki_section_projects') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(p.*)) FROM (SELECT p.id, p.name, p.code FROM wiki_section_projects wsp JOIN projects p ON p.id = wsp.project_id WHERE wsp.section_id = ws.id ORDER BY p.id) p) END) AS projects,
       (CASE WHEN to_regclass('public.wiki_section_organizations') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(o.*)) FROM (SELECT o.id, o.name FROM wiki_section_organizations wso JOIN organizations o ON o.id = wso.organization_id WHERE wso.section_id = ws.id ORDER BY o.id) o) END) AS organizations
       FROM wiki_sections ws WHERE ws.id = $1 LIMIT 1`;
@@ -117,8 +116,8 @@ class WikiSection {
     const sectionProjectIds = normalizeIntArray(fields.projects !== undefined ? fields.projects : fields.project_ids);
     const sectionOrganizationIds = normalizeIntArray(fields.organizations !== undefined ? fields.organizations : fields.organization_ids);
 
-    const q = `INSERT INTO wiki_sections (name, slug, description, parent_id, order_index, created_by, updated_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, name, slug, description, parent_id, order_index, created_by, updated_by, created_at, updated_at`;
-    const vals = [fields.name, fields.slug, fields.description, fields.parent_id, fields.order_index, fields.created_by, fields.updated_by];
+    const q = `INSERT INTO wiki_sections (name, description, parent_id, order_index, created_by, updated_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, name, description, parent_id, order_index, created_by, updated_by, created_at, updated_at`;
+    const vals = [fields.name, fields.description, fields.parent_id, fields.order_index, fields.created_by, fields.updated_by];
     const res = await pool.query(q, vals);
     const created = res.rows[0];
 
@@ -172,7 +171,7 @@ class WikiSection {
     const values = [];
     let idx = 1;
 
-    ['name','slug','description','parent_id','order_index','updated_by'].forEach((k) => {
+    ['name','description','parent_id','order_index','updated_by'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
 
