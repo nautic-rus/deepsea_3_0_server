@@ -34,16 +34,16 @@ class WikiSection {
 
     if (project_id !== undefined) {
       if (project_id === null || project_id === 'null' || project_id === '') {
-        where.push(`((to_regclass('public.wiki_section_projects') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id)) OR (to_regclass('public.wiki_section_projects') IS NULL AND ws.project_id IS NULL))`);
+        where.push(`(to_regclass('public.wiki_section_projects') IS NULL OR NOT EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id))`);
       } else {
-        where.push(`((to_regclass('public.wiki_section_projects') IS NOT NULL AND EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id AND wsp.project_id = $${idx++})) OR (to_regclass('public.wiki_section_projects') IS NULL AND ws.project_id = $${idx++}))`);
-        values.push(project_id, project_id);
+        where.push(`(to_regclass('public.wiki_section_projects') IS NOT NULL AND EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id AND wsp.project_id = $${idx++}))`);
+        values.push(project_id);
       }
     }
 
     const projectIds = normalizeIntArray(project_ids);
     if (Array.isArray(projectIds) && projectIds.length > 0) {
-      where.push(`((to_regclass('public.wiki_section_projects') IS NOT NULL AND EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id AND wsp.project_id = ANY($${idx}::int[]))) OR (to_regclass('public.wiki_section_projects') IS NULL AND ws.project_id = ANY($${idx}::int[])))`);
+      where.push(`(to_regclass('public.wiki_section_projects') IS NOT NULL AND EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id AND wsp.project_id = ANY($${idx}::int[])))`);
       values.push(projectIds);
       idx++;
     }
@@ -66,11 +66,11 @@ class WikiSection {
     if (filters.viewer_id !== undefined && !explicitProjectFilter) {
       const viewerProjectIds = Array.isArray(filters.viewer_project_ids) ? normalizeIntArray(filters.viewer_project_ids) : undefined;
       if (Array.isArray(viewerProjectIds) && viewerProjectIds.length > 0) {
-        where.push(`(ws.created_by = $${idx++} OR (to_regclass('public.wiki_section_projects') IS NULL AND ws.project_id IS NULL) OR (to_regclass('public.wiki_section_projects') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id)) OR EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id AND wsp.project_id = ANY($${idx}::int[])))`);
+        where.push(`(ws.created_by = $${idx++} OR (to_regclass('public.wiki_section_projects') IS NULL) OR (to_regclass('public.wiki_section_projects') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id)) OR EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id AND wsp.project_id = ANY($${idx}::int[])))`);
         values.push(filters.viewer_id, viewerProjectIds);
         idx++;
       } else {
-        where.push(`(ws.created_by = $${idx++} OR (to_regclass('public.wiki_section_projects') IS NULL AND ws.project_id IS NULL) OR (to_regclass('public.wiki_section_projects') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id)))`);
+        where.push(`(ws.created_by = $${idx++} OR (to_regclass('public.wiki_section_projects') IS NULL) OR (to_regclass('public.wiki_section_projects') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM wiki_section_projects wsp WHERE wsp.section_id = ws.id)))`);
         values.push(filters.viewer_id);
       }
     }
@@ -89,7 +89,7 @@ class WikiSection {
     if (slug) { where.push(`ws.slug = $${idx++}`); values.push(slug); }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT ws.id, ws.name, ws.slug, ws.description, ws.parent_id, ws.order_index, ws.project_id, ws.created_by, ws.updated_by, ws.created_at, ws.updated_at,
+    let q = `SELECT ws.id, ws.name, ws.slug, ws.description, ws.parent_id, ws.order_index, ws.created_by, ws.updated_by, ws.created_at, ws.updated_at,
       (CASE WHEN to_regclass('public.wiki_section_projects') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(p.*)) FROM (SELECT p.id, p.name, p.code FROM wiki_section_projects wsp JOIN projects p ON p.id = wsp.project_id WHERE wsp.section_id = ws.id ORDER BY p.id) p) END) AS projects,
       (CASE WHEN to_regclass('public.wiki_section_organizations') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(o.*)) FROM (SELECT o.id, o.name FROM wiki_section_organizations wso JOIN organizations o ON o.id = wso.organization_id WHERE wso.section_id = ws.id ORDER BY o.id) o) END) AS organizations
       FROM wiki_sections ws ${whereSql} ORDER BY ws.order_index, ws.id`;
@@ -105,7 +105,7 @@ class WikiSection {
   }
 
   static async findById(id) {
-    const q = `SELECT ws.id, ws.name, ws.slug, ws.description, ws.parent_id, ws.order_index, ws.project_id, ws.created_by, ws.updated_by, ws.created_at, ws.updated_at,
+    const q = `SELECT ws.id, ws.name, ws.slug, ws.description, ws.parent_id, ws.order_index, ws.created_by, ws.updated_by, ws.created_at, ws.updated_at,
       (CASE WHEN to_regclass('public.wiki_section_projects') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(p.*)) FROM (SELECT p.id, p.name, p.code FROM wiki_section_projects wsp JOIN projects p ON p.id = wsp.project_id WHERE wsp.section_id = ws.id ORDER BY p.id) p) END) AS projects,
       (CASE WHEN to_regclass('public.wiki_section_organizations') IS NULL THEN NULL ELSE (SELECT json_agg(row_to_json(o.*)) FROM (SELECT o.id, o.name FROM wiki_section_organizations wso JOIN organizations o ON o.id = wso.organization_id WHERE wso.section_id = ws.id ORDER BY o.id) o) END) AS organizations
       FROM wiki_sections ws WHERE ws.id = $1 LIMIT 1`;
@@ -116,12 +116,9 @@ class WikiSection {
   static async create(fields) {
     const sectionProjectIds = normalizeIntArray(fields.projects !== undefined ? fields.projects : fields.project_ids);
     const sectionOrganizationIds = normalizeIntArray(fields.organizations !== undefined ? fields.organizations : fields.organization_ids);
-    const legacyProjectId = fields.project_id !== undefined
-      ? fields.project_id
-      : ((Array.isArray(sectionProjectIds) && sectionProjectIds.length === 1) ? sectionProjectIds[0] : null);
 
-    const q = `INSERT INTO wiki_sections (name, slug, description, parent_id, order_index, project_id, created_by, updated_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, name, slug, description, parent_id, order_index, project_id, created_by, updated_by, created_at, updated_at`;
-    const vals = [fields.name, fields.slug, fields.description, fields.parent_id, fields.order_index, legacyProjectId, fields.created_by, fields.updated_by];
+    const q = `INSERT INTO wiki_sections (name, slug, description, parent_id, order_index, created_by, updated_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, name, slug, description, parent_id, order_index, created_by, updated_by, created_at, updated_at`;
+    const vals = [fields.name, fields.slug, fields.description, fields.parent_id, fields.order_index, fields.created_by, fields.updated_by];
     const res = await pool.query(q, vals);
     const created = res.rows[0];
 
@@ -171,26 +168,13 @@ class WikiSection {
       ? normalizeIntArray(fields.organizations !== undefined ? fields.organizations : fields.organization_ids)
       : (hasOrgSingleInput ? normalizeIntArray(fields.organization_id) : undefined);
 
-    if (!hasProjectArrayInput && hasProjectSingleInput && (fields.project_id === null || fields.project_id === 'null' || fields.project_id === '')) {
-      // keep explicit null semantics for legacy project_id
-    }
-
     const parts = [];
     const values = [];
     let idx = 1;
 
-    let resolvedLegacyProjectId = fields.project_id;
-    if (!hasProjectSingleInput && Array.isArray(sectionProjectIds)) {
-      resolvedLegacyProjectId = sectionProjectIds.length === 1 ? sectionProjectIds[0] : null;
-    }
-
     ['name','slug','description','parent_id','order_index','updated_by'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
-    if (hasProjectSingleInput || Array.isArray(sectionProjectIds)) {
-      parts.push(`project_id = $${idx++}`);
-      values.push(resolvedLegacyProjectId === '' ? null : resolvedLegacyProjectId);
-    }
 
     let updated = null;
     if (parts.length > 0) {

@@ -36,7 +36,7 @@ class WikiSectionsService {
       : [];
     const sectionProjectIds = Array.isArray(section.projects)
       ? section.projects.map((p) => Number(p.id)).filter((n) => Number.isInteger(n) && n > 0)
-      : (section.project_id ? [Number(section.project_id)] : []);
+      : [];
 
     if (!isAuthor && sectionOrgIds.length > 0) {
       if (!actor.organization_id || !sectionOrgIds.includes(Number(actor.organization_id))) return false;
