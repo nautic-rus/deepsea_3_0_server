@@ -6,7 +6,7 @@ class WikiArticlesController {
       const actor = req.user || null;
       const query = Object.assign({}, req.query || {});
       // Support arrays for certain numeric filter params: accept comma-separated strings or repeated query params
-      const multiParamsNum = ['section_id', 'created_by', 'organization_id', 'organization_ids'];
+      const multiParamsNum = ['section_id', 'created_by', 'organization_id', 'organization_ids', 'project_id', 'project_ids'];
       const multiParamsStr = ['status'];
       for (const p of multiParamsNum) {
         if (query[p] !== undefined && query[p] !== null) {

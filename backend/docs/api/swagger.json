@@ -21576,6 +21576,18 @@
             "schema": { "type": "string", "description": "Comma-separated list of organization IDs" }
           },
           {
+            "name": "project_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer" }
+          },
+          {
+            "name": "project_ids",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "description": "Comma-separated list of project IDs" }
+          },
+          {
             "name": "status",
             "in": "query",
             "required": false,
@@ -21680,6 +21692,13 @@
                     },
                     "description": "Array of organization IDs to attach to the article"
                   },
+                  "projects": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Array of project IDs to attach to the article"
+                  },
                   "created_by": {
                     "type": "integer"
                   }
@@ -21783,6 +21802,25 @@
                         }
                       },
                       "nullable": true
+                    },
+                    "projects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "nullable": true
                     }
                   }
                 }
@@ -21858,6 +21896,13 @@
                       "type": "integer"
                     },
                     "description": "Replace article organizations with this list"
+                  },
+                  "projects": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Replace article projects with this list"
                   }
                 }
               }
@@ -21929,6 +21974,32 @@
               "type": "string",
               "description": "Project id to filter sections or the string 'null' to list global sections"
             }
+          },
+          {
+            "name": "project_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated list of project IDs"
+            }
+          },
+          {
+            "name": "organization_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "organization_ids",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated list of organization IDs"
+            }
           }
         ],
         "responses": {
@@ -21990,6 +22061,20 @@
                     "type": "integer",
                     "nullable": true,
                     "description": "Optional project id to bind the section to a project (null = global)"
+                  },
+                  "projects": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Array of project IDs to bind the section to"
+                  },
+                  "organizations": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    },
+                    "description": "Array of organization IDs to bind the section to"
                   },
                   "created_by": {
                     "type": "integer"
@@ -22054,6 +22139,40 @@
                     "project_id": {
                       "type": "integer",
                       "nullable": true
+                    },
+                    "projects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "nullable": true
+                    },
+                    "organizations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "nullable": true
                     }
                   }
                 }
@@ -22092,7 +22211,46 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "slug": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "parent_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "order_index": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "projects": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "organizations": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "updated_by": {
+                    "type": "integer"
+                  }
+                }
               }
             }
           }
