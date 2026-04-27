@@ -3455,7 +3455,7 @@
           "documents"
         ],
         "summary": "Bulk update status for document files",
-        "description": "Update `status_id` for multiple storage entries linked to documents. Body: { storage_ids: [1,2], status: <id|null> }",
+        "description": "Update `status_id` for multiple storage entries linked to documents. Body may use `documents_storage_id` (requested), `document_storage_ids` (preferred) or legacy `storage_ids`. Example: { documents_storage_id: [123], status: 1 }",
         "security": [
           {
             "bearerAuth": []

@@ -228,10 +228,13 @@ class DocumentsController {
   static async bulkUpdateFilesStatus(req, res, next) {
     try {
       const actor = req.user || null;
-      const { storage_ids = [], document_storage_ids = null, status = null } = req.body || {};
-      const ids = document_storage_ids && Array.isArray(document_storage_ids) ? document_storage_ids : storage_ids;
+      const { storage_ids = [], document_storage_ids = null, documents_storage_id = null, status = null } = req.body || {};
+      // Accept any of: `documents_storage_id` (requested), `document_storage_ids` (preferred), or legacy `storage_ids`.
+      let ids = null;
+      if (documents_storage_id && Array.isArray(documents_storage_id)) ids = documents_storage_id;
+      else if (document_storage_ids && Array.isArray(document_storage_ids)) ids = document_storage_ids;
+      else ids = storage_ids;
       const rows = await DocumentsService.bulkUpdateStorageStatus(ids, status, actor);
-      if (!rows || rows.length === 0) { const err = new Error('No matching document storage items found'); err.statusCode = 404; throw err; }
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
