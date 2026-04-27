@@ -127,14 +127,16 @@ class DocumentsController {
 
   /**
    * PUT /api/documents/:id/files - update metadata for an attached file
-   * Body: { storage_id: number, type_id?, rev?, archive?, archive_data?, user_id? }
+    * Body: { storage_id: number } or { document_storage_id: number } (documents_storage.id)
+    * Other optional fields: type_id, rev, archive, archive_data, user_id, status, reason_id, comment
    */
   static async updateFile(req, res, next) {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const { storage_id } = req.body || {};
-      if (!storage_id) { const err = new Error('Missing storage_id'); err.statusCode = 400; throw err; }
+      const { storage_id, document_storage_id } = req.body || {};
+      const docStorageId = typeof document_storage_id !== 'undefined' ? document_storage_id : storage_id;
+      if (!docStorageId) { const err = new Error('Missing document storage id'); err.statusCode = 400; throw err; }
 
       const metadata = {
         type_id: typeof req.body.type_id !== 'undefined' ? (req.body.type_id === null ? null : Number(req.body.type_id)) : undefined,
@@ -147,7 +149,7 @@ class DocumentsController {
         comment: typeof req.body.comment !== 'undefined' ? req.body.comment : undefined
       };
 
-      const updated = await DocumentsService.updateFileMetadata(Number(id), Number(storage_id), metadata, actor);
+      const updated = await DocumentsService.updateFileMetadata(Number(id), Number(docStorageId), metadata, actor);
       if (!updated) { const err = new Error('Attached file not found'); err.statusCode = 404; throw err; }
       res.json({ data: updated });
     } catch (err) { next(err); }
@@ -179,7 +181,8 @@ class DocumentsController {
   }
 
   /**
-   * DELETE /api/documents/:id/files/:storage_id - detach file from document
+  * DELETE /api/documents/:id/files/:storage_id - detach file from document
+  * Note: `:storage_id` here is interpreted as `documents_storage.id` (the attachment record id)
    */
   static async detachFile(req, res, next) {
     try {
@@ -217,8 +220,9 @@ class DocumentsController {
   static async bulkUpdateFilesStatus(req, res, next) {
     try {
       const actor = req.user || null;
-      const { storage_ids = [], status = null } = req.body || {};
-      const rows = await DocumentsService.bulkUpdateStorageStatus(storage_ids, status, actor);
+      const { storage_ids = [], document_storage_ids = null, status = null } = req.body || {};
+      const ids = document_storage_ids && Array.isArray(document_storage_ids) ? document_storage_ids : storage_ids;
+      const rows = await DocumentsService.bulkUpdateStorageStatus(ids, status, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }

@@ -816,6 +816,8 @@ CREATE TABLE public.documents_storage (
     user_id integer,
     archive boolean DEFAULT false,
     archive_data timestamp without time zone
+    , archive_user_id integer
+    , status_edit_user_id integer
 );
 
 

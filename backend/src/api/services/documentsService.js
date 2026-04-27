@@ -632,6 +632,9 @@ class DocumentsService {
     };
     // Ensure user_id is set to actor by default when not provided
     if (!payload.user_id && actor && actor.id) payload.user_id = actor.id;
+    // Record who performed archive or status change when provided
+    if (typeof payload.archive !== 'undefined' && actor && actor.id) payload.archive_user_id = actor.id;
+    if (typeof payload.status_id !== 'undefined' && actor && actor.id) payload.status_edit_user_id = actor.id;
     const attached = await DocumentStorage.attach(payload);
     if (attached) attachedArr.push(attached);
   }
@@ -659,9 +662,13 @@ class DocumentsService {
     if (!id || Number.isNaN(Number(id)) || !storageId || Number.isNaN(Number(storageId))) { const err = new Error('Invalid id/storageId'); err.statusCode = 400; throw err; }
   const existing = await Document.findById(Number(id));
   if (!existing || existing.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+    // storageId here is documents_storage.id (record id). Find the record first.
+    const docStorage = await DocumentStorage.findByIdRecord(Number(storageId));
+    if (!docStorage) { const err = new Error('Attached file not found'); err.statusCode = 404; throw err; }
+    if (Number(docStorage.document_id) !== Number(id)) { const err = new Error('Attached file does not belong to the specified document'); err.statusCode = 400; throw err; }
     // Retrieve storage item to capture filename for history
-    const storageItem = await Storage.findById(Number(storageId));
-    const detached = await DocumentStorage.detach({ document_id: Number(id), storage_id: Number(storageId) });
+    const storageItem = await Storage.findById(Number(docStorage.storage_id));
+    const detached = await DocumentStorage.detachById(Number(storageId));
     (async () => {
       try {
         await HistoryService.addDocumentHistory(Number(id), actor, 'file_detached', { before: storageItem ? storageItem.file_name : null, after: null });
@@ -706,8 +713,16 @@ class DocumentsService {
       if (!isAssigned) { const err = new Error('Forbidden: user not assigned to this project'); err.statusCode = 403; throw err; }
     }
 
-    // Delegate to DocumentStorage.updateMetadata
-    const updated = await DocumentStorage.updateMetadata({ document_id: Number(id), storage_id: Number(storageId), metadata });
+    // storageId is documents_storage.id (record id). Ensure record exists and belongs to document.
+    const docStorage = await DocumentStorage.findByIdRecord(Number(storageId));
+    if (!docStorage) { const err = new Error('Attached file not found'); err.statusCode = 404; throw err; }
+    if (Number(docStorage.document_id) !== Number(id)) { const err = new Error('Attached file does not belong to the specified document'); err.statusCode = 400; throw err; }
+    // Attach actor id to metadata changes so DB can record who changed archive/status (if not already set)
+    if (actor && actor.id) {
+      if (typeof metadata.archive !== 'undefined') metadata.archive_user_id = actor.id;
+      if (typeof metadata.status_id !== 'undefined') metadata.status_edit_user_id = actor.id;
+    }
+    const updated = await DocumentStorage.updateMetadataById({ id: Number(storageId), metadata });
     return updated;
   }
 
@@ -1172,11 +1187,13 @@ class DocumentsService {
       if (chk.rowCount === 0) { const err = new Error('Status not found'); err.statusCode = 400; throw err; }
     }
 
+    // Treat provided ids as documents_storage record ids and update by record id
     const q = `UPDATE documents_storage SET
       status_id = $1,
-      status_edit_date = CASE WHEN $1::int IS NOT NULL AND $1::int IS DISTINCT FROM status_id THEN now() ELSE status_edit_date END
-      WHERE storage_id = ANY($2::int[]) RETURNING *`;
-    const res = await pool.query(q, [statusId !== null ? Number(statusId) : null, ids]);
+      status_edit_date = CASE WHEN $1::int IS NOT NULL AND $1::int IS DISTINCT FROM status_id THEN now() ELSE status_edit_date END,
+      status_edit_user_id = CASE WHEN $1::int IS NOT NULL AND $1::int IS DISTINCT FROM status_id THEN $3 ELSE status_edit_user_id END
+      WHERE id = ANY($2::int[]) RETURNING *`;
+    const res = await pool.query(q, [statusId !== null ? Number(statusId) : null, ids, actor && actor.id ? actor.id : null]);
     return res.rows || [];
   }
 

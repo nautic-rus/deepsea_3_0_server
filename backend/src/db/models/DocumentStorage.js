@@ -3,8 +3,8 @@ const pool = require('../connection');
 class DocumentStorage {
   static async attach({ document_id, storage_id }) {
     // Accept optional metadata: type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment
-    const q = `INSERT INTO documents_storage (document_id, storage_id, type_id, rev, user_id, archive, archive_data, reason_id, comment, status_edit_date)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NULL)
+    const q = `INSERT INTO documents_storage (document_id, storage_id, type_id, rev, user_id, archive, archive_data, reason_id, comment, archive_user_id, status_edit_user_id, status_edit_date)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, NULL)
       ON CONFLICT (document_id, storage_id) DO UPDATE SET
         type_id = EXCLUDED.type_id,
         rev = EXCLUDED.rev,
@@ -12,8 +12,10 @@ class DocumentStorage {
         archive = EXCLUDED.archive,
         archive_data = EXCLUDED.archive_data,
         reason_id = EXCLUDED.reason_id,
-        comment = EXCLUDED.comment
-      RETURNING id, document_id, storage_id, type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment, status_edit_date, created_at`;
+        comment = EXCLUDED.comment,
+        archive_user_id = EXCLUDED.archive_user_id,
+        status_edit_user_id = EXCLUDED.status_edit_user_id
+      RETURNING id, document_id, storage_id, type_id, rev, user_id, archive, archive_data, archive_user_id, status_edit_user_id, status_id, reason_id, comment, status_edit_date, created_at`;
 
     const params = [
       document_id,
@@ -24,7 +26,55 @@ class DocumentStorage {
       typeof arguments[0].archive !== 'undefined' ? arguments[0].archive : false,
       typeof arguments[0].archive_data !== 'undefined' ? arguments[0].archive_data : null,
       typeof arguments[0].reason_id !== 'undefined' ? arguments[0].reason_id : null,
-      typeof arguments[0].comment !== 'undefined' ? arguments[0].comment : null
+      typeof arguments[0].comment !== 'undefined' ? arguments[0].comment : null,
+      typeof arguments[0].archive_user_id !== 'undefined' ? arguments[0].archive_user_id : null,
+      typeof arguments[0].status_edit_user_id !== 'undefined' ? arguments[0].status_edit_user_id : null
+    ];
+
+    const res = await pool.query(q, params);
+    return res.rows[0] || null;
+  }
+
+  // Find documents_storage row by its PK id
+  static async findByIdRecord(id) {
+    const res = await pool.query('SELECT * FROM documents_storage WHERE id = $1 LIMIT 1', [Number(id)]);
+    return res.rows[0] || null;
+  }
+
+  // Delete documents_storage row by its PK id
+  static async detachById(id) {
+    const res = await pool.query('DELETE FROM documents_storage WHERE id = $1 RETURNING id, document_id, storage_id', [Number(id)]);
+    return res.rows[0] || null;
+  }
+
+  // Update metadata by documents_storage.id (record id)
+  static async updateMetadataById({ id, metadata = {} }) {
+    const q = `UPDATE documents_storage SET
+      type_id = COALESCE($2, type_id),
+      rev = COALESCE($3, rev),
+      user_id = COALESCE($4, user_id),
+        archive = COALESCE($5, archive),
+        archive_data = CASE WHEN $5 IS NOT NULL AND $5::boolean IS DISTINCT FROM archive THEN (CASE WHEN $5::boolean = true THEN COALESCE($6, now()) ELSE NULL END) ELSE archive_data END,
+      status_id = COALESCE($7, status_id),
+      reason_id = COALESCE($8, reason_id),
+      comment = COALESCE($9, comment),
+      archive_user_id = CASE WHEN $5 IS NOT NULL AND $5::boolean IS DISTINCT FROM archive THEN COALESCE($10, archive_user_id) ELSE archive_user_id END,
+      status_edit_user_id = CASE WHEN $7::int IS NOT NULL AND $7::int IS DISTINCT FROM status_id THEN COALESCE($11, status_edit_user_id) ELSE status_edit_user_id END,
+      status_edit_date = CASE WHEN $7::int IS NOT NULL AND $7::int IS DISTINCT FROM status_id THEN now() ELSE status_edit_date END
+      WHERE id = $1 RETURNING id, document_id, storage_id, type_id, rev, user_id, archive, archive_data, archive_user_id, status_edit_user_id, status_id, reason_id, comment, status_edit_date`;
+
+    const params = [
+      id,
+      typeof metadata.type_id !== 'undefined' ? metadata.type_id : null,
+      typeof metadata.rev !== 'undefined' ? metadata.rev : null,
+      typeof metadata.user_id !== 'undefined' ? metadata.user_id : null,
+      typeof metadata.archive !== 'undefined' ? metadata.archive : null,
+      typeof metadata.archive_data !== 'undefined' ? metadata.archive_data : null,
+      typeof metadata.status_id !== 'undefined' ? metadata.status_id : null,
+      typeof metadata.reason_id !== 'undefined' ? metadata.reason_id : null,
+      typeof metadata.comment !== 'undefined' ? metadata.comment : null,
+      typeof metadata.archive_user_id !== 'undefined' ? metadata.archive_user_id : null,
+      typeof metadata.status_edit_user_id !== 'undefined' ? metadata.status_edit_user_id : null
     ];
 
     const res = await pool.query(q, params);
@@ -89,13 +139,15 @@ class DocumentStorage {
       type_id = COALESCE($3, type_id),
       rev = COALESCE($4, rev),
       user_id = COALESCE($5, user_id),
-      archive = COALESCE($6, archive),
-      archive_data = COALESCE($7, archive_data),
+        archive = COALESCE($6, archive),
+        archive_data = CASE WHEN $6 IS NOT NULL AND $6::boolean IS DISTINCT FROM archive THEN (CASE WHEN $6::boolean = true THEN COALESCE($7, now()) ELSE NULL END) ELSE archive_data END,
       status_id = COALESCE($8, status_id),
       reason_id = COALESCE($9, reason_id),
       comment = COALESCE($10, comment),
-        status_edit_date = CASE WHEN $8::int IS NOT NULL AND $8::int IS DISTINCT FROM status_id THEN now() ELSE status_edit_date END
-      WHERE document_id = $1 AND storage_id = $2 RETURNING id, document_id, storage_id, type_id, rev, user_id, archive, archive_data, status_id, reason_id, comment, status_edit_date`;
+      archive_user_id = CASE WHEN $6 IS NOT NULL AND $6::boolean IS DISTINCT FROM archive THEN COALESCE($11, archive_user_id) ELSE archive_user_id END,
+      status_edit_user_id = CASE WHEN $8::int IS NOT NULL AND $8::int IS DISTINCT FROM status_id THEN COALESCE($12, status_edit_user_id) ELSE status_edit_user_id END,
+      status_edit_date = CASE WHEN $8::int IS NOT NULL AND $8::int IS DISTINCT FROM status_id THEN now() ELSE status_edit_date END
+      WHERE document_id = $1 AND storage_id = $2 RETURNING id, document_id, storage_id, type_id, rev, user_id, archive, archive_data, archive_user_id, status_edit_user_id, status_id, reason_id, comment, status_edit_date`;
 
     const params = [
       document_id,
@@ -108,6 +160,8 @@ class DocumentStorage {
       typeof metadata.status_id !== 'undefined' ? metadata.status_id : null,
       typeof metadata.reason_id !== 'undefined' ? metadata.reason_id : null,
       typeof metadata.comment !== 'undefined' ? metadata.comment : null
+      , typeof metadata.archive_user_id !== 'undefined' ? metadata.archive_user_id : null
+      , typeof metadata.status_edit_user_id !== 'undefined' ? metadata.status_edit_user_id : null
     ];
 
     const res = await pool.query(q, params);
