@@ -636,7 +636,14 @@ class DocumentsService {
     if (typeof payload.archive !== 'undefined' && actor && actor.id) payload.archive_user_id = actor.id;
     if (typeof payload.status_id !== 'undefined' && actor && actor.id) payload.status_edit_user_id = actor.id;
     const attached = await DocumentStorage.attach(payload);
-    if (attached) attachedArr.push(attached);
+    if (attached) {
+      attachedArr.push(attached);
+      (async () => {
+        try {
+          await HistoryService.addDocumentHistory(Number(id), actor, 'file_attached', { before: null, after: attached });
+        } catch (e) { console.error('Failed to write document history for file attach', e && e.message ? e.message : e); }
+      })();
+    }
   }
     // Do not record a history entry for file attachment per request.
     // Buffer upload notifications so consecutive file uploads for the same
@@ -723,6 +730,11 @@ class DocumentsService {
       if (typeof metadata.status_id !== 'undefined') metadata.status_edit_user_id = actor.id;
     }
     const updated = await DocumentStorage.updateMetadataById({ id: Number(storageId), metadata });
+    (async () => {
+      try {
+        await HistoryService.addDocumentHistory(Number(id), actor, 'file_updated', { before: docStorage, after: updated });
+      } catch (e) { console.error('Failed to write document history for file update', e && e.message ? e.message : e); }
+    })();
     return updated;
   }
 
@@ -1188,12 +1200,36 @@ class DocumentsService {
     }
 
     // Treat provided ids as documents_storage record ids and update by record id
+    // Fetch current statuses to record history per document
+    const beforeRes = await pool.query('SELECT id, document_id, status_id FROM documents_storage WHERE id = ANY($1::int[])', [ids]);
+    const beforeMap = new Map((beforeRes.rows || []).map(r => [Number(r.id), r]));
+
     const q = `UPDATE documents_storage SET
       status_id = $1,
       status_edit_date = CASE WHEN $1::int IS NOT NULL AND $1::int IS DISTINCT FROM status_id THEN now() ELSE status_edit_date END,
       status_edit_user_id = CASE WHEN $1::int IS NOT NULL AND $1::int IS DISTINCT FROM status_id THEN $3 ELSE status_edit_user_id END
       WHERE id = ANY($2::int[]) RETURNING *`;
     const res = await pool.query(q, [statusId !== null ? Number(statusId) : null, ids, actor && actor.id ? actor.id : null]);
+
+    // Write history entries for changed statuses
+    try {
+      const afterRows = res.rows || [];
+      for (const a of afterRows) {
+        const b = beforeMap.get(Number(a.id)) || null;
+        const beforeStatus = b ? b.status_id : null;
+        const afterStatus = a.status_id;
+        if ((beforeStatus === null && afterStatus === null) || String(beforeStatus) === String(afterStatus)) continue;
+        // record history on the document this attachment belongs to
+        (async () => {
+          try {
+            await HistoryService.addDocumentHistory(Number(a.document_id), actor, 'file_status_changed', { before: { id: Number(a.id), status_id: beforeStatus }, after: { id: Number(a.id), status_id: afterStatus } });
+          } catch (e) { console.error('Failed to write document history for bulk file status change', e && e.message ? e.message : e); }
+        })();
+      }
+    } catch (e) {
+      console.error('Failed to record bulk status change history', e && e.message ? e.message : e);
+    }
+
     return res.rows || [];
   }
 

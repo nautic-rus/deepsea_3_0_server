@@ -22,14 +22,14 @@ class DocumentHistory {
       }
     }
 
-    const q = `INSERT INTO documents_history (document_id, field_name, old_value, new_value, changed_by) VALUES ($1,$2,$3,$4,$5) RETURNING id, document_id, field_name, old_value, new_value, changed_by, created_at`;
-    const vals = [documentId, action, oldValue, newValue, actorId];
+    const q = `INSERT INTO documents_history (document_id, field_name, old_value, new_value, changed_by, document_storage_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, document_id, field_name, old_value, new_value, changed_by, document_storage_id, created_at`;
+    const vals = [documentId, action, oldValue, newValue, actorId, fields.document_storage_id || null];
     const res = await pool.query(q, vals);
     return res.rows[0];
   }
 
   static async listByDocument(documentId) {
-    const q = `SELECT id, document_id, field_name, old_value, new_value, changed_by, created_at FROM documents_history WHERE document_id = $1 ORDER BY created_at ASC`;
+    const q = `SELECT id, document_id, field_name, old_value, new_value, changed_by, document_storage_id, created_at FROM documents_history WHERE document_id = $1 ORDER BY created_at ASC`;
     const res = await pool.query(q, [documentId]);
     return res.rows;
   }

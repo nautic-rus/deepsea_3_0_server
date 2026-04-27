@@ -682,7 +682,7 @@
       "BulkUpdateDocumentFilesStatus": {
         "type": "object",
         "properties": {
-          "storage_ids": {
+          "documents_storage_id": {
             "type": "array",
             "items": { "type": "integer" },
             "description": "(legacy) list of `documents_storage.id` values to update"
@@ -3472,7 +3472,7 @@
                 "$ref": "#/components/schemas/BulkUpdateDocumentFilesStatus"
               },
               "example": {
-                "storage_ids": [123, 456],
+                "documents_storage_id": [123, 456],
                 "status": 1
               }
             }
@@ -10193,7 +10193,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Document ID"
+            "description": "documents_storage.id (attachment record id) — the attachment record id passed in the path"
           }
         ],
         "requestBody": {
@@ -10429,7 +10429,7 @@
             "schema": {
               "type": "integer"
             },
-            "description": "Document ID"
+            "description": "DocumentStorageID"
           }
         ],
         "requestBody": {
@@ -10438,12 +10438,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "description": "Provide either `document_storage_id` (preferred) — the `documents_storage.id` record — or `storage_id` (legacy). Other optional fields: type_id, rev, archive, archive_data, status, reason, comment, user_id.",
+                "description": "Path parameter `id` refers to `documents_storage.id` (preferred). For compatibility the body may include `document_storage_id` or legacy `storage_id`. Other optional fields: type_id, rev, archive, archive_data, status, reason, comment, user_id.",
                 "properties": {
-                  "document_storage_id": {
-                    "type": "integer",
-                    "description": "documents_storage.id (attachment record id)"
-                  },
+                  
                   "storage_id": {
                     "type": "integer",
                     "description": "(legacy) documents_storage.id or storage.id depending on client — prefer `document_storage_id`"

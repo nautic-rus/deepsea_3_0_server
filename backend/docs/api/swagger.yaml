@@ -3550,7 +3550,7 @@ paths:
           required: true
           schema:
             type: integer
-          description: ID документа
+          description: ID записи в documents_storage (attachment record id) — id прикреплённого файла, передаваемый в пути
       requestBody:
         required: true
         content:

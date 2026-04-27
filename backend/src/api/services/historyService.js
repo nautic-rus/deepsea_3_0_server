@@ -23,7 +23,7 @@ class HistoryService {
       const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
       const writes = [];
       for (const k of keys) {
-        if (k === 'updated_at' || k === 'updatedAt') continue;
+        if (k === 'updated_at' || k === 'updatedAt' || k === 'created_at' || k === 'createdAt' || k === 'archive_data' || k === 'archiveData' || k === 'status_edit_date' || k === 'statusEditDate') continue;
         const bv = before[k];
         const av = after[k];
         const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
@@ -62,13 +62,21 @@ class HistoryService {
       const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
       const writes = [];
       for (const k of keys) {
-        if (k === 'updated_at' || k === 'updatedAt') continue;
+        if (k === 'updated_at' || k === 'updatedAt' || k === 'created_at' || k === 'createdAt' || k === 'archive_data' || k === 'archiveData' || k === 'status_edit_date' || k === 'statusEditDate') continue;
         const bv = before[k];
         const av = after[k];
         const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
         const avStr = av === undefined ? null : (typeof av === 'string' ? av : JSON.stringify(av));
         if (bvStr === avStr) continue;
-        writes.push(DocumentHistory.create({ document_id: documentId, actor_id: actorId, action: k, details: { before: bv, after: av } }));
+        let actionName = k;
+        // If change originates from a documents_storage row, map certain fields to storage-specific names
+        const docStorageId = (before && (before.id || before.document_storage_id)) || (after && (after.id || after.document_storage_id)) || null;
+        if (docStorageId) {
+          if (k === 'status_id') actionName = 'storage_status_id';
+          if (k === 'type_id') actionName = 'storage_type_id';
+          if (k === 'reason_id') actionName = 'storage_reason_id';
+        }
+        writes.push(DocumentHistory.create({ document_id: documentId, actor_id: actorId, action: actionName, details: { before: bv, after: av }, document_storage_id: docStorageId }));
       }
       return Promise.all(writes);
     }
@@ -100,7 +108,7 @@ class HistoryService {
       const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
       const writes = [];
       for (const k of keys) {
-        if (k === 'updated_at' || k === 'updatedAt') continue;
+        if (k === 'updated_at' || k === 'updatedAt' || k === 'created_at' || k === 'createdAt' || k === 'archive_data' || k === 'archiveData' || k === 'status_edit_date' || k === 'statusEditDate') continue;
         const bv = before[k];
         const av = after[k];
         const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));

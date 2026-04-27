@@ -2,6 +2,53 @@ const DocumentHistory = require('../../db/models/DocumentHistory');
 const pool = require('../../db/connection');
 const { hasPermission, hasPermissionForProject } = require('../services/permissionChecker');
 
+// Attempt to fix common mojibake where UTF-8 bytes were interpreted
+// as Latin1/Windows-1252 and stored as a JS string (shows up as Ã..., Ð..., Â...)
+// Strategy: try 0..3 iterative latin1->utf8 decodes and choose the
+// variant with the most Cyrillic letters. Also try iconv cp1251 if available.
+const decodeMaybeLatin1 = (s) => {
+  if (!s || typeof s !== 'string') return s;
+  // quick bail: nothing that looks like mojibake
+  if (!/[ÃÐÂ]/.test(s)) return s;
+
+  const countCyr = (str) => (str.match(/[А-Яа-яЁё]/g) || []).length;
+  const candidates = new Map();
+
+  // start from original string and apply iterative latin1->utf8 up to 3 times
+  let cur = s;
+  candidates.set(cur, countCyr(cur));
+  for (let i = 0; i < 3; i++) {
+    try {
+      cur = Buffer.from(cur, 'latin1').toString('utf8');
+      candidates.set(cur, countCyr(cur));
+    } catch (e) {
+      break;
+    }
+  }
+
+  // try iconv cp1251/win1251 if available (best-effort)
+  try {
+    // eslint-disable-next-line global-require
+    const iconv = require('iconv-lite');
+    const buf = Buffer.from(s, 'binary');
+    const cp = iconv.decode(buf, 'cp1251');
+    candidates.set(cp, countCyr(cp));
+  } catch (e) {
+    // iconv-lite not installed — skip
+  }
+
+  // choose candidate with max Cyrillic count; tie-breaker: shortest length
+  let best = s;
+  let bestScore = candidates.get(s) || 0;
+  for (const [cand, score] of candidates.entries()) {
+    if (score > bestScore || (score === bestScore && cand.length < best.length)) {
+      best = cand; bestScore = score;
+    }
+  }
+
+  return best;
+};
+
 /**
  * Controller to expose document history entries.
  */
@@ -47,14 +94,20 @@ class DocumentHistoryController {
       const projectIds = new Set();
       const stageIds = new Set();
       const statusIds = new Set();
+      const storageStatusIds = new Set();
+      const storageTypeIds = new Set();
+      const storageReasonIds = new Set();
       const specIds = new Set();
       const dirIds = new Set();
       const typeIds = new Set();
       const userIdsFromValues = new Set();
+      const docStorageIds = new Set();
 
       const parsedRows = rows.map(r => {
         const oldVal = parseVal(r.old_value);
         const newVal = parseVal(r.new_value);
+        // collect document_storage_id from row if present
+        if (r.document_storage_id) docStorageIds.add(Number(r.document_storage_id));
         return Object.assign({}, r, { _old: oldVal, _new: newVal });
       });
 
@@ -68,12 +121,22 @@ class DocumentHistoryController {
               case 'project_id': projectIds.add(v); break;
               case 'stage_id': stageIds.add(v); break;
               case 'status_id': statusIds.add(v); break;
+              case 'storage_status_id': storageStatusIds.add(v); break;
+              case 'storage_type_id': storageTypeIds.add(v); break;
+              case 'storage_reason_id': storageReasonIds.add(v); break;
               case 'specialization_id': specIds.add(v); break;
               case 'directory_id': dirIds.add(v); break;
               case 'type_id': typeIds.add(v); break;
               case 'assigne_to': userIdsFromValues.add(v); break;
               default: break;
             }
+             }
+             else if (typeof v === 'object' && v !== null) {
+            // If value is an object coming from storage before/after (e.g. { id, status_id, type_id, reason_id }), collect storage id and nested status/type/reason
+            if (v.id) docStorageIds.add(Number(v.id));
+            if (v.status_id) statusIds.add(Number(v.status_id));
+            if (v.type_id) storageTypeIds.add(Number(v.type_id));
+            if (v.reason_id) storageReasonIds.add(Number(v.reason_id));
           } else if (typeof v === 'string' && /^\d+$/.test(v)) {
             const n = Number(v);
             collect(n);
@@ -104,8 +167,17 @@ class DocumentHistoryController {
         `, [[...dirIds]]) : Promise.resolve({ rows: [] }));
       queries.push(typeIds.size ? pool.query('SELECT id, name FROM document_type WHERE id = ANY($1::int[])', [[...typeIds]]) : Promise.resolve({ rows: [] }));
       queries.push(userIdsFromValues.size ? pool.query('SELECT id, username, first_name, last_name, middle_name, email, avatar_id FROM users WHERE id = ANY($1::int[])', [[...userIdsFromValues]]) : Promise.resolve({ rows: [] }));
+      queries.push(docStorageIds.size ? pool.query(
+        `SELECT ds.id AS document_storage_id, ds.storage_id, st.file_name
+         FROM documents_storage ds
+         JOIN storage st ON st.id = ds.storage_id
+         WHERE ds.id = ANY($1::int[])
+        `, [[...docStorageIds]]) : Promise.resolve({ rows: [] }));
+      queries.push(storageStatusIds.size ? pool.query('SELECT id, name FROM documents_storage_statuses WHERE id = ANY($1::int[])', [[...storageStatusIds]]) : Promise.resolve({ rows: [] }));
+      queries.push(storageTypeIds.size ? pool.query('SELECT id, name FROM documents_storage_type WHERE id = ANY($1::int[])', [[...storageTypeIds]]) : Promise.resolve({ rows: [] }));
+      queries.push(storageReasonIds.size ? pool.query('SELECT id, name FROM documents_storage_reasons WHERE id = ANY($1::int[])', [[...storageReasonIds]]) : Promise.resolve({ rows: [] }));
 
-      const [projectsRes, stagesRes, statusesRes, specsRes, dirsRes, typesRes, usersValsRes] = await Promise.all(queries);
+      const [projectsRes, stagesRes, statusesRes, specsRes, dirsRes, typesRes, usersValsRes, docStorageRes, storageStatusesRes, storageTypesRes, storageReasonsRes] = await Promise.all(queries);
 
       const projectMap = new Map((projectsRes.rows || []).map(r => [r.id, r.name]));
       const stageMap = new Map((stagesRes.rows || []).map(r => [r.id, r.name]));
@@ -114,6 +186,10 @@ class DocumentHistoryController {
   const dirMap = new Map((dirsRes.rows || []).map(r => [r.id, r.full_path || r.name]));
       const typeMap = new Map((typesRes.rows || []).map(r => [r.id, r.name]));
       const usersValMap = new Map((usersValsRes.rows || []).map(u => [u.id, u]));
+      const docStorageMap = new Map((docStorageRes && docStorageRes.rows ? docStorageRes.rows : []).map(r => [r.document_storage_id, r]));
+      const storageStatusMap = new Map((storageStatusesRes && storageStatusesRes.rows ? storageStatusesRes.rows : []).map(r => [r.id, r.name]));
+      const storageTypeMap = new Map((storageTypesRes && storageTypesRes.rows ? storageTypesRes.rows : []).map(r => [r.id, r.name]));
+      const storageReasonMap = new Map((storageReasonsRes && storageReasonsRes.rows ? storageReasonsRes.rows : []).map(r => [r.id, r.name]));
 
       const mkUserDisplay = (u) => {
         if (!u) return null;
@@ -140,6 +216,9 @@ class DocumentHistoryController {
               case 'specialization_id': return specMap.get(v) || v;
               case 'directory_id': return dirMap.get(v) || v;
               case 'type_id': return typeMap.get(v) || v;
+              case 'storage_status_id': return storageStatusMap.get(v) || v;
+              case 'storage_type_id': return storageTypeMap.get(v) || v;
+              case 'storage_reason_id': return storageReasonMap.get(v) || v;
               case 'assigne_to': {
                 const uu = usersValMap.get(v) || null; return mkUserDisplay(uu) || v;
               }
@@ -159,6 +238,11 @@ class DocumentHistoryController {
         base.user = changedByUser;
         base.old_value = outOld;
         base.new_value = outNew;
+        // If this history row references a documents_storage record, attach storage info
+        if (r.document_storage_id) {
+          const ds = docStorageMap.get(Number(r.document_storage_id)) || null;
+          if (ds) base.storage = { id: ds.document_storage_id, file_name: decodeMaybeLatin1(ds.file_name) };
+        }
         return base;
       });
 

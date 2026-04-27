@@ -133,10 +133,18 @@ class DocumentsController {
   static async updateFile(req, res, next) {
     try {
       const actor = req.user || null;
-      const id = parseInt(req.params.id, 10);
+      // Now treat path param `id` as `documents_storage.id` (attachment record id).
+      const paramId = parseInt(req.params.id, 10);
       const { storage_id, document_storage_id } = req.body || {};
-      const docStorageId = typeof document_storage_id !== 'undefined' ? document_storage_id : storage_id;
+      // Determine document_storage id: prefer path param, fall back to body fields for compatibility
+      const docStorageId = !Number.isNaN(paramId) && paramId > 0 ? paramId : (typeof document_storage_id !== 'undefined' ? document_storage_id : storage_id);
       if (!docStorageId) { const err = new Error('Missing document storage id'); err.statusCode = 400; throw err; }
+
+      // Resolve attached record to get owning document id
+      const DocumentStorage = require('../../db/models/DocumentStorage');
+      const attached = await DocumentStorage.findByIdRecord(Number(docStorageId));
+      if (!attached) { const err = new Error('Attached file not found'); err.statusCode = 404; throw err; }
+      const id = Number(attached.document_id);
 
       const metadata = {
         type_id: typeof req.body.type_id !== 'undefined' ? (req.body.type_id === null ? null : Number(req.body.type_id)) : undefined,
