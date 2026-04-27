@@ -27,6 +27,8 @@ class CustomerQuestionHistoryController {
       };
 
       const userIdsFromValues = new Set();
+      const statusIdsFromValues = new Set();
+      const typeIdsFromValues = new Set();
 
       const parsed = rows.map(r => Object.assign({}, r, { _old: parseVal(r.old_value), _new: parseVal(r.new_value) }));
       for (const r of parsed) {
@@ -37,6 +39,8 @@ class CustomerQuestionHistoryController {
           if (typeof v === 'number') {
             switch (k) {
               case 'assignee_id': userIdsFromValues.add(v); break;
+              case 'status_id': statusIdsFromValues.add(v); break;
+              case 'type_id': typeIdsFromValues.add(v); break;
               case 'author_id': userIdsFromValues.add(v); break;
               default: break;
             }
@@ -47,9 +51,13 @@ class CustomerQuestionHistoryController {
 
       const queries = [];
       queries.push(userIdsFromValues.size ? pool.query('SELECT id, username, first_name, last_name, middle_name, email, avatar_id FROM users WHERE id = ANY($1::int[])', [[...userIdsFromValues]]) : Promise.resolve({ rows: [] }));
+      queries.push(statusIdsFromValues.size ? pool.query('SELECT id, name FROM customer_question_status WHERE id = ANY($1::int[])', [[...statusIdsFromValues]]) : Promise.resolve({ rows: [] }));
+      queries.push(typeIdsFromValues.size ? pool.query('SELECT id, name FROM customer_question_type WHERE id = ANY($1::int[])', [[...typeIdsFromValues]]) : Promise.resolve({ rows: [] }));
 
-      const [usersValsRes] = await Promise.all(queries);
+      const [usersValsRes, statusesRes, typesRes] = await Promise.all(queries);
       const usersValMap = new Map((usersValsRes.rows || []).map(u => [u.id, u]));
+      const statusesMap = new Map((statusesRes.rows || []).map(s => [s.id, s.name]));
+      const typesMap = new Map((typesRes.rows || []).map(t => [t.id, t.name]));
 
       const mkUserDisplay = (u) => { if (!u) return null; const parts = []; if (u.last_name) parts.push(u.last_name); if (u.first_name) parts.push(u.first_name); if (u.middle_name) parts.push(u.middle_name); const byName = parts.length ? parts.join(' ') : null; return byName || u.username || u.email || null; };
 
@@ -75,6 +83,12 @@ class CustomerQuestionHistoryController {
               }
               case 'author_id': {
                 const uu = usersValMap.get(v) || null; return mkUserDisplay(uu) || v;
+              }
+              case 'status_id': {
+                return statusesMap.get(v) || v;
+              }
+              case 'type_id': {
+                return typesMap.get(v) || v;
               }
               default: return v;
             }

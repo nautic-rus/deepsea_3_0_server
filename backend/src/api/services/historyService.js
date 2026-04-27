@@ -109,12 +109,24 @@ class HistoryService {
       const writes = [];
       for (const k of keys) {
         if (k === 'updated_at' || k === 'updatedAt' || k === 'created_at' || k === 'createdAt' || k === 'archive_data' || k === 'archiveData' || k === 'status_edit_date' || k === 'statusEditDate') continue;
-        const bv = before[k];
-        const av = after[k];
+        let bv = before[k];
+        let av = after[k];
+        // For status and type fields, normalize to id only (avoid storing full object)
+        if (k === 'status' || k === 'status_id') {
+          if (bv && typeof bv === 'object') bv = bv.id || bv.status_id || null;
+          if (av && typeof av === 'object') av = av.id || av.status_id || null;
+        }
+        if (k === 'type' || k === 'type_id') {
+          if (bv && typeof bv === 'object') bv = bv.id || bv.type_id || null;
+          if (av && typeof av === 'object') av = av.id || av.type_id || null;
+        }
         const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
         const avStr = av === undefined ? null : (typeof av === 'string' ? av : JSON.stringify(av));
         if (bvStr === avStr) continue;
-        writes.push(CustomerQuestionHistory.create({ question_id: questionId, actor_id: actorId, action: k, details: { before: bv, after: av } }));
+        let actionName = k;
+        if (k === 'status') actionName = 'status_id';
+        if (k === 'type') actionName = 'type_id';
+        writes.push(CustomerQuestionHistory.create({ question_id: questionId, actor_id: actorId, action: actionName, details: { before: bv, after: av } }));
       }
       return Promise.all(writes);
     }
