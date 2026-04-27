@@ -231,6 +231,7 @@ class DocumentsController {
       const { storage_ids = [], document_storage_ids = null, status = null } = req.body || {};
       const ids = document_storage_ids && Array.isArray(document_storage_ids) ? document_storage_ids : storage_ids;
       const rows = await DocumentsService.bulkUpdateStorageStatus(ids, status, actor);
+      if (!rows || rows.length === 0) { const err = new Error('No matching document storage items found'); err.statusCode = 404; throw err; }
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
