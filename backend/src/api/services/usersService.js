@@ -207,8 +207,8 @@ class UsersService {
     const Project = require('../../db/models/Project');
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     // allow if actor has users.view or is requesting their own stats
-    const allowed = await hasPermission(actor, 'users.view');
-    if (!allowed && Number(actor.id) !== Number(userId)) { const err = new Error('Forbidden: missing permission users.view'); err.statusCode = 403; throw err; }
+    // const allowed = await hasPermission(actor, 'users.view');
+    if (Number(actor.id) !== Number(userId)) { const err = new Error('Forbidden: missing permission users.view'); err.statusCode = 403; throw err; }
 
     const uid = Number(userId);
 
