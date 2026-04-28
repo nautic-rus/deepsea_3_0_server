@@ -206,9 +206,9 @@ class UsersService {
     const pool = require('../../db/connection');
     const Project = require('../../db/models/Project');
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    // allow if actor has users.view or is requesting their own stats
-    // const allowed = await hasPermission(actor, 'users.view');
-    if (Number(actor.id) !== Number(userId)) { const err = new Error('Forbidden: missing permission users.view'); err.statusCode = 403; throw err; }
+    // No 'users.view' permission required for statistics endpoint.
+    // Authenticated users may request statistics; project-level visibility
+    // is still enforced below via project scopes for each section.
 
     const uid = Number(userId);
 
@@ -216,9 +216,16 @@ class UsersService {
     const projectIds = await Project.listAssignedProjectIds(uid);
 
     const projectViewScope = await getPermissionProjectScope(actor, 'projects.view');
-    const visibleProjectIds = projectViewScope.hasGlobal
-      ? (projectIds || [])
-      : (projectIds || []).filter(pid => projectViewScope.projectIds.includes(pid));
+    // If actor requests their own statistics, show their assigned projects
+    // even if they don't have an explicit 'projects.view' permission.
+    let visibleProjectIds;
+    if (Number(actor.id) === uid) {
+      visibleProjectIds = projectIds || [];
+    } else {
+      visibleProjectIds = projectViewScope.hasGlobal
+        ? (projectIds || [])
+        : (projectIds || []).filter(pid => projectViewScope.projectIds.includes(pid));
+    }
     const projects_count = visibleProjectIds.length;
 
     // Fetch project details (code, name, description, status, owner full name)
