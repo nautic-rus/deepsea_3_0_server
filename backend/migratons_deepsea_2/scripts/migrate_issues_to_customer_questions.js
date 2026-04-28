@@ -34,7 +34,7 @@ const oldPool = new Pool({
 });
 
 const newPool = new Pool({
-  host: '192.168.1.177',
+  host: '89.108.98.183',
   port: 5432,
   database: 'deepsea3',
   user: 'postgres',

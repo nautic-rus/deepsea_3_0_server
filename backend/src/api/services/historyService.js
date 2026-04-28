@@ -56,6 +56,13 @@ class HistoryService {
    */
   static async addDocumentHistory(documentId, actor, action, details = null) {
     const actorId = (actor && typeof actor === 'object') ? (actor.id || actor.user_id || null) : actor;
+    // Special-case: when a file is attached to a document, store the documents_storage record id
+    // as the new_value (and in document_storage_id) instead of serializing the full attached object.
+    if (action === 'file_attached' && details && typeof details === 'object') {
+      const docStorageId = (details.after && (details.after.id || details.after.document_storage_id)) || (details.id || details.document_storage_id) || null;
+      const payload = { document_id: documentId, actor_id: actorId, action, details: docStorageId !== null ? String(docStorageId) : null, document_storage_id: docStorageId };
+      return DocumentHistory.create(payload);
+    }
     if (details && typeof details === 'object' && details.before && details.after && typeof details.before === 'object' && typeof details.after === 'object') {
       const before = details.before || {};
       const after = details.after || {};

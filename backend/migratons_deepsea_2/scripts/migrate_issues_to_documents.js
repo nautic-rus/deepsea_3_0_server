@@ -58,8 +58,9 @@ const oldPool = new Pool({
   max: 5,
 });
 
+
 const newPool = new Pool({
-  host: process.env.NEW_DB_HOST || '192.168.1.177',
+  host: process.env.NEW_DB_HOST || '89.108.98.183',
   port: process.env.NEW_DB_PORT ? Number(process.env.NEW_DB_PORT) : 5432,
   database: process.env.NEW_DB_NAME || 'deepsea3',
   user: process.env.NEW_DB_USER || 'postgres',
