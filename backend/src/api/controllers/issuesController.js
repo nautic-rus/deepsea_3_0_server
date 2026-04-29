@@ -230,7 +230,7 @@ class IssuesController {
   /**
    * Handle PATCH /api/issues/:id/status - update only the status of an issue.
    */
-  static async updateStatus(req, res, next) {
+  static async updateIssueStatus(req, res, next) {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);

@@ -237,6 +237,8 @@ router.post('/issues', authMiddleware, issuesController.create);
 router.put('/issues/:id', authMiddleware, issuesController.update);
 // DELETE /api/issues/:id
 router.delete('/issues/:id', authMiddleware, issuesController.delete);
+// PATCH /api/issues/:id/status - update only the status of an issue
+router.patch('/issues/:id/status', authMiddleware, issuesController.updateIssueStatus);
 // POST /api/issues/:id/assign - assign/change assignee for an issue
 router.post('/issues/:id/assign', authMiddleware, issuesController.assign);
 // POST /api/issues/:id/messages - add comment/message to an issue
