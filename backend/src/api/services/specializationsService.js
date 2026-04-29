@@ -4,19 +4,19 @@ const ProtectionService = require('./protectionService');
 
 class SpecializationsService {
   static async list(actor) {
-    const requiredPermission = 'users.view';
+    const requiredPermission = 'issues.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission users.view'); err.statusCode = 403; throw err; }
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
     const res = await pool.query('SELECT * FROM specializations ORDER BY COALESCE(order_index, 0), id');
     return res.rows || [];
   }
 
   static async getById(id, actor) {
-    const requiredPermission = 'users.view';
+    const requiredPermission = 'issues.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission users.view'); err.statusCode = 403; throw err; }
+    if (!allowed) { const err = new Error('Forbidden: missing permission issues.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const res = await pool.query('SELECT * FROM specializations WHERE id = $1 LIMIT 1', [Number(id)]);
     return res.rows[0] || null;
