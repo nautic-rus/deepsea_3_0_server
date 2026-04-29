@@ -295,6 +295,49 @@
           }
         }
       },
+      "CustomerQuestion": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer" },
+          "question_title": { "type": "string", "nullable": true },
+          "question_text": { "type": "string" },
+          "answer_text": { "type": "string", "nullable": true },
+          "priority": { "type": "string", "nullable": true },
+          "due_date": { "type": "string", "format": "date", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "project": { "$ref": "#/components/schemas/Project", "nullable": true },
+          "type": { "$ref": "#/components/schemas/CustomerQuestionType", "nullable": true },
+          "specialization_id": { "type": "integer", "nullable": true },
+          "specialization": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "integer" },
+              "name": { "type": "string" }
+            }
+          },
+          "status": { "$ref": "#/components/schemas/CustomerQuestionStatus", "nullable": true },
+          "asked_by": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "integer" },
+              "full_name": { "type": "string" },
+              "avatar_id": { "type": "integer", "nullable": true }
+            }
+          },
+          "answered_by": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "integer" },
+              "full_name": { "type": "string" },
+              "avatar_id": { "type": "integer", "nullable": true }
+            }
+          }
+        }
+      },
       "Department": {
         "type": "object",
         "properties": {
@@ -6925,14 +6968,18 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CustomerQuestion"
-              },
-              "example": {
-                "question_text": "Describe your question briefly and clearly"
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerQuestion"
+                },
+                "example": {
+                  "question_title": "Question about drawing A-123",
+                  "question_text": "The drawing references a missing detail in section B. Please clarify.",
+                  "project_id": 1,
+                  "specialization_id": 3,
+                  "type_id": 2
+                }
               }
-            }
           }
         },
         "responses": {
@@ -7159,10 +7206,17 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CustomerQuestion"
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerQuestion"
+                },
+                "example": {
+                  "question_title": "Clarify material spec",
+                  "question_text": "Please confirm the required material grade for item X.",
+                  "project_id": 1,
+                  "specialization_id": 3,
+                  "type_id": 2
+                }
               }
-            }
           }
         },
         "responses": {

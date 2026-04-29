@@ -81,10 +81,12 @@ class CustomerQuestion {
            cq.due_date, cq.created_at, cq.updated_at,
            cq.status_id, cs.name AS status_name, cs.code AS status_code, cs.description AS status_description,
            cq.type_id, ct.name AS type_name,
+           cq.specialization_id, sp.name AS specialization_name,
            p.code AS project_code, p.name AS project_name
           FROM customer_questions cq
             LEFT JOIN customer_question_status cs ON cq.status_id = cs.id
             LEFT JOIN customer_question_type ct ON cq.type_id = ct.id
+            LEFT JOIN specializations sp ON cq.specialization_id = sp.id
             LEFT JOIN projects p ON cq.project_id = p.id
             LEFT JOIN users ua ON cq.asked_by = ua.id
             LEFT JOIN users ub ON cq.answered_by = ub.id
@@ -110,6 +112,7 @@ class CustomerQuestion {
       updated_at: r.updated_at,
       project: r.project_id ? { id: r.project_id, code: r.project_code, name: r.project_name } : null,
       type: r.type_id ? { id: r.type_id, name: r.type_name } : null,
+      specialization: r.specialization_id ? { id: r.specialization_id, name: r.specialization_name } : null,
       status: r.status_id ? { id: r.status_id, name: r.status_name, code: r.status_code, description: r.status_description } : null,
       asked_by: r.asked_by ? { id: r.asked_by, full_name: r.asked_by_full_name, avatar_id: r.asked_by_avatar_id } : null,
       answered_by: r.answered_by ? { id: r.answered_by, full_name: r.answered_by_full_name, avatar_id: r.answered_by_avatar_id } : null,
@@ -126,17 +129,19 @@ class CustomerQuestion {
                cq.answered_by,
                TRIM(COALESCE(ub.first_name,'') || ' ' || COALESCE(ub.last_name,'')) AS answered_by_full_name,
                ub.avatar_id AS answered_by_avatar_id,
-                   cq.due_date, cq.created_at, cq.updated_at,
-                 cq.status_id, cs.name AS status_name, cs.code AS status_code, cs.description AS status_description,
-                 cq.type_id, ct.name AS type_name,
-                 p.code AS project_code, p.name AS project_name
-             FROM customer_questions cq
-           LEFT JOIN customer_question_status cs ON cq.status_id = cs.id
-           LEFT JOIN customer_question_type ct ON cq.type_id = ct.id
-           LEFT JOIN projects p ON cq.project_id = p.id
-           LEFT JOIN users ua ON cq.asked_by = ua.id
-           LEFT JOIN users ub ON cq.answered_by = ub.id
-           WHERE cq.id = $1 LIMIT 1`;
+                  cq.due_date, cq.created_at, cq.updated_at,
+                       cq.status_id, cs.name AS status_name, cs.code AS status_code, cs.description AS status_description,
+                       cq.type_id, ct.name AS type_name,
+                       cq.specialization_id, sp.name AS specialization_name,
+                       p.code AS project_code, p.name AS project_name
+                   FROM customer_questions cq
+                 LEFT JOIN customer_question_status cs ON cq.status_id = cs.id
+                 LEFT JOIN customer_question_type ct ON cq.type_id = ct.id
+                 LEFT JOIN specializations sp ON cq.specialization_id = sp.id
+                 LEFT JOIN projects p ON cq.project_id = p.id
+                 LEFT JOIN users ua ON cq.asked_by = ua.id
+                 LEFT JOIN users ub ON cq.answered_by = ub.id
+                 WHERE cq.id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     const r = res.rows[0];
     if (!r) return null;
@@ -151,6 +156,7 @@ class CustomerQuestion {
       updated_at: r.updated_at,
       project: r.project_id ? { id: r.project_id, code: r.project_code, name: r.project_name } : null,
       type: r.type_id ? { id: r.type_id, name: r.type_name } : null,
+      specialization: r.specialization_id ? { id: r.specialization_id, name: r.specialization_name } : null,
       status: r.status_id ? { id: r.status_id, name: r.status_name, code: r.status_code, description: r.status_description } : null,
       asked_by: r.asked_by ? { id: r.asked_by, full_name: r.asked_by_full_name, avatar_id: r.asked_by_avatar_id } : null,
       answered_by: r.answered_by ? { id: r.answered_by, full_name: r.answered_by_full_name, avatar_id: r.answered_by_avatar_id } : null,
@@ -162,7 +168,7 @@ class CustomerQuestion {
     const placeholders = [];
     const vals = [];
     let idx = 1;
-      ['question_title','question_text','answer_text','status_id','priority','asked_by','answered_by','due_date','type_id','project_id','author_id','description'].forEach((k) => {
+      ['question_title','question_text','answer_text','status_id','priority','asked_by','answered_by','due_date','type_id','project_id','author_id','description','specialization_id'].forEach((k) => {
       if (fields[k] !== undefined) {
         cols.push(k);
         placeholders.push(`$${idx++}`);
@@ -187,7 +193,7 @@ class CustomerQuestion {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['question_title','question_text','answer_text','status_id','priority','asked_by','answered_by','due_date','type_id','project_id'].forEach((k) => {
+    ['question_title','question_text','answer_text','status_id','priority','asked_by','answered_by','due_date','type_id','project_id','specialization_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await CustomerQuestion.findById(id);
