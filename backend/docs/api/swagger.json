@@ -7033,6 +7033,15 @@
             }
           },
           {
+            "name": "specialization_id",
+            "in": "query",
+            "description": "Filter by specialization id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
             "name": "status",
             "in": "query",
             "description": "Filter by status",

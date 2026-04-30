@@ -2,7 +2,7 @@ const pool = require('../connection');
 
 class CustomerQuestion {
   static async list(filters = {}) {
-    const { status, priority, asked_by, answered_by, my_question_user_id, is_closed, is_active, page = 1, limit, search, created_at_from, created_at_to, due_date_from, due_date_to, project_id } = filters;
+    const { status, priority, asked_by, answered_by, my_question_user_id, is_closed, is_active, page = 1, limit, search, created_at_from, created_at_to, due_date_from, due_date_to, project_id, specialization_id } = filters;
     const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
@@ -47,6 +47,25 @@ class CustomerQuestion {
       } else {
         where.push(`cq.project_id = ANY($${idx}::int[])`);
         values.push(projectIds);
+        idx++;
+      }
+    }
+    // specialization_id: accept single id or array of ids
+    if (specialization_id !== undefined && specialization_id !== null) {
+      const specIds = Array.isArray(specialization_id)
+        ? specialization_id.map(s => Number(s)).filter(s => !Number.isNaN(s))
+        : [Number(specialization_id)].filter(s => !Number.isNaN(s));
+
+      if (specIds.length === 0) {
+        return [];
+      }
+
+      if (specIds.length === 1) {
+        where.push(`cq.specialization_id = $${idx++}`);
+        values.push(specIds[0]);
+      } else {
+        where.push(`cq.specialization_id = ANY($${idx}::int[])`);
+        values.push(specIds);
         idx++;
       }
     }
