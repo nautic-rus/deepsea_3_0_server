@@ -1,5 +1,5 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('node:crypto');
 
 let s3Client = null;
 let s3ClientSignature = null;
@@ -43,7 +43,7 @@ class S3Service {
     const { client, config } = getS3Client();
     // Sanitize original name and optional directory prefix
     const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const baseKey = `${uuidv4()}-${safeName}`;
+    const baseKey = `${randomUUID()}-${safeName}`;
     let key = baseKey;
     if (directory) {
       // allow alphanumeric, dash, underscore and slashes for subdirs
