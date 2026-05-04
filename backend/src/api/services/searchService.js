@@ -1,6 +1,7 @@
-const MiniSearch = require('minisearch');
+// MiniSearch removed — using Elasticsearch as primary search engine
 const pool = require('../../db/connection');
 const { getPermissionProjectScope } = require('./permissionChecker');
+const { ensureIndex, bulkIndex, search: esSearch, ELASTIC_INDEX } = require('../../lib/elasticClient');
 
 const ENTITY_DOCUMENT = 'documents';
 const ENTITY_ISSUE = 'issues';
@@ -107,57 +108,7 @@ function rerankResults(found, query, numericLike) {
     .map(({ _sort_idx, ...item }) => item);
 }
 
-function createMiniSearch(rows) {
-  return new MiniSearch({
-    fields: [
-      'entity_id_text',
-      'project_id_text',
-      'title',
-      'description',
-      'code',
-      'comment',
-      'project_name',
-      'project_code',
-      'status_name',
-      'type_name',
-      'stage_name',
-      'specialization_name',
-      'author_name',
-      'assignee_name',
-      'responsible_name',
-      'priority',
-      'messages_text',
-      'files_text',
-      'links_text'
-    ],
-    storeFields: [
-      'id',
-      'entity_type',
-      'entity_id',
-      'entity_id_text',
-      'project_id',
-      'project_id_text',
-      'title',
-      'description',
-      'code',
-      'comment',
-      'project_name',
-      'project_code',
-      'status_name',
-      'type_name',
-      'stage_name',
-      'specialization_name',
-      'author_name',
-      'assignee_name',
-      'responsible_name',
-      'priority',
-      'updated_at',
-      'created_at'
-    ],
-    idField: 'id',
-    tokenize: tokenizeUnicode
-  });
-}
+
 
 function addScopeFilter({ where, values, idx, alias, scope, projectIdFilter }) {
   const requestedProjectIds = normalizeProjectIds(projectIdFilter);
@@ -200,11 +151,16 @@ function addScopeFilter({ where, values, idx, alias, scope, projectIdFilter }) {
   return idx;
 }
 
-async function fetchDocuments(scope, projectIdFilter) {
+async function fetchDocuments(scope, projectIdFilter, updatedAfter = null) {
   const where = ['d.is_active = true'];
   const values = [];
   let idx = 1;
   idx = addScopeFilter({ where, values, idx, alias: 'd', scope, projectIdFilter });
+  if (updatedAfter) {
+    where.push(`${'d'}.updated_at > $${idx}`);
+    values.push(updatedAfter);
+    idx += 1;
+  }
 
   const q = `
     SELECT
@@ -263,11 +219,16 @@ async function fetchDocuments(scope, projectIdFilter) {
   return res.rows || [];
 }
 
-async function fetchIssues(scope, projectIdFilter) {
+async function fetchIssues(scope, projectIdFilter, updatedAfter = null) {
   const where = ['i.is_active = true'];
   const values = [];
   let idx = 1;
   idx = addScopeFilter({ where, values, idx, alias: 'i', scope, projectIdFilter });
+  if (updatedAfter) {
+    where.push(`${'i'}.updated_at > $${idx}`);
+    values.push(updatedAfter);
+    idx += 1;
+  }
 
   const q = `
     SELECT
@@ -323,11 +284,16 @@ async function fetchIssues(scope, projectIdFilter) {
   return res.rows || [];
 }
 
-async function fetchCustomerQuestions(scope, projectIdFilter) {
+async function fetchCustomerQuestions(scope, projectIdFilter, updatedAfter = null) {
   const where = ['cq.is_active = true'];
   const values = [];
   let idx = 1;
   idx = addScopeFilter({ where, values, idx, alias: 'cq', scope, projectIdFilter });
+  if (updatedAfter) {
+    where.push(`${'cq'}.updated_at > $${idx}`);
+    values.push(updatedAfter);
+    idx += 1;
+  }
 
   const q = `
     SELECT
@@ -454,75 +420,160 @@ class SearchService {
       return { items: [], total: 0, limit, offset, query };
     }
 
-    const miniSearch = createMiniSearch(rows);
-    miniSearch.addAll(rows);
+    const useElastic = String(process.env.USE_ELASTIC || '').toLowerCase() === 'true';
 
-    const numericLikeQuery = isNumericLikeQuery(query);
-
-    const searchOptions = numericLikeQuery
-      ? {
-        prefix: true,
-        fuzzy: false,
-        fields: ['entity_id_text', 'project_id_text', 'code', 'title', 'comment', 'description', 'project_code'],
-        boost: {
-          entity_id_text: 12,
-          project_id_text: 5,
-          code: 8,
-          title: 4,
-          comment: 3,
-          project_code: 3,
-          description: 1
+    if (useElastic) {
+      // Ensure index exists and perform initial bulk index on first use
+      if (!SearchService._esReady) {
+        await ensureIndex();
+        // bulk index current rows
+        try {
+          await bulkIndex(rows);
+        } catch (err) {
+          // if bulk indexing fails, fall back to in-memory minisearch below
+          SearchService._esReady = false;
+          console.error('Elastic bulk index failed, falling back to MiniSearch:', err && err.message);
         }
+        SearchService._esReady = true;
       }
-      : {
-        prefix: true,
-        fuzzy: 0.1,
-        boost: {
-          entity_id_text: 7,
-          project_id_text: 3,
-          title: 4,
-          code: 4,
-          project_name: 2,
-          status_name: 2,
-          type_name: 2,
-          messages_text: 1.5,
-          files_text: 1.5
-        }
+
+      const numericLikeQuery = isNumericLikeQuery(query);
+
+      const should = [];
+      if (numericLikeQuery) {
+        should.push({ match_phrase_prefix: { code: { query, boost: 6 } } });
+        should.push({ match_phrase_prefix: { title: { query, boost: 2 } } });
+      } else {
+        should.push({
+          multi_match: {
+            query,
+            type: 'most_fields',
+            fields: [
+              'title^4',
+              'code^4',
+              'messages_text^1.5',
+              'files_text^1.5',
+              'description'
+            ],
+            fuzziness: 'AUTO'
+          }
+        });
+      }
+
+      // Filter by entity types
+      const filter = [];
+      if (entities && entities.length) {
+        filter.push({ terms: { entity_type: entities } });
+      }
+
+      // If user provided project filter, add filter (normalized earlier in addScopeFilter usage)
+      const requestedProjectIds = normalizeProjectIds(options.project_id);
+      if (requestedProjectIds && requestedProjectIds.length > 0) {
+        filter.push({ terms: { project_id_text: requestedProjectIds.map(String) } });
+      }
+
+      const body = {
+        query: {
+          bool: {
+            should,
+            filter,
+            minimum_should_match: 1
+          }
+        },
+        from: offset,
+        size: limit
       };
 
-    const found = rerankResults(miniSearch.search(query, searchOptions), query, numericLikeQuery);
+      const res = await esSearch(ELASTIC_INDEX, body);
+      const hits = (res.hits && res.hits.hits) || [];
+      const mapped = hits.map((h, idx) => {
+        const src = h._source || {};
+        // _id contains our composite id like "entityType:entityId"
+        const idRaw = h._id || src.id || '';
+        const [etype, eid] = String(idRaw).split(':');
+        return {
+          id: idRaw,
+          entity_type: etype || null,
+          entity_id: eid ? Number(eid) : null,
+          title: src.title || '',
+          description: src.description || '',
+          code: src.code || '',
+          comment: src.comment || '',
+          messages_text: src.messages_text || '',
+          files_text: src.files_text || '',
+          score: h._score || 0,
+          _sort_idx: idx
+        };
+      });
 
-    const sliced = found.slice(offset, offset + limit).map(item => ({
-      score: item.score,
-      entity_type: item.entity_type,
-      entity_id: item.entity_id,
-      project_id: item.project_id,
-      title: item.title,
-      description: item.description,
-      code: item.code,
-      comment: item.comment,
-      priority: item.priority,
-      project_name: item.project_name,
-      project_code: item.project_code,
-      status_name: item.status_name,
-      type_name: item.type_name,
-      stage_name: item.stage_name,
-      specialization_name: item.specialization_name,
-      author_name: item.author_name,
-      assignee_name: item.assignee_name,
-      responsible_name: item.responsible_name,
-      created_at: item.created_at,
-      updated_at: item.updated_at
-    }));
+      const reranked = rerankResults(mapped, query, numericLikeQuery);
+      const sliced = reranked.slice(0, limit).map(item => ({
+        score: item.score,
+        entity_type: item.entity_type,
+        entity_id: item.entity_id,
+        title: item.title,
+        description: item.description,
+        code: item.code,
+        comment: item.comment,
+        messages_text: item.messages_text,
+        files_text: item.files_text
+      }));
 
-    return {
-      items: sliced,
-      total: found.length,
-      limit,
-      offset,
-      query
-    };
+      return {
+        items: sliced,
+        total: (res.hits && res.hits.total && (res.hits.total.value || res.hits.total)) || hits.length,
+        limit,
+        offset,
+        query
+      };
+    }
+
+    // If USE_ELASTIC is not enabled, return empty (ES-only mode expected)
+    return { items: [], total: 0, limit, offset, query };
   }
 }
 
+// Reindex helper: index all accessible rows (run as admin/with global scope)
+SearchService.reindexToElastic = async function reindexToElastic() {
+  const useElastic = String(process.env.USE_ELASTIC || '').toLowerCase() === 'true';
+  if (!useElastic) throw new Error('Elasticsearch is not enabled (set USE_ELASTIC=true)');
+  await ensureIndex();
+  const allRows = [];
+  // fetch with global scope
+  const globalScope = { hasGlobal: true, projectIds: [] };
+  const docs = await fetchDocuments(globalScope, null);
+  const issues = await fetchIssues(globalScope, null);
+  const cqs = await fetchCustomerQuestions(globalScope, null);
+  const rows = [...docs, ...issues, ...cqs].map(row => ({
+    ...row,
+    id: `${row.entity_type}:${row.entity_id}`,
+    entity_id_text: row.entity_id !== null && row.entity_id !== undefined ? String(row.entity_id) : '',
+    project_id_text: row.project_id !== null && row.project_id !== undefined ? String(row.project_id) : '',
+    title: stripHtml(row.title),
+    description: stripHtml(row.description),
+    code: stripHtml(row.code),
+    comment: stripHtml(row.comment),
+    project_name: stripHtml(row.project_name),
+    project_code: stripHtml(row.project_code),
+    status_name: stripHtml(row.status_name),
+    type_name: stripHtml(row.type_name),
+    stage_name: stripHtml(row.stage_name),
+    specialization_name: stripHtml(row.specialization_name),
+    author_name: stripHtml(row.author_name),
+    assignee_name: stripHtml(row.assignee_name),
+    responsible_name: stripHtml(row.responsible_name),
+    priority: stripHtml(row.priority),
+    messages_text: stripHtml(row.messages_text),
+    files_text: stripHtml(row.files_text),
+    links_text: stripHtml(row.links_text)
+  }));
+  await bulkIndex(rows);
+  SearchService._esReady = true;
+  return { indexed: rows.length };
+};
+
 module.exports = SearchService;
+// Export helper fetchers for external sync tooling
+module.exports.fetchDocuments = fetchDocuments;
+module.exports.fetchIssues = fetchIssues;
+module.exports.fetchCustomerQuestions = fetchCustomerQuestions;
