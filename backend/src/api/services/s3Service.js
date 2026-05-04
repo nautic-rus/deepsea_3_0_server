@@ -87,6 +87,24 @@ class S3Service {
     // res.Body is a stream.Readable in Node.js
     return res.Body;
   }
+
+  static async getPresignedUrl({ bucket, key, expiresIn = 3600, responseContentDisposition = undefined, responseContentType = undefined }) {
+    if (!bucket || !key) throw new Error('Missing bucket or key');
+    // Lazy require so missing optional dependency doesn't crash app startup
+    let getSignedUrl;
+    try {
+      getSignedUrl = require('@aws-sdk/s3-request-presigner').getSignedUrl;
+    } catch (e) {
+      throw new Error('Presigner package "@aws-sdk/s3-request-presigner" is not installed. Run `npm install @aws-sdk/s3-request-presigner` to enable presigned URLs.');
+    }
+    const { client } = getS3Client();
+    const input = { Bucket: bucket, Key: key };
+    if (responseContentDisposition) input.ResponseContentDisposition = responseContentDisposition;
+    if (responseContentType) input.ResponseContentType = responseContentType;
+    const cmd = new GetObjectCommand(input);
+    const url = await getSignedUrl(client, cmd, { expiresIn });
+    return url;
+  }
 }
 
 module.exports = S3Service;

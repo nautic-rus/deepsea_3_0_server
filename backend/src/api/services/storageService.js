@@ -65,6 +65,41 @@ class StorageService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const s = await Storage.findById(Number(id));
     if (!s) { const err = new Error('Storage item not found'); err.statusCode = 404; throw err; }
+    // If S3 object and credentials available, attach a presigned URL for direct access
+    try {
+      if (s.storage_type === 's3' && s.bucket_name && s.object_key) {
+        // Return a presigned URL valid for 30 minutes (1800 seconds)
+        const expires = parseInt(process.env.S3_PRESIGNED_EXPIRES || '1800', 10) || 1800;
+        try {
+          // Build RFC5987 encoded filename for Content-Disposition so browser saves with correct name
+          let presigned = null;
+          try {
+            // Decide disposition: inline for displayable types (images, video, audio, pdf, text), attachment otherwise
+            const mt = (s.mime_type || '').toLowerCase();
+            const isInline = mt.startsWith('image/') || mt.startsWith('video/') || mt.startsWith('audio/') || mt === 'application/pdf' || mt.startsWith('text/');
+            let respDisp = undefined;
+            if (s.file_name) {
+              const encoded = encodeURIComponent(String(s.file_name));
+              respDisp = isInline ? `inline; filename*=UTF-8''${encoded}` : `attachment; filename*=UTF-8''${encoded}`;
+            }
+            const respType = s.mime_type || undefined;
+            presigned = await S3Service.getPresignedUrl({ bucket: s.bucket_name, key: s.object_key, expiresIn: expires, responseContentDisposition: respDisp, responseContentType: respType });
+            s.presigned_url = presigned;
+            s.presigned_expires_in = expires;
+            if (respDisp) s.presigned_content_disposition = respDisp;
+            if (respType) s.presigned_content_type = respType;
+          } catch (e) {
+            // don't fail the request on presign errors; just omit the field
+            console.error('Failed to generate presigned URL', e && e.message ? e.message : e);
+          }
+        } catch (e) {
+          // don't fail the request on presign errors; just omit the field
+          console.error('Failed to generate presigned URL', e && e.message ? e.message : e);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
     return s;
   }
 
