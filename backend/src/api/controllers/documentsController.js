@@ -7,6 +7,14 @@ const DocumentsService = require('../services/documentsService');
  * returns JSON responses.
  */
 class DocumentsController {
+  static _parseRev(v) {
+    if (v === null) return null;
+    if (typeof v === 'undefined') return undefined;
+    const s = String(v).trim();
+    if (s === '') return undefined;
+    if (/^[0-9]+$/.test(s)) return Number(s);
+    return s;
+  }
   /**
    * List documents with optional query filters.
    */
@@ -88,7 +96,7 @@ class DocumentsController {
         // Build metadata from request body if provided
         const metadata = {
           type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
-          rev: req.body && req.body.rev ? Number(req.body.rev) : undefined,
+          rev: DocumentsController._parseRev(req.body && req.body.rev),
           archive: req.body && typeof req.body.archive !== 'undefined' ? (req.body.archive === 'true' || req.body.archive === true) : undefined,
           archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined,
           status_id: req.body && typeof req.body.status !== 'undefined' ? (req.body.status === null ? null : Number(req.body.status)) : undefined,
@@ -113,7 +121,7 @@ class DocumentsController {
       }
       const metadata = {
         type_id: body && body.type_id ? Number(body.type_id) : undefined,
-        rev: body && body.rev ? Number(body.rev) : undefined,
+        rev: DocumentsController._parseRev(body && body.rev),
         archive: body && typeof body.archive !== 'undefined' ? (body.archive === 'true' || body.archive === true) : undefined,
         archive_data: body && body.archive_data ? body.archive_data : undefined,
         status_id: body && typeof body.status !== 'undefined' ? (body.status === null ? null : Number(body.status)) : undefined,
@@ -147,8 +155,8 @@ class DocumentsController {
       const id = Number(attached.document_id);
 
       const metadata = {
-        type_id: typeof req.body.type_id !== 'undefined' ? (req.body.type_id === null ? null : Number(req.body.type_id)) : undefined,
-        rev: typeof req.body.rev !== 'undefined' ? (req.body.rev === null ? null : Number(req.body.rev)) : undefined,
+          type_id: typeof req.body.type_id !== 'undefined' ? (req.body.type_id === null ? null : Number(req.body.type_id)) : undefined,
+          rev: typeof req.body.rev !== 'undefined' ? (req.body.rev === null ? null : DocumentsController._parseRev(req.body.rev)) : undefined,
         archive: typeof req.body.archive !== 'undefined' ? (req.body.archive === true || req.body.archive === 'true') : undefined,
         archive_data: typeof req.body.archive_data !== 'undefined' ? req.body.archive_data : undefined,
         user_id: typeof req.body.user_id !== 'undefined' ? (req.body.user_id === null ? null : Number(req.body.user_id)) : undefined,
@@ -175,8 +183,8 @@ class DocumentsController {
       const StorageService = require('../services/storageService');
       const createdStorage = await StorageService.uploadToLocalAndCreate(req.file, actor, req.body || {});
       const metadata = {
-        type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
-        rev: req.body && req.body.rev ? Number(req.body.rev) : undefined,
+          type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
+          rev: DocumentsController._parseRev(req.body && req.body.rev),
         archive: req.body && typeof req.body.archive !== 'undefined' ? (req.body.archive === 'true' || req.body.archive === true) : undefined,
         archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined,
         status_id: req.body && typeof req.body.status !== 'undefined' ? (req.body.status === null ? null : Number(req.body.status)) : undefined,

@@ -16,6 +16,14 @@ const DocumentUploadNotificationService = require('./documentUploadNotificationS
  * to the Document model.
  */
 class DocumentsService {
+  static _parseRev(v) {
+    if (v === null) return null;
+    if (typeof v === 'undefined') return undefined;
+    const s = String(v).trim();
+    if (s === '') return undefined;
+    if (/^[0-9]+$/.test(s)) return Number(s);
+    return s;
+  }
   static async listDocuments(query = {}, actor) {
     const requiredPermission = 'documents.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
@@ -722,13 +730,13 @@ class DocumentsService {
 
   // Attach entries to DocumentStorage, applying per-entry metadata
   const attachedArr = [];
-  for (let i = 0; i < entries.length; i++) {
+    for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     const payload = {
       document_id: Number(id),
       storage_id: Number(e.storage_id),
       type_id: typeof e.type_id !== 'undefined' ? (e.type_id === null ? null : Number(e.type_id)) : undefined,
-      rev: typeof e.rev !== 'undefined' ? (e.rev === null ? null : Number(e.rev)) : undefined,
+      rev: typeof e.rev !== 'undefined' ? (e.rev === null ? null : DocumentsService._parseRev(e.rev)) : undefined,
       archive: typeof e.archive !== 'undefined' ? e.archive : undefined,
       archive_data: typeof e.archive_data !== 'undefined' ? e.archive_data : undefined,
       user_id: typeof e.user_id !== 'undefined' ? (e.user_id === null ? null : Number(e.user_id)) : undefined,
