@@ -21,6 +21,19 @@ class CustomerQuestionsController {
     } catch (err) { next(err); }
   }
 
+  /**
+   * GET /api/customer_questions/statistics - questions statistics grouped by type and specialization
+   * Query: project_id (optional)
+   */
+  static async statistics(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const query = Object.assign({}, req.query || {});
+      const rows = await CustomerQuestionsService.getQuestionsStatistics(query || {}, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
   static async get(req, res, next) {
     try {
       const actor = req.user || null;

@@ -6951,6 +6951,90 @@
         }
       }
     },
+    "/api/customer_questions/statistics": {
+      "get": {
+        "tags": [
+          "customer_questions"
+        ],
+        "summary": "Customer questions statistics grouped by type and specialization",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "customer_questions.statistics"
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Project ID for filtering (optional)",
+            "schema": {
+              "type": "integer"
+            },
+            "example": 12
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "overall": {
+                          "type": "object",
+                          "properties": {
+                            "total_count": { "type": "integer" },
+                            "closed_count": { "type": "integer" },
+                            "open_count": { "type": "integer" },
+                            "percent_closed": { "type": "number", "format": "float" }
+                          }
+                        },
+                        "types": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "type_id": { "type": "integer", "nullable": true },
+                              "type_name": { "type": "string", "nullable": true },
+                              "total_count": { "type": "integer" },
+                              "closed_count": { "type": "integer" },
+                              "open_count": { "type": "integer" },
+                              "percent_closed": { "type": "number", "format": "float" }
+                            }
+                          }
+                        },
+                        "specializations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "specialization_id": { "type": "integer", "nullable": true },
+                              "specialization_name": { "type": "string", "nullable": true },
+                              "total_count": { "type": "integer" },
+                              "closed_count": { "type": "integer" },
+                              "open_count": { "type": "integer" },
+                              "percent_closed": { "type": "number", "format": "float" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Authentication required" }
+        }
+      }
+    },
     "/api/customer_questions": {
       "post": {
         "tags": [

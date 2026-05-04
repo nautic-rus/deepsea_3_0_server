@@ -113,6 +113,113 @@ class CustomerQuestionsService {
     return CustomerQuestion.list(filters);
   }
 
+  /**
+   * Get customer questions statistics grouped by type and specialization.
+   * Returns counts of open/closed questions and percent closed.
+   * Supports filtering by project_id and respects permission/project scope.
+   */
+  static async getQuestionsStatistics(query = {}, actor) {
+    const requiredPermission = 'customer_questions.statistics';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const permissionScope = getPermissionProjectScope ? await getPermissionProjectScope(actor, requiredPermission) : await require('./permissionChecker').getPermissionProjectScope(actor, requiredPermission);
+    if (!permissionScope.hasGlobal && permissionScope.projectIds.length === 0) {
+      const err = new Error('Forbidden: missing permission customer_questions.statistics'); err.statusCode = 403; throw err;
+    }
+
+    const canViewAll = await hasPermission(actor, 'customer_questions.view_all') || permissionScope.hasGlobal;
+
+    let projectFilterSql = '';
+    const values = [];
+    let idx = 1;
+    if (query.project_id !== undefined && query.project_id !== null) {
+      const requestedProjectIds = Array.isArray(query.project_id)
+        ? query.project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
+        : [Number(query.project_id)].filter(p => !Number.isNaN(p));
+      if (requestedProjectIds.length === 0) { const err = new Error('Invalid project_id'); err.statusCode = 400; throw err; }
+      if (!canViewAll) {
+        const forbidden = requestedProjectIds.find(pid => !permissionScope.projectIds.includes(pid));
+        if (forbidden !== undefined) { const err = new Error('Forbidden: missing permission for requested project'); err.statusCode = 403; throw err; }
+      }
+      projectFilterSql = ` AND cq.project_id = ANY($${idx}::int[])`;
+      values.push(requestedProjectIds);
+      idx++;
+    } else if (!canViewAll) {
+      const allowedProjectIds = permissionScope.projectIds;
+      if (!allowedProjectIds || allowedProjectIds.length === 0) return [];
+      projectFilterSql = ` AND cq.project_id = ANY($${idx}::int[])`;
+      values.push(allowedProjectIds);
+      idx++;
+    }
+
+    const qTypes = `
+      SELECT cq.type_id, ct.name AS type_name,
+        COUNT(*)::int AS total_count,
+        SUM(CASE WHEN cs.is_final THEN 1 ELSE 0 END)::int AS closed_count,
+        SUM(CASE WHEN cs.is_final THEN 0 ELSE 1 END)::int AS open_count
+      FROM customer_questions cq
+      LEFT JOIN customer_question_status cs ON cs.id = cq.status_id
+      LEFT JOIN customer_question_type ct ON ct.id = cq.type_id
+      WHERE cq.is_active = true ${projectFilterSql}
+      GROUP BY cq.type_id, ct.name
+      ORDER BY ct.name NULLS LAST
+    `;
+
+    const qSpecs = `
+      SELECT cq.specialization_id, sp.name AS specialization_name,
+        COUNT(*)::int AS total_count,
+        SUM(CASE WHEN cs.is_final THEN 1 ELSE 0 END)::int AS closed_count,
+        SUM(CASE WHEN cs.is_final THEN 0 ELSE 1 END)::int AS open_count
+      FROM customer_questions cq
+      LEFT JOIN customer_question_status cs ON cs.id = cq.status_id
+      LEFT JOIN specializations sp ON sp.id = cq.specialization_id
+      WHERE cq.is_active = true ${projectFilterSql}
+      GROUP BY cq.specialization_id, sp.name
+      ORDER BY sp.name NULLS LAST
+    `;
+
+    const qTotal = `
+      SELECT COUNT(*)::int AS total_count,
+        SUM(CASE WHEN cs.is_final THEN 1 ELSE 0 END)::int AS closed_count,
+        SUM(CASE WHEN cs.is_final THEN 0 ELSE 1 END)::int AS open_count
+      FROM customer_questions cq
+      LEFT JOIN customer_question_status cs ON cs.id = cq.status_id
+      WHERE cq.is_active = true ${projectFilterSql}
+    `;
+
+    const [typesRes, specsRes, totalRes] = await Promise.all([pool.query(qTypes, values), pool.query(qSpecs, values), pool.query(qTotal, values)]);
+
+    const computePercent = (it) => ({
+      ...it,
+      percent_closed: it.total_count > 0 ? Math.round((it.closed_count / it.total_count) * 10000) / 100 : 0
+    });
+
+    const types = (typesRes.rows || []).map(r => computePercent({
+      type_id: r.type_id === null ? null : Number(r.type_id),
+      type_name: r.type_name || null,
+      total_count: Number(r.total_count) || 0,
+      closed_count: Number(r.closed_count) || 0,
+      open_count: Number(r.open_count) || 0
+    }));
+
+    const specializations = (specsRes.rows || []).map(r => computePercent({
+      specialization_id: r.specialization_id === null ? null : Number(r.specialization_id),
+      specialization_name: r.specialization_name || null,
+      total_count: Number(r.total_count) || 0,
+      closed_count: Number(r.closed_count) || 0,
+      open_count: Number(r.open_count) || 0
+    }));
+
+    const totalRow = (totalRes.rows && totalRes.rows[0]) || { total_count: 0, closed_count: 0, open_count: 0 };
+    const overall = {
+      total_count: Number(totalRow.total_count) || 0,
+      closed_count: Number(totalRow.closed_count) || 0,
+      open_count: Number(totalRow.open_count) || 0,
+      percent_closed: (Number(totalRow.total_count) || 0) > 0 ? Math.round(((Number(totalRow.closed_count) || 0) / Number(totalRow.total_count)) * 10000) / 100 : 0
+    };
+
+    return { overall, types, specializations };
+  }
+
   static async getCustomerQuestionById(id, actor) {
     const requiredPermission = 'customer_questions.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }

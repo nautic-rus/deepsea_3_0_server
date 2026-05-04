@@ -258,6 +258,8 @@ router.get('/issues/:id/files', authMiddleware, issuesController.listFiles);
 router.get('/issues/:id/history', authMiddleware, issueHistoryController.list);
 
 // ===== Customer questions routes =====
+// GET /api/customer_questions/statistics - questions statistics grouped by type and specialization
+router.get('/customer_questions/statistics', authMiddleware, customerQuestionsController.statistics);
 router.get('/customer_questions', authMiddleware, customerQuestionsController.list);
 router.get('/customer_questions/:id', authMiddleware, customerQuestionsController.get);
 router.get('/customer_questions/:id/history', authMiddleware, customerQuestionHistoryController.list);
