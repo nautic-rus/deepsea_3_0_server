@@ -1,5 +1,6 @@
 const pool = require('../../db/connection');
 const Document = require('../../db/models/Document');
+const DocumentType = require('../../db/models/DocumentType');
 const Project = require('../../db/models/Project');
 const DocumentUploadNotificationBuffer = require('../../db/models/DocumentUploadNotificationBuffer');
 const NotificationDispatcher = require('./notificationDispatcher');
@@ -94,6 +95,13 @@ class DocumentUploadNotificationService {
 
     const frontendRoot = process.env.FRONTEND_URL || '';
     const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${document.id}` : '';
+    let documentTypeName = null;
+    try {
+      const docType = document.type_id ? await DocumentType.findById(Number(document.type_id)) : null;
+      documentTypeName = docType && docType.name ? docType.name : null;
+    } catch (error) {
+      documentTypeName = null;
+    }
     const storageItem = storageItems[0] || null;
     const storageFileList = storageItems
       .map((item) => item && item.file_name)
@@ -109,6 +117,9 @@ class DocumentUploadNotificationService {
     const templateContext = {
       project: { id: document.project_id, code: (project && project.code) || null },
       document,
+      targetType: documentTypeName,
+      targetId: document.id,
+      targetTitle: document.title,
       actor,
       documentUrl,
       storage_items: storageItems,

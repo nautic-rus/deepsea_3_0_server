@@ -1,4 +1,5 @@
 const Document = require('../../db/models/Document');
+const DocumentType = require('../../db/models/DocumentType');
 const pool = require('../../db/connection');
 const { hasPermission, hasPermissionForProject, getPermissionProjectScope } = require('./permissionChecker');
 const NotificationDispatcher = require('./notificationDispatcher');
@@ -541,6 +542,13 @@ class DocumentsService {
 
     const updated = await Document.update(Number(id), fields);
     if (!updated) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+    let documentTypeName = null;
+    try {
+      const docType = updated.type_id ? await DocumentType.findById(Number(updated.type_id)) : null;
+      documentTypeName = docType && docType.name ? docType.name : null;
+    } catch (e) {
+      documentTypeName = null;
+    }
     // Record update in history
     (async () => {
       try {
@@ -562,7 +570,16 @@ class DocumentsService {
         entity: { id: updated.id, code: 'document', title: updated.title },
         content: { before: existing, after: updated },
         participantIds: [updated.created_by, updated.assigne_to, existing.created_by, existing.assigne_to],
-        templateContext: { project: projCtx, document: updated, actor, documentUrl, changes: { before: existing, after: updated } },
+        templateContext: {
+          project: projCtx,
+          document: updated,
+          targetType: documentTypeName,
+          targetId: updated.id,
+          targetTitle: updated.title,
+          actor,
+          documentUrl,
+          changes: { before: existing, after: updated }
+        },
         fallbackText: `Document updated: ${updated.title}`,
         fallbackSubject: `Document updated ${updated.title}`
       });
@@ -577,7 +594,16 @@ class DocumentsService {
         entity: { id: updated.id, code: 'document', title: updated.title },
         content: { before: existing, after: updated },
         participantIds: projectParticipantIds,
-        templateContext: { project: projCtx, document: updated, actor, documentUrl, changes: { before: existing, after: updated } },
+        templateContext: {
+          project: projCtx,
+          document: updated,
+          targetType: documentTypeName,
+          targetId: updated.id,
+          targetTitle: updated.title,
+          actor,
+          documentUrl,
+          changes: { before: existing, after: updated }
+        },
         fallbackText: `Document updated: ${updated.title}`,
         fallbackSubject: `Document updated ${updated.title}`
       });
