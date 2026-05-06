@@ -3433,6 +3433,19 @@
             },
             "example": 12
           }
+          ,
+          {
+            "name": "type_id",
+            "in": "query",
+            "description": "Document type id for filtering (optional). Can be a single integer or array.",
+            "schema": {
+              "oneOf": [
+                { "type": "integer" },
+                { "type": "array", "items": { "type": "integer" } }
+              ]
+            },
+            "example": 3
+          }
         ],
         "responses": {
           "200": {

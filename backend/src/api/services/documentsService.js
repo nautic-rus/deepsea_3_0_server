@@ -185,6 +185,18 @@ class DocumentsService {
       idx++;
     }
 
+    // Optional filter by document type
+    let typeFilterSql = '';
+    if (query.type_id !== undefined && query.type_id !== null) {
+      const requestedTypeIds = Array.isArray(query.type_id)
+        ? query.type_id.map(t => Number(t)).filter(t => !Number.isNaN(t))
+        : [Number(query.type_id)].filter(t => !Number.isNaN(t));
+      if (requestedTypeIds.length === 0) { const err = new Error('Invalid type_id'); err.statusCode = 400; throw err; }
+      typeFilterSql = ` AND d.type_id = ANY($${idx}::int[])`;
+      values.push(requestedTypeIds);
+      idx++;
+    }
+
     // Build two queries: one grouped by stage (including stage name), one by specialization
     const qStages = `
       SELECT d.stage_id, st.name AS stage_name,
@@ -194,7 +206,7 @@ class DocumentsService {
       FROM documents d
       LEFT JOIN document_status s ON s.id = d.status_id
       LEFT JOIN stages st ON st.id = d.stage_id
-      WHERE d.is_active = true ${projectFilterSql}
+      WHERE d.is_active = true ${projectFilterSql} ${typeFilterSql}
       GROUP BY d.stage_id, st.name
       ORDER BY st.name NULLS LAST
     `;
@@ -207,7 +219,7 @@ class DocumentsService {
       FROM documents d
       LEFT JOIN document_status s ON s.id = d.status_id
       LEFT JOIN specializations sp ON sp.id = d.specialization_id
-      WHERE d.is_active = true ${projectFilterSql}
+      WHERE d.is_active = true ${projectFilterSql} ${typeFilterSql}
       GROUP BY d.specialization_id, sp.name
       ORDER BY sp.name NULLS LAST
     `;
@@ -218,7 +230,7 @@ class DocumentsService {
         SUM(CASE WHEN s.is_final THEN 0 ELSE 1 END)::int AS open_count
       FROM documents d
       LEFT JOIN document_status s ON s.id = d.status_id
-      WHERE d.is_active = true ${projectFilterSql}
+      WHERE d.is_active = true ${projectFilterSql} ${typeFilterSql}
     `;
 
     const [stRes, spRes, totalRes] = await Promise.all([pool.query(qStages, values), pool.query(qSpecs, values), pool.query(qTotal, values)]);
