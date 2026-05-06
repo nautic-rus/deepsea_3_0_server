@@ -7,6 +7,7 @@ class Document {
       id,
       project_id,
       stage_id,
+      public: publicFlag,
       type_id,
       specialization_id,
       directory_id,
@@ -90,6 +91,12 @@ class Document {
       where.push(`is_active = $${idx++}`); values.push(is_active);
     }
 
+    // Public flag filter: if caller passed `public` in filters use it
+    if (typeof publicFlag !== 'undefined') {
+      // allow boolean or numeric
+      where.push(`public = $${idx++}`); values.push(publicFlag);
+    }
+
   // created_at range
   if (created_before) { where.push(`created_at <= $${idx++}`); values.push(created_before); }
   if (created_after) { where.push(`created_at >= $${idx++}`); values.push(created_after); }
@@ -118,7 +125,7 @@ class Document {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  let q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id FROM documents ${whereSql} ORDER BY id`;
+  let q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, public, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id FROM documents ${whereSql} ORDER BY id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -131,14 +138,14 @@ class Document {
   }
 
   static async findById(id) {
-  const q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id FROM documents WHERE id = $1 LIMIT 1`;
+  const q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, public, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id FROM documents WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
 
   static async create(fields) {
   // Build INSERT dynamically so that DB defaults (e.g. priority) are preserved
-  const allowedCols = ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','assigne_to','created_by','code','priority','due_date','estimated_hours','sfi_code_id'];
+  const allowedCols = ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','assigne_to','created_by','public','code','priority','due_date','estimated_hours','sfi_code_id'];
   const cols = [];
   const placeholders = [];
   const values = [];
@@ -163,7 +170,7 @@ class Document {
     const parts = [];
     const values = [];
     let idx = 1;
-  ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','status_id','assigne_to','code','priority','due_date','estimated_hours','sfi_code_id'].forEach((k) => {
+  ['title','description','comment','project_id','stage_id','type_id','specialization_id','directory_id','status_id','assigne_to','public','code','priority','due_date','estimated_hours','sfi_code_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Document.findById(id);

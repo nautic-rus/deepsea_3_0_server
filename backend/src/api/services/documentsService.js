@@ -34,7 +34,14 @@ class DocumentsService {
     }
     // If actor has global view permission, return all matches per query.
     const canViewAll = await hasPermission(actor, 'documents.view_all');
+    const canViewNotPublic = await hasPermission(actor, 'documents.view_not_public');
     if (canViewAll || permissionScope.hasGlobal) {
+      // If user cannot view non-public documents, restrict results to public only
+      if (!canViewNotPublic) {
+        query = Object.assign({}, query || {});
+        // ensure caller only gets public documents
+        query.public = true;
+      }
       const rows = await Document.list(query);
       await DocumentsService.attachDisplayFieldsToList(rows);
       // Attach latest revision (max rev) from documents_storage for each document
@@ -109,6 +116,12 @@ class DocumentsService {
     }
 
     // Pass allowedProjectIds to Document.list to enforce project restriction.
+    // If user cannot view non-public documents, restrict results to public only
+    const canViewNotPublicRestricted = await hasPermission(actor, 'documents.view_not_public');
+    if (!canViewNotPublicRestricted) {
+      query = Object.assign({}, query || {});
+      query.public = true;
+    }
     const rows = await Document.list(query, allowedProjectIds);
     await DocumentsService.attachDisplayFieldsToList(rows);
     // Attach latest revision for restricted-list results as well
@@ -352,6 +365,11 @@ class DocumentsService {
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
     const d = await Document.findById(Number(id));
   if (!d || d.is_active === false) { const err = new Error('Document not found'); err.statusCode = 404; throw err; }
+    // If document is not public, ensure actor has permission to view non-public documents
+    const canViewNotPublicForGet = await hasPermission(actor, 'documents.view_not_public');
+    if (d && d.public === false && !canViewNotPublicForGet) {
+      const err = new Error('Forbidden: missing permission documents.view_not_public'); err.statusCode = 403; throw err;
+    }
     // Ensure actor belongs to the document's project unless they have view_all
     const canViewAll = await hasPermission(actor, 'documents.view_all');
     if (!canViewAll) {
