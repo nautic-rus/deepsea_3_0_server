@@ -161,7 +161,7 @@ class Document {
   }
   // Ensure we have required columns
   if (cols.length === 0) throw new Error('No fields provided for insert');
-  const q = `INSERT INTO documents (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id`;
+  const q = `INSERT INTO documents (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, public, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id`;
   const res = await pool.query(q, values);
   return res.rows[0];
   }
@@ -174,7 +174,7 @@ class Document {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Document.findById(id);
-  const q = `UPDATE documents SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id`;
+  const q = `UPDATE documents SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, public, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;
