@@ -392,6 +392,7 @@ class DocumentsService {
           res = await pool.query(q, [d.status_id, d.project_id, actor.id]);
         }
         let allowedStatuses = res.rows || [];
+        let canUploadFile = true;
 
         // Check for 'blocks' links similar to issues: if any linked document that blocks
         // this document is NOT in a final status, then disallow transitions that are final.
@@ -424,6 +425,7 @@ class DocumentsService {
           }
           if (blockedNotFinal) {
             allowedStatuses = allowedStatuses.filter(s => !s.is_final);
+            canUploadFile = false;
           }
         } catch (e) {
           console.error('Failed to evaluate blocks links for allowed_document_statuses', e && e.message ? e.message : e);
@@ -432,14 +434,17 @@ class DocumentsService {
         d.allowed_statuses = allowedStatuses;
         // Backwards-compatible alias: expose as `available_statuses` as well
         d.available_statuses = d.allowed_statuses;
+        d.can_upload_file = canUploadFile;
       } else {
         d.allowed_statuses = [];
         d.available_statuses = [];
+        d.can_upload_file = true;
       }
     } catch (e) {
       console.error('Failed to load allowed document statuses', e && e.message ? e.message : e);
       d.allowed_statuses = [];
       d.available_statuses = [];
+      d.can_upload_file = true;
     }
 
     // Attach display-friendly fields (same as for listDocuments)
