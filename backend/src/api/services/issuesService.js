@@ -162,31 +162,37 @@ class IssuesService {
         const res = await pool.query(q, [i.type_id, i.status_id, i.project_id, actor.id]);
         let allowed = res.rows || [];
 
-        // Check for 'blocks' links: if any linked issue (via relation_type='blocks') exists
-        // and is NOT in a final status (issue_status.is_final = true), then disallow
-        // any target statuses that have is_final = true for this issue.
+        // Check for 'blocks' links: if any linked entity (via relation_type='blocks') exists
+        // and is NOT in a final status, then disallow any target statuses that have
+        // is_final = true for this issue.
         try {
           const EntityLink = require('../../db/models/EntityLink');
-          // Only consider 'blocks' links where some OTHER issue blocks THIS issue.
-          // Semantically: relation_type='blocks' means active (source) blocks passive (target).
-          // So if this issue is the passive (passive_id = i.id), then the active issues
-          // are blocking it and should be checked. Links where this issue is the
-          // active (it blocks others) must NOT block this issue.
-          const blockingLinks = await EntityLink.find({ passive_type: 'issue', passive_id: i.id, active_type: 'issue', relation_type: 'blocks' });
-          const otherIds = [];
+          // Fetch any blocking links regardless of active_type (allow cross-entity blockers).
+          const blockingLinks = await EntityLink.find({ passive_type: 'issue', passive_id: i.id, relation_type: 'blocks' });
+          const byType = {};
           for (const l of (blockingLinks || [])) {
-            if (!l) continue;
-            if (l.active_id) otherIds.push(Number(l.active_id));
+            if (!l || !l.active_type || !l.active_id) continue;
+            byType[l.active_type] = byType[l.active_type] || [];
+            byType[l.active_type].push(Number(l.active_id));
           }
-          const uniqOther = [...new Set(otherIds.filter(Boolean))];
-          if (uniqOther.length > 0) {
-            const q2 = `SELECT i.id, s.is_final FROM issues i LEFT JOIN issue_status s ON s.id = i.status_id WHERE i.id = ANY($1::int[])`;
-            const res2 = await pool.query(q2, [uniqOther]);
-            const blockedNotFinal = (res2.rows || []).some(r => !r.is_final);
-            if (blockedNotFinal) {
-              // remove final statuses from allowed list
-              allowed = allowed.filter(s => !s.is_final);
-            }
+          let blockedNotFinal = false;
+          const typeMap = {
+            issue: { table: 'issues', statusJoin: 'issue_status' },
+            document: { table: 'documents', statusJoin: 'document_status' },
+            customer_question: { table: 'customer_questions', statusJoin: 'customer_question_status' }
+          };
+          for (const [atype, ids] of Object.entries(byType)) {
+            if (!ids || ids.length === 0) continue;
+            const uniq = [...new Set(ids.filter(Boolean))];
+            const mapEntry = typeMap[atype];
+            if (!mapEntry) continue; // unknown type: skip
+            const q2 = `SELECT t.id, s.is_final FROM ${mapEntry.table} t LEFT JOIN ${mapEntry.statusJoin} s ON s.id = t.status_id WHERE t.id = ANY($1::int[])`;
+            const res2 = await pool.query(q2, [uniq]);
+            if ((res2.rows || []).some(r => !r.is_final)) { blockedNotFinal = true; break; }
+          }
+          if (blockedNotFinal) {
+            // remove final statuses from allowed list
+            allowed = allowed.filter(s => !s.is_final);
           }
         } catch (e) {
           // don't block the request on linkage lookup failure; log and continue

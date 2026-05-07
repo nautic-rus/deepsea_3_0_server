@@ -397,20 +397,33 @@ class DocumentsService {
         // this document is NOT in a final status, then disallow transitions that are final.
         try {
           const EntityLink = require('../../db/models/EntityLink');
-          const blockingLinks = await EntityLink.find({ passive_type: 'document', passive_id: d.id, active_type: 'document', relation_type: 'blocks' });
-          const otherIds = [];
+          // Fetch any blocking links regardless of active_type (allow cross-entity blockers)
+          const blockingLinks = await EntityLink.find({ passive_type: 'document', passive_id: d.id, relation_type: 'blocks' });
+          // Group by active_type -> collect ids
+          const byType = {};
           for (const l of (blockingLinks || [])) {
-            if (!l) continue;
-            if (l.active_id) otherIds.push(Number(l.active_id));
+            if (!l || !l.active_type || !l.active_id) continue;
+            byType[l.active_type] = byType[l.active_type] || [];
+            byType[l.active_type].push(Number(l.active_id));
           }
-          const uniqOther = [...new Set(otherIds.filter(Boolean))];
-          if (uniqOther.length > 0) {
-            const q2 = `SELECT doc.id, s.is_final FROM documents doc LEFT JOIN document_status s ON s.id = doc.status_id WHERE doc.id = ANY($1::int[])`;
-            const res2 = await pool.query(q2, [uniqOther]);
-            const blockedNotFinal = (res2.rows || []).some(r => !r.is_final);
-            if (blockedNotFinal) {
-              allowedStatuses = allowedStatuses.filter(s => !s.is_final);
-            }
+          let blockedNotFinal = false;
+          // Mapping from active_type -> { table, statusJoin }
+          const typeMap = {
+            document: { table: 'documents', statusJoin: 'document_status' },
+            issue: { table: 'issues', statusJoin: 'issue_status' },
+            customer_question: { table: 'customer_questions', statusJoin: 'customer_question_status' }
+          };
+          for (const [atype, ids] of Object.entries(byType)) {
+            if (!ids || ids.length === 0) continue;
+            const uniq = [...new Set(ids.filter(Boolean))];
+            const mapEntry = typeMap[atype];
+            if (!mapEntry) continue; // unknown type: skip
+            const q2 = `SELECT t.id, s.is_final FROM ${mapEntry.table} t LEFT JOIN ${mapEntry.statusJoin} s ON s.id = t.status_id WHERE t.id = ANY($1::int[])`;
+            const res2 = await pool.query(q2, [uniq]);
+            if ((res2.rows || []).some(r => !r.is_final)) { blockedNotFinal = true; break; }
+          }
+          if (blockedNotFinal) {
+            allowedStatuses = allowedStatuses.filter(s => !s.is_final);
           }
         } catch (e) {
           console.error('Failed to evaluate blocks links for allowed_document_statuses', e && e.message ? e.message : e);

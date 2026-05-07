@@ -266,24 +266,32 @@ class CustomerQuestionsService {
         // disallow transitions to final statuses.
         try {
           const EntityLink = require('../../db/models/EntityLink');
-          const blockingLinks = await EntityLink.find({
-            passive_type: 'customer_question',
-            passive_id: Number(id),
-            active_type: 'customer_question',
-            relation_type: 'blocks'
-          });
-          const otherIds = [...new Set((blockingLinks || []).filter(l => l && l.active_id).map(l => Number(l.active_id)))];
-          if (otherIds.length > 0) {
-            const q2 = `SELECT cq.id, cs.is_final
-                         FROM customer_questions cq
-                         LEFT JOIN customer_question_status cs ON cs.id = cq.status_id
-                         WHERE cq.id = ANY($1::int[])`;
-            const res2 = await require('../../db/connection').query(q2, [otherIds]);
-            const hasBlockerNotFinal = (res2.rows || []).some(r => !r.is_final);
-            if (hasBlockerNotFinal) {
-              // remove final statuses from available list
-              available = available.filter(s => !s.is_final);
-            }
+          // Fetch any blocking links regardless of active_type (allow cross-entity blockers)
+          const blockingLinks = await EntityLink.find({ passive_type: 'customer_question', passive_id: Number(id), relation_type: 'blocks' });
+          const byType = {};
+          for (const l of (blockingLinks || [])) {
+            if (!l || !l.active_type || !l.active_id) continue;
+            byType[l.active_type] = byType[l.active_type] || [];
+            byType[l.active_type].push(Number(l.active_id));
+          }
+          let hasBlockerNotFinal = false;
+          const typeMap = {
+            document: { table: 'documents', statusJoin: 'document_status' },
+            issue: { table: 'issues', statusJoin: 'issue_status' },
+            customer_question: { table: 'customer_questions', statusJoin: 'customer_question_status' }
+          };
+          for (const [atype, ids] of Object.entries(byType)) {
+            if (!ids || ids.length === 0) continue;
+            const uniq = [...new Set(ids.filter(Boolean))];
+            const mapEntry = typeMap[atype];
+            if (!mapEntry) continue; // skip unknown types
+            const q2 = `SELECT t.id, s.is_final FROM ${mapEntry.table} t LEFT JOIN ${mapEntry.statusJoin} s ON s.id = t.status_id WHERE t.id = ANY($1::int[])`;
+            const res2 = await require('../../db/connection').query(q2, [uniq]);
+            if ((res2.rows || []).some(r => !r.is_final)) { hasBlockerNotFinal = true; break; }
+          }
+          if (hasBlockerNotFinal) {
+            // remove final statuses from available list
+            available = available.filter(s => !s.is_final);
           }
         } catch (e) {
           console.error('Failed to evaluate blocks links for customer_question available_statuses', e && e.message ? e.message : e);
