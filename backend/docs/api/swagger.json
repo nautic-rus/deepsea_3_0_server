@@ -433,6 +433,11 @@
           "created_by": {
             "type": "integer"
           },
+          "public": {
+            "type": "boolean",
+            "description": "Is document public (true) or not (false)",
+            "example": true
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -10011,7 +10016,39 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string", "description": "Document title" },
+                  "description": { "type": "string", "nullable": true },
+                  "project_id": { "type": "integer", "description": "Project ID" },
+                  "stage_id": { "type": "integer", "nullable": true },
+                  "type_id": { "type": "integer", "nullable": true },
+                  "specialization_id": { "type": "integer", "nullable": true },
+                  "directory_id": { "type": "integer", "nullable": true },
+                  "status_id": { "type": "integer", "nullable": true },
+                  "assigne_to": { "type": "integer", "nullable": true },
+                  "created_by": { "type": "integer", "nullable": true },
+                  "code": { "type": "string", "nullable": true },
+                  "priority": { "type": "string", "nullable": true },
+                  "due_date": { "type": "string", "format": "date", "nullable": true },
+                  "estimated_hours": { "type": "number", "nullable": true },
+                  "sfi_code_id": { "type": "integer", "nullable": true },
+                  "public": { "type": "boolean", "description": "Is document public", "example": true }
+                }
+              },
+              "example": {
+                "title": "Specification for main pipeline",
+                "description": "Full spec",
+                "project_id": 12,
+                "stage_id": 3,
+                "type_id": 2,
+                "directory_id": 7,
+                "assigne_to": 5,
+                "code": "DOC-2026-001",
+                "priority": "high",
+                "due_date": "2026-06-30",
+                "estimated_hours": 16,
+                "public": true
               }
             }
           }
@@ -10229,13 +10266,21 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string", "nullable": true },
+                  "stage_id": { "type": "integer", "nullable": true },
+                  "code": { "type": "string", "nullable": true },
+                  "public": { "type": "boolean", "description": "Is document public", "example": true }
+                }
               },
               "example": {
                 "title": "",
                 "description": "",
                 "stage_id": 0,
-                "code": ""
+                "code": "",
+                "public": true
               }
             }
           }
