@@ -166,30 +166,6 @@ function addScopeFilter({ where, values, idx, alias, scope, projectIdFilter }) {
   return idx;
 }
 
-function resolveAccessibleProjectIds(scope, projectIdFilter) {
-  const requestedProjectIds = normalizeProjectIds(projectIdFilter);
-
-  if (requestedProjectIds && requestedProjectIds.length === 0) {
-    return [];
-  }
-
-  if (scope && scope.hasGlobal) {
-    return requestedProjectIds;
-  }
-
-  const allowed = Array.isArray(scope && scope.projectIds) ? scope.projectIds : [];
-  if (!allowed.length) {
-    return [];
-  }
-
-  if (requestedProjectIds && requestedProjectIds.length > 0) {
-    const allowedSet = new Set(allowed);
-    return requestedProjectIds.filter(pid => allowedSet.has(pid));
-  }
-
-  return allowed;
-}
-
 async function fetchDocuments(scope, projectIdFilter, updatedAfter = null) {
   const where = ['d.is_active = true'];
   const values = [];
@@ -412,12 +388,67 @@ class SearchService {
       getPermissionProjectScope(actor, 'customer_questions.view')
     ]);
 
+    const tasks = [];
+
+    if (entities.includes(ENTITY_DOCUMENT) && (documentScope.hasGlobal || (documentScope.projectIds || []).length > 0)) {
+      tasks.push(fetchDocuments(documentScope, options.project_id));
+    }
+
+    if (entities.includes(ENTITY_ISSUE) && (issueScope.hasGlobal || (issueScope.projectIds || []).length > 0)) {
+      tasks.push(fetchIssues(issueScope, options.project_id));
+    }
+
+    if (entities.includes(ENTITY_CUSTOMER_QUESTION) && (customerQuestionScope.hasGlobal || (customerQuestionScope.projectIds || []).length > 0)) {
+      tasks.push(fetchCustomerQuestions(customerQuestionScope, options.project_id));
+    }
+
+    if (tasks.length === 0) {
+      return { items: [], total: 0, limit, offset, query };
+    }
+
+    const results = await Promise.all(tasks);
+    const rows = results.flat().map(row => ({
+      ...row,
+      id: `${row.entity_type}:${row.entity_id}`,
+      entity_id_text: row.entity_id !== null && row.entity_id !== undefined ? String(row.entity_id) : '',
+      project_id_text: row.project_id !== null && row.project_id !== undefined ? String(row.project_id) : '',
+      title: stripHtml(row.title),
+      description: stripHtml(row.description),
+      code: stripHtml(row.code),
+      comment: stripHtml(row.comment),
+      project_name: stripHtml(row.project_name),
+      project_code: stripHtml(row.project_code),
+      status_name: stripHtml(row.status_name),
+      type_name: stripHtml(row.type_name),
+      stage_name: stripHtml(row.stage_name),
+      specialization_name: stripHtml(row.specialization_name),
+      author_name: stripHtml(row.author_name),
+      assignee_name: stripHtml(row.assignee_name),
+      responsible_name: stripHtml(row.responsible_name),
+      priority: stripHtml(row.priority),
+      messages_text: stripHtml(row.messages_text),
+      files_text: stripHtml(row.files_text),
+      links_text: stripHtml(row.links_text)
+    }));
+
+    if (!rows.length) {
+      return { items: [], total: 0, limit, offset, query };
+    }
+
     const useElastic = String(process.env.USE_ELASTIC || '').toLowerCase() === 'true';
 
     if (useElastic) {
-      // Ensure index exists; the search path should not rebuild the corpus on every request.
+      // Ensure index exists and perform initial bulk index on first use
       if (!SearchService._esReady) {
         await ensureIndex();
+        // bulk index current rows
+        try {
+          await bulkIndex(rows);
+        } catch (err) {
+          // if bulk indexing fails, fall back to in-memory minisearch below
+          SearchService._esReady = false;
+          console.error('Elastic bulk index failed, falling back to MiniSearch:', err && err.message);
+        }
         SearchService._esReady = true;
       }
 
@@ -444,41 +475,23 @@ class SearchService {
         });
       }
 
-      const scopeByEntity = [
-        { entityType: ENTITY_DOCUMENT, scope: documentScope },
-        { entityType: ENTITY_ISSUE, scope: issueScope },
-        { entityType: ENTITY_CUSTOMER_QUESTION, scope: customerQuestionScope }
-      ].filter(item => entities.includes(item.entityType));
-
-      const entityClauses = [];
-      for (const { entityType, scope } of scopeByEntity) {
-        const accessibleProjectIds = resolveAccessibleProjectIds(scope, options.project_id);
-        if (accessibleProjectIds !== null && accessibleProjectIds.length === 0) {
-          continue;
-        }
-
-        const clauseFilter = [{ terms: { entity_type: [entityType] } }];
-        if (accessibleProjectIds !== null) {
-          clauseFilter.push({ terms: { project_id_text: accessibleProjectIds.map(String) } });
-        }
-
-        entityClauses.push({
-          bool: {
-            filter: clauseFilter,
-            should,
-            minimum_should_match: 1
-          }
-        });
+      // Filter by entity types
+      const filter = [];
+      if (entities && entities.length) {
+        filter.push({ terms: { entity_type: entities } });
       }
 
-      if (entityClauses.length === 0) {
-        return { items: [], total: 0, limit, offset, query };
+      // If user provided project filter, add filter (normalized earlier in addScopeFilter usage)
+      const requestedProjectIds = normalizeProjectIds(options.project_id);
+      if (requestedProjectIds && requestedProjectIds.length > 0) {
+        filter.push({ terms: { project_id_text: requestedProjectIds.map(String) } });
       }
 
       const body = {
         query: {
           bool: {
-            should: entityClauses,
+            should,
+            filter,
             minimum_should_match: 1
           }
         },
