@@ -64,6 +64,21 @@ function containsNormalized(value, query) {
   return hay.includes(needle);
 }
 
+function extractMatchSnippet(value, query, radius = 60) {
+  const text = String(value || '');
+  const hay = text.toLowerCase();
+  const needle = String(query || '').toLowerCase();
+  if (!needle) return null;
+  const idx = hay.indexOf(needle);
+  if (idx === -1) return null;
+  const start = Math.max(0, idx - radius);
+  const end = Math.min(text.length, idx + needle.length + radius);
+  let snippet = text.slice(start, end).trim();
+  if (start > 0) snippet = '...' + snippet;
+  if (end < text.length) snippet = snippet + '...';
+  return snippet.replace(/\s+/g, ' ');
+}
+
 function rerankResults(found, query, numericLike) {
   const queryStr = String(query || '').trim();
 
@@ -491,16 +506,25 @@ class SearchService {
         // _id contains our composite id like "entityType:entityId"
         const idRaw = h._id || src.id || '';
         const [etype, eid] = String(idRaw).split(':');
+        const title = src.title || '';
+        const description = src.description || '';
+        const code = src.code || '';
+        const comment = src.comment || '';
+        const messages_text = src.messages_text || '';
+        const files_text = src.files_text || '';
+        // Determine match_text from preferred fields
+        let match_text = extractMatchSnippet(code, query) || extractMatchSnippet(title, query) || extractMatchSnippet(comment, query) || extractMatchSnippet(src.project_code || '', query) || extractMatchSnippet(description, query) || extractMatchSnippet(messages_text, query) || extractMatchSnippet(files_text, query) || extractMatchSnippet(src.links_text || '', query) || null;
         return {
           id: idRaw,
           entity_type: etype || null,
           entity_id: eid ? Number(eid) : null,
-          title: src.title || '',
-          description: src.description || '',
-          code: src.code || '',
-          comment: src.comment || '',
-          messages_text: src.messages_text || '',
-          files_text: src.files_text || '',
+          title,
+          description,
+          code,
+          comment,
+          messages_text,
+          files_text,
+          match_text,
           score: h._score || 0,
           _sort_idx: idx
         };
@@ -516,7 +540,8 @@ class SearchService {
         code: item.code,
         comment: item.comment,
         messages_text: item.messages_text,
-        files_text: item.files_text
+        files_text: item.files_text,
+        match_text: item.match_text || null
       }));
 
       return {
