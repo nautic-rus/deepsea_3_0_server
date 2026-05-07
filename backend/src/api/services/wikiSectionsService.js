@@ -1,6 +1,7 @@
 const WikiSection = require('../../db/models/WikiSection');
 const Project = require('../../db/models/Project');
 const { hasPermission } = require('./permissionChecker');
+const UserModel = require('../../db/models/User');
 
 function normalizeIntArray(value) {
   if (value === undefined) return undefined;
@@ -21,6 +22,26 @@ function normalizeIntArray(value) {
 }
 
 class WikiSectionsService {
+  static async _enrichCreatedByForSections(items) {
+    if (!Array.isArray(items)) return items;
+    const userIds = [...new Set(items.map((it) => (it && it.created_by ? Number(it.created_by) : null)).filter(Boolean))];
+    const usersById = {};
+    await Promise.all(userIds.map(async (uid) => {
+      try {
+        const u = await UserModel.findById(Number(uid));
+        if (u) usersById[Number(uid)] = { id: u.id, avatar_id: u.avatar_id || null, full_name: `${(u.last_name || '').trim()} ${(u.first_name || '').trim()} ${(u.middle_name || '').trim()}`.trim() };
+      } catch (e) { /* ignore */ }
+    }));
+
+    return items.map((it) => {
+      if (!it) return it;
+      const cb = it.created_by ? usersById[Number(it.created_by)] || null : null;
+      const out = Object.assign({}, it);
+      delete out.created_by;
+      out.created_by = cb;
+      return out;
+    });
+  }
   static async getActorProjectScope(actor) {
     const canViewAll = await hasPermission(actor, 'projects.view_all');
     const assignedProjectIds = canViewAll ? [] : await Project.listAssignedProjectIds(actor.id);
@@ -103,7 +124,27 @@ class WikiSectionsService {
     q.viewer_organization_id = actor.organization_id !== undefined ? actor.organization_id : null;
 
     const rows = await WikiSection.list(q);
-    return rows.filter((s) => WikiSectionsService.canAccessSection(s, actor, assignedProjectIds, canViewAll));
+    const visible = rows.filter((s) => WikiSectionsService.canAccessSection(s, actor, assignedProjectIds, canViewAll));
+
+    // Exclude sections whose parent is inaccessible to the actor.
+    // For each visible section with a parent_id, ensure the parent is accessible.
+    const parentIds = [...new Set(visible.filter(s => s && s.parent_id).map(s => Number(s.parent_id)))];
+    const parentMap = {};
+    await Promise.all(parentIds.map(async (pid) => {
+      try {
+        const p = await WikiSection.findById(Number(pid));
+        parentMap[Number(pid)] = p || null;
+      } catch (e) { parentMap[Number(pid)] = null; }
+    }));
+
+    const filtered = visible.filter((s) => {
+      if (!s || !s.parent_id) return true;
+      const parent = parentMap[Number(s.parent_id)] || null;
+      if (!parent) return false;
+      return WikiSectionsService.canAccessSection(parent, actor, assignedProjectIds, canViewAll);
+    });
+
+    return await WikiSectionsService._enrichCreatedByForSections(filtered);
   }
 
   static async getSectionById(id, actor) {
@@ -123,7 +164,8 @@ class WikiSectionsService {
       throw err;
     }
 
-    return s;
+    const enriched = (await WikiSectionsService._enrichCreatedByForSections([s]))[0];
+    return enriched;
   }
 
   static async createSection(fields, actor) {
@@ -144,7 +186,9 @@ class WikiSectionsService {
     if (sectionOrganizationIds !== undefined) payload.organizations = sectionOrganizationIds;
     if (!payload.created_by) payload.created_by = actor.id;
 
-    return await WikiSection.create(payload);
+    const created = await WikiSection.create(payload);
+    const enriched = (await WikiSectionsService._enrichCreatedByForSections([created]))[0];
+    return enriched;
   }
 
   static async updateSection(id, fields, actor) {
@@ -184,7 +228,8 @@ class WikiSectionsService {
 
     const updated = await WikiSection.update(Number(id), payload);
     if (!updated) { const err = new Error('Section not found'); err.statusCode = 404; throw err; }
-    return updated;
+    const enriched = (await WikiSectionsService._enrichCreatedByForSections([updated]))[0];
+    return enriched;
   }
 
   static async deleteSection(id, actor) {

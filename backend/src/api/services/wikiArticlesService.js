@@ -4,6 +4,7 @@ const WikiArticleFavorite = require('../../db/models/WikiArticleFavorite');
 const WikiSection = require('../../db/models/WikiSection');
 const Project = require('../../db/models/Project');
 const { hasPermission } = require('./permissionChecker');
+const UserModel = require('../../db/models/User');
 
 function normalizeIntArray(value) {
   if (value === undefined) return undefined;
@@ -24,6 +25,26 @@ function normalizeIntArray(value) {
 }
 
 class WikiArticlesService {
+  static async _enrichCreatedByForArticles(items) {
+    if (!Array.isArray(items)) return items;
+    const userIds = [...new Set(items.map((it) => (it && it.created_by ? Number(it.created_by) : null)).filter(Boolean))];
+    const usersById = {};
+    await Promise.all(userIds.map(async (uid) => {
+      try {
+        const u = await UserModel.findById(Number(uid));
+        if (u) usersById[Number(uid)] = { id: u.id, avatar_id: u.avatar_id || null, full_name: `${(u.last_name || '').trim()} ${(u.first_name || '').trim()} ${(u.middle_name || '').trim()}`.trim() };
+      } catch (e) { /* ignore */ }
+    }));
+
+    return items.map((it) => {
+      if (!it) return it;
+      const cb = it.created_by ? usersById[Number(it.created_by)] || null : null;
+      const out = Object.assign({}, it);
+      delete out.created_by;
+      out.created_by = cb;
+      return out;
+    });
+  }
   static async getActorProjectScope(actor) {
     const canViewAll = await hasPermission(actor, 'projects.view_all');
     const assignedProjectIds = canViewAll ? [] : await Project.listAssignedProjectIds(actor.id);
@@ -117,11 +138,12 @@ class WikiArticlesService {
     const visibleRows = rows.filter((a) => WikiArticlesService.canAccessScopedEntity(a, actor, assignedProjectIds, canViewAll));
 
     const articleIds = visibleRows.map((r) => Number(r.id)).filter((v) => !Number.isNaN(v));
-    if (articleIds.length === 0) return visibleRows;
+    if (articleIds.length === 0) return await WikiArticlesService._enrichCreatedByForArticles(visibleRows);
 
     const favRows = await WikiArticleFavorite.listByUserAndArticleIds(actor.id, articleIds);
     const favSet = new Set(favRows.map((r) => Number(r.article_id)));
-    return visibleRows.map((r) => Object.assign({}, r, { is_favorite: favSet.has(Number(r.id)) }));
+    const withFav = visibleRows.map((r) => Object.assign({}, r, { is_favorite: favSet.has(Number(r.id)) }));
+    return await WikiArticlesService._enrichCreatedByForArticles(withFav);
   }
 
   static async getArticleById(id, actor) {
@@ -149,7 +171,8 @@ class WikiArticlesService {
         try { await WikiArticleView.create({ user_id: actor.id, article_id: Number(id) }); } catch (e) { /* ignore */ }
       })();
     }
-    return a;
+    const enriched = (await WikiArticlesService._enrichCreatedByForArticles([a]))[0];
+    return enriched;
   }
 
   static async createArticle(fields, actor) {
@@ -171,7 +194,9 @@ class WikiArticlesService {
     if (articleProjectIds !== undefined) payload.projects = articleProjectIds;
     if (!payload.created_by) payload.created_by = actor.id;
 
-    return await WikiArticle.create(payload);
+    const created = await WikiArticle.create(payload);
+    const enriched = (await WikiArticlesService._enrichCreatedByForArticles([created]))[0];
+    return enriched;
   }
 
   static async updateArticle(id, fields, actor) {
@@ -215,7 +240,8 @@ class WikiArticlesService {
 
     const updated = await WikiArticle.update(Number(id), payload);
     if (!updated) { const err = new Error('Article not found'); err.statusCode = 404; throw err; }
-    return updated;
+    const enriched = (await WikiArticlesService._enrichCreatedByForArticles([updated]))[0];
+    return enriched;
   }
 
   static async deleteArticle(id, actor) {
