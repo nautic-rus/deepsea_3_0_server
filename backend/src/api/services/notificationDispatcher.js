@@ -13,6 +13,7 @@ const UserNotification = require('../../db/models/UserNotification');
 const { buildNotificationData, resolveFieldNames } = require('../../db/models/UserNotification');
 const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
 const User = require('../../db/models/User');
+const { hasPermission } = require('./permissionChecker');
 const TemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
 const RocketChatService = require('./rocketChatService');
@@ -72,6 +73,64 @@ class NotificationDispatcher {
   static _releaseExternalDeliveryKey(key) {
     if (!key) return;
     NotificationDispatcher._recentExternalDeliveries.delete(key);
+  }
+
+  static _hasOwn(obj, key) {
+    return !!obj && Object.prototype.hasOwnProperty.call(obj, key);
+  }
+
+  static _isDocumentEvent(eventCode, entity) {
+    const code = String(eventCode || '').toLowerCase();
+    const entityCode = entity && entity.code ? String(entity.code).toLowerCase() : '';
+    return entityCode === 'document' || code.startsWith('document_') || code === 'comment_added';
+  }
+
+  static _getDocumentVisibilityState({ entity, content, templateContext }) {
+    const document = templateContext && templateContext.document ? templateContext.document : null;
+    const changes = templateContext && templateContext.changes && typeof templateContext.changes === 'object'
+      ? templateContext.changes
+      : null;
+
+    let publicValue;
+    if (document && NotificationDispatcher._hasOwn(document, 'public')) {
+      publicValue = document.public;
+    } else if (changes && changes.after && NotificationDispatcher._hasOwn(changes.after, 'public')) {
+      publicValue = changes.after.public;
+    } else if (content && content.value && NotificationDispatcher._hasOwn(content.value, 'public')) {
+      publicValue = content.value.public;
+    }
+
+    let publicChanged = false;
+    if (changes && changes.before && changes.after &&
+      NotificationDispatcher._hasOwn(changes.before, 'public') &&
+      NotificationDispatcher._hasOwn(changes.after, 'public')) {
+      publicChanged = JSON.stringify(changes.before.public) !== JSON.stringify(changes.after.public);
+    } else if (content && content.before && content.after &&
+      NotificationDispatcher._hasOwn(content.before, 'public') &&
+      NotificationDispatcher._hasOwn(content.after, 'public')) {
+      publicChanged = JSON.stringify(content.before.public) !== JSON.stringify(content.after.public);
+    }
+
+    return {
+      isDocumentEvent: NotificationDispatcher._isDocumentEvent(entity && entity.code ? entity.code : null, entity),
+      publicValue,
+      publicChanged
+    };
+  }
+
+  static async _canReceiveDocumentNotification(userId, visibilityState, permissionCache) {
+    if (!visibilityState || !visibilityState.isDocumentEvent) return true;
+
+    const shouldRestrict = visibilityState.publicValue === false || visibilityState.publicChanged === true;
+    if (!shouldRestrict) return true;
+
+    const uid = Number(userId);
+    if (!uid) return false;
+    if (permissionCache.has(uid)) return permissionCache.get(uid);
+
+    const allowed = await hasPermission({ id: uid }, 'documents.view_not_public');
+    permissionCache.set(uid, allowed);
+    return allowed;
   }
 
   /**
@@ -140,6 +199,9 @@ class NotificationDispatcher {
     });
     if (recipients.length === 0) return;
 
+    const visibilityState = NotificationDispatcher._getDocumentVisibilityState({ entity, content, templateContext });
+    const permissionCache = new Map();
+
     // Special-case: project_invite should ignore user settings and deliver
     // only an email to the target user (no center notification, no Rocket.Chat).
     if (String(eventCode).toLowerCase() === 'project_invite') {
@@ -171,6 +233,15 @@ class NotificationDispatcher {
       return;
     }
 
+    const filteredRecipients = [];
+    for (const r of recipients) {
+      const uid = Number(r.user_id);
+      if (!uid) continue;
+      if (!(await NotificationDispatcher._canReceiveDocumentNotification(uid, visibilityState, permissionCache))) continue;
+      filteredRecipients.push(r);
+    }
+    if (filteredRecipients.length === 0) return;
+
     // 3. Build unified notification data once, then resolve FK names
     const notifData = buildNotificationData(actor, entity, content);
     const entityCode = entity && entity.code ? entity.code : null;
@@ -185,7 +256,7 @@ class NotificationDispatcher {
     // 4. Loop: create DB record (once per user), send via method
     const notifiedUserIds = new Set();
 
-    for (const r of recipients) {
+    for (const r of filteredRecipients) {
       try {
         const uid = Number(r.user_id);
 
@@ -275,7 +346,7 @@ class NotificationDispatcher {
     if (directUserIds && directUserIds.length > 0) {
       for (const uid of directUserIds) {
         const numUid = Number(uid);
-        if (uid && !notifiedUserIds.has(numUid)) {
+        if (uid && !notifiedUserIds.has(numUid) && await NotificationDispatcher._canReceiveDocumentNotification(numUid, visibilityState, permissionCache)) {
           // check if user is active before creating center notification
           try {
             const user = await User.findById(numUid);
