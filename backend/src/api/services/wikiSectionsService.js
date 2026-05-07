@@ -63,12 +63,8 @@ class WikiSectionsService {
     }
 
     if (Array.isArray(organizationIds) && organizationIds.length > 0) {
-      const actorOrgId = actor.organization_id ? Number(actor.organization_id) : null;
-      if (!actorOrgId || !organizationIds.includes(actorOrgId)) {
-        const err = new Error('Forbidden: user is not a member of one or more requested organizations');
-        err.statusCode = 403;
-        throw err;
-      }
+      // Organization scope restriction removed: allow setting organization ids
+      // even if actor is not a member of them.
     }
   }
 
