@@ -115,6 +115,75 @@ class Material {
     };
   }
 
+  static async findSpecificationsByMaterialId(materialId, filters = {}) {
+    const { allowed_project_ids } = filters;
+    const values = [Number(materialId)];
+    let idx = 2;
+    const where = ['sp.material_id = $1'];
+
+    if (Array.isArray(allowed_project_ids) && allowed_project_ids.length > 0) {
+      const projectIds = allowed_project_ids.map(p => Number(p)).filter(p => !Number.isNaN(p));
+      if (projectIds.length === 0) return [];
+      where.push(`spec.project_id = ANY($${idx++}::int[])`);
+      values.push(projectIds);
+    }
+
+    const q = `SELECT
+        sp.id AS specification_part_id,
+        sp.specification_version_id,
+        sp.parent_id AS specification_part_parent_id,
+        sp.part_code,
+        sp.quantity,
+        sp.source,
+        sp.created_at AS specification_part_created_at,
+        sv.version AS specification_version,
+        sv.notes AS specification_version_notes,
+        sv.created_at AS specification_version_created_at,
+        spec.id AS specification_id,
+        spec.code AS specification_code,
+        spec.name AS specification_name,
+        spec.description AS specification_description,
+        spec.project_id AS specification_project_id,
+        spec.document_id AS specification_document_id,
+        spec.created_at AS specification_created_at,
+        p.name AS project_name,
+        d.title AS document_name
+      FROM specification_parts sp
+      JOIN specification_version sv ON sv.id = sp.specification_version_id
+      JOIN specification spec ON spec.id = sv.specification_id
+      LEFT JOIN projects p ON p.id = spec.project_id
+      LEFT JOIN documents d ON d.id = spec.document_id
+      WHERE ${where.join(' AND ')}
+      ORDER BY spec.id DESC, sv.id DESC, sp.id DESC`;
+    const res = await pool.query(q, values);
+    return (res.rows || []).map((row) => ({
+      specification_part: {
+        id: row.specification_part_id,
+        specification_version_id: row.specification_version_id,
+        parent_id: row.specification_part_parent_id,
+        part_code: row.part_code,
+        quantity: row.quantity,
+        source: row.source,
+        created_at: row.specification_part_created_at,
+      },
+      specification_version: {
+        id: row.specification_version_id,
+        version: row.specification_version,
+        notes: row.specification_version_notes,
+        created_at: row.specification_version_created_at,
+      },
+      specification: {
+        id: row.specification_id,
+        code: row.specification_code,
+        name: row.specification_name,
+        description: row.specification_description,
+        created_at: row.specification_created_at,
+        project: row.specification_project_id ? { id: row.specification_project_id, name: row.project_name || null } : null,
+        document: row.specification_document_id ? { id: row.specification_document_id, name: row.document_name || null } : null,
+      },
+    }));
+  }
+
   static async create(fields) {
     const q = `INSERT INTO equipment_materials (stock_code, name, description, directory_id, unit_id, weight, sfi_code_id, type, status, created_by, updated_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`;
     const vals = [fields.stock_code, fields.name, fields.description || null, fields.directory_id, fields.unit_id || null, fields.weight ?? 0, fields.sfi_code_id || null, fields.type || 'material', fields.status || 'active', fields.created_by, fields.updated_by || null];

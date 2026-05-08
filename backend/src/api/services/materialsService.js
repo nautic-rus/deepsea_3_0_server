@@ -66,6 +66,37 @@ class MaterialsService {
     return m;
   }
 
+  static async getMaterialSpecificationsById(id, actor) {
+    const requiredPermission = 'materials.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+
+    const permissionScope = await getPermissionProjectScope(actor, requiredPermission);
+    if (!permissionScope.hasGlobal && permissionScope.projectIds.length === 0) {
+      const err = new Error('Forbidden: missing permission materials.view'); err.statusCode = 403; throw err;
+    }
+
+    const material = await Material.findById(Number(id));
+    if (!material) { const err = new Error('Material not found'); err.statusCode = 404; throw err; }
+
+    const specifications = await Material.findSpecificationsByMaterialId(
+      Number(id),
+      permissionScope.hasGlobal ? {} : { allowed_project_ids: permissionScope.projectIds }
+    );
+
+    return {
+      material: {
+        id: material.id,
+        stock_code: material.stock_code,
+        name: material.name,
+        description: material.description,
+        type: material.type,
+        status: material.status,
+      },
+      specifications,
+    };
+  }
+
   static async createMaterial(fields, actor) {
     const requiredPermission = 'materials.create';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }

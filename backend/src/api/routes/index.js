@@ -419,6 +419,7 @@ router.delete('/links/:id', authMiddleware, entityLinksController.remove);
 router.get('/materials', authMiddleware, materialsController.list);
 // GET next stock code
 router.get('/materials/next_stock_code', authMiddleware, materialsController.next_stock_code);
+router.get('/materials/:id/specifications', authMiddleware, materialsController.getSpecifications);
 router.get('/materials/:id', authMiddleware, materialsController.get);
 router.post('/materials', authMiddleware, materialsController.create);
 router.put('/materials/:id', authMiddleware, materialsController.update);
@@ -601,4 +602,3 @@ router.get('/wiki/views', authMiddleware, wikiArticleViewsController.listMine);
 router.get('/user/pages', authMiddleware, userPagesController.getPages);
 
 module.exports = router;
-

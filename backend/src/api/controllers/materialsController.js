@@ -31,6 +31,18 @@ class MaterialsController {
   }
 
   /**
+   * Retrieve specifications that use a material by id.
+   */
+  static async getSpecifications(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const row = await MaterialsService.getMaterialSpecificationsById(id, actor);
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  /**
    * Create a new material.
    */
   static async create(req, res, next) {
