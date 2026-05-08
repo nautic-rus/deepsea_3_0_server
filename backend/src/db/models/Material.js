@@ -86,14 +86,34 @@ class Material {
     const res = await pool.query(q, [id]);
     const r = res.rows[0];
     if (!r) return null;
+
+    const specCountQ = `
+      SELECT spec.project_id, COUNT(*)::int AS specification_parts_count
+      FROM specification_parts sp
+      JOIN specification_version sv ON sv.id = sp.specification_version_id
+      JOIN specification spec ON spec.id = sv.specification_id
+      WHERE sp.material_id = $1
+      GROUP BY spec.project_id
+    `;
+    const specCountRes = await pool.query(specCountQ, [id]);
+    const specificationPartsCountByProject = new Map(
+      (specCountRes.rows || []).map((row) => [row.project_id === null ? null : Number(row.project_id), Number(row.specification_parts_count) || 0])
+    );
+    const specification_parts_count = (specCountRes.rows || []).reduce(
+      (sum, row) => sum + (Number(row.specification_parts_count) || 0),
+      0
+    );
+
     // fetch related equipment_materials_projects entries
-    const projQ = `SELECT p.id, p.statement_id, p.shipments_id, p.created_at, s.code AS statement_code, s.name AS statement_name, s.project_id AS statement_project_id, sh.id AS shipment_id, sh.supplier_id AS shipment_supplier_id, sh.code AS shipment_code FROM equipment_materials_projects p LEFT JOIN statements s ON p.statement_id = s.id LEFT JOIN shipments sh ON p.shipments_id = sh.id WHERE p.equipment_material_id = $1 ORDER BY p.id DESC`;
+    const projQ = `SELECT p.id, p.statement_id, p.shipments_id, p.created_at, s.code AS statement_code, s.name AS statement_name, s.project_id AS statement_project_id, pr.code AS project_code, pr.name AS project_name, sh.id AS shipment_id, sh.supplier_id AS shipment_supplier_id, sh.code AS shipment_code, sup.name AS supplier_name, sup.description AS supplier_description FROM equipment_materials_projects p LEFT JOIN statements s ON p.statement_id = s.id LEFT JOIN projects pr ON pr.id = s.project_id LEFT JOIN shipments sh ON p.shipments_id = sh.id LEFT JOIN suppliers sup ON sup.id = sh.supplier_id WHERE p.equipment_material_id = $1 ORDER BY p.id DESC`;
     const projRes = await pool.query(projQ, [id]);
     const projects = (projRes.rows || []).map((p) => ({
       id: p.id,
       created_at: p.created_at,
+      specification_parts_count: specificationPartsCountByProject.get(p.statement_project_id === null ? null : Number(p.statement_project_id)) || 0,
+      project: p.statement_project_id ? { id: p.statement_project_id, code: p.project_code || null, name: p.project_name || null } : null,
       statement: p.statement_id ? { id: p.statement_id, code: p.statement_code || null, name: p.statement_name || null, project_id: p.statement_project_id || null } : null,
-      shipments: p.shipment_id ? { id: p.shipment_id, supplier_id: p.shipment_supplier_id || null, code: p.shipment_code || null } : null
+      shipments: p.shipment_id ? { id: p.shipment_id, supplier_id: p.shipment_supplier_id || null, code: p.shipment_code || null, supplier: p.shipment_supplier_id ? { id: p.shipment_supplier_id, name: p.supplier_name || null, description: p.supplier_description || null } : null } : null
     }));
 
     return {
@@ -111,6 +131,7 @@ class Material {
       created_at: r.created_at,
       updated_by: r.updated_by ? { id: r.updated_by, name: (r.updated_by_first_name || r.updated_by_last_name) ? `${r.updated_by_first_name || ''} ${r.updated_by_last_name || ''}`.trim() : null, avatar_id: r.updated_by_avatar_id || null } : null,
       updated_at: r.updated_at,
+      specification_parts_count,
       projects
     };
   }
