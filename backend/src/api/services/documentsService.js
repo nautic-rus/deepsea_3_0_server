@@ -920,7 +920,7 @@ class DocumentsService {
     const updated = await DocumentStorage.updateMetadataById({ id: Number(storageId), metadata });
     (async () => {
       try {
-        await HistoryService.addDocumentHistory(Number(id), actor, 'file_updated', { before: docStorage, after: updated });
+        await HistoryService.addDocumentHistory(Number(id), actor, 'file_updated', { before: docStorage, after: updated, document_storage_id: Number(docStorage.id) });
       } catch (e) { console.error('Failed to write document history for file update', e && e.message ? e.message : e); }
     })();
     return updated;
@@ -1410,7 +1410,7 @@ class DocumentsService {
         // record history on the document this attachment belongs to
         (async () => {
           try {
-            await HistoryService.addDocumentHistory(Number(a.document_id), actor, 'file_status_changed', { before: { id: Number(a.id), status_id: beforeStatus }, after: { id: Number(a.id), status_id: afterStatus } });
+            await HistoryService.addDocumentHistory(Number(a.document_id), actor, 'file_status_changed', { before: { id: Number(a.id), status_id: beforeStatus }, after: { id: Number(a.id), status_id: afterStatus }, document_storage_id: Number(a.id) });
           } catch (e) { console.error('Failed to write document history for bulk file status change', e && e.message ? e.message : e); }
         })();
       }

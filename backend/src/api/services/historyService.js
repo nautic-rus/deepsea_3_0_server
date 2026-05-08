@@ -7,6 +7,19 @@ const CustomerQuestionHistory = require('../../db/models/CustomerQuestionHistory
  * Convenience methods to add timeline/history entries for issues and documents.
  */
 class HistoryService {
+  static _shouldSkipDocumentHistoryField(fieldName) {
+    return fieldName === 'updated_at'
+      || fieldName === 'updatedAt'
+      || fieldName === 'created_at'
+      || fieldName === 'createdAt'
+      || fieldName === 'archive_data'
+      || fieldName === 'archiveData'
+      || fieldName === 'archive_user_id'
+      || fieldName === 'archiveUserId'
+      || fieldName === 'status_edit_date'
+      || fieldName === 'statusEditDate';
+  }
+
   /**
    * Add issue history record.
    * @param {number} issueId
@@ -68,16 +81,15 @@ class HistoryService {
       const after = details.after || {};
       const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
       const writes = [];
+      const docStorageId = details.document_storage_id || details.documentStorageId || null;
       for (const k of keys) {
-        if (k === 'updated_at' || k === 'updatedAt' || k === 'created_at' || k === 'createdAt' || k === 'archive_data' || k === 'archiveData' || k === 'status_edit_date' || k === 'statusEditDate') continue;
+        if (HistoryService._shouldSkipDocumentHistoryField(k)) continue;
         const bv = before[k];
         const av = after[k];
         const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
         const avStr = av === undefined ? null : (typeof av === 'string' ? av : JSON.stringify(av));
         if (bvStr === avStr) continue;
         let actionName = k;
-        // If change originates from a documents_storage row, map certain fields to storage-specific names
-        const docStorageId = (before && (before.id || before.document_storage_id)) || (after && (after.id || after.document_storage_id)) || null;
         if (docStorageId) {
           if (k === 'status_id') actionName = 'storage_status_id';
           if (k === 'type_id') actionName = 'storage_type_id';

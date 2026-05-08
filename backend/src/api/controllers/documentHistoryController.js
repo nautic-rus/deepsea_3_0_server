@@ -67,7 +67,7 @@ class DocumentHistoryController {
       const hasProject = doc && doc.project_id ? await hasPermissionForProject(actor, requiredPermission, doc.project_id) : false;
       if (!hasGlobal && !hasProject) { const err = new Error('Forbidden: missing permission documents.history'); err.statusCode = 403; throw err; }
       let rows = await DocumentHistory.listByDocument(documentId);
-      rows = (rows || []).filter(r => !/^updated[_\s]?at$/i.test(String(r.field_name)));
+      rows = (rows || []).filter(r => !/^updated[_\s]?at$/i.test(String(r.field_name)) && !/^archive[_\s]?user[_\s]?id$/i.test(String(r.field_name)));
       if (!rows || rows.length === 0) return res.json([]);
 
       // Enrich history entries with user info (from changed_by)
