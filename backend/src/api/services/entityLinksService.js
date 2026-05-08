@@ -5,11 +5,27 @@ const CustomerQuestion = require('../../db/models/CustomerQuestion');
 const Project = require('../../db/models/Project');
 const IssueStatus = require('../../db/models/IssueStatus');
 const DocumentStatus = require('../../db/models/DocumentStatus');
+const User = require('../../db/models/User');
 const { hasPermission, hasPermissionForProject } = require('./permissionChecker');
 const IssueType = require('../../db/models/IssueType');
 const DocumentType = require('../../db/models/DocumentType');
 
 class EntityLinksService {
+  static _buildUserRef(user) {
+    if (!user || !user.id) return null;
+
+    const full_name = [user.last_name, user.first_name, user.middle_name]
+      .map(v => (v == null ? '' : String(v).trim()))
+      .filter(Boolean)
+      .join(' ');
+
+    return {
+      id: user.id,
+      avatar_id: user.avatar_id || null,
+      full_name: full_name || null
+    };
+  }
+
   /**
   * Create a new entity link.
   * fields: { active_type, active_id, passive_type, passive_id, relation_type }
@@ -105,6 +121,20 @@ class EntityLinksService {
     const cache = {};
     const rawCache = {};
     const permissionCache = {};
+    const userCache = {};
+
+    const getUserRef = async (userId) => {
+      if (!userId) return null;
+      const key = Number(userId);
+      if (Object.prototype.hasOwnProperty.call(userCache, key)) return userCache[key];
+      try {
+        const user = await User.findById(key);
+        userCache[key] = EntityLinksService._buildUserRef(user);
+      } catch (e) {
+        userCache[key] = null;
+      }
+      return userCache[key];
+    };
 
     const normalize = async (type, data) => {
       if (!data) return null;
@@ -112,6 +142,8 @@ class EntityLinksService {
         let status = null;
         let project = null;
         let typeName = null;
+        const author = await getUserRef(data.author_id);
+        const assignee = await getUserRef(data.assignee_id);
         if (data.status_id) {
           try { status = await IssueStatus.findById(data.status_id); } catch (e) { status = null; }
         }
@@ -129,6 +161,8 @@ class EntityLinksService {
           project: project,
           created_at: data.created_at || null,
           code: data.code || null,
+          author_id: author,
+          assigne_to: assignee,
           status: status ? { name: status.name || null, code: status.code || null } : null,
         };
       }
@@ -136,6 +170,8 @@ class EntityLinksService {
         let status = null;
         let project = null;
         let typeName = null;
+        const author = await getUserRef(data.created_by);
+        const responsible = await getUserRef(data.assigne_to);
         if (data.status_id) {
           try { status = await DocumentStatus.findById(data.status_id); } catch (e) { status = null; }
         }
@@ -153,12 +189,16 @@ class EntityLinksService {
           project: project,
           created_at: data.created_at || null,
           code: data.code || null,
+          author_id: author,
+          responsible_id: responsible,
           status: status ? { name: status.name || null, code: status.code || null } : null,
         };
       }
       if (type === 'qna') {
         const st = data.status || null;
         const typeName = (data.type && data.type.name) ? data.type.name : null;
+        const askedBy = data.asked_by && data.asked_by.id ? data.asked_by : await getUserRef(data.asked_by);
+        const answeredBy = data.answered_by && data.answered_by.id ? data.answered_by : await getUserRef(data.answered_by);
         return {
           id: data.id,
           type: typeName,
@@ -167,12 +207,16 @@ class EntityLinksService {
           project: data.project || null,
           created_at: data.created_at || null,
           code: data.code || null,
+          asked_by: askedBy,
+          answered_by: answeredBy,
           status: st ? { name: st.name || null, code: st.code || null } : null,
         };
       }
       if (type === 'customer_question') {
         const st = data.status || null;
         const typeName = (data.type && data.type.name) ? data.type.name : null;
+        const askedBy = data.asked_by && data.asked_by.id ? data.asked_by : await getUserRef(data.asked_by);
+        const answeredBy = data.answered_by && data.answered_by.id ? data.answered_by : await getUserRef(data.answered_by);
         return {
           id: data.id,
           type: typeName,
@@ -181,6 +225,8 @@ class EntityLinksService {
           project: data.project || null,
           created_at: data.created_at || null,
           code: data.code || null,
+          asked_by: askedBy,
+          answered_by: answeredBy,
           status: st ? { name: st.name || null, code: st.code || null } : null,
         };
       }
