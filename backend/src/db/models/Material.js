@@ -87,32 +87,37 @@ class Material {
     const r = res.rows[0];
     if (!r) return null;
 
-    const specCountQ = `
-      SELECT spec.project_id, COUNT(*)::int AS specification_parts_count
-      FROM specification_parts sp
-      JOIN specification_version sv ON sv.id = sp.specification_version_id
-      JOIN specification spec ON spec.id = sv.specification_id
+    const statementCountQ = `
+      SELECT emp.statement_id, COUNT(DISTINCT sp.id)::int AS statement_parts_count
+      FROM equipment_materials_projects emp
+      JOIN statements st ON st.id = emp.statement_id
+      JOIN specification spec ON spec.project_id = st.project_id
+      JOIN specification_version sv ON sv.specification_id = spec.id
+      JOIN specification_parts sp ON sp.specification_version_id = sv.id
       WHERE sp.material_id = $1
-      GROUP BY spec.project_id
+        AND emp.statement_id IS NOT NULL
+      GROUP BY emp.statement_id
     `;
-    const specCountRes = await pool.query(specCountQ, [id]);
-    const specificationPartsCountByProject = new Map(
-      (specCountRes.rows || []).map((row) => [row.project_id === null ? null : Number(row.project_id), Number(row.specification_parts_count) || 0])
+    const statementCountRes = await pool.query(statementCountQ, [id]);
+    const statementPartsCountByStatement = new Map(
+      (statementCountRes.rows || []).map((row) => [row.statement_id === null ? null : Number(row.statement_id), Number(row.statement_parts_count) || 0])
     );
-    const specification_parts_count = (specCountRes.rows || []).reduce(
-      (sum, row) => sum + (Number(row.specification_parts_count) || 0),
+    const statement_parts_count = (statementCountRes.rows || []).reduce(
+      (sum, row) => sum + (Number(row.statement_parts_count) || 0),
       0
     );
 
-    // fetch related equipment_materials_projects entries
-    const projQ = `SELECT p.id, p.statement_id, p.shipments_id, p.created_at, s.code AS statement_code, s.name AS statement_name, s.project_id AS statement_project_id, pr.code AS project_code, pr.name AS project_name, sh.id AS shipment_id, sh.supplier_id AS shipment_supplier_id, sh.code AS shipment_code, sup.name AS supplier_name, sup.description AS supplier_description FROM equipment_materials_projects p LEFT JOIN statements s ON p.statement_id = s.id LEFT JOIN projects pr ON pr.id = s.project_id LEFT JOIN shipments sh ON p.shipments_id = sh.id LEFT JOIN suppliers sup ON sup.id = sh.supplier_id WHERE p.equipment_material_id = $1 ORDER BY p.id DESC`;
-    const projRes = await pool.query(projQ, [id]);
-    const projects = (projRes.rows || []).map((p) => ({
-      id: p.id,
+    // fetch statement usages from equipment_materials_projects
+    const statementQ = `SELECT p.id, p.statement_id, p.shipments_id, p.created_at, s.code AS statement_code, s.name AS statement_name, s.description AS statement_description, s.project_id AS statement_project_id, pr.code AS project_code, pr.name AS project_name, sh.id AS shipment_id, sh.supplier_id AS shipment_supplier_id, sh.code AS shipment_code, sup.name AS supplier_name, sup.description AS supplier_description FROM equipment_materials_projects p LEFT JOIN statements s ON p.statement_id = s.id LEFT JOIN projects pr ON pr.id = s.project_id LEFT JOIN shipments sh ON p.shipments_id = sh.id LEFT JOIN suppliers sup ON sup.id = sh.supplier_id WHERE p.equipment_material_id = $1 ORDER BY p.id DESC`;
+    const statementRes = await pool.query(statementQ, [id]);
+    const statements = (statementRes.rows || []).map((p) => ({
+      id: p.statement_id || null,
+      code: p.statement_code || null,
+      name: p.statement_name || null,
+      equipment_material_project_id: p.id,
       created_at: p.created_at,
-      specification_parts_count: specificationPartsCountByProject.get(p.statement_project_id === null ? null : Number(p.statement_project_id)) || 0,
+      statement_parts_count: statementPartsCountByStatement.get(p.statement_id === null ? null : Number(p.statement_id)) || 0,
       project: p.statement_project_id ? { id: p.statement_project_id, code: p.project_code || null, name: p.project_name || null } : null,
-      statement: p.statement_id ? { id: p.statement_id, code: p.statement_code || null, name: p.statement_name || null, project_id: p.statement_project_id || null } : null,
       shipments: p.shipment_id ? { id: p.shipment_id, supplier_id: p.shipment_supplier_id || null, code: p.shipment_code || null, supplier: p.shipment_supplier_id ? { id: p.shipment_supplier_id, name: p.supplier_name || null, description: p.supplier_description || null } : null } : null
     }));
 
@@ -131,8 +136,8 @@ class Material {
       created_at: r.created_at,
       updated_by: r.updated_by ? { id: r.updated_by, name: (r.updated_by_first_name || r.updated_by_last_name) ? `${r.updated_by_first_name || ''} ${r.updated_by_last_name || ''}`.trim() : null, avatar_id: r.updated_by_avatar_id || null } : null,
       updated_at: r.updated_at,
-      specification_parts_count,
-      projects
+      statement_parts_count,
+      statements
     };
   }
 
@@ -150,16 +155,6 @@ class Material {
     }
 
     const q = `SELECT
-        sp.id AS specification_part_id,
-        sp.specification_version_id,
-        sp.parent_id AS specification_part_parent_id,
-        sp.part_code,
-        sp.quantity,
-        sp.source,
-        sp.created_at AS specification_part_created_at,
-        sv.version AS specification_version,
-        sv.notes AS specification_version_notes,
-        sv.created_at AS specification_version_created_at,
         spec.id AS specification_id,
         spec.code AS specification_code,
         spec.name AS specification_name,
@@ -167,39 +162,28 @@ class Material {
         spec.project_id AS specification_project_id,
         spec.document_id AS specification_document_id,
         spec.created_at AS specification_created_at,
+        p.code AS project_code,
         p.name AS project_name,
-        d.title AS document_name
+        d.title AS document_name,
+        COUNT(DISTINCT sp.id)::int AS specification_parts_count
       FROM specification_parts sp
       JOIN specification_version sv ON sv.id = sp.specification_version_id
       JOIN specification spec ON spec.id = sv.specification_id
       LEFT JOIN projects p ON p.id = spec.project_id
       LEFT JOIN documents d ON d.id = spec.document_id
       WHERE ${where.join(' AND ')}
-      ORDER BY spec.id DESC, sv.id DESC, sp.id DESC`;
+      GROUP BY spec.id, spec.code, spec.name, spec.description, spec.project_id, spec.document_id, spec.created_at, p.code, p.name, d.title
+      ORDER BY spec.id DESC`;
     const res = await pool.query(q, values);
     return (res.rows || []).map((row) => ({
-      specification_part: {
-        id: row.specification_part_id,
-        specification_version_id: row.specification_version_id,
-        parent_id: row.specification_part_parent_id,
-        part_code: row.part_code,
-        quantity: row.quantity,
-        source: row.source,
-        created_at: row.specification_part_created_at,
-      },
-      specification_version: {
-        id: row.specification_version_id,
-        version: row.specification_version,
-        notes: row.specification_version_notes,
-        created_at: row.specification_version_created_at,
-      },
+      specification_parts_count: Number(row.specification_parts_count) || 0,
       specification: {
         id: row.specification_id,
         code: row.specification_code,
         name: row.specification_name,
         description: row.specification_description,
         created_at: row.specification_created_at,
-        project: row.specification_project_id ? { id: row.specification_project_id, name: row.project_name || null } : null,
+        project: row.specification_project_id ? { id: row.specification_project_id, code: row.project_code || null, name: row.project_name || null } : null,
         document: row.specification_document_id ? { id: row.specification_document_id, name: row.document_name || null } : null,
       },
     }));
