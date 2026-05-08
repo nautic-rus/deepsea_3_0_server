@@ -167,7 +167,7 @@ class MaterialsService {
       if (!allowed) { const err = new Error('Forbidden: missing permission materials.delete'); err.statusCode = 403; throw err; }
     }
     // prevent deletion if material is linked in equipment_materials_projects
-    const chk = await pool.query('SELECT 1 FROM equipment_materials_projects WHERE material_id = $1 LIMIT 1', [Number(id)]);
+    const chk = await pool.query('SELECT 1 FROM equipment_materials_projects WHERE equipment_material_id = $1 LIMIT 1', [Number(id)]);
     if (chk && chk.rowCount > 0) {
       const err = new Error('Material is used in projects and cannot be deleted');
       err.statusCode = 400;

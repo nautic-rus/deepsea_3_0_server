@@ -14,7 +14,7 @@ class SpecificationPart {
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
-      LEFT JOIN materials m ON m.id = sp.material_id
+      LEFT JOIN equipment_materials m ON m.id = sp.material_id
       LEFT JOIN users cu ON cu.id = sp.created_by
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       ${whereSql} ORDER BY sp.id`;
@@ -35,7 +35,7 @@ class SpecificationPart {
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
-      LEFT JOIN materials m ON m.id = sp.material_id
+      LEFT JOIN equipment_materials m ON m.id = sp.material_id
       LEFT JOIN users cu ON cu.id = sp.created_by
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       WHERE sp.id = $1 LIMIT 1`;

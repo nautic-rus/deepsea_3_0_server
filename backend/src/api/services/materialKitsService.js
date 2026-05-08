@@ -121,7 +121,7 @@ class MaterialKitsService {
       for (const it of items) {
         let material_id = it.material_id || null;
         if (!material_id && it.stock_code) {
-          const res = await client.query('SELECT id FROM materials WHERE stock_code = $1 LIMIT 1', [it.stock_code]);
+          const res = await client.query('SELECT id FROM equipment_materials WHERE stock_code = $1 LIMIT 1', [it.stock_code]);
           const m = res.rows[0];
           if (m) material_id = m.id;
         }
