@@ -2203,6 +2203,131 @@
           }
         }
       },
+      "MaterialProjectLink": {
+        "type": "object",
+        "description": "Link between a material and a project via statement and shipment",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "equipment_material_id": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "statement_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "shipments_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "material": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "stock_code": {
+                "type": "string",
+                "nullable": true
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "type": "string",
+                "nullable": true
+              },
+              "type": {
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "project": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "code": {
+                "type": "string",
+                "nullable": true
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "statement": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "code": {
+                "type": "string",
+                "nullable": true
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "project_id": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          },
+          "shipments": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "supplier_id": {
+                "type": "integer",
+                "nullable": true
+              },
+              "code": {
+                "type": "string",
+                "nullable": true
+              },
+              "model": {
+                "type": "string",
+                "nullable": true
+              },
+              "manufacturer": {
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          }
+        }
+      },
       "MaterialSpecificationsResponse": {
         "type": "object",
         "description": "Material with specification usages",
@@ -3957,7 +4082,7 @@
           "materials"
         ],
         "summary": "List of materials",
-        "description": "Returns a list of equipment_materials records filtered by directory, unit, shipment, type, status, and text search. Pagination via page/limit.",
+        "description": "Returns a list of equipment_materials records filtered by directory, unit, shipment, project, type, status, and text search. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -3987,6 +4112,14 @@
             "name": "shipment_id",
             "in": "query",
             "description": "Filter by shipment ID (via shipment_materials relation)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Filter by project ID (via linked statements)",
             "schema": {
               "type": "integer"
             }
@@ -4225,6 +4358,205 @@
           },
           "403": {
             "description": "Forbidden — missing permission materials.create"
+          }
+        }
+      }
+    },
+    "/api/materials/projects": {
+      "post": {
+        "tags": [
+          "materials"
+        ],
+        "summary": "Create material-project link",
+        "description": "Creates a row in equipment_materials_projects. statement_id is required because project is resolved through the linked statement.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "materials.update"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "equipment_material_id",
+                  "statement_id"
+                ],
+                "properties": {
+                  "equipment_material_id": {
+                    "type": "integer"
+                  },
+                  "statement_id": {
+                    "type": "integer"
+                  },
+                  "shipments_id": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Material-project link created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MaterialProjectLink"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields or invalid payload"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission materials.update"
+          },
+          "404": {
+            "description": "Material, statement, or shipment not found"
+          }
+        }
+      }
+    },
+    "/api/materials/projects/{id}": {
+      "put": {
+        "tags": [
+          "materials"
+        ],
+        "summary": "Update material-project link",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "materials.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "equipment_material_id": {
+                    "type": "integer"
+                  },
+                  "statement_id": {
+                    "type": "integer"
+                  },
+                  "shipments_id": {
+                    "type": "integer",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Material-project link updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MaterialProjectLink"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission materials.update"
+          },
+          "404": {
+            "description": "Material-project link not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "materials"
+        ],
+        "summary": "Delete material-project link",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "materials.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Link deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission materials.update"
+          },
+          "404": {
+            "description": "Material-project link not found"
           }
         }
       }
@@ -18439,7 +18771,7 @@
           "statements"
         ],
         "summary": "List of statements",
-        "description": "Returns a list of statements with text search by name and description. Pagination via page/limit.",
+        "description": "Returns a list of statements with text search by name and description. Supports filtering by project_id. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -18470,6 +18802,14 @@
             "name": "limit",
             "in": "query",
             "description": "Records per page (if not specified — no limit)",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Filter statements by project ID",
             "schema": {
               "type": "integer"
             }

@@ -23,6 +23,7 @@ const issueHistoryController = require('../controllers/issueHistoryController');
 const documentHistoryController = require('../controllers/documentHistoryController');
 const customerQuestionHistoryController = require('../controllers/customerQuestionHistoryController');
 const materialsController = require('../controllers/materialsController');
+const materialsProjectsController = require('../controllers/materialsProjectsController');
 const materialKitsController = require('../controllers/materialKitsController');
 const unitsController = require('../controllers/unitsController');
 const shipmentsController = require('../controllers/shipmentsController');
@@ -417,6 +418,9 @@ router.delete('/links/:id', authMiddleware, entityLinksController.remove);
 
 // ===== Materials routes =====
 router.get('/materials', authMiddleware, materialsController.list);
+router.post('/materials/projects', authMiddleware, materialsProjectsController.create);
+router.put('/materials/projects/:id', authMiddleware, materialsProjectsController.update);
+router.delete('/materials/projects/:id', authMiddleware, materialsProjectsController.delete);
 // GET next stock code
 router.get('/materials/next_stock_code', authMiddleware, materialsController.next_stock_code);
 router.get('/materials/:id/specifications', authMiddleware, materialsController.getSpecifications);

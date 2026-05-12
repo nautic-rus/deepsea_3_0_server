@@ -9,6 +9,15 @@ const { hasPermission, hasPermissionForProject, getPermissionProjectScope } = re
  * generation and basic CRUD. Applies permission checks before DB actions.
  */
 class MaterialsService {
+  static _normalizeProjectFilter(query = {}) {
+    const normalized = Object.assign({}, query || {});
+    if (normalized.project_id === undefined && normalized.projectId !== undefined) {
+      normalized.project_id = normalized.projectId;
+    }
+    delete normalized.projectId;
+    return normalized;
+  }
+
   static async _listLinkedProjectIds(materialId) {
     const q = `
       SELECT DISTINCT s.project_id
@@ -24,6 +33,7 @@ class MaterialsService {
   static async listMaterials(query = {}, actor) {
     const requiredPermission = 'materials.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    query = MaterialsService._normalizeProjectFilter(query);
     const permissionScope = await getPermissionProjectScope(actor, requiredPermission);
     if (!permissionScope.hasGlobal && permissionScope.projectIds.length === 0) {
       const err = new Error('Forbidden: missing permission materials.view'); err.statusCode = 403; throw err;

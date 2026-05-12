@@ -8,9 +8,19 @@ const { hasPermission, hasPermissionForProject, getPermissionProjectScope } = re
  * the Statement model.
  */
 class StatementsService {
+  static _normalizeProjectFilter(query = {}) {
+    const normalized = Object.assign({}, query || {});
+    if (normalized.project_id === undefined && normalized.projectId !== undefined) {
+      normalized.project_id = normalized.projectId;
+    }
+    delete normalized.projectId;
+    return normalized;
+  }
+
   static async listStatements(query = {}, actor) {
     const requiredPermission = 'statements.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    query = StatementsService._normalizeProjectFilter(query);
     const permissionScope = await getPermissionProjectScope(actor, requiredPermission);
     if (!permissionScope.hasGlobal && permissionScope.projectIds.length === 0) {
       const err = new Error('Forbidden: missing permission statements.view'); err.statusCode = 403; throw err;

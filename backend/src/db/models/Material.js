@@ -1,6 +1,132 @@
 const pool = require('../connection');
 
 class Material {
+  static _formatUserDisplay(firstName, lastName) {
+    return (firstName || lastName) ? `${firstName || ''} ${lastName || ''}`.trim() : null;
+  }
+
+  static _formatBaseRow(r) {
+    if (!r) return null;
+    return {
+      id: r.id,
+      stock_code: r.stock_code,
+      name: r.name,
+      description: r.description,
+      directory: r.directory_id ? { id: r.directory_id, name: r.directory_name } : null,
+      unit: r.unit_id ? { id: r.unit_id, name: r.unit_name } : null,
+      weight: r.weight,
+      sfi_code: r.sfi_code_id ? { id: r.sfi_code_id, code: r.sfi_code_code || null, name_ru: r.sfi_code_name_ru || null, name_en: r.sfi_code_name_en || null } : null,
+      type: r.type,
+      status: r.status,
+      created_by: r.created_by ? { id: r.created_by, name: Material._formatUserDisplay(r.created_by_first_name, r.created_by_last_name), avatar_id: r.created_by_avatar_id || null } : null,
+      created_at: r.created_at,
+      updated_by: r.updated_by ? { id: r.updated_by, name: Material._formatUserDisplay(r.updated_by_first_name, r.updated_by_last_name), avatar_id: r.updated_by_avatar_id || null } : null,
+      updated_at: r.updated_at,
+    };
+  }
+
+  static async _attachStatementUsage(materials) {
+    if (!Array.isArray(materials) || materials.length === 0) return materials;
+
+    const materialIds = [...new Set(materials.map((m) => Number(m && m.id)).filter((n) => !Number.isNaN(n)))];
+    if (materialIds.length === 0) {
+      for (const material of materials) {
+        material.statement_parts_count = 0;
+        material.statements = [];
+      }
+      return materials;
+    }
+
+    const countQ = `
+      SELECT
+        emp.equipment_material_id,
+        emp.statement_id,
+        COUNT(DISTINCT sp.id)::int AS statement_parts_count
+      FROM equipment_materials_projects emp
+      JOIN statements st ON st.id = emp.statement_id
+      JOIN specification spec ON spec.project_id = st.project_id
+      JOIN specification_version sv ON sv.specification_id = spec.id
+      JOIN specification_parts sp ON sp.specification_version_id = sv.id
+      WHERE emp.equipment_material_id = ANY($1::int[])
+        AND emp.statement_id IS NOT NULL
+      GROUP BY emp.equipment_material_id, emp.statement_id
+    `;
+    const statementsQ = `
+      SELECT
+        p.equipment_material_id,
+        p.id,
+        p.statement_id,
+        p.shipments_id,
+        p.created_at,
+        s.code AS statement_code,
+        s.name AS statement_name,
+        s.description AS statement_description,
+        s.project_id AS statement_project_id,
+        pr.code AS project_code,
+        pr.name AS project_name,
+        sh.id AS shipment_id,
+        sh.supplier_id AS shipment_supplier_id,
+        sh.code AS shipment_code,
+        sup.name AS supplier_name,
+        sup.description AS supplier_description
+      FROM equipment_materials_projects p
+      LEFT JOIN statements s ON p.statement_id = s.id
+      LEFT JOIN projects pr ON pr.id = s.project_id
+      LEFT JOIN shipments sh ON p.shipments_id = sh.id
+      LEFT JOIN suppliers sup ON sup.id = sh.supplier_id
+      WHERE p.equipment_material_id = ANY($1::int[])
+      ORDER BY p.equipment_material_id, p.id DESC
+    `;
+
+    const [countRes, statementsRes] = await Promise.all([
+      pool.query(countQ, [materialIds]),
+      pool.query(statementsQ, [materialIds]),
+    ]);
+
+    const countMap = new Map();
+    for (const row of (countRes.rows || [])) {
+      const materialId = Number(row.equipment_material_id);
+      const statementId = row.statement_id === null ? null : Number(row.statement_id);
+      if (!countMap.has(materialId)) countMap.set(materialId, new Map());
+      countMap.get(materialId).set(statementId, Number(row.statement_parts_count) || 0);
+    }
+
+    const statementsByMaterial = new Map();
+    for (const row of (statementsRes.rows || [])) {
+      const materialId = Number(row.equipment_material_id);
+      if (!statementsByMaterial.has(materialId)) statementsByMaterial.set(materialId, []);
+      const statementId = row.statement_id === null ? null : Number(row.statement_id);
+      const materialCounts = countMap.get(materialId);
+      const statementPartsCount = materialCounts ? (materialCounts.get(statementId) || 0) : 0;
+      statementsByMaterial.get(materialId).push({
+        id: row.statement_id || null,
+        code: row.statement_code || null,
+        name: row.statement_name || null,
+        equipment_material_project_id: row.id,
+        created_at: row.created_at,
+        statement_parts_count: statementPartsCount,
+        project: row.statement_project_id ? { id: row.statement_project_id, code: row.project_code || null, name: row.project_name || null } : null,
+        shipments: row.shipment_id ? {
+          id: row.shipment_id,
+          supplier_id: row.shipment_supplier_id || null,
+          code: row.shipment_code || null,
+          supplier: row.shipment_supplier_id ? { id: row.shipment_supplier_id, name: row.supplier_name || null, description: row.supplier_description || null } : null
+        } : null
+      });
+    }
+
+    for (const material of materials) {
+      const materialId = Number(material.id);
+      const materialCounts = countMap.get(materialId);
+      material.statement_parts_count = materialCounts
+        ? [...materialCounts.values()].reduce((sum, value) => sum + (Number(value) || 0), 0)
+        : 0;
+      material.statements = statementsByMaterial.get(materialId) || [];
+    }
+
+    return materials;
+  }
+
   static async list(filters = {}) {
     const { directory_id, unit_id, shipment_id, type, status, project_id, allowed_project_ids, page = 1, limit, search } = filters;
     const offset = limit ? (page - 1) * limit : 0;
@@ -56,22 +182,8 @@ class Material {
       values.push(offset);
     }
     const res = await pool.query(q, values);
-    return res.rows.map((r) => ({
-      id: r.id,
-      stock_code: r.stock_code,
-      name: r.name,
-      description: r.description,
-      directory: r.directory_id ? { id: r.directory_id, name: r.directory_name } : null,
-      unit: r.unit_id ? { id: r.unit_id, name: r.unit_name } : null,
-      weight: r.weight,
-      sfi_code: r.sfi_code_id ? { id: r.sfi_code_id, code: r.sfi_code_code || null, name_ru: r.sfi_code_name_ru || null, name_en: r.sfi_code_name_en || null } : null,
-      type: r.type,
-      status: r.status,
-      created_by: r.created_by ? { id: r.created_by, name: (r.created_by_first_name || r.created_by_last_name) ? `${r.created_by_first_name || ''} ${r.created_by_last_name || ''}`.trim() : null, avatar_id: r.created_by_avatar_id || null } : null,
-      created_at: r.created_at,
-      updated_by: r.updated_by ? { id: r.updated_by, name: (r.updated_by_first_name || r.updated_by_last_name) ? `${r.updated_by_first_name || ''} ${r.updated_by_last_name || ''}`.trim() : null, avatar_id: r.updated_by_avatar_id || null } : null,
-      updated_at: r.updated_at,
-    }));
+    const rows = res.rows.map((r) => Material._formatBaseRow(r));
+    return await Material._attachStatementUsage(rows);
   }
 
   static async findById(id) {
@@ -86,59 +198,9 @@ class Material {
     const res = await pool.query(q, [id]);
     const r = res.rows[0];
     if (!r) return null;
-
-    const statementCountQ = `
-      SELECT emp.statement_id, COUNT(DISTINCT sp.id)::int AS statement_parts_count
-      FROM equipment_materials_projects emp
-      JOIN statements st ON st.id = emp.statement_id
-      JOIN specification spec ON spec.project_id = st.project_id
-      JOIN specification_version sv ON sv.specification_id = spec.id
-      JOIN specification_parts sp ON sp.specification_version_id = sv.id
-      WHERE sp.material_id = $1
-        AND emp.statement_id IS NOT NULL
-      GROUP BY emp.statement_id
-    `;
-    const statementCountRes = await pool.query(statementCountQ, [id]);
-    const statementPartsCountByStatement = new Map(
-      (statementCountRes.rows || []).map((row) => [row.statement_id === null ? null : Number(row.statement_id), Number(row.statement_parts_count) || 0])
-    );
-    const statement_parts_count = (statementCountRes.rows || []).reduce(
-      (sum, row) => sum + (Number(row.statement_parts_count) || 0),
-      0
-    );
-
-    // fetch statement usages from equipment_materials_projects
-    const statementQ = `SELECT p.id, p.statement_id, p.shipments_id, p.created_at, s.code AS statement_code, s.name AS statement_name, s.description AS statement_description, s.project_id AS statement_project_id, pr.code AS project_code, pr.name AS project_name, sh.id AS shipment_id, sh.supplier_id AS shipment_supplier_id, sh.code AS shipment_code, sup.name AS supplier_name, sup.description AS supplier_description FROM equipment_materials_projects p LEFT JOIN statements s ON p.statement_id = s.id LEFT JOIN projects pr ON pr.id = s.project_id LEFT JOIN shipments sh ON p.shipments_id = sh.id LEFT JOIN suppliers sup ON sup.id = sh.supplier_id WHERE p.equipment_material_id = $1 ORDER BY p.id DESC`;
-    const statementRes = await pool.query(statementQ, [id]);
-    const statements = (statementRes.rows || []).map((p) => ({
-      id: p.statement_id || null,
-      code: p.statement_code || null,
-      name: p.statement_name || null,
-      equipment_material_project_id: p.id,
-      created_at: p.created_at,
-      statement_parts_count: statementPartsCountByStatement.get(p.statement_id === null ? null : Number(p.statement_id)) || 0,
-      project: p.statement_project_id ? { id: p.statement_project_id, code: p.project_code || null, name: p.project_name || null } : null,
-      shipments: p.shipment_id ? { id: p.shipment_id, supplier_id: p.shipment_supplier_id || null, code: p.shipment_code || null, supplier: p.shipment_supplier_id ? { id: p.shipment_supplier_id, name: p.supplier_name || null, description: p.supplier_description || null } : null } : null
-    }));
-
-    return {
-      id: r.id,
-      stock_code: r.stock_code,
-      name: r.name,
-      description: r.description,
-      directory: r.directory_id ? { id: r.directory_id, name: r.directory_name } : null,
-      unit: r.unit_id ? { id: r.unit_id, name: r.unit_name } : null,
-      weight: r.weight,
-      sfi_code: r.sfi_code_id ? { id: r.sfi_code_id, code: r.sfi_code_code || null, name_ru: r.sfi_code_name_ru || null, name_en: r.sfi_code_name_en || null } : null,
-      type: r.type,
-      status: r.status,
-      created_by: r.created_by ? { id: r.created_by, name: (r.created_by_first_name || r.created_by_last_name) ? `${r.created_by_first_name || ''} ${r.created_by_last_name || ''}`.trim() : null, avatar_id: r.created_by_avatar_id || null } : null,
-      created_at: r.created_at,
-      updated_by: r.updated_by ? { id: r.updated_by, name: (r.updated_by_first_name || r.updated_by_last_name) ? `${r.updated_by_first_name || ''} ${r.updated_by_last_name || ''}`.trim() : null, avatar_id: r.updated_by_avatar_id || null } : null,
-      updated_at: r.updated_at,
-      statement_parts_count,
-      statements
-    };
+    const row = Material._formatBaseRow(r);
+    await Material._attachStatementUsage([row]);
+    return row;
   }
 
   static async findSpecificationsByMaterialId(materialId, filters = {}) {
