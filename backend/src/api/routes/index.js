@@ -418,6 +418,7 @@ router.delete('/links/:id', authMiddleware, entityLinksController.remove);
 
 // ===== Materials routes =====
 router.get('/materials', authMiddleware, materialsController.list);
+router.get('/materials/projects-directories', authMiddleware, materialsProjectsController.listProjectDirectories);
 router.post('/materials/projects', authMiddleware, materialsProjectsController.create);
 router.put('/materials/projects/:id', authMiddleware, materialsProjectsController.update);
 router.delete('/materials/projects/:id', authMiddleware, materialsProjectsController.delete);

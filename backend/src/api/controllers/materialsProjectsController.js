@@ -1,6 +1,14 @@
 const MaterialsProjectsService = require('../services/materialsProjectsService');
 
 class MaterialsProjectsController {
+  static async listProjectDirectories(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await MaterialsProjectsService.listProjectDirectories(req.query || {}, actor);
+      res.json(rows);
+    } catch (err) { next(err); }
+  }
+
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
