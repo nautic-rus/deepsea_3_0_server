@@ -5,6 +5,12 @@ class Material {
     return (firstName || lastName) ? `${firstName || ''} ${lastName || ''}`.trim() : null;
   }
 
+  static _toIntArray(v) {
+    if (v === null || typeof v === 'undefined' || v === '') return [];
+    const arr = Array.isArray(v) ? v : String(v).split(',');
+    return arr.map((x) => Number(x)).filter((n) => !Number.isNaN(n));
+  }
+
   static _formatBaseRow(r) {
     if (!r) return null;
     return {
@@ -133,7 +139,31 @@ class Material {
     const where = [];
     const values = [];
     let idx = 1;
-    if (directory_id) { where.push(`m.directory_id = $${idx++}`); values.push(directory_id); }
+
+    const directoryIds = Material._toIntArray(directory_id);
+    let directoryScopeSql = '';
+    if (directoryIds.length > 0) {
+      directoryScopeSql = `
+        WITH RECURSIVE directory_scope AS (
+          SELECT md.id, md.parent_id
+          FROM equipment_materials_directories md
+          WHERE md.id = ANY($${idx++}::int[])
+
+          UNION ALL
+
+          SELECT child.id, child.parent_id
+          FROM equipment_materials_directories child
+          JOIN directory_scope ds ON child.parent_id = ds.id
+        )
+      `;
+      values.push(directoryIds);
+      where.push(`EXISTS (
+        SELECT 1
+        FROM directory_scope ds
+        WHERE ds.id = m.directory_id
+      )`);
+    }
+
     if (unit_id) { where.push(`m.unit_id = $${idx++}`); values.push(unit_id); }
     if (type) { where.push(`m.type = $${idx++}`); values.push(type); }
     if (status) { where.push(`m.status = $${idx++}`); values.push(status); }
@@ -166,7 +196,7 @@ class Material {
       values.push(projectIds);
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, m.weight, m.sfi_code_id, sc.code AS sfi_code_code, sc.name_ru AS sfi_code_name_ru, sc.name_en AS sfi_code_name_en, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
+    let q = `${directoryScopeSql} SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, m.weight, m.sfi_code_id, sc.code AS sfi_code_code, sc.name_ru AS sfi_code_name_ru, sc.name_en AS sfi_code_name_en, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
         FROM equipment_materials m
       LEFT JOIN equipment_materials_directories d ON m.directory_id = d.id
       LEFT JOIN units uo ON m.unit_id = uo.id
