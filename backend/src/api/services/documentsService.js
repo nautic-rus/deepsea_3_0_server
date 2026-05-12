@@ -66,7 +66,7 @@ class DocumentsService {
                   const hasNumeric = arr.some(s => /^[0-9]+$/.test(s));
                   const hasAlpha = arr.some(s => /^[A-Za-z]+$/.test(s));
                   if (hasNumeric && hasAlpha) {
-                    revMap.set(id, '(?)');
+                    revMap.set(id, '-');
                     continue;
                   }
                 }
@@ -77,8 +77,8 @@ class DocumentsService {
                   arr.sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
                   revMap.set(id, arr[arr.length - 1]);
                 } else {
-                  // Fallback: if mixed non-pure types but not clearly numeric+alpha, return '(?)'
-                  revMap.set(id, '(?)');
+                  // Fallback: if mixed non-pure types but not clearly numeric+alpha, return '-'
+                  revMap.set(id, '-');
                 }
               }
             for (const it of rows) {
@@ -141,11 +141,11 @@ class DocumentsService {
             if (!isNumeric && !isAlpha) {
               const hasNumeric = arr.some(s => /^[0-9]+$/.test(s));
               const hasAlpha = arr.some(s => /^[A-Za-z]+$/.test(s));
-              if (hasNumeric && hasAlpha) { revMap2.set(id, '(?)'); continue; }
+              if (hasNumeric && hasAlpha) { revMap2.set(id, '-'); continue; }
             }
             if (isNumeric) { revMap2.set(id, Math.max(...arr.map(Number))); }
             else if (isAlpha) { arr.sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' })); revMap2.set(id, arr[arr.length - 1]); }
-            else { revMap2.set(id, '(?)'); }
+            else { revMap2.set(id, '-'); }
           }
           for (const it of rows) { it.revision = revMap2.has(it.id) ? revMap2.get(it.id) : null; }
         }
@@ -468,9 +468,9 @@ class DocumentsService {
           const hasNumeric = arr.some(s => /^[0-9]+$/.test(s));
           const hasAlpha = arr.some(s => /^[A-Za-z]+$/.test(s));
           if (hasNumeric && hasAlpha) {
-            d.revision = '(?)';
+            d.revision = '-';
           } else {
-            d.revision = '(?)';
+            d.revision = '-';
           }
         } else if (isNumeric) {
           d.revision = Math.max(...arr.map(Number));
@@ -478,7 +478,7 @@ class DocumentsService {
           arr.sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
           d.revision = arr[arr.length - 1];
         } else {
-          d.revision = '(?)';
+          d.revision = '-';
         }
       }
     } catch (e) {
