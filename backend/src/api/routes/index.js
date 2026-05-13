@@ -529,6 +529,7 @@ router.get('/statements_versions/:id', authMiddleware, statementsVersionControll
 router.post('/statements_versions', authMiddleware, statementsVersionController.create);
 router.put('/statements_versions/:id', authMiddleware, statementsVersionController.update);
 router.delete('/statements_versions/:id', authMiddleware, statementsVersionController.delete);
+router.post('/statements_versions/:id/apply_parts', authMiddleware, statementsVersionController.applyParts);
 
 router.get('/statements_parts', authMiddleware, statementsPartsController.list);
 router.get('/statements_parts/:id', authMiddleware, statementsPartsController.get);

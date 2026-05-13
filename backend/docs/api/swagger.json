@@ -2477,6 +2477,168 @@
           }
         }
       },
+      "StatementsPart": {
+        "type": "object",
+        "description": "Statement part with linked specification part, material and specification data",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "statements_version_id": {
+            "type": "integer"
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "specification_part_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "created_by": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "material": {
+            "$ref": "#/components/schemas/Material"
+          },
+          "specification_part": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "specification_version_id": {
+                "type": "integer"
+              },
+              "parent_id": {
+                "type": "integer",
+                "nullable": true
+              },
+              "part_code": {
+                "type": "string",
+                "nullable": true
+              },
+              "quantity": {
+                "type": "number"
+              },
+              "source": {
+                "type": "string",
+                "nullable": true
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "specification_version": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "specification_id": {
+                    "type": "integer"
+                  },
+                  "version": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "notes": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "created_by": {
+                    "type": "integer"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  }
+                }
+              },
+              "specification": {
+                "$ref": "#/components/schemas/Specification"
+              }
+            }
+          }
+        }
+      },
+      "StatementsPartCreate": {
+        "type": "object",
+        "description": "Request body for creating a statement part",
+        "required": [
+          "statements_version_id"
+        ],
+        "properties": {
+          "statements_version_id": {
+            "type": "integer",
+            "description": "Statement version ID"
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Parent statement part ID"
+          },
+          "specification_part_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Related specification part ID"
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true,
+            "description": "Quantity"
+          }
+        }
+      },
+      "StatementsPartUpdate": {
+        "type": "object",
+        "description": "Request body for updating a statement part",
+        "properties": {
+          "parent_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "specification_part_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true
+          }
+        }
+      },
+      "StatementsPartsApplyResult": {
+        "type": "object",
+        "description": "Result of applying materials from a statement version into statements_parts",
+        "properties": {
+          "statements_version_id": {
+            "type": "integer"
+          },
+          "inserted_count": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementsPart"
+            }
+          }
+        }
+      },
       "MaterialCreate": {
         "type": "object",
         "description": "Request body for creating/updating an equipment_materials record",
@@ -14792,7 +14954,26 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "required": [
+                  "code",
+                  "name"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "description": "Kit code"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Kit name"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "Kit description"
+                  }
+                }
               }
             }
           }
@@ -21740,6 +21921,62 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/statements_versions/{id}/apply_parts": {
+      "post": {
+        "tags": [
+          "statements"
+        ],
+        "summary": "Refresh statement parts from statement version",
+        "description": "Finds materials linked to the statement, resolves the latest specification version for each material, groups rows by material_id, sums quantity across all specification parts in that version, fully replaces statements_parts for the selected statement version, and inserts the refreshed links.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "statements.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StatementsPartsApplyResult"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid statements_version_id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Statements version not found"
           }
         }
       }

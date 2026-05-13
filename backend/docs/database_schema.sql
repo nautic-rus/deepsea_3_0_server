@@ -2392,10 +2392,6 @@ CREATE TABLE public.statements_parts (
     statements_version_id integer NOT NULL,
     parent_id integer,
     specification_part_id integer,
-    part_code character varying(100),
-    stock_code character varying(255),
-    name character varying(255) NOT NULL,
-    description text,
     quantity numeric(15,3) DEFAULT 1,
     created_by integer NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
@@ -6830,15 +6826,6 @@ ALTER TABLE ONLY public.statements_parts
 ALTER TABLE ONLY public.statements_parts
     ADD CONSTRAINT statements_parts_statements_version_id_fkey FOREIGN KEY (statements_version_id) REFERENCES public.statements_version(id) ON DELETE CASCADE;
 
-
---
--- Name: statements_parts statements_parts_stock_code_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.statements_parts
-    ADD CONSTRAINT statements_parts_stock_code_fkey FOREIGN KEY (stock_code) REFERENCES public.equipment_materials(stock_code) ON DELETE SET NULL;
-
-
 --
 -- Name: statements statements_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
@@ -7084,4 +7071,3 @@ ALTER TABLE ONLY public.wiki_sections
 --
 
 \unrestrict 6aK5tSXrfySs5rzS3W2ybWmoqMPB5ZeRE5ZgjuRGjUhuzlvrRo7wgtY3qjxC511
-

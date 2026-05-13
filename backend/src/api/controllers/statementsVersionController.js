@@ -1,4 +1,5 @@
 const StatementsVersionService = require('../services/statementsVersionService');
+const StatementsPartsService = require('../services/statementsPartsService');
 
 class StatementsVersionController {
   static async list(req, res, next) {
@@ -41,6 +42,15 @@ class StatementsVersionController {
       const id = Number(req.params.id);
       await StatementsVersionService.delete(id, actor);
       res.json({ message: 'Deleted' });
+    } catch (err) { next(err); }
+  }
+
+  static async applyParts(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = Number(req.params.id);
+      const result = await StatementsPartsService.applyFromStatementsVersion(id, actor);
+      res.json({ data: result });
     } catch (err) { next(err); }
   }
 }
