@@ -32,7 +32,7 @@ class EntityLinksService {
    */
   static async createLink(fields = {}, actor) {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, 'issues.create');
+    const allowed = await hasPermission(actor, 'links.create');
     if (!allowed) { const err = new Error('Forbidden: missing permission links.create'); err.statusCode = 403; throw err; }
 
     if (!fields || !fields.active_type || !fields.passive_type || !fields.active_id || !fields.passive_id) {
