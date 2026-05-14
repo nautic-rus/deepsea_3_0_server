@@ -1,5 +1,6 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { randomUUID } = require('node:crypto');
+const { normalizeUploadedFilename } = require('../../utils/textEncoding');
 
 let s3Client = null;
 let s3ClientSignature = null;
@@ -41,8 +42,9 @@ class S3Service {
   static async uploadBuffer({ buffer, originalName, bucket, contentType, directory }) {
     if (!buffer || !originalName) throw new Error('Missing buffer or filename');
     const { client, config } = getS3Client();
+    const normalizedName = normalizeUploadedFilename(originalName);
     // Sanitize original name and optional directory prefix
-    const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const safeName = normalizedName.replace(/[^a-zA-Z0-9._-]/g, '_');
     const baseKey = `${randomUUID()}-${safeName}`;
     let key = baseKey;
     if (directory) {

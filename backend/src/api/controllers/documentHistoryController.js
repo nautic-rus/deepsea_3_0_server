@@ -1,53 +1,7 @@
 const DocumentHistory = require('../../db/models/DocumentHistory');
 const pool = require('../../db/connection');
 const { hasPermission, hasPermissionForProject } = require('../services/permissionChecker');
-
-// Attempt to fix common mojibake where UTF-8 bytes were interpreted
-// as Latin1/Windows-1252 and stored as a JS string (shows up as Ã..., Ð..., Â...)
-// Strategy: try 0..3 iterative latin1->utf8 decodes and choose the
-// variant with the most Cyrillic letters. Also try iconv cp1251 if available.
-const decodeMaybeLatin1 = (s) => {
-  if (!s || typeof s !== 'string') return s;
-  // quick bail: nothing that looks like mojibake
-  if (!/[ÃÐÂ]/.test(s)) return s;
-
-  const countCyr = (str) => (str.match(/[А-Яа-яЁё]/g) || []).length;
-  const candidates = new Map();
-
-  // start from original string and apply iterative latin1->utf8 up to 3 times
-  let cur = s;
-  candidates.set(cur, countCyr(cur));
-  for (let i = 0; i < 3; i++) {
-    try {
-      cur = Buffer.from(cur, 'latin1').toString('utf8');
-      candidates.set(cur, countCyr(cur));
-    } catch (e) {
-      break;
-    }
-  }
-
-  // try iconv cp1251/win1251 if available (best-effort)
-  try {
-    // eslint-disable-next-line global-require
-    const iconv = require('iconv-lite');
-    const buf = Buffer.from(s, 'binary');
-    const cp = iconv.decode(buf, 'cp1251');
-    candidates.set(cp, countCyr(cp));
-  } catch (e) {
-    // iconv-lite not installed — skip
-  }
-
-  // choose candidate with max Cyrillic count; tie-breaker: shortest length
-  let best = s;
-  let bestScore = candidates.get(s) || 0;
-  for (const [cand, score] of candidates.entries()) {
-    if (score > bestScore || (score === bestScore && cand.length < best.length)) {
-      best = cand; bestScore = score;
-    }
-  }
-
-  return best;
-};
+const { decodeMaybeLatin1 } = require('../../utils/textEncoding');
 
 /**
  * Controller to expose document history entries.

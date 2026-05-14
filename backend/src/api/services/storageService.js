@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const storageConfig = require('../../config/storage');
 const archiver = require('archiver');
+const { normalizeUploadedFilename } = require('../../utils/textEncoding');
 // ...existing code...
 
 /**
@@ -115,8 +116,9 @@ class StorageService {
       const bucket = fields.bucket_name || process.env.S3_DEFAULT_BUCKET || process.env.YC_S3_BUCKET;
       if (!bucket) { const err = new Error('S3 bucket not configured'); err.statusCode = 500; throw err; }
       const file = fields._file; // { buffer, originalname, mimetype }
-      const uploaded = await S3Service.uploadBuffer({ buffer: file.buffer, originalName: file.originalname, bucket, contentType: file.mimetype });
-      const createFields = { bucket_name: uploaded.bucket, object_key: uploaded.key, storage_type: 's3', uploaded_by: actor.id };
+      const originalName = normalizeUploadedFilename(file.originalname);
+      const uploaded = await S3Service.uploadBuffer({ buffer: file.buffer, originalName, bucket, contentType: file.mimetype });
+      const createFields = { bucket_name: uploaded.bucket, object_key: uploaded.key, storage_type: 's3', file_name: originalName, uploaded_by: actor.id };
       const created = await Storage.create(createFields);
       // Optionally attach returned url/size/content_type for API consumers
       return Object.assign({}, created, { url: uploaded.url, size: uploaded.size, content_type: uploaded.content_type });
@@ -173,8 +175,9 @@ class StorageService {
     if (!file || !file.buffer || !file.originalname) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
     const bucket = opts.bucket_name || process.env.S3_DEFAULT_BUCKET || process.env.YC_S3_BUCKET;
     if (!bucket) { const err = new Error('S3 bucket not configured'); err.statusCode = 500; throw err; }
-    const uploaded = await S3Service.uploadBuffer({ buffer: file.buffer, originalName: file.originalname, bucket, contentType: file.mimetype, directory: opts.directory || opts.subdir });
-    const createFields = { bucket_name: uploaded.bucket, object_key: uploaded.key, storage_type: 's3', file_name: file.originalname, file_size: uploaded.size, mime_type: uploaded.content_type, uploaded_by: actor.id };
+    const originalName = normalizeUploadedFilename(file.originalname);
+    const uploaded = await S3Service.uploadBuffer({ buffer: file.buffer, originalName, bucket, contentType: file.mimetype, directory: opts.directory || opts.subdir });
+    const createFields = { bucket_name: uploaded.bucket, object_key: uploaded.key, storage_type: 's3', file_name: originalName, file_size: uploaded.size, mime_type: uploaded.content_type, uploaded_by: actor.id };
     const created = await Storage.create(createFields);
     return Object.assign({}, created, { url: uploaded.url, size: uploaded.size, content_type: uploaded.content_type });
   }
@@ -195,7 +198,8 @@ class StorageService {
     const subdir = opts.subdir ? String(opts.subdir).replace(/[^a-zA-Z0-9_\-\/]/g, '') : '';
     const targetDir = subdir ? path.join(uploadsRoot, subdir) : uploadsRoot;
     await fs.promises.mkdir(targetDir, { recursive: true });
-    const filename = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const originalName = normalizeUploadedFilename(file.originalname);
+    const filename = `${Date.now()}-${originalName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
     const filePath = path.join(targetDir, filename);
     await fs.promises.writeFile(filePath, file.buffer);
     const relativePath = path.relative(process.cwd(), filePath);
@@ -208,7 +212,7 @@ class StorageService {
       url: publicUrl,
       bucket_name: null,
       object_key: relativePath,
-      file_name: file.originalname,
+      file_name: originalName,
       file_size: stat.size,
       mime_type: file.mimetype || 'application/octet-stream',
       storage_type: 'local',

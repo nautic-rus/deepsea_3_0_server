@@ -4,6 +4,7 @@ const DocumentType = require('../../db/models/DocumentType');
 const Project = require('../../db/models/Project');
 const DocumentUploadNotificationBuffer = require('../../db/models/DocumentUploadNotificationBuffer');
 const NotificationDispatcher = require('./notificationDispatcher');
+const { decodeMaybeLatin1 } = require('../../utils/textEncoding');
 
 class DocumentUploadNotificationService {
   static async queueUploads({ document, actor, attachedEntries = [], storageItems = [] }) {
@@ -103,7 +104,13 @@ class DocumentUploadNotificationService {
       documentTypeName = null;
     }
     const storageItem = storageItems[0] || null;
-    const storageFileList = storageItems
+    const normalizedStorageItems = storageItems.map((item) => {
+      if (!item || typeof item !== 'object') return item;
+      return Object.assign({}, item, {
+        file_name: decodeMaybeLatin1(item.file_name)
+      });
+    });
+    const storageFileList = normalizedStorageItems
       .map((item) => item && item.file_name)
       .filter(Boolean)
       .join('\n');
@@ -122,10 +129,10 @@ class DocumentUploadNotificationService {
       targetTitle: document.title,
       actor,
       documentUrl,
-      storage_items: storageItems,
-      storage_item: storageItem,
+      storage_items: normalizedStorageItems,
+      storage_item: storageItem ? Object.assign({}, storageItem, { file_name: decodeMaybeLatin1(storageItem.file_name) }) : null,
       storage_file_list: storageFileList,
-      storage_items_count: storageItems.length
+      storage_items_count: normalizedStorageItems.length
     };
     const contentValue = attachedEntries.length === 1 ? attachedEntries[0] : attachedEntries;
     const fallbackSuffix = storageItems.length > 1 ? ` (${storageItems.length} files)` : '';
