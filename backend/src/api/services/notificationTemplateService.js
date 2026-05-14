@@ -229,12 +229,46 @@ class NotificationTemplateService {
             return byName || u.username || u.email || '';
           };
 
+          const mkObjectDisplay = (obj) => {
+            if (!obj || typeof obj !== 'object') return '';
+            return obj.full_name || obj.name || obj.title || obj.code || obj.username || obj.email || '';
+          };
+
+          const formatChangeValue = (value) => {
+            if (value === undefined || value === null || value === '') return '-';
+            return value;
+          };
+
+          const prettyFieldNames = {
+            project_id: 'Проект',
+            status_id: 'Статус',
+            type_id: 'Тип',
+            specialization_id: 'Специализация',
+            asked_by: 'Автор',
+            answered_by: 'Исполнитель',
+            question_title: 'Заголовок вопроса',
+            question_text: 'Текст вопроса',
+            answer_text: 'Текст ответа',
+            due_date: 'Срок',
+            priority: 'Приоритет',
+            assignee_id: 'Исполнитель',
+            author_id: 'Автор',
+            created_by: 'Автор',
+            updated_by: 'Изменил',
+            stage_id: 'Этап',
+            directory_id: 'Директория',
+            title: 'Заголовок',
+            description: 'Описание',
+            content: 'Содержание',
+            comment: 'Комментарий'
+          };
+
           const lines = diffKeys.map(k => {
             const a = before[k];
             const b = after[k];
-            let pretty = k.replace(/_/g, ' ').replace(/(^|\s)\S/g, s => s.toUpperCase());
-            // remove trailing ' Id' for nicer labels (e.g. 'Status Id' -> 'Status')
-            pretty = pretty.replace(/\s+Id$/i, '');
+            let pretty = prettyFieldNames[k] || k.replace(/_/g, ' ').replace(/(^|\s)\S/g, s => s.toUpperCase());
+            // remove trailing ' Id' for nicer labels when no explicit Russian label exists
+            if (!prettyFieldNames[k]) pretty = pretty.replace(/\s+Id$/i, '');
             const resolveVal = (key, v, objBefore, objAfter) => {
               // prefer explicit values; if missing, try to resolve via maps; then fall back
               if (v === undefined || v === null || v === '') {
@@ -251,6 +285,9 @@ class NotificationTemplateService {
                   }
                   if (key === 'status_id') {
                     return (objBefore && objBefore.status_name) || (objBefore && objBefore.status_code) || (objAfter && objAfter.status_name) || (objAfter && objAfter.status_code) || '';
+                  }
+                  if (key === 'asked_by' || key === 'answered_by') {
+                    return (objBefore && mkObjectDisplay(objBefore[key])) || (objAfter && mkObjectDisplay(objAfter[key])) || '';
                   }
                   if (key === 'type_id') {
                     return (objBefore && objBefore.type_name) || (objBefore && objBefore.type_code) || (objAfter && objAfter.type_name) || (objAfter && objAfter.type_code) || '';
@@ -278,6 +315,10 @@ class NotificationTemplateService {
                 if (key === 'project_id') {
                   const p = projectMap.get(Number(v));
                   if (p) return p.name || p.code || String(v);
+                }
+                if (key === 'asked_by' || key === 'answered_by') {
+                  if (typeof v === 'object') return mkObjectDisplay(v) || JSON.stringify(v);
+                  return String(v === undefined || v === null ? '' : v);
                 }
                 if (key === 'type') {
                   if (typeof v === 'object') return (v && (v.name || v.code)) || JSON.stringify(v);
@@ -323,7 +364,7 @@ class NotificationTemplateService {
                 return String(v === undefined || v === null ? '' : v);
               }
             };
-            return `${pretty}: ${resolveVal(k, a, before, after)} → ${resolveVal(k, b, before, after)}`;
+            return `${pretty}: ${formatChangeValue(resolveVal(k, a, before, after))} → ${formatChangeValue(resolveVal(k, b, before, after))}`;
           });
           ctx.changes = lines.join('\n');
         }
