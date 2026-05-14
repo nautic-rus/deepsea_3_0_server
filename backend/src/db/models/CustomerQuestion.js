@@ -122,6 +122,7 @@ class CustomerQuestion {
     const rows = res.rows || [];
     return rows.map(r => ({
       id: r.id,
+      project_id: r.project_id,
       question_title: r.question_title,
       question_text: r.question_text,
       answer_text: r.answer_text,
@@ -166,6 +167,7 @@ class CustomerQuestion {
     if (!r) return null;
     return {
       id: r.id,
+      project_id: r.project_id,
       question_title: r.question_title,
       question_text: r.question_text,
       answer_text: r.answer_text,

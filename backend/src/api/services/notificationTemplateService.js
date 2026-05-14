@@ -40,6 +40,29 @@ class NotificationTemplateService {
     return cur;
   }
 
+  static _stripHtml(value) {
+    const text = String(value || '');
+    return text
+      .replace(/<\s*br\s*\/?>/gi, '\n')
+      .replace(/<\/\s*p\s*>/gi, '\n')
+      .replace(/<\/\s*div\s*>/gi, '\n')
+      .replace(/<\/\s*li\s*>/gi, '\n')
+      .replace(/<\/\s*tr\s*>/gi, '\n')
+      .replace(/<\s*li[^>]*>/gi, '- ')
+      .replace(/<\s*[^>]*>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/\n\s*\n+/g, '\n')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\s+/g, ' ')
+      .replace(/\s*\n\s*/g, '\n')
+      .trim();
+  }
+
   // Render a template string replacing {{a.b}} with value from context
   static _renderString(tpl, context = {}) {
     if (!tpl) return tpl;
@@ -217,6 +240,12 @@ class NotificationTemplateService {
               if (v === undefined || v === null || v === '') {
                 // try to read enriched display fields from before/after objects
                 try {
+                  if (key === 'type') {
+                    return (objBefore && objBefore.type_name) || (objBefore && objBefore.type && objBefore.type.name) || (objAfter && objAfter.type_name) || (objAfter && objAfter.type && objAfter.type.name) || '';
+                  }
+                  if (key === 'specialization') {
+                    return (objBefore && objBefore.specialization_name) || (objBefore && objBefore.specialization && objBefore.specialization.name) || (objAfter && objAfter.specialization_name) || (objAfter && objAfter.specialization && objAfter.specialization.name) || '';
+                  }
                   if (key === 'project_id') {
                     return (objBefore && objBefore.project_name) || (objBefore && objBefore.project_code) || (objAfter && objAfter.project_name) || (objAfter && objAfter.project_code) || '';
                   }
@@ -250,6 +279,16 @@ class NotificationTemplateService {
                   const p = projectMap.get(Number(v));
                   if (p) return p.name || p.code || String(v);
                 }
+                if (key === 'type') {
+                  if (typeof v === 'object') return (v && (v.name || v.code)) || JSON.stringify(v);
+                  if (typeof v === 'string' && /<[^>]+>/.test(v)) return NotificationTemplateService._stripHtml(v);
+                  return String(v === undefined || v === null ? '' : v);
+                }
+                if (key === 'specialization') {
+                  if (typeof v === 'object') return (v && (v.name || v.code)) || JSON.stringify(v);
+                  if (typeof v === 'string' && /<[^>]+>/.test(v)) return NotificationTemplateService._stripHtml(v);
+                  return String(v === undefined || v === null ? '' : v);
+                }
                 if (key === 'status_id') {
                   const s = statusMap.get(Number(v));
                   if (s) return s.name || s.code || String(v);
@@ -273,6 +312,9 @@ class NotificationTemplateService {
                 if (key === 'directory_id') {
                   const d = dirMap.get(Number(v));
                   if (d) return d.name || String(v);
+                }
+                if (typeof v === 'string' && /<[^>]+>/.test(v)) {
+                  return NotificationTemplateService._stripHtml(v);
                 }
                 // default stringify
                 if (typeof v === 'object') return JSON.stringify(v);
