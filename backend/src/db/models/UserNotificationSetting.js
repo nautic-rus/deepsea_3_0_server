@@ -107,6 +107,7 @@ class UserNotificationSetting {
       LEFT JOIN public.user_rocket_chat urc ON urc.user_id = uns.user_id
       LEFT JOIN public.users u ON u.id = uns.user_id
       WHERE ne.code = $2
+        AND ne.status = true
         AND uns.enabled = true
         AND nm.status = true
         AND (uns.project_id IS NULL OR uns.project_id IS NOT DISTINCT FROM $1)

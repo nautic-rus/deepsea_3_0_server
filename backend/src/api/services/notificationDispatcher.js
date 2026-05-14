@@ -12,6 +12,7 @@
 const UserNotification = require('../../db/models/UserNotification');
 const { buildNotificationData, resolveFieldNames } = require('../../db/models/UserNotification');
 const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
+const NotificationEvent = require('../../db/models/NotificationEvent');
 const User = require('../../db/models/User');
 const { hasPermission } = require('./permissionChecker');
 const TemplateService = require('./notificationTemplateService');
@@ -179,6 +180,10 @@ class NotificationDispatcher {
       excludeActor = true,
       directUserIds = []
     } = opts;
+
+    // If the event itself is disabled, do not send anything for it.
+    const notificationEvent = await NotificationEvent.findByCode(eventCode);
+    if (!notificationEvent || notificationEvent.status === false) return;
 
     // 1. Get all potential recipients
     // Pass through target_user_id if provided in opts so model can special-case project_invite
