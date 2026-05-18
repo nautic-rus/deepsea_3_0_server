@@ -90,7 +90,7 @@ class CustomerQuestion {
       where.push(`cq.is_active = $${idx++}`); values.push(is_active);
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-        let q = `SELECT cq.id, cq.project_id, cq.question_title, cq.question_text, cq.answer_text, cq.priority,
+        let q = `SELECT cq.id, cq.project_id, cq.question_title, cq.question_text, cq.answer_text, cq.comment, cq.priority,
            cq.asked_by,
            TRIM(COALESCE(ua.last_name,'') || ' ' || COALESCE(ua.first_name,'')) AS asked_by_full_name,
            ua.avatar_id AS asked_by_avatar_id,
@@ -124,8 +124,9 @@ class CustomerQuestion {
       id: r.id,
       project_id: r.project_id,
       question_title: r.question_title,
-      question_text: r.question_text,
-      answer_text: r.answer_text,
+        question_text: r.question_text,
+        answer_text: r.answer_text,
+        comment: r.comment,
       priority: r.priority,
       due_date: r.due_date,
       created_at: r.created_at,
@@ -141,7 +142,7 @@ class CustomerQuestion {
 
   static async findById(id) {
     if (!id) return null;
-            const q = `SELECT cq.id, cq.question_title, cq.question_text, cq.answer_text, cq.priority,
+            const q = `SELECT cq.id, cq.question_title, cq.question_text, cq.answer_text, cq.comment, cq.priority,
                cq.project_id,
                cq.asked_by,
                TRIM(COALESCE(ua.last_name,'') || ' ' || COALESCE(ua.first_name,'')) AS asked_by_full_name,
@@ -171,6 +172,7 @@ class CustomerQuestion {
       question_title: r.question_title,
       question_text: r.question_text,
       answer_text: r.answer_text,
+      comment: r.comment,
       priority: r.priority,
       due_date: r.due_date,
       created_at: r.created_at,
@@ -189,7 +191,7 @@ class CustomerQuestion {
     const placeholders = [];
     const vals = [];
     let idx = 1;
-      ['question_title','question_text','answer_text','status_id','priority','asked_by','answered_by','due_date','type_id','project_id','author_id','description','specialization_id'].forEach((k) => {
+      ['question_title','question_text','answer_text','comment','status_id','priority','asked_by','answered_by','due_date','type_id','project_id','author_id','description','specialization_id'].forEach((k) => {
       if (fields[k] !== undefined) {
         cols.push(k);
         placeholders.push(`$${idx++}`);
@@ -214,7 +216,7 @@ class CustomerQuestion {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['question_title','question_text','answer_text','status_id','priority','asked_by','answered_by','due_date','type_id','project_id','specialization_id'].forEach((k) => {
+    ['question_title','question_text','answer_text','comment','status_id','priority','asked_by','answered_by','due_date','type_id','project_id','specialization_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await CustomerQuestion.findById(id);

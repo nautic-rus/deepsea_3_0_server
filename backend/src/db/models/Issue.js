@@ -71,7 +71,7 @@ class Issue {
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-  let q = `SELECT id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues ${whereSql} ORDER BY id`;
+  let q = `SELECT id, project_id, title, description, comment, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues ${whereSql} ORDER BY id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -90,7 +90,7 @@ class Issue {
    * @returns {Promise<Object|null>} Issue object or null if not found
    */
   static async findById(id) {
-  const q = `SELECT id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues WHERE id = $1 LIMIT 1`;
+  const q = `SELECT id, project_id, title, description, comment, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
@@ -103,7 +103,7 @@ class Issue {
    */
   static async create(fields) {
     // Build INSERT dynamically so that DB defaults (e.g. priority) are preserved
-    const allowedCols = ['project_id', 'title', 'description', 'type_id', 'priority', 'estimated_hours', 'start_date', 'due_date', 'assignee_id', 'author_id'];
+    const allowedCols = ['project_id', 'title', 'description', 'comment', 'type_id', 'priority', 'estimated_hours', 'start_date', 'due_date', 'assignee_id', 'author_id'];
     const cols = [];
     const placeholders = [];
     const values = [];
@@ -118,7 +118,7 @@ class Issue {
       }
     }
     if (cols.length === 0) throw new Error('No fields provided for insert');
-    const q = `INSERT INTO issues (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
+    const q = `INSERT INTO issues (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING id, project_id, title, description, comment, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
     const res = await pool.query(q, values);
     return res.rows[0];
   }
@@ -134,11 +134,11 @@ class Issue {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['title','description','priority','estimated_hours','start_date','due_date','assignee_id','status_id','type_id'].forEach((k) => {
+    ['title','description','comment','priority','estimated_hours','start_date','due_date','assignee_id','status_id','type_id'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Issue.findById(id);
-  const q = `UPDATE issues SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, project_id, title, description, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
+  const q = `UPDATE issues SET ${parts.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx} RETURNING id, project_id, title, description, comment, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at`;
     values.push(id);
     const res = await pool.query(q, values);
     return res.rows[0] || null;

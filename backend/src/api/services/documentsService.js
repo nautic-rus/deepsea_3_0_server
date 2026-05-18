@@ -25,6 +25,67 @@ class DocumentsService {
     if (/^[0-9]+$/.test(s)) return Number(s);
     return s;
   }
+  static async _attachRevisionAndFileFlagsToList(rows, logPrefix = 'documents list') {
+    try {
+      if (!rows || !rows.length) return;
+      const docIds = rows.map(r => Number(r.id)).filter(Boolean);
+      if (!docIds.length) return;
+
+      const statsQ = `
+        SELECT
+          document_id,
+          ARRAY_AGG(DISTINCT rev) FILTER (WHERE archive = false) AS revs,
+          COUNT(*)::int AS attach_count
+        FROM documents_storage
+        WHERE document_id = ANY($1::int[])
+        GROUP BY document_id
+      `;
+      const statsRes = await pool.query(statsQ, [docIds]);
+      const statsMap = new Map();
+
+      for (const r of (statsRes.rows || [])) {
+        const id = Number(r.document_id);
+        const arr = (r.revs || [])
+          .filter(x => x !== null && typeof x !== 'undefined')
+          .map(String)
+          .map(s => s.trim())
+          .filter(s => s !== '');
+
+        let revision = null;
+        if (arr.length === 0) {
+          revision = null;
+        } else {
+          const isNumeric = arr.every(s => /^[0-9]+$/.test(s));
+          const isAlpha = arr.every(s => /^[A-Za-z]+$/.test(s));
+          if (!isNumeric && !isAlpha) {
+            const hasNumeric = arr.some(s => /^[0-9]+$/.test(s));
+            const hasAlpha = arr.some(s => /^[A-Za-z]+$/.test(s));
+            revision = hasNumeric && hasAlpha ? '-' : '-';
+          } else if (isNumeric) {
+            revision = Math.max(...arr.map(Number));
+          } else if (isAlpha) {
+            arr.sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+            revision = arr[arr.length - 1];
+          } else {
+            revision = '-';
+          }
+        }
+
+        statsMap.set(id, {
+          revision,
+          have_attach: Number(r.attach_count) > 0
+        });
+      }
+
+      for (const it of rows) {
+        const stats = statsMap.get(Number(it.id));
+        it.revision = stats ? stats.revision : null;
+        it.have_attach = stats ? stats.have_attach : false;
+      }
+    } catch (e) {
+      console.error(`Failed to attach revision/file flags to ${logPrefix}`, e && e.message ? e.message : e);
+    }
+  }
   static async listDocuments(query = {}, actor) {
     const requiredPermission = 'documents.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
@@ -44,51 +105,7 @@ class DocumentsService {
       }
       const rows = await Document.list(query);
       await DocumentsService.attachDisplayFieldsToList(rows);
-      // Attach latest revision (max rev) from documents_storage for each document
-      try {
-        if (rows && rows.length) {
-          const docIds = rows.map(r => Number(r.id)).filter(Boolean);
-          if (docIds.length) {
-              const revQ = `SELECT document_id, ARRAY_AGG(DISTINCT rev) AS revs FROM documents_storage WHERE document_id = ANY($1::int[]) AND archive = false GROUP BY document_id`;
-            const revRes = await pool.query(revQ, [docIds]);
-              const revMap = new Map();
-              for (const r of (revRes.rows || [])) {
-                const id = Number(r.document_id);
-                const arr = (r.revs || []).filter(x => x !== null && typeof x !== 'undefined').map(String).map(s => s.trim()).filter(s => s !== '');
-                if (!arr || arr.length === 0) {
-                  revMap.set(id, null);
-                  continue;
-                }
-                const isNumeric = arr.every(s => /^[0-9]+$/.test(s));
-                const isAlpha = arr.every(s => /^[A-Za-z]+$/.test(s));
-                if (!isNumeric && !isAlpha) {
-                  // Mixed alphanumeric strings present -> treat as mixed
-                  const hasNumeric = arr.some(s => /^[0-9]+$/.test(s));
-                  const hasAlpha = arr.some(s => /^[A-Za-z]+$/.test(s));
-                  if (hasNumeric && hasAlpha) {
-                    revMap.set(id, '-');
-                    continue;
-                  }
-                }
-                if (isNumeric) {
-                  const nums = arr.map(Number);
-                  revMap.set(id, Math.max(...nums));
-                } else if (isAlpha) {
-                  arr.sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
-                  revMap.set(id, arr[arr.length - 1]);
-                } else {
-                  // Fallback: if mixed non-pure types but not clearly numeric+alpha, return '-'
-                  revMap.set(id, '-');
-                }
-              }
-            for (const it of rows) {
-              it.revision = revMap.has(it.id) ? revMap.get(it.id) : null;
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Failed to attach revision to documents list', e && e.message ? e.message : e);
-      }
+      await DocumentsService._attachRevisionAndFileFlagsToList(rows, 'documents list');
       return rows;
     }
 
@@ -124,35 +141,7 @@ class DocumentsService {
     }
     const rows = await Document.list(query, allowedProjectIds);
     await DocumentsService.attachDisplayFieldsToList(rows);
-    // Attach latest revision for restricted-list results as well
-    try {
-      if (rows && rows.length) {
-        const docIds = rows.map(r => Number(r.id)).filter(Boolean);
-        if (docIds.length) {
-          const revQ2 = `SELECT document_id, ARRAY_AGG(DISTINCT rev) AS revs FROM documents_storage WHERE document_id = ANY($1::int[]) AND archive = false GROUP BY document_id`;
-          const revRes2 = await pool.query(revQ2, [docIds]);
-          const revMap2 = new Map();
-          for (const r of (revRes2.rows || [])) {
-            const id = Number(r.document_id);
-            const arr = (r.revs || []).filter(x => x !== null && typeof x !== 'undefined').map(String).map(s => s.trim()).filter(s => s !== '');
-            if (!arr || arr.length === 0) { revMap2.set(id, null); continue; }
-            const isNumeric = arr.every(s => /^[0-9]+$/.test(s));
-            const isAlpha = arr.every(s => /^[A-Za-z]+$/.test(s));
-            if (!isNumeric && !isAlpha) {
-              const hasNumeric = arr.some(s => /^[0-9]+$/.test(s));
-              const hasAlpha = arr.some(s => /^[A-Za-z]+$/.test(s));
-              if (hasNumeric && hasAlpha) { revMap2.set(id, '-'); continue; }
-            }
-            if (isNumeric) { revMap2.set(id, Math.max(...arr.map(Number))); }
-            else if (isAlpha) { arr.sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' })); revMap2.set(id, arr[arr.length - 1]); }
-            else { revMap2.set(id, '-'); }
-          }
-          for (const it of rows) { it.revision = revMap2.has(it.id) ? revMap2.get(it.id) : null; }
-        }
-      }
-    } catch (e) {
-      console.error('Failed to attach revision to documents list (restricted)', e && e.message ? e.message : e);
-    }
+    await DocumentsService._attachRevisionAndFileFlagsToList(rows, 'documents list (restricted)');
     return rows;
   }
 
@@ -349,8 +338,13 @@ class DocumentsService {
   it.created_avatar_id = creator && creator.avatar_id ? creator.avatar_id : null;
 
   const assignee = it.assigne_to ? userMap.get(it.assigne_to) : null;
-  it.assigne_name = mkUserDisplay(assignee);
-  it.assigne_avatar_id = assignee && assignee.avatar_id ? assignee.avatar_id : null;
+  it.assigne_to = assignee
+    ? {
+        id: assignee.id,
+        full_name: mkUserDisplay(assignee),
+        avatar_id: assignee.avatar_id || null
+      }
+    : null;
       }
     } catch (e) {
       console.error('Failed to attach display fields to documents list', e && e.message ? e.message : e);

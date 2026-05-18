@@ -518,6 +518,9 @@ tags: []
           nullable: true
         created_by:
           type: integer
+        have_attach:
+          type: boolean
+          description: True when the document has at least one attached file
         created_at:
           type: string
           format: date-time
