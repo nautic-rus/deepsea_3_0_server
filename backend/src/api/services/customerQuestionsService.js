@@ -341,7 +341,7 @@ class CustomerQuestionsService {
       const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [created.project_id]);
       const projectParticipantIds = (prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean);
       const frontendRoot = process.env.FRONTEND_URL || '';
-      const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${created.id}` : '';
+      const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/questions/${created.id}` : '';
       NotificationDispatcher.dispatch({
         eventCode: 'question_created_in_project',
         projectId: created.project_id,
@@ -403,7 +403,7 @@ class CustomerQuestionsService {
       const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [updated.project_id]);
       const projectParticipantIds = (prsRes.rows || []).map(r => Number(r.user_id)).filter(Boolean);
       const frontendRoot = process.env.FRONTEND_URL || '';
-      const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${updated.id}` : '';
+      const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/questions/${updated.id}` : '';
       const projCtx = { id: updated.project_id, code: (updated.project && updated.project.code) || null };
       NotificationDispatcher.dispatch({
         eventCode: 'question_updated_in_project',
@@ -537,7 +537,7 @@ class CustomerQuestionsService {
     // Notify: comment_added (customer question)
     {
       const frontendRoot = process.env.FRONTEND_URL || '';
-      const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/customer_questions/${existing.id}` : '';
+      const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/questions/${existing.id}` : '';
       NotificationDispatcher.dispatch({
         eventCode: 'comment_added',
         projectId: existing.project_id,

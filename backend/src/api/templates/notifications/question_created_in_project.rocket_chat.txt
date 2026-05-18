@@ -6,7 +6,7 @@
 *Создал: *{{actor.full_name}}
 
 *Текст вопроса:*
-{{question.question_text}}
+{{question.question_text_plain}}
 
 {{questionUrl}}
 

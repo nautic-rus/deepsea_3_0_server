@@ -44,22 +44,19 @@ class NotificationTemplateService {
     const text = String(value || '');
     return text
       .replace(/<\s*br\s*\/?>/gi, '\n')
-      .replace(/<\/\s*p\s*>/gi, '\n')
-      .replace(/<\/\s*div\s*>/gi, '\n')
-      .replace(/<\/\s*li\s*>/gi, '\n')
-      .replace(/<\/\s*tr\s*>/gi, '\n')
+      .replace(/<\/\s*(p|div|li|tr|ol|ul|h[1-6])\s*>/gi, '\n')
       .replace(/<\s*li[^>]*>/gi, '- ')
-      .replace(/<\s*[^>]*>/g, ' ')
+      .replace(/<\s*[^>]*>/g, '')
       .replace(/&nbsp;/gi, ' ')
       .replace(/&amp;/gi, '&')
       .replace(/&lt;/gi, '<')
       .replace(/&gt;/gi, '>')
       .replace(/&quot;/gi, '"')
       .replace(/&#39;/gi, "'")
-      .replace(/\n\s*\n+/g, '\n')
-      .replace(/[ \t]+\n/g, '\n')
-      .replace(/\s+/g, ' ')
-      .replace(/\s*\n\s*/g, '\n')
+      .split('\n')
+      .map(line => line.replace(/[ \t]+/g, ' ').trim())
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
 
@@ -133,6 +130,12 @@ class NotificationTemplateService {
       } catch (e) {
         ctx.actor.full_name = ctx.actor.email || '';
       }
+    }
+    if (method === 'rocket_chat' && ctx.question && typeof ctx.question === 'object') {
+      const q = Object.assign({}, ctx.question);
+      if (typeof q.question_text === 'string') q.question_text_plain = NotificationTemplateService._stripHtml(q.question_text);
+      if (typeof q.answer_text === 'string') q.answer_text_plain = NotificationTemplateService._stripHtml(q.answer_text);
+      ctx.question = q;
     }
     // If `changes` is provided as an object with `before` and `after`,
     // convert it into a readable multi-line string so simple templates
