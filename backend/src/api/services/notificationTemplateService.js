@@ -244,6 +244,7 @@ class NotificationTemplateService {
 
           const prettyFieldNames = {
             project_id: 'Проект',
+            status: 'Статус',
             status_id: 'Статус',
             type_id: 'Тип',
             specialization_id: 'Специализация',
@@ -272,52 +273,59 @@ class NotificationTemplateService {
             let pretty = prettyFieldNames[k] || k.replace(/_/g, ' ').replace(/(^|\s)\S/g, s => s.toUpperCase());
             // remove trailing ' Id' for nicer labels when no explicit Russian label exists
             if (!prettyFieldNames[k]) pretty = pretty.replace(/\s+Id$/i, '');
-            const resolveVal = (key, v, objBefore, objAfter) => {
+            const resolveVal = (key, v, objBefore, objAfter, side) => {
+              const sideObj = side === 'before' ? objBefore : objAfter;
               // prefer explicit values; if missing, try to resolve via maps; then fall back
               if (v === undefined || v === null || v === '') {
-                // try to read enriched display fields from before/after objects
+                // try to read enriched display fields only from the matching side
                 try {
                   if (key === 'type') {
-                    return (objBefore && objBefore.type_name) || (objBefore && objBefore.type && objBefore.type.name) || (objAfter && objAfter.type_name) || (objAfter && objAfter.type && objAfter.type.name) || '';
+                    return (sideObj && sideObj.type_name) || (sideObj && sideObj.type && sideObj.type.name) || '';
                   }
                   if (key === 'specialization') {
-                    return (objBefore && objBefore.specialization_name) || (objBefore && objBefore.specialization && objBefore.specialization.name) || (objAfter && objAfter.specialization_name) || (objAfter && objAfter.specialization && objAfter.specialization.name) || '';
+                    return (sideObj && sideObj.specialization_name) || (sideObj && sideObj.specialization && sideObj.specialization.name) || '';
                   }
                   if (key === 'project_id') {
-                    return (objBefore && objBefore.project_name) || (objBefore && objBefore.project_code) || (objAfter && objAfter.project_name) || (objAfter && objAfter.project_code) || '';
+                    return (sideObj && sideObj.project_name) || (sideObj && sideObj.project_code) || '';
                   }
                   if (key === 'status_id') {
-                    return (objBefore && objBefore.status_name) || (objBefore && objBefore.status_code) || (objAfter && objAfter.status_name) || (objAfter && objAfter.status_code) || '';
+                    return (sideObj && sideObj.status_name) || (sideObj && sideObj.status_code) || '';
                   }
                   if (key === 'asked_by' || key === 'answered_by') {
-                    return (objBefore && mkObjectDisplay(objBefore[key])) || (objAfter && mkObjectDisplay(objAfter[key])) || '';
+                    return sideObj ? mkObjectDisplay(sideObj[key]) : '';
                   }
                   if (key === 'type_id') {
-                    return (objBefore && objBefore.type_name) || (objBefore && objBefore.type_code) || (objAfter && objAfter.type_name) || (objAfter && objAfter.type_code) || '';
+                    return (sideObj && sideObj.type_name) || (sideObj && sideObj.type_code) || '';
                   }
                   if (key === 'assignee_id' || key === 'assigne_to') {
-                    return (objBefore && objBefore.assignee_name) || (objAfter && objAfter.assignee_name) || '';
+                    return (sideObj && sideObj.assignee_name) || (sideObj && sideObj.assignee) || '';
                   }
                   if (key === 'author_id' || key === 'created_by') {
-                    return (objBefore && objBefore.author_name) || (objAfter && objAfter.author_name) || (objBefore && objBefore.created_name) || (objAfter && objAfter.created_name) || '';
+                    return (sideObj && sideObj.author_name) || (sideObj && sideObj.created_name) || '';
                   }
                   if (key === 'stage_id') {
-                    return (objBefore && objBefore.stage_name) || (objAfter && objAfter.stage_name) || '';
+                    return (sideObj && sideObj.stage_name) || '';
                   }
                   if (key === 'specialization_id') {
-                    return (objBefore && objBefore.specialization_name) || (objAfter && objAfter.specialization_name) || '';
+                    return (sideObj && sideObj.specialization_name) || '';
                   }
                   if (key === 'directory_id') {
-                    return (objBefore && objBefore.directory_name) || (objAfter && objAfter.directory_name) || '';
+                    return (sideObj && sideObj.directory_name) || '';
                   }
                 } catch (e) {
                   // ignore and continue to attempts below
                 }
+                return '';
               }
               try {
                 if (key === 'project_id') {
                   const p = projectMap.get(Number(v));
                   if (p) return p.name || p.code || String(v);
+                }
+                if (key === 'status') {
+                  if (typeof v === 'object') return (v && (v.name || v.code)) || JSON.stringify(v);
+                  if (typeof v === 'string' && /<[^>]+>/.test(v)) return NotificationTemplateService._stripHtml(v);
+                  return String(v === undefined || v === null ? '' : v);
                 }
                 if (key === 'asked_by' || key === 'answered_by') {
                   if (typeof v === 'object') return mkObjectDisplay(v) || JSON.stringify(v);
@@ -367,7 +375,7 @@ class NotificationTemplateService {
                 return String(v === undefined || v === null ? '' : v);
               }
             };
-            return `${pretty}: ${formatChangeValue(resolveVal(k, a, before, after))} → ${formatChangeValue(resolveVal(k, b, before, after))}`;
+            return `${pretty}: ${formatChangeValue(resolveVal(k, a, before, after, 'before'))} → ${formatChangeValue(resolveVal(k, b, before, after, 'after'))}`;
           });
           ctx.changes = lines.join('\n');
         }

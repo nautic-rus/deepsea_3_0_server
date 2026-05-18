@@ -4150,7 +4150,7 @@
           "units"
         ],
         "summary": "Update unit",
-        "description": "Partial update of a unit. Only changed fields are passed (name, code, symbol, description, kei).",
+        "description": "Partial update of a unit. Only changed fields are passed (name, code, symbol, description, kei). `kei` is stored as a string code, for example `006`.",
         "security": [
           {
             "bearerAuth": []
