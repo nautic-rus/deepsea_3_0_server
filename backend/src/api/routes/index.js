@@ -29,6 +29,7 @@ const unitsController = require('../controllers/unitsController');
 const shipmentsController = require('../controllers/shipmentsController');
 const suppliersController = require('../controllers/suppliersController');
 const specificationsController = require('../controllers/specificationsController');
+const specificationVersionsController = require('../controllers/specificationVersionsController');
 const stagesController = require('../controllers/stagesController');
 const storageController = require('../controllers/storageController');
 const multer = require('multer');
@@ -486,6 +487,9 @@ router.put('/specifications/:id', authMiddleware, specificationsController.updat
 router.delete('/specifications/:id', authMiddleware, specificationsController.delete);
 
 // ===== Specification versions / parts routes =====
+router.get('/specification_versions', authMiddleware, specificationVersionsController.list);
+router.get('/specification_versions/:id', authMiddleware, specificationVersionsController.get);
+
 // Specification parts
 router.get('/specification_parts', authMiddleware, specificationPartsController.list);
 router.get('/specification_parts/:id', authMiddleware, specificationPartsController.get);
