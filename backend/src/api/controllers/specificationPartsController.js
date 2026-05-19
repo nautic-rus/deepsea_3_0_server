@@ -5,7 +5,7 @@ class SpecificationPartsController {
     try {
       const actor = req.user || null;
       const rows = await SpecificationPartsService.list(req.query || {}, actor);
-      res.json({ data: rows });
+      res.json(rows);
     } catch (err) { next(err); }
   }
 
@@ -14,7 +14,7 @@ class SpecificationPartsController {
       const actor = req.user || null;
       const id = Number(req.params.id);
       const row = await SpecificationPartsService.getById(id, actor);
-      res.json({ data: row });
+      res.json(row);
     } catch (err) { next(err); }
   }
 
@@ -22,7 +22,7 @@ class SpecificationPartsController {
     try {
       const actor = req.user || null;
       const created = await SpecificationPartsService.create(req.body || {}, actor);
-      res.status(201).json({ data: created });
+      res.status(201).json(created);
     } catch (err) { next(err); }
   }
 
@@ -31,7 +31,7 @@ class SpecificationPartsController {
       const actor = req.user || null;
       const id = Number(req.params.id);
       const updated = await SpecificationPartsService.update(id, req.body || {}, actor);
-      res.json({ data: updated });
+      res.json(updated);
     } catch (err) { next(err); }
   }
 
