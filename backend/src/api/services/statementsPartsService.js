@@ -4,6 +4,21 @@ const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 
 class StatementsPartsService {
+  static async _assertVersionUnlocked(versionId) {
+    const version = await StatementsVersion.findById(versionId);
+    if (!version) {
+      const err = new Error('Statements version not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (version.lock) {
+      const err = new Error('Statements version is locked');
+      err.statusCode = 423;
+      throw err;
+    }
+    return version;
+  }
+
   static async list(query = {}, actor) {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, 'statements.view');
@@ -24,6 +39,7 @@ class StatementsPartsService {
     const allowed = await hasPermission(actor, 'statements.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
     if (!fields.statements_version_id) { const err = new Error('Missing fields'); err.statusCode = 400; throw err; }
+    await StatementsPartsService._assertVersionUnlocked(Number(fields.statements_version_id));
     fields.created_by = actor.id;
     return await StatementsPart.create(fields);
   }
@@ -31,6 +47,9 @@ class StatementsPartsService {
   static async update(id, fields, actor) {
     const allowed = await hasPermission(actor, 'statements.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
+    const existing = await StatementsPart.findById(id);
+    if (!existing) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
+    await StatementsPartsService._assertVersionUnlocked(Number(existing.statements_version_id));
     const updated = await StatementsPart.update(id, fields);
     if (!updated) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
     return updated;
@@ -39,6 +58,9 @@ class StatementsPartsService {
   static async delete(id, actor) {
     const allowed = await hasPermission(actor, 'statements.delete');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
+    const existing = await StatementsPart.findById(id);
+    if (!existing) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
+    await StatementsPartsService._assertVersionUnlocked(Number(existing.statements_version_id));
     const ok = await StatementsPart.softDelete(id);
     if (!ok) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
     return { success: true };
@@ -60,6 +82,11 @@ class StatementsPartsService {
     if (!version) {
       const err = new Error('Statements version not found');
       err.statusCode = 404;
+      throw err;
+    }
+    if (version.lock) {
+      const err = new Error('Statements version is locked');
+      err.statusCode = 423;
       throw err;
     }
     const statementId = Number(version.statement_id);

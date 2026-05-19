@@ -2054,6 +2054,11 @@
               "name": {
                 "type": "string",
                 "description": "Unit name"
+              },
+              "kei": {
+                "type": "integer",
+                "nullable": true,
+                "description": "Unit kei"
               }
             }
           },
@@ -3472,6 +3477,105 @@
             "type": "string",
             "nullable": true,
             "description": "Description"
+          }
+        }
+      },
+      "StatementsVersion": {
+        "type": "object",
+        "description": "Statement version — record from statements_version table",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Statement version ID"
+          },
+          "statement_id": {
+            "type": "integer",
+            "description": "Statement ID"
+          },
+          "version": {
+            "type": "string",
+            "nullable": true,
+            "description": "Version label"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "description": "Notes"
+          },
+          "created_by": {
+            "type": "integer",
+            "description": "Creator ID"
+          },
+          "updated_by": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Updater ID"
+          },
+          "lock": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Whether the version is locked"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Created at"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Updated at"
+          }
+        }
+      },
+      "StatementsVersionCreate": {
+        "type": "object",
+        "description": "Request body for creating a statement version",
+        "required": [
+          "statement_id",
+          "version"
+        ],
+        "properties": {
+          "statement_id": {
+            "type": "integer",
+            "description": "Statement ID (required)"
+          },
+          "version": {
+            "type": "string",
+            "description": "Version (required)"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "description": "Notes"
+          },
+          "lock": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Lock flag"
+          }
+        }
+      },
+      "StatementsVersionUpdate": {
+        "type": "object",
+        "description": "Request body for updating a statement version",
+        "properties": {
+          "version": {
+            "type": "string",
+            "nullable": true,
+            "description": "Version"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "description": "Notes"
+          },
+          "lock": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Lock flag"
           }
         }
       },
@@ -15264,7 +15368,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/StatementsVersionUpdate"
               }
             }
           }
@@ -15362,7 +15466,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/StatementsVersionUpdate"
+              },
+              "example": {
+                "version": "v2",
+                "notes": "Updated after review",
+                "lock": true
               }
             }
           }
@@ -15402,7 +15511,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/StatementsVersionUpdate"
+              },
+              "example": {
+                "version": "v2",
+                "notes": "Updated after review",
+                "lock": true
               }
             }
           }
@@ -15471,7 +15585,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/StatementsVersionUpdate"
+              },
+              "example": {
+                "version": "v2",
+                "notes": "Updated after review",
+                "lock": true
               }
             }
           }
@@ -22088,7 +22207,12 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/StatementsVersionUpdate"
+              },
+              "example": {
+                "version": "v2",
+                "notes": "Updated after review",
+                "lock": true
               }
             }
           }
@@ -22208,6 +22332,9 @@
           },
           "404": {
             "description": "Statements version not found"
+          },
+          "423": {
+            "description": "Statements version is locked"
           }
         }
       }
@@ -22294,6 +22421,9 @@
                 }
               }
             }
+          },
+          "423": {
+            "description": "Statements version is locked"
           }
         }
       }
@@ -22382,6 +22512,9 @@
                 }
               }
             }
+          },
+          "423": {
+            "description": "Statements version is locked"
           }
         }
       },
@@ -22422,12 +22555,15 @@
                   }
                 },
                 "example": {
-                  "message": "Deleted"
-                }
+                "message": "Deleted"
               }
             }
+          },
+          "423": {
+            "description": "Statements version is locked"
           }
         }
+      }
       }
     },
     "/api/specification_parts": {

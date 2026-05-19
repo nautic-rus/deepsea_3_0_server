@@ -9,9 +9,36 @@ class StatementsPart {
         sp.parent_id,
         sp.specification_part_id,
         sp.quantity,
-        sp.created_by,
+        CASE
+          WHEN m.unit_id = 2 THEN sp.quantity::text
+          WHEN COALESCE(m.weight, 0) = 0 THEN '-'
+          ELSE (m.weight * sp.quantity)::text
+        END AS total_waight,
+        json_build_object(
+          'id', cu.id,
+          'full_name', concat_ws(' ', cu.first_name, cu.last_name),
+          'avatar_id', cu.avatar_id
+        ) AS created_by,
         sp.created_at,
-        row_to_json(m.*) AS material,
+        json_build_object(
+          'id', uu.id,
+          'full_name', concat_ws(' ', uu.first_name, uu.last_name),
+          'avatar_id', uu.avatar_id
+        ) AS updated_by,
+        sv2.updated_at AS updated_at,
+        jsonb_set(
+          to_jsonb(m),
+          '{unit}',
+          CASE
+            WHEN uo.id IS NULL THEN 'null'::jsonb
+            ELSE jsonb_build_object(
+              'id', uo.id,
+              'name', uo.name,
+              'kei', uo.kei
+            )
+          END,
+          true
+        ) AS material,
         CASE
           WHEN spt.id IS NULL THEN NULL
           ELSE json_build_object(
@@ -67,9 +94,12 @@ class StatementsPart {
     let q = `${StatementsPart.baseSelect()} FROM statements_parts sp
       LEFT JOIN specification_parts spt ON spt.id = sp.specification_part_id
       LEFT JOIN equipment_materials m ON m.id = spt.material_id
+      LEFT JOIN units uo ON uo.id = m.unit_id
       LEFT JOIN specification_version sv ON sv.id = spt.specification_version_id
       LEFT JOIN specification spec ON spec.id = sv.specification_id
       LEFT JOIN users cu ON cu.id = spec.created_by
+      LEFT JOIN statements_version sv2 ON sv2.id = sp.statements_version_id
+      LEFT JOIN users uu ON uu.id = sv2.updated_by
       LEFT JOIN projects p ON p.id = spec.project_id
       LEFT JOIN documents d ON d.id = spec.document_id
       ${whereSql} ORDER BY sp.id`;
@@ -88,9 +118,12 @@ class StatementsPart {
     const q = `${StatementsPart.baseSelect()} FROM statements_parts sp
       LEFT JOIN specification_parts spt ON spt.id = sp.specification_part_id
       LEFT JOIN equipment_materials m ON m.id = spt.material_id
+      LEFT JOIN units uo ON uo.id = m.unit_id
       LEFT JOIN specification_version sv ON sv.id = spt.specification_version_id
       LEFT JOIN specification spec ON spec.id = sv.specification_id
       LEFT JOIN users cu ON cu.id = spec.created_by
+      LEFT JOIN statements_version sv2 ON sv2.id = sp.statements_version_id
+      LEFT JOIN users uu ON uu.id = sv2.updated_by
       LEFT JOIN projects p ON p.id = spec.project_id
       LEFT JOIN documents d ON d.id = spec.document_id
       WHERE sp.id = $1 LIMIT 1`;

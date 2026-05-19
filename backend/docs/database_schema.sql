@@ -2472,6 +2472,26 @@ ALTER SEQUENCE public.statements_specification_id_seq OWNED BY public.statements
 
 
 --
+-- Name: statements_version; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.statements_version (
+    id integer NOT NULL,
+    statement_id integer NOT NULL,
+    version character varying(50),
+    notes text,
+    created_by integer NOT NULL,
+    updated_by integer,
+    "lock" boolean DEFAULT false,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.statements_version OWNER TO postgres;
+
+
+--
 -- DROPPED: statement_materials table and related sequence (removed by migration)
 --
 
