@@ -35,9 +35,13 @@ class SpecificationsService {
       created_by: v.created_by,
       created_by_first_name: v.created_by_first_name,
       created_by_last_name: v.created_by_last_name,
+      created_by_middle_name: v.created_by_middle_name,
+      created_by_full_name: [v.created_by_last_name, v.created_by_first_name, v.created_by_middle_name].filter(Boolean).join(' ') || null,
       updated_by: v.updated_by,
       updated_by_first_name: v.updated_by_first_name,
       updated_by_last_name: v.updated_by_last_name,
+      updated_by_middle_name: v.updated_by_middle_name,
+      updated_by_full_name: [v.updated_by_last_name, v.updated_by_first_name, v.updated_by_middle_name].filter(Boolean).join(' ') || null,
       created_at: v.created_at,
       updated_at: v.updated_at
     }));

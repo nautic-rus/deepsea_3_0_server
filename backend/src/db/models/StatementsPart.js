@@ -14,18 +14,6 @@ class StatementsPart {
           WHEN COALESCE(m.weight, 0) = 0 THEN '-'
           ELSE (m.weight * sp.quantity)::text
         END AS total_waight,
-        json_build_object(
-          'id', cu.id,
-          'full_name', concat_ws(' ', cu.first_name, cu.last_name),
-          'avatar_id', cu.avatar_id
-        ) AS created_by,
-        sp.created_at,
-        json_build_object(
-          'id', uu.id,
-          'full_name', concat_ws(' ', uu.first_name, uu.last_name),
-          'avatar_id', uu.avatar_id
-        ) AS updated_by,
-        sv2.updated_at AS updated_at,
         jsonb_set(
           to_jsonb(m),
           '{unit}',
@@ -65,12 +53,12 @@ class StatementsPart {
                 'description', spec.description,
                 'version', (SELECT version FROM specification_version sv2 WHERE sv2.specification_id = spec.id ORDER BY sv2.created_at DESC LIMIT 1),
                 'created_by', json_build_object(
-                  'id', cu.id,
-                  'username', cu.username,
-                  'first_name', cu.first_name,
-                  'last_name', cu.last_name,
-                  'email', cu.email,
-                  'avatar_id', cu.avatar_id
+                  'id', scu.id,
+                  'username', scu.username,
+                  'first_name', scu.first_name,
+                  'last_name', scu.last_name,
+                  'email', scu.email,
+                  'avatar_id', scu.avatar_id
                 ),
                 'created_at', spec.created_at,
                 'project', row_to_json(p.*),
@@ -97,9 +85,7 @@ class StatementsPart {
       LEFT JOIN units uo ON uo.id = m.unit_id
       LEFT JOIN specification_version sv ON sv.id = spt.specification_version_id
       LEFT JOIN specification spec ON spec.id = sv.specification_id
-      LEFT JOIN users cu ON cu.id = spec.created_by
-      LEFT JOIN statements_version sv2 ON sv2.id = sp.statements_version_id
-      LEFT JOIN users uu ON uu.id = sv2.updated_by
+      LEFT JOIN users scu ON scu.id = spec.created_by
       LEFT JOIN projects p ON p.id = spec.project_id
       LEFT JOIN documents d ON d.id = spec.document_id
       ${whereSql} ORDER BY sp.id`;
@@ -121,9 +107,7 @@ class StatementsPart {
       LEFT JOIN units uo ON uo.id = m.unit_id
       LEFT JOIN specification_version sv ON sv.id = spt.specification_version_id
       LEFT JOIN specification spec ON spec.id = sv.specification_id
-      LEFT JOIN users cu ON cu.id = spec.created_by
-      LEFT JOIN statements_version sv2 ON sv2.id = sp.statements_version_id
-      LEFT JOIN users uu ON uu.id = sv2.updated_by
+      LEFT JOIN users scu ON scu.id = spec.created_by
       LEFT JOIN projects p ON p.id = spec.project_id
       LEFT JOIN documents d ON d.id = spec.document_id
       WHERE sp.id = $1 LIMIT 1`;

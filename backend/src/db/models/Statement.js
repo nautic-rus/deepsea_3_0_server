@@ -1,6 +1,44 @@
 const pool = require('../connection');
 
 class Statement {
+  static _selectFields() {
+    return `
+      s.id,
+      s.parent_id,
+      s.project_id,
+      s.code,
+      s.name,
+      s.description,
+      CASE
+        WHEN p.id IS NULL THEN NULL
+        ELSE json_build_object(
+          'id', p.id,
+          'code', p.code,
+          'name', p.name,
+          'description', p.description,
+          'status', p.status,
+          'owner_id', p.owner_id
+        )
+      END AS project,
+      CASE
+        WHEN sv.id IS NULL THEN NULL
+        ELSE json_build_object(
+          'id', sv.id,
+          'statement_id', sv.statement_id,
+          'version', sv.version,
+          'notes', sv.notes,
+          'created_by', sv.created_by,
+          'updated_by', sv.updated_by,
+          'lock', sv."lock",
+          'created_at', sv.created_at,
+          'updated_at', sv.updated_at
+        )
+      END AS latest_version,
+      json_build_object('id', u.id, 'full_name', concat_ws(' ', u.last_name, u.first_name, u.middle_name), 'avatar_id', u.avatar_id) AS created_by,
+      s.created_at
+    `;
+  }
+
   static async list(filters = {}) {
     const { page = 1, limit, search, project_id, allowed_project_ids } = filters;
     const offset = limit ? (page - 1) * limit : 0;
@@ -23,11 +61,17 @@ class Statement {
       values.push(projectIds);
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT s.id, s.parent_id, s.project_id, s.code, s.name, s.description,
-      json_build_object('id', u.id, 'full_name', concat_ws(' ', u.first_name, u.last_name), 'avatar_id', u.avatar_id) AS created_by,
-      s.created_at
+    let q = `SELECT ${Statement._selectFields()}
       FROM statements s
       LEFT JOIN users u ON u.id = s.created_by
+      LEFT JOIN projects p ON p.id = s.project_id
+      LEFT JOIN LATERAL (
+        SELECT sv.id, sv.statement_id, sv.version, sv.notes, sv.created_by, sv.updated_by, sv."lock", sv.created_at, sv.updated_at
+        FROM statements_version sv
+        WHERE sv.statement_id = s.id
+        ORDER BY sv.id DESC
+        LIMIT 1
+      ) sv ON true
       ${whereSql} ORDER BY s.id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
@@ -41,11 +85,17 @@ class Statement {
   }
 
   static async findById(id) {
-    const q = `SELECT s.id, s.parent_id, s.project_id, s.code, s.name, s.description,
-      json_build_object('id', u.id, 'full_name', concat_ws(' ', u.first_name, u.last_name), 'avatar_id', u.avatar_id) AS created_by,
-      s.created_at
+    const q = `SELECT ${Statement._selectFields()}
       FROM statements s
       LEFT JOIN users u ON u.id = s.created_by
+      LEFT JOIN projects p ON p.id = s.project_id
+      LEFT JOIN LATERAL (
+        SELECT sv.id, sv.statement_id, sv.version, sv.notes, sv.created_by, sv.updated_by, sv."lock", sv.created_at, sv.updated_at
+        FROM statements_version sv
+        WHERE sv.statement_id = s.id
+        ORDER BY sv.id DESC
+        LIMIT 1
+      ) sv ON true
       WHERE s.id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;

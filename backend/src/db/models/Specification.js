@@ -13,7 +13,7 @@ class Specification {
     let q = `SELECT specification.id, specification.code, specification.name, specification.description, specification.created_at,
       row_to_json(p.*) AS project,
       row_to_json(d.*) AS document,
-      json_build_object('id', u.id, 'username', u.username, 'first_name', u.first_name, 'last_name', u.last_name, 'email', u.email, 'avatar_id', u.avatar_id) AS created_by,
+      json_build_object('id', u.id, 'username', u.username, 'first_name', u.first_name, 'last_name', u.last_name, 'middle_name', u.middle_name, 'full_name', concat_ws(' ', u.last_name, u.first_name, u.middle_name), 'email', u.email, 'avatar_id', u.avatar_id) AS created_by,
       (SELECT version FROM specification_version sv WHERE sv.specification_id = specification.id ORDER BY sv.created_at DESC LIMIT 1) AS version
       FROM specification
       LEFT JOIN projects p ON p.id = specification.project_id
@@ -35,7 +35,7 @@ class Specification {
     const q = `SELECT specification.id, specification.code, specification.name, specification.description, specification.created_at,
       row_to_json(p.*) AS project,
       row_to_json(d.*) AS document,
-      json_build_object('id', u.id, 'username', u.username, 'first_name', u.first_name, 'last_name', u.last_name, 'email', u.email, 'avatar_id', u.avatar_id) AS created_by,
+      json_build_object('id', u.id, 'username', u.username, 'first_name', u.first_name, 'last_name', u.last_name, 'middle_name', u.middle_name, 'full_name', concat_ws(' ', u.last_name, u.first_name, u.middle_name), 'email', u.email, 'avatar_id', u.avatar_id) AS created_by,
       (SELECT version FROM specification_version sv WHERE sv.specification_id = specification.id ORDER BY sv.created_at DESC LIMIT 1) AS version
       FROM specification
       LEFT JOIN projects p ON p.id = specification.project_id

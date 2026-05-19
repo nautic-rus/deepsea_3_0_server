@@ -11,7 +11,7 @@ class SpecificationPart {
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     let q = `SELECT sp.id, sp.specification_version_id, sp.parent_id, sp.part_code, sp.material_id, sp.quantity, sp.zone, sp.cog_x, sp.cog_y, sp.cog_z, sp.source, sp.created_at,
       row_to_json(m.*) AS material,
-      json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
+      json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
       LEFT JOIN equipment_materials m ON m.id = sp.material_id
@@ -32,7 +32,7 @@ class SpecificationPart {
   static async findById(id) {
     const q = `SELECT sp.id, sp.specification_version_id, sp.parent_id, sp.part_code, sp.material_id, sp.quantity, sp.zone, sp.cog_x, sp.cog_y, sp.cog_z, sp.source, sp.created_at,
       row_to_json(m.*) AS material,
-      json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
+      json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
       LEFT JOIN equipment_materials m ON m.id = sp.material_id

@@ -4,6 +4,111 @@ const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 
 class StatementsPartsService {
+  static _toUserObject(row) {
+    if (!row) return null;
+    const fullName = [row.last_name, row.first_name, row.middle_name].filter(Boolean).join(' ').trim() || null;
+    return {
+      id: row.id,
+      full_name: fullName,
+      avatar_id: row.avatar_id ?? null,
+    };
+  }
+
+  static async _loadUsersByIds(ids = []) {
+    const uniqueIds = [...new Set((ids || []).map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id > 0))];
+    if (uniqueIds.length === 0) return new Map();
+
+    const res = await pool.query(
+      `SELECT id, first_name, last_name, avatar_id FROM users WHERE id = ANY($1::int[])`,
+      [uniqueIds]
+    );
+    return new Map((res.rows || []).map((row) => [row.id, StatementsPartsService._toUserObject(row)]));
+  }
+
+  static _stripVersionMeta(row) {
+    if (!row) return row;
+    const {
+      statements_version_id,
+      created_by,
+      created_at,
+      updated_by,
+      updated_at,
+      ...rest
+    } = row;
+    return rest;
+  }
+
+  static async _versionMetaFromVersion(version) {
+    if (!version) {
+      return {
+        statements_version_id: null,
+        created_by: null,
+        created_at: null,
+        updated_by: null,
+        updated_at: null,
+      };
+    }
+
+    const userMap = await StatementsPartsService._loadUsersByIds([version.created_by, version.updated_by]);
+    return {
+      statements_version_id: version.id ?? null,
+      created_by: userMap.get(Number(version.created_by)) || null,
+      created_at: version.created_at ?? null,
+      updated_by: userMap.get(Number(version.updated_by)) || null,
+      updated_at: version.updated_at ?? null,
+    };
+  }
+
+  static _versionMetaFromRow(row) {
+    if (!row) {
+      return {
+        statements_version_id: null,
+        created_by: null,
+        created_at: null,
+        updated_by: null,
+        updated_at: null,
+      };
+    }
+
+    return {
+      statements_version_id: row.statements_version_id ?? null,
+      created_by: row.created_by ?? null,
+      created_at: row.created_at ?? null,
+      updated_by: row.updated_by ?? null,
+      updated_at: row.updated_at ?? null,
+    };
+  }
+
+  static async _resolveVersionMeta(query = {}, rows = []) {
+    const requestedVersionId = query && query.statements_version_id !== undefined && query.statements_version_id !== null
+      ? Number(query.statements_version_id)
+      : null;
+
+    const firstRowVersionId = Array.isArray(rows) && rows.length > 0 && rows[0]
+      ? Number(rows[0].statements_version_id)
+      : null;
+
+    const versionId = Number.isNaN(requestedVersionId) || requestedVersionId === null
+      ? (Number.isNaN(firstRowVersionId) || firstRowVersionId === null ? null : firstRowVersionId)
+      : requestedVersionId;
+
+    if (!versionId) {
+      return {
+        statements_version_id: requestedVersionId || null,
+        created_by: null,
+        created_at: null,
+        updated_by: null,
+        updated_at: null,
+      };
+    }
+
+    const version = await StatementsVersion.findById(versionId);
+    if (!version) {
+      return { statements_version_id: versionId, created_by: null, created_at: null, updated_by: null, updated_at: null };
+    }
+    return await StatementsPartsService._versionMetaFromVersion(version);
+  }
+
   static async _assertVersionUnlocked(versionId) {
     const version = await StatementsVersion.findById(versionId);
     if (!version) {
@@ -23,7 +128,12 @@ class StatementsPartsService {
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, 'statements.view');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
-    return await StatementsPart.list(query);
+    const rows = await StatementsPart.list(query);
+    const meta = await StatementsPartsService._resolveVersionMeta(query, rows);
+    return {
+      ...meta,
+      data: rows.map((row) => StatementsPartsService._stripVersionMeta(row))
+    };
   }
 
   static async getById(id, actor) {
@@ -32,7 +142,11 @@ class StatementsPartsService {
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
     const r = await StatementsPart.findById(id);
     if (!r) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
-    return r;
+    const meta = await StatementsPartsService._resolveVersionMeta({ statements_version_id: r.statements_version_id }, [r]);
+    return {
+      ...meta,
+      data: StatementsPartsService._stripVersionMeta(r)
+    };
   }
 
   static async create(fields, actor) {
@@ -41,7 +155,13 @@ class StatementsPartsService {
     if (!fields.statements_version_id) { const err = new Error('Missing fields'); err.statusCode = 400; throw err; }
     await StatementsPartsService._assertVersionUnlocked(Number(fields.statements_version_id));
     fields.created_by = actor.id;
-    return await StatementsPart.create(fields);
+    const created = await StatementsPart.create(fields);
+    if (!created) return null;
+    const meta = await StatementsPartsService._resolveVersionMeta({ statements_version_id: created.statements_version_id }, [created]);
+    return {
+      ...meta,
+      data: StatementsPartsService._stripVersionMeta(created)
+    };
   }
 
   static async update(id, fields, actor) {
@@ -52,7 +172,11 @@ class StatementsPartsService {
     await StatementsPartsService._assertVersionUnlocked(Number(existing.statements_version_id));
     const updated = await StatementsPart.update(id, fields);
     if (!updated) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
-    return updated;
+    const meta = await StatementsPartsService._resolveVersionMeta({ statements_version_id: updated.statements_version_id }, [updated]);
+    return {
+      ...meta,
+      data: StatementsPartsService._stripVersionMeta(updated)
+    };
   }
 
   static async delete(id, actor) {
@@ -154,7 +278,7 @@ class StatementsPartsService {
       return {
         statements_version_id: versionId,
         inserted_count: insertedIds.length,
-        data: rows.filter(Boolean)
+        data: rows.filter(Boolean).map((row) => StatementsPartsService._stripVersionMeta(row))
       };
     } catch (err) {
       await client.query('ROLLBACK');

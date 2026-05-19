@@ -1,8 +1,11 @@
 const pool = require('../connection');
 
 class Material {
-  static _formatUserDisplay(firstName, lastName) {
-    return (firstName || lastName) ? `${firstName || ''} ${lastName || ''}`.trim() : null;
+  static _formatUserDisplay(lastName, firstName, middleName) {
+    return [lastName, firstName, middleName]
+      .map((part) => (part == null ? '' : String(part).trim()))
+      .filter(Boolean)
+      .join(' ') || null;
   }
 
   static _toIntArray(v) {
@@ -24,9 +27,9 @@ class Material {
       sfi_code: r.sfi_code_id ? { id: r.sfi_code_id, code: r.sfi_code_code || null, name_ru: r.sfi_code_name_ru || null, name_en: r.sfi_code_name_en || null } : null,
       type: r.type,
       status: r.status,
-      created_by: r.created_by ? { id: r.created_by, name: Material._formatUserDisplay(r.created_by_first_name, r.created_by_last_name), avatar_id: r.created_by_avatar_id || null } : null,
+      created_by: r.created_by ? { id: r.created_by, name: Material._formatUserDisplay(r.created_by_last_name, r.created_by_first_name, r.created_by_middle_name), avatar_id: r.created_by_avatar_id || null } : null,
       created_at: r.created_at,
-      updated_by: r.updated_by ? { id: r.updated_by, name: Material._formatUserDisplay(r.updated_by_first_name, r.updated_by_last_name), avatar_id: r.updated_by_avatar_id || null } : null,
+      updated_by: r.updated_by ? { id: r.updated_by, name: Material._formatUserDisplay(r.updated_by_last_name, r.updated_by_first_name, r.updated_by_middle_name), avatar_id: r.updated_by_avatar_id || null } : null,
       updated_at: r.updated_at,
     };
   }
@@ -196,7 +199,7 @@ class Material {
       values.push(projectIds);
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `${directoryScopeSql} SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, m.weight, m.sfi_code_id, sc.code AS sfi_code_code, sc.name_ru AS sfi_code_name_ru, sc.name_en AS sfi_code_name_en, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
+    let q = `${directoryScopeSql} SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, m.weight, m.sfi_code_id, sc.code AS sfi_code_code, sc.name_ru AS sfi_code_name_ru, sc.name_en AS sfi_code_name_en, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.middle_name AS created_by_middle_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.middle_name AS updated_by_middle_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
         FROM equipment_materials m
       LEFT JOIN equipment_materials_directories d ON m.directory_id = d.id
       LEFT JOIN units uo ON m.unit_id = uo.id
@@ -217,7 +220,7 @@ class Material {
   }
 
   static async findById(id) {
-    const q = `SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, m.weight, m.sfi_code_id, sc.code AS sfi_code_code, sc.name_ru AS sfi_code_name_ru, sc.name_en AS sfi_code_name_en, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
+    const q = `SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, m.weight, m.sfi_code_id, sc.code AS sfi_code_code, sc.name_ru AS sfi_code_name_ru, sc.name_en AS sfi_code_name_en, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.middle_name AS created_by_middle_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.middle_name AS updated_by_middle_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
         FROM equipment_materials m
       LEFT JOIN equipment_materials_directories d ON m.directory_id = d.id
       LEFT JOIN units uo ON m.unit_id = uo.id

@@ -4,8 +4,8 @@ class StatementsPartsController {
   static async list(req, res, next) {
     try {
       const actor = req.user || null;
-      const rows = await StatementsPartsService.list(req.query || {}, actor);
-      res.json({ data: rows });
+      const result = await StatementsPartsService.list(req.query || {}, actor);
+      res.json(result);
     } catch (err) { next(err); }
   }
 
@@ -13,8 +13,8 @@ class StatementsPartsController {
     try {
       const actor = req.user || null;
       const id = Number(req.params.id);
-      const row = await StatementsPartsService.getById(id, actor);
-      res.json({ data: row });
+      const result = await StatementsPartsService.getById(id, actor);
+      res.json(result);
     } catch (err) { next(err); }
   }
 
@@ -22,7 +22,7 @@ class StatementsPartsController {
     try {
       const actor = req.user || null;
       const created = await StatementsPartsService.create(req.body || {}, actor);
-      res.status(201).json({ data: created });
+      res.status(201).json(created);
     } catch (err) { next(err); }
   }
 
@@ -31,7 +31,7 @@ class StatementsPartsController {
       const actor = req.user || null;
       const id = Number(req.params.id);
       const updated = await StatementsPartsService.update(id, req.body || {}, actor);
-      res.json({ data: updated });
+      res.json(updated);
     } catch (err) { next(err); }
   }
 

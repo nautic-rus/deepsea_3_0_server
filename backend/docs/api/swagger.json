@@ -2695,12 +2695,9 @@
       },
       "StatementsPart": {
         "type": "object",
-        "description": "Statement part with linked specification part, material and specification data",
+        "description": "Statement part with linked specification part, material and specification data.",
         "properties": {
           "id": {
-            "type": "integer"
-          },
-          "statements_version_id": {
             "type": "integer"
           },
           "parent_id": {
@@ -2713,14 +2710,6 @@
           },
           "quantity": {
             "type": "number",
-            "nullable": true
-          },
-          "created_by": {
-            "type": "integer"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
             "nullable": true
           },
           "material": {
@@ -2868,6 +2857,60 @@
             "items": {
               "$ref": "#/components/schemas/StatementsPart"
             }
+          }
+        }
+      },
+      "StatementsPartsEnvelope": {
+        "type": "object",
+        "description": "Statements parts response with version metadata pulled out of each part",
+        "properties": {
+          "statements_version_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "created_by": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "full_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_by": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "full_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         }
       },
@@ -3422,6 +3465,36 @@
             "nullable": true,
             "description": "Project ID"
           },
+          "project": {
+            "type": "object",
+            "nullable": true,
+            "description": "Linked project info",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "code": {
+                "type": "string",
+                "nullable": true
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "description": {
+                "type": "string",
+                "nullable": true
+              },
+              "status": {
+                "type": "string",
+                "nullable": true
+              },
+              "owner_id": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          },
           "code": {
             "type": "string",
             "nullable": true,
@@ -3436,9 +3509,65 @@
             "nullable": true,
             "description": "Description"
           },
+          "latest_version": {
+            "type": "object",
+            "nullable": true,
+            "description": "Latest linked statement version",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "statement_id": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "string",
+                "nullable": true
+              },
+              "notes": {
+                "type": "string",
+                "nullable": true
+              },
+              "created_by": {
+                "type": "integer",
+                "nullable": true
+              },
+              "updated_by": {
+                "type": "integer",
+                "nullable": true
+              },
+              "lock": {
+                "type": "boolean",
+                "nullable": true
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          },
           "created_by": {
-            "type": "integer",
-            "description": "Creator ID"
+            "type": "object",
+            "description": "Creator info",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "full_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
           },
           "created_at": {
             "type": "string",
@@ -19366,7 +19495,7 @@
           "statements"
         ],
         "summary": "List of statements",
-        "description": "Returns a list of statements with text search by name and description. Supports filtering by project_id. Pagination via page/limit.",
+        "description": "Returns a list of statements with text search by name and description. Supports filtering by project_id. Each row includes linked project info and the latest statement version. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -19435,7 +19564,27 @@
                       "code": "ST-001",
                       "name": "Monthly materials statement",
                       "description": "Statement for March",
-                      "created_by": 2,
+                      "project": {
+                        "id": 12,
+                        "code": "PRJ-012",
+                        "name": "Factory expansion"
+                      },
+                      "latest_version": {
+                        "id": 34,
+                        "statement_id": 1,
+                        "version": "v3",
+                        "notes": "Approved release",
+                        "created_by": 2,
+                        "updated_by": 2,
+                        "lock": true,
+                        "created_at": "2024-01-03T00:00:00.000Z",
+                        "updated_at": "2024-01-04T00:00:00.000Z"
+                      },
+                      "created_by": {
+                        "id": 2,
+                        "full_name": "Ivan Petrov",
+                        "avatar_id": null
+                      },
                       "created_at": "2024-01-01T00:00:00.000Z"
                     }
                   ]
@@ -22370,6 +22519,54 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "statements_version_id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "created_by": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "full_name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "avatar_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "updated_by": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "full_name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "avatar_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
                     "data": {
                       "type": "array",
                       "items": {
@@ -22377,6 +22574,56 @@
                       }
                     }
                   }
+                },
+                "example": {
+                  "statements_version_id": 15,
+                  "created_by": {
+                    "id": 341,
+                    "full_name": "Павел Спиридович",
+                    "avatar_id": 297
+                  },
+                  "created_at": "2026-05-19T06:31:23.334Z",
+                  "updated_by": {
+                    "id": 1,
+                    "full_name": "Admin Admin",
+                    "avatar_id": null
+                  },
+                  "updated_at": "2026-05-19T06:51:33.181Z",
+                  "data": [
+                    {
+                      "id": 101,
+                      "parent_id": null,
+                      "specification_part_id": 2201,
+                      "quantity": 3,
+                      "material_id": 55,
+                      "material_stock_code": "MAT-055",
+                      "material_name": "Steel plate",
+                      "material_description": "Base plate",
+                      "material_directory": null,
+                      "material_unit": null,
+                      "material_weight": 12.5,
+                      "material_sfi_code": null,
+                      "material_type": "material",
+                      "material_status": "active",
+                      "specification_version_id": 88,
+                      "specification_part_parent_id": null,
+                      "part_code": "A-01",
+                      "specification_part_quantity": 3,
+                      "zone": "Z1",
+                      "cog_x": null,
+                      "cog_y": null,
+                      "cog_z": null,
+                      "source": "manual",
+                      "specification_part_created_at": "2026-05-18T10:00:00.000Z",
+                      "specification_version": null,
+                      "specification": null,
+                      "project": null,
+                      "document": null,
+                      "material": null,
+                      "specification_part": null,
+                      "total_waight": "37.5"
+                    }
+                  ]
                 }
               }
             }
@@ -22414,6 +22661,54 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "statements_version_id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "created_by": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "full_name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "avatar_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "updated_by": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "full_name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "avatar_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
                     "data": {
                       "$ref": "#/components/schemas/StatementsPart"
                     }
@@ -22458,7 +22753,60 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StatementsPart"
+                  "type": "object",
+                  "properties": {
+                    "statements_version_id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "created_by": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "full_name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "avatar_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "updated_by": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "full_name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "avatar_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/StatementsPart"
+                    }
+                  }
                 }
               }
             }
@@ -22505,6 +22853,28 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "statements_version_id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "created_by": {
+                      "type": "object",
+                      "nullable": true
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "updated_by": {
+                      "type": "object",
+                      "nullable": true
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
                     "data": {
                       "$ref": "#/components/schemas/StatementsPart"
                     }
