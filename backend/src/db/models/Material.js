@@ -216,7 +216,7 @@ class Material {
     }
     const res = await pool.query(q, values);
     const rows = res.rows.map((r) => Material._formatBaseRow(r));
-    return await Material._attachStatementUsage(rows);
+    return rows;
   }
 
   static async findById(id) {
