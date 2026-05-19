@@ -2397,6 +2397,22 @@
               "quantity": {
                 "type": "number"
               },
+              "zone": {
+                "type": "string",
+                "nullable": true
+              },
+              "cog_x": {
+                "type": "number",
+                "nullable": true
+              },
+              "cog_y": {
+                "type": "number",
+                "nullable": true
+              },
+              "cog_z": {
+                "type": "number",
+                "nullable": true
+              },
               "source": {
                 "type": "string",
                 "nullable": true
@@ -2414,6 +2430,9 @@
               "id": {
                 "type": "integer"
               },
+              "specification_id": {
+                "type": "integer"
+              },
               "version": {
                 "type": "string",
                 "nullable": true
@@ -2422,7 +2441,35 @@
                 "type": "string",
                 "nullable": true
               },
+              "created_by": {
+                "type": "integer"
+              },
+              "created_by_first_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "created_by_last_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "updated_by": {
+                "type": "integer",
+                "nullable": true
+              },
+              "updated_by_first_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "updated_by_last_name": {
+                "type": "string",
+                "nullable": true
+              },
               "created_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "updated_at": {
                 "type": "string",
                 "format": "date-time",
                 "nullable": true
@@ -2481,6 +2528,166 @@
           }
         }
       },
+      "SpecificationPart": {
+        "type": "object",
+        "description": "Specification part",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "specification_version_id": {
+            "type": "integer"
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "part_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "material_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "zone": {
+            "type": "string",
+            "nullable": true
+          },
+          "cog_x": {
+            "type": "number",
+            "nullable": true
+          },
+          "cog_y": {
+            "type": "number",
+            "nullable": true
+          },
+          "cog_z": {
+            "type": "number",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "material": {
+            "$ref": "#/components/schemas/Material"
+          },
+          "created_by": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "username": {
+                "type": "string",
+                "nullable": true
+              },
+              "first_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "last_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          },
+          "specification_version": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "specification_id": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "string",
+                "nullable": true
+              },
+              "notes": {
+                "type": "string",
+                "nullable": true
+              },
+              "created_by": {
+                "type": "integer"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          }
+        }
+      },
+      "SpecificationPartCreate": {
+        "type": "object",
+        "description": "Request body for creating a specification part",
+        "required": [
+          "specification_version_id"
+        ],
+        "properties": {
+          "specification_version_id": {
+            "type": "integer"
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "part_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "material_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "zone": {
+            "type": "string",
+            "nullable": true
+          },
+          "cog_x": {
+            "type": "number",
+            "nullable": true
+          },
+          "cog_y": {
+            "type": "number",
+            "nullable": true
+          },
+          "cog_z": {
+            "type": "number",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "StatementsPart": {
         "type": "object",
         "description": "Statement part with linked specification part, material and specification data",
@@ -2534,6 +2741,22 @@
               },
               "quantity": {
                 "type": "number"
+              },
+              "zone": {
+                "type": "string",
+                "nullable": true
+              },
+              "cog_x": {
+                "type": "number",
+                "nullable": true
+              },
+              "cog_y": {
+                "type": "number",
+                "nullable": true
+              },
+              "cog_z": {
+                "type": "number",
+                "nullable": true
               },
               "source": {
                 "type": "string",
@@ -4842,6 +5065,10 @@
                         "parent_id": null,
                         "part_code": "PIPE-100",
                         "quantity": 24,
+                        "zone": "A-12",
+                        "cog_x": 12.5,
+                        "cog_y": 4.2,
+                        "cog_z": 1.8,
                         "source": "manual",
                         "created_at": "2026-01-15T10:30:00.000Z"
                       },

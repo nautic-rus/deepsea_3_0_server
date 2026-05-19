@@ -113,6 +113,14 @@ class StatementsPartsService {
         }
       }
 
+      await client.query(
+        `UPDATE statements_version
+            SET updated_by = $2,
+                updated_at = CURRENT_TIMESTAMP
+          WHERE id = $1`,
+        [versionId, actor.id]
+      );
+
       await client.query('COMMIT');
 
       const rows = await Promise.all(insertedIds.map((id) => StatementsPart.findById(id)));

@@ -2087,6 +2087,10 @@ CREATE TABLE public.specification_parts (
     name character varying(255) NOT NULL,
     description text,
     quantity numeric(15,3) DEFAULT 1,
+    zone text,
+    cog_x numeric,
+    cog_y numeric,
+    cog_z numeric,
     created_by integer NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     parent_id integer
@@ -7890,4 +7894,3 @@ ALTER TABLE ONLY public.wiki_sections
 --
 
 \unrestrict PV5aJbtKRKtSelYrfJAv9fVekzsehmvQox9zNP8GbPO78TqNXezeoCdgcsBQRnD
-

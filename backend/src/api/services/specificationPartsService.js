@@ -21,7 +21,7 @@ class SpecificationPartsService {
   static async create(fields, actor) {
     const allowed = await hasPermission(actor, 'specifications.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
-    if (!fields.specification_version_id || !fields.name) { const err = new Error('Missing fields'); err.statusCode = 400; throw err; }
+    if (!fields.specification_version_id) { const err = new Error('Missing fields'); err.statusCode = 400; throw err; }
     fields.created_by = actor.id;
     return await SpecificationPart.create(fields);
   }

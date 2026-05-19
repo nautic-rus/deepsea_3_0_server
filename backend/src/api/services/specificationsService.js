@@ -27,7 +27,20 @@ class SpecificationsService {
     if (!s) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
     const versions = await SpecificationVersion.list({ specification_id: Number(id), limit: 1000 });
     // attach versions array to returned object
-    s.versions = versions.map(v => ({ id: v.id, version: v.version, notes: v.notes, created_by: v.created_by, created_by_first_name: v.created_by_first_name, created_by_last_name: v.created_by_last_name, created_at: v.created_at }));
+    s.versions = versions.map(v => ({
+      id: v.id,
+      specification_id: v.specification_id,
+      version: v.version,
+      notes: v.notes,
+      created_by: v.created_by,
+      created_by_first_name: v.created_by_first_name,
+      created_by_last_name: v.created_by_last_name,
+      updated_by: v.updated_by,
+      updated_by_first_name: v.updated_by_first_name,
+      updated_by_last_name: v.updated_by_last_name,
+      created_at: v.created_at,
+      updated_at: v.updated_at
+    }));
     return s;
   }
 

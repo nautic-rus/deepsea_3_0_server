@@ -2214,6 +2214,10 @@ CREATE TABLE public.specification_parts (
     specification_version_id integer NOT NULL,
     part_code character varying(100),
     quantity numeric(15,3) DEFAULT 1,
+    zone text,
+    cog_x numeric,
+    cog_y numeric,
+    cog_z numeric,
     created_by integer NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     parent_id integer,
@@ -2257,7 +2261,9 @@ CREATE TABLE public.specification_version (
     version character varying(50),
     notes text,
     created_by integer NOT NULL,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    updated_by integer,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
 
@@ -5422,6 +5428,13 @@ CREATE INDEX idx_specification_updated_by ON public.specification USING btree (u
 
 
 --
+-- Name: idx_specification_version_updated_by; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_specification_version_updated_by ON public.specification_version USING btree (updated_by);
+
+
+--
 -- Name: idx_stages_end_date; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -6737,6 +6750,14 @@ ALTER TABLE ONLY public.specification
 
 ALTER TABLE ONLY public.specification_version
     ADD CONSTRAINT specification_version_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: specification_version specification_version_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specification_version
+    ADD CONSTRAINT specification_version_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --

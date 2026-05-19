@@ -23,12 +23,14 @@ class StatementsVersionService {
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
     if (!fields.statement_id || !fields.version) { const err = new Error('Missing fields'); err.statusCode = 400; throw err; }
     fields.created_by = actor.id;
+    fields.updated_by = actor.id;
     return await StatementsVersion.create(fields);
   }
 
   static async update(id, fields, actor) {
     const allowed = await hasPermission(actor, 'statements.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
+    fields.updated_by = actor.id;
     const updated = await StatementsVersion.update(id, fields);
     if (!updated) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
     return updated;
