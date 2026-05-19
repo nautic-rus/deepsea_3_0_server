@@ -7,7 +7,7 @@ class Specification {
     const where = [];
     const values = [];
     let idx = 1;
-    if (project_id) { where.push(`project_id = $${idx++}`); values.push(project_id); }
+    if (project_id) { where.push(`specification.project_id = $${idx++}`); values.push(project_id); }
     if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     let q = `SELECT specification.id, specification.code, specification.name, specification.description, specification.created_at,
