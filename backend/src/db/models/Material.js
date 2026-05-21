@@ -320,7 +320,7 @@ class Material {
     const { allowed_project_ids } = filters;
     const values = [Number(materialId)];
     let idx = 2;
-    const where = ['sp.material_id = $1'];
+    const where = [];
 
     if (Array.isArray(allowed_project_ids) && allowed_project_ids.length > 0) {
       const projectIds = allowed_project_ids.map(p => Number(p)).filter(p => !Number.isNaN(p));
@@ -329,7 +329,17 @@ class Material {
       values.push(projectIds);
     }
 
-    const q = `SELECT
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const q = `WITH latest_versions AS (
+        SELECT DISTINCT ON (spec.id)
+          spec.id AS specification_id,
+          sv.id AS specification_version_id
+        FROM specification spec
+        JOIN specification_version sv ON sv.specification_id = spec.id
+        ${whereSql}
+        ORDER BY spec.id, sv.created_at DESC NULLS LAST, sv.id DESC
+      )
+      SELECT
         spec.id AS specification_id,
         spec.code AS specification_code,
         spec.name AS specification_name,
@@ -340,14 +350,16 @@ class Material {
         p.code AS project_code,
         p.name AS project_name,
         d.title AS document_name,
-        COUNT(DISTINCT sp.id)::int AS specification_parts_count
-      FROM specification_parts sp
-      JOIN specification_version sv ON sv.id = sp.specification_version_id
-      JOIN specification spec ON spec.id = sv.specification_id
+        COALESCE(SUM(COALESCE(sp.quantity, 1)), 0)::numeric AS specification_parts_count
+      FROM latest_versions lv
+      JOIN specification spec ON spec.id = lv.specification_id
       LEFT JOIN projects p ON p.id = spec.project_id
       LEFT JOIN documents d ON d.id = spec.document_id
-      WHERE ${where.join(' AND ')}
+      LEFT JOIN specification_parts sp
+        ON sp.specification_version_id = lv.specification_version_id
+       AND sp.material_id = $1
       GROUP BY spec.id, spec.code, spec.name, spec.description, spec.project_id, spec.document_id, spec.created_at, p.code, p.name, d.title
+      HAVING COUNT(sp.id) > 0
       ORDER BY spec.id DESC`;
     const res = await pool.query(q, values);
     return (res.rows || []).map((row) => ({
