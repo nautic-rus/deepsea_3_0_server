@@ -1,6 +1,10 @@
 const pool = require('../connection');
 
 class SpecificationPart {
+  static _normalizeNullable(value) {
+    return value === '' ? null : value;
+  }
+
   static async list(filters = {}) {
     const { specification_version_id, page = 1, limit } = filters;
     const offset = limit ? (page - 1) * limit : 0;
@@ -9,7 +13,7 @@ class SpecificationPart {
     let idx = 1;
     if (specification_version_id) { where.push(`specification_version_id = $${idx++}`); values.push(specification_version_id); }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT sp.id, sp.specification_version_id, sp.parent_id, sp.part_code, sp.material_id, sp.quantity, sp.zone, sp.cog_x, sp.cog_y, sp.cog_z, sp.source, sp.created_at,
+    let q = `SELECT sp.id, sp.specification_version_id, sp.parent_id, sp.part_code, sp.material_id, sp.quantity, sp.qty, sp.zone, sp.length, sp.width, sp.thickness, sp.symmetry, sp.unit, sp.part_type, sp.descriptions, sp.cog_x, sp.cog_y, sp.cog_z, sp.source, sp.created_at,
       row_to_json(m.*) AS material,
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
@@ -30,7 +34,7 @@ class SpecificationPart {
   }
 
   static async findById(id) {
-    const q = `SELECT sp.id, sp.specification_version_id, sp.parent_id, sp.part_code, sp.material_id, sp.quantity, sp.zone, sp.cog_x, sp.cog_y, sp.cog_z, sp.source, sp.created_at,
+    const q = `SELECT sp.id, sp.specification_version_id, sp.parent_id, sp.part_code, sp.material_id, sp.quantity, sp.qty, sp.zone, sp.length, sp.width, sp.thickness, sp.symmetry, sp.unit, sp.part_type, sp.descriptions, sp.cog_x, sp.cog_y, sp.cog_z, sp.source, sp.created_at,
       row_to_json(m.*) AS material,
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
@@ -43,15 +47,40 @@ class SpecificationPart {
     return res.rows[0] || null;
   }
 
+  static async findByIds(ids = []) {
+    const uniqueIds = [...new Set((ids || []).map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id > 0))];
+    if (uniqueIds.length === 0) return [];
+    const q = `SELECT sp.id, sp.specification_version_id, sp.parent_id, sp.part_code, sp.material_id, sp.quantity, sp.qty, sp.zone, sp.length, sp.width, sp.thickness, sp.symmetry, sp.unit, sp.part_type, sp.descriptions, sp.cog_x, sp.cog_y, sp.cog_z, sp.source, sp.created_at,
+      row_to_json(m.*) AS material,
+      json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
+      row_to_json(sv.*) AS specification_version
+      FROM specification_parts sp
+      LEFT JOIN equipment_materials m ON m.id = sp.material_id
+      LEFT JOIN users cu ON cu.id = sp.created_by
+      LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
+      WHERE sp.id = ANY($1::int[])
+      ORDER BY sp.id`;
+    const res = await pool.query(q, [uniqueIds]);
+    return res.rows;
+  }
+
   static async create(fields) {
-    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, material_id, quantity, zone, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`;
+    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, material_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id`;
     const vals = [
       fields.specification_version_id,
       fields.parent_id || null,
       fields.part_code || null,
       fields.material_id || null,
       fields.quantity || 1,
+      fields.qty ?? null,
       fields.zone || null,
+      SpecificationPart._normalizeNullable(fields.length),
+      SpecificationPart._normalizeNullable(fields.width),
+      SpecificationPart._normalizeNullable(fields.thickness),
+      fields.symmetry || null,
+      fields.unit || null,
+      fields.part_type || null,
+      fields.descriptions || null,
       fields.cog_x ?? null,
       fields.cog_y ?? null,
       fields.cog_z ?? null,
@@ -68,11 +97,17 @@ class SpecificationPart {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['parent_id','part_code','material_id','quantity','zone','cog_x','cog_y','cog_z','source'].forEach((k) => {
-      if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
+    ['parent_id','part_code','material_id','quantity','qty','zone','length','width','thickness','symmetry','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
+      if (fields[k] !== undefined) {
+        parts.push(`${k} = $${idx++}`);
+        const normalized = ['length', 'width', 'thickness'].includes(k)
+          ? SpecificationPart._normalizeNullable(fields[k])
+          : fields[k];
+        values.push(normalized);
+      }
     });
     if (parts.length === 0) return await SpecificationPart.findById(id);
-    const q = `UPDATE specification_parts SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, specification_version_id, parent_id, part_code, material_id, quantity, zone, cog_x, cog_y, cog_z, source, created_at`;
+    const q = `UPDATE specification_parts SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, specification_version_id, parent_id, part_code, material_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, source, created_at`;
     values.push(id);
     const res = await pool.query(q, values);
     const updated = res.rows[0] || null;

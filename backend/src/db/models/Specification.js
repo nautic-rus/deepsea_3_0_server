@@ -46,6 +46,20 @@ class Specification {
     return res.rows[0] || null;
   }
 
+  static async findConnectorsBySpecificationId(id) {
+    const q = `SELECT
+      row_to_json(dconn.*) AS data_connector,
+      row_to_json(sconn.*) AS source_connector,
+      row_to_json(pconn.*) AS project_connector
+      FROM specifications_data_connector dconn
+      LEFT JOIN specifications_source_connector sconn ON sconn.id = dconn.specifications_source_connector_id
+      LEFT JOIN specifications_project_connector pconn ON pconn.id = dconn.specifications_project_connector_id
+      WHERE dconn.specification_id = $1
+      LIMIT 1`;
+    const res = await pool.query(q, [id]);
+    return res.rows[0] || null;
+  }
+
   static async create(fields) {
     const q = `INSERT INTO specification (project_id, document_id, code, name, description, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, project_id, document_id, code, name, description, created_by, created_at`;
     const vals = [fields.project_id, fields.document_id, fields.code, fields.name, fields.description, fields.created_by];

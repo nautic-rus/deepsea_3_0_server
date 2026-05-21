@@ -1,5 +1,6 @@
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
 const { hasPermission } = require('../services/permissionChecker');
+const SpecificationPartsService = require('../services/specificationPartsService');
 
 class SpecificationVersionsController {
   static async list(req, res, next) {
@@ -40,6 +41,20 @@ class SpecificationVersionsController {
         throw err;
       }
       res.json({ data: row });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async importParts(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = Number(req.params.id);
+      const requestBaseUrl = `${req.protocol}://${req.get('host')}`;
+      const result = await SpecificationPartsService.importFromForan(id, req.body || null, actor, {
+        requestBaseUrl
+      });
+      res.json({ data: result });
     } catch (err) {
       next(err);
     }

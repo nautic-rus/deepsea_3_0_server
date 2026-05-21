@@ -51,5 +51,9 @@ Thumbs.db
 *.log.*
 
 migratons_deepsea_2/
-sql/
+sql/*
+!sql/053_rename_specification_connectors.sql
+!sql/054_add_specification_connector_links.sql
+!sql/055_add_name_url_to_specifications_source_connector.sql
+!sql/056_drop_connector_links_from_child_tables.sql
 scripts/

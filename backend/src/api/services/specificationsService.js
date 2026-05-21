@@ -48,6 +48,23 @@ class SpecificationsService {
     return s;
   }
 
+  static async getSpecificationConnectorsById(id, actor) {
+    const requiredPermission = 'specifications.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.view'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+
+    const row = await Specification.findConnectorsBySpecificationId(Number(id));
+    if (!row) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
+
+    return {
+      data_connector: row.data_connector,
+      source_connector: row.source_connector,
+      project_connector: row.project_connector
+    };
+  }
+
   static async createSpecification(fields, actor) {
     const requiredPermission = 'specifications.create';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }

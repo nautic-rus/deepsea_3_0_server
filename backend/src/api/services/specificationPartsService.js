@@ -1,4 +1,5 @@
 const SpecificationPart = require('../../db/models/SpecificationPart');
+const Specification = require('../../db/models/Specification');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
@@ -86,6 +87,308 @@ class SpecificationPartsService {
       };
     }
     return await SpecificationPartsService._versionMetaFromVersion(version);
+  }
+
+  static _normalizePayloadRows(payload) {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload.rows)) return payload.rows;
+    if (payload.data && Array.isArray(payload.data.rows)) return payload.data.rows;
+    if (payload.result && Array.isArray(payload.result.rows)) return payload.result.rows;
+    return [];
+  }
+
+  static _normalizeExternalRow(row) {
+    if (!row || typeof row !== 'object') return null;
+    const partCode = row.PART_CODE != null && String(row.PART_CODE).trim() !== ''
+      ? String(row.PART_CODE).trim()
+      : (row.PART_OID != null ? String(row.PART_OID) : null);
+    const quantity = row.QTY !== undefined && row.QTY !== null && row.QTY !== ''
+      ? Number(row.QTY)
+      : 1;
+    const length = row.LENGTH !== undefined && row.LENGTH !== null && row.LENGTH !== ''
+      ? Number(row.LENGTH)
+      : null;
+    const width = row.WIDTH !== undefined && row.WIDTH !== null && row.WIDTH !== ''
+      ? Number(row.WIDTH)
+      : null;
+    const thickness = row.THICKNESS !== undefined && row.THICKNESS !== null && row.THICKNESS !== ''
+      ? Number(row.THICKNESS)
+      : null;
+    return {
+      part_code: partCode,
+      quantity: Number.isNaN(quantity) ? 1 : quantity,
+      total_weight: row.TOTAL_WEIGHT !== undefined && row.TOTAL_WEIGHT !== null && row.TOTAL_WEIGHT !== ''
+        ? Number(row.TOTAL_WEIGHT)
+        : null,
+      num_eq_part: row.NUM_EQ_PART !== undefined && row.NUM_EQ_PART !== null && row.NUM_EQ_PART !== ''
+        ? Number(row.NUM_EQ_PART)
+        : null,
+      zone: row.BLOCK_CODE != null && String(row.BLOCK_CODE).trim() !== ''
+        ? String(row.BLOCK_CODE).trim()
+        : (row.STRGROUP != null && String(row.STRGROUP).trim() !== '' ? String(row.STRGROUP).trim() : null),
+      stock_code: row.STOCK_CODE != null && String(row.STOCK_CODE).trim() !== ''
+        ? String(row.STOCK_CODE).trim()
+        : null,
+      length: Number.isNaN(length) ? null : length,
+      width: Number.isNaN(width) ? null : width,
+      thickness: Number.isNaN(thickness) ? null : thickness,
+      part_type: row.ELEM_TYPE != null && String(row.ELEM_TYPE).trim() !== ''
+        ? String(row.ELEM_TYPE).trim()
+        : null,
+      symmetry: row.SYMMETRY != null && String(row.SYMMETRY).trim() !== ''
+        ? String(row.SYMMETRY).trim()
+        : null,
+      unit: row.UNIT != null && String(row.UNIT).trim() !== ''
+        ? String(row.UNIT).trim()
+        : null,
+      descriptions: row.PART_DESC != null && String(row.PART_DESC).trim() !== ''
+        ? String(row.PART_DESC).trim()
+        : null
+    };
+  }
+
+  static _resolveQuantity(row, material) {
+    const fallbackQuantity = row.quantity !== undefined && row.quantity !== null && !Number.isNaN(Number(row.quantity))
+      ? Number(row.quantity)
+      : 1;
+    const totalWeight = row.total_weight !== null && row.total_weight !== undefined && !Number.isNaN(Number(row.total_weight))
+      ? Number(row.total_weight)
+      : null;
+    const unitId = material && material.unit_id !== null && material.unit_id !== undefined && !Number.isNaN(Number(material.unit_id))
+      ? Number(material.unit_id)
+      : null;
+    const materialWeight = material && material.weight !== null && material.weight !== undefined && !Number.isNaN(Number(material.weight))
+      ? Number(material.weight)
+      : null;
+
+    if (unitId === 2) {
+      return totalWeight !== null ? totalWeight : fallbackQuantity;
+    }
+
+    if (unitId === 1) {
+      return row.num_eq_part !== null && row.num_eq_part !== undefined && !Number.isNaN(Number(row.num_eq_part))
+        ? Number(row.num_eq_part)
+        : fallbackQuantity;
+    }
+
+    if (totalWeight !== null && materialWeight !== null && materialWeight > 0) {
+      return totalWeight / materialWeight;
+    }
+
+    return totalWeight !== null ? totalWeight : fallbackQuantity;
+  }
+
+  static _resolveForanBaseUrl(requestBaseUrl = null) {
+    const configured = String(process.env.FORAN_SERVICE_URL || '').trim();
+    if (configured) return configured;
+    const fallback = String(requestBaseUrl || '').trim();
+    if (fallback) return fallback;
+    const host = String(process.env.FORAN_SERVICE_HOST || '127.0.0.1').trim() || '127.0.0.1';
+    const port = String(process.env.FORAN_SERVICE_PORT || process.env.PORT || 3000).trim() || '3000';
+    return `http://${host}:${port}`;
+  }
+
+  static _buildForanRequestUrl(template, projectCode, oid, sourceCode = null, requestBaseUrl = null) {
+    const hasOidPlaceholder = String(template || '').includes('{oid}');
+    const normalizedProjectCode = String(projectCode || '').trim().toLowerCase();
+    const relativePath = String(template || '')
+      .replaceAll('{project_code}', encodeURIComponent(normalizedProjectCode))
+      .replaceAll('{oid}', encodeURIComponent(String(oid || '')));
+
+    const url = new URL(relativePath, SpecificationPartsService._resolveForanBaseUrl(requestBaseUrl));
+    if (!hasOidPlaceholder && oid !== undefined && oid !== null && String(oid).trim() !== '') {
+      const paramName = String(sourceCode || '').trim() || 'oid';
+      if (!url.searchParams.has(paramName)) {
+        url.searchParams.set(paramName, String(oid));
+      }
+    }
+    return url.toString();
+  }
+
+  static async _fetchForanParts(payloadMeta) {
+    const headers = {
+      Accept: 'application/json'
+    };
+    const token = String(process.env.FORAN_SERVICE_TOKEN || '').trim();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(payloadMeta.url, { method: 'GET', headers });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      const err = new Error(`FORAN request failed with status ${response.status}${text ? `: ${text.slice(0, 300)}` : ''}`);
+      err.statusCode = response.status >= 400 && response.status < 600 ? response.status : 502;
+      throw err;
+    }
+    return await response.json();
+  }
+
+  static async _resolveMaterialMap(rows = []) {
+    const stockCodes = [...new Set(
+      (rows || [])
+        .map((row) => row && row.stock_code)
+        .filter((value) => value !== null && value !== undefined && String(value).trim() !== '')
+        .map((value) => String(value).trim())
+    )];
+
+    if (stockCodes.length === 0) return new Map();
+
+    const res = await pool.query(
+      `SELECT m.id, m.stock_code, m.weight, m.unit_id
+       FROM equipment_materials m
+       WHERE m.stock_code = ANY($1::text[])`,
+      [stockCodes]
+    );
+    return new Map((res.rows || []).map((row) => [String(row.stock_code), {
+      id: row.id,
+      weight: row.weight,
+      unit_id: row.unit_id
+    }]));
+  }
+
+  static async _ensureForanSourceAllowed(client = pool) {
+    await client.query(
+      `ALTER TABLE IF EXISTS public.specification_parts
+         DROP CONSTRAINT IF EXISTS specification_parts_source_check`
+    );
+    await client.query(
+      `ALTER TABLE IF EXISTS public.specification_parts
+         ADD CONSTRAINT specification_parts_source_check
+         CHECK (source::text = ANY (ARRAY['import'::character varying, 'manual'::character varying, 'foran'::character varying]::text[]))`
+    );
+  }
+
+  static async importFromForan(specificationVersionId, payload, actor, options = {}) {
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, 'specifications.update');
+    if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
+
+    const versionId = Number(specificationVersionId);
+    if (!versionId || Number.isNaN(versionId)) {
+      const err = new Error('Invalid specification_version_id');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const version = await SpecificationVersion.findById(versionId);
+    if (!version) {
+      const err = new Error('Specification version not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const connectorRow = await Specification.findConnectorsBySpecificationId(Number(version.specification_id));
+    if (!connectorRow || !connectorRow.source_connector || !connectorRow.project_connector) {
+      const err = new Error('Specification connectors not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const sourceConnector = connectorRow.source_connector;
+    const projectConnector = connectorRow.project_connector;
+    const requestUrl = SpecificationPartsService._buildForanRequestUrl(
+      sourceConnector.url,
+      projectConnector.project_code,
+      sourceConnector.oid,
+      sourceConnector.code,
+      options.requestBaseUrl || null
+    );
+
+    const externalPayload = payload && (Array.isArray(payload) || payload.rows || (payload.data && payload.data.rows) || (payload.result && payload.result.rows))
+      ? payload
+      : await SpecificationPartsService._fetchForanParts({
+        url: requestUrl,
+        project_code: projectConnector.project_code,
+        oid: sourceConnector.oid
+      });
+
+    const externalRows = SpecificationPartsService._normalizePayloadRows(externalPayload);
+    if (externalRows.length === 0) {
+      return {
+        imported_count: 0,
+        data: [],
+        source: {
+          url: requestUrl,
+          project_code: projectConnector.project_code,
+          oid: sourceConnector.oid
+        }
+      };
+    }
+
+    const normalizedRows = externalRows
+      .map((row) => SpecificationPartsService._normalizeExternalRow(row))
+      .filter(Boolean);
+
+    const materialMap = await SpecificationPartsService._resolveMaterialMap(normalizedRows);
+    const client = await pool.connect();
+    try {
+      await SpecificationPartsService._ensureForanSourceAllowed(client);
+      await client.query('BEGIN');
+
+      const sourceValue = String(projectConnector.source || 'foran').trim() || 'foran';
+      await client.query(
+        `DELETE FROM specification_parts
+         WHERE specification_version_id = $1
+           AND source = $2`,
+        [versionId, sourceValue]
+      );
+
+      const values = [];
+      const placeholders = [];
+      let idx = 1;
+      for (const row of normalizedRows) {
+        const material = row.stock_code ? (materialMap.get(row.stock_code) || null) : null;
+        const materialId = material ? material.id : null;
+        const resolvedQuantity = SpecificationPartsService._resolveQuantity(row, material);
+        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+        values.push(
+          versionId,
+          row.part_code,
+          materialId,
+          resolvedQuantity,
+          row.num_eq_part,
+          row.zone,
+          row.length,
+          row.width,
+          row.thickness,
+          row.symmetry,
+          row.unit,
+          row.part_type,
+          row.descriptions,
+          actor.id,
+          sourceValue
+        );
+      }
+
+      const insertRes = await client.query(
+        `INSERT INTO specification_parts
+          (specification_version_id, part_code, material_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, created_by, source)
+         VALUES ${placeholders.join(', ')}
+         RETURNING id`,
+        values
+      );
+      const insertedIds = (insertRes.rows || [])
+        .map((row) => row && row.id)
+        .filter((id) => id !== null && id !== undefined);
+
+      await client.query('COMMIT');
+
+      const data = await SpecificationPart.findByIds(insertedIds);
+      return {
+        imported_count: data.length,
+        data,
+        source: {
+          url: requestUrl,
+          project_code: projectConnector.project_code,
+          oid: sourceConnector.oid
+        }
+      };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   static async list(query = {}, actor) {

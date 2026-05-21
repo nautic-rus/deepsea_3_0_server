@@ -31,6 +31,18 @@ class SpecificationsController {
   }
 
   /**
+   * Get specification connectors by specification id.
+   */
+  static async getConnectors(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const row = await SpecificationsService.getSpecificationConnectorsById(id, actor);
+      res.json(row);
+    } catch (err) { next(err); }
+  }
+
+  /**
    * Create a new specification.
    */
   static async create(req, res, next) {

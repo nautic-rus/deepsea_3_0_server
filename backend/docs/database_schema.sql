@@ -2214,7 +2214,15 @@ CREATE TABLE public.specification_parts (
     specification_version_id integer NOT NULL,
     part_code character varying(100),
     quantity numeric(15,3) DEFAULT 1,
+    qty numeric(15,3),
     zone text,
+    length numeric,
+    width numeric,
+    thickness numeric,
+    symmetry text,
+    unit text,
+    part_type text,
+    descriptions text,
     cog_x numeric,
     cog_y numeric,
     cog_z numeric,
@@ -2223,7 +2231,7 @@ CREATE TABLE public.specification_parts (
     parent_id integer,
     material_id integer,
     source character varying(20) DEFAULT 'manual'::character varying,
-    CONSTRAINT specification_parts_source_check CHECK (((source)::text = ANY ((ARRAY['import'::character varying, 'manual'::character varying])::text[])))
+    CONSTRAINT specification_parts_source_check CHECK (((source)::text = ANY ((ARRAY['import'::character varying, 'manual'::character varying, 'foran'::character varying])::text[])))
 );
 
 
@@ -2289,6 +2297,123 @@ ALTER SEQUENCE public.specification_version_id_seq OWNER TO postgres;
 --
 
 ALTER SEQUENCE public.specification_version_id_seq OWNED BY public.specification_version.id;
+
+
+--
+-- Name: specifications_data_connector; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.specifications_data_connector (
+    id integer NOT NULL,
+    specification_id integer NOT NULL,
+    specifications_source_connector_id integer,
+    specifications_project_connector_id integer,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.specifications_data_connector OWNER TO postgres;
+
+
+--
+-- Name: specifications_data_connector_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.specifications_data_connector_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.specifications_data_connector_id_seq OWNER TO postgres;
+
+
+--
+-- Name: specifications_data_connector_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.specifications_data_connector_id_seq OWNED BY public.specifications_data_connector.id;
+
+
+--
+-- Name: specifications_project_connector; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.specifications_project_connector (
+    id integer NOT NULL,
+    project_code text,
+    source text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.specifications_project_connector OWNER TO postgres;
+
+
+--
+-- Name: specifications_source_connector; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.specifications_source_connector (
+    id integer NOT NULL,
+    name text,
+    url text,
+    oid text,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+ALTER TABLE public.specifications_source_connector OWNER TO postgres;
+
+
+--
+-- Name: specifications_project_connector_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.specifications_project_connector_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.specifications_project_connector_id_seq OWNER TO postgres;
+
+
+--
+-- Name: specifications_source_connector_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.specifications_source_connector_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE public.specifications_source_connector_id_seq OWNER TO postgres;
+
+
+--
+-- Name: specifications_source_connector_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.specifications_source_connector_id_seq OWNED BY public.specifications_source_connector.id;
+
+
+--
+-- Name: specifications_project_connector_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.specifications_project_connector_id_seq OWNED BY public.specifications_project_connector.id;
 
 
 --
@@ -3469,6 +3594,27 @@ ALTER TABLE ONLY public.specification_version ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: specifications_data_connector id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_data_connector ALTER COLUMN id SET DEFAULT nextval('public.specifications_data_connector_id_seq'::regclass);
+
+
+--
+-- Name: specifications_source_connector id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_source_connector ALTER COLUMN id SET DEFAULT nextval('public.specifications_source_connector_id_seq'::regclass);
+
+
+--
+-- Name: specifications_project_connector id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_project_connector ALTER COLUMN id SET DEFAULT nextval('public.specifications_project_connector_id_seq'::regclass);
+
+
+--
 -- Name: stages id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -4313,6 +4459,55 @@ ALTER TABLE ONLY public.specification
 
 ALTER TABLE ONLY public.specification_version
     ADD CONSTRAINT specification_version_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: specifications_data_connector specifications_data_connector_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_data_connector
+    ADD CONSTRAINT specifications_data_connector_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: specifications_data_connector specifications_data_connector_specification_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_data_connector
+    ADD CONSTRAINT specifications_data_connector_specification_id_key UNIQUE (specification_id);
+
+
+--
+-- Name: specifications_data_connector specifications_data_connector_source_connector_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_data_connector
+    ADD CONSTRAINT specifications_data_connector_source_connector_id_key UNIQUE (specifications_source_connector_id);
+
+
+--
+-- Name: specifications_data_connector specifications_data_connector_project_connector_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_data_connector
+    ADD CONSTRAINT specifications_data_connector_project_connector_id_key UNIQUE (specifications_project_connector_id);
+
+
+--
+-- Name: specifications_source_connector specifications_source_connector_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_source_connector
+    ADD CONSTRAINT specifications_source_connector_pkey PRIMARY KEY (id);
+
+
+--
+--
+-- Name: specifications_project_connector specifications_project_connector_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_project_connector
+    ADD CONSTRAINT specifications_project_connector_pkey PRIMARY KEY (id);
 
 
 --
@@ -5438,6 +5633,13 @@ CREATE INDEX idx_specification_parts_source ON public.specification_parts USING 
 --
 
 CREATE INDEX idx_specification_project_id ON public.specification USING btree (project_id);
+
+
+--
+-- Name: idx_specifications_data_connector_specification_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_specifications_data_connector_specification_id ON public.specifications_data_connector USING btree (specification_id);
 
 
 --
@@ -6786,6 +6988,30 @@ ALTER TABLE ONLY public.specification_version
 
 ALTER TABLE ONLY public.specification_version
     ADD CONSTRAINT specification_version_specification_id_fkey FOREIGN KEY (specification_id) REFERENCES public.specification(id) ON DELETE CASCADE;
+
+
+--
+-- Name: specifications_data_connector specifications_data_connector_specification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_data_connector
+    ADD CONSTRAINT specifications_data_connector_specification_id_fkey FOREIGN KEY (specification_id) REFERENCES public.specification(id) ON DELETE CASCADE;
+
+
+--
+-- Name: specifications_data_connector specifications_data_connector_source_connector_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_data_connector
+    ADD CONSTRAINT specifications_data_connector_source_connector_id_fkey FOREIGN KEY (specifications_source_connector_id) REFERENCES public.specifications_source_connector(id) ON DELETE SET NULL;
+
+
+--
+-- Name: specifications_data_connector specifications_data_connector_project_connector_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.specifications_data_connector
+    ADD CONSTRAINT specifications_data_connector_project_connector_id_fkey FOREIGN KEY (specifications_project_connector_id) REFERENCES public.specifications_project_connector(id) ON DELETE SET NULL;
 
 
 --

@@ -2558,7 +2558,39 @@
           "quantity": {
             "type": "number"
           },
+          "qty": {
+            "type": "number",
+            "nullable": true
+          },
           "zone": {
+            "type": "string",
+            "nullable": true
+          },
+          "length": {
+            "type": "number",
+            "nullable": true
+          },
+          "width": {
+            "type": "number",
+            "nullable": true
+          },
+          "thickness": {
+            "type": "number",
+            "nullable": true
+          },
+          "symmetry": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "part_type": {
+            "type": "string",
+            "nullable": true
+          },
+          "descriptions": {
             "type": "string",
             "nullable": true
           },
@@ -2675,6 +2707,30 @@
             "type": "string",
             "nullable": true
           },
+          "length": {
+            "type": "number",
+            "nullable": true
+          },
+          "width": {
+            "type": "number",
+            "nullable": true
+          },
+          "thickness": {
+            "type": "number",
+            "nullable": true
+          },
+          "symmetry": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "descriptions": {
+            "type": "string",
+            "nullable": true
+          },
           "cog_x": {
             "type": "number",
             "nullable": true
@@ -2690,6 +2746,39 @@
           "source": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "SpecificationPartImportResponse": {
+        "type": "object",
+        "description": "Result of importing specification parts from external FORAN data",
+        "properties": {
+          "imported_count": {
+            "type": "integer"
+          },
+          "source": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "url": {
+                "type": "string",
+                "nullable": true
+              },
+              "project_code": {
+                "type": "string",
+                "nullable": true
+              },
+              "oid": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpecificationPart"
+            }
           }
         }
       },
@@ -3832,6 +3921,78 @@
             "type": "string",
             "format": "date-time",
             "description": "Created at"
+          }
+        }
+      },
+      "SpecificationConnectorsResponse": {
+        "type": "object",
+        "description": "Connector data for a specification",
+        "properties": {
+          "data_connector": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "specification_id": {
+                "type": "integer"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "source_connector": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "url": {
+                "type": "string",
+                "nullable": true
+              },
+              "oid": {
+                "type": "string",
+                "nullable": true
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "project_connector": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "project_code": {
+                "type": "string",
+                "nullable": true
+              },
+              "source": {
+                "type": "string",
+                "nullable": true
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
           }
         }
       },
@@ -19108,6 +19269,58 @@
         }
       }
     },
+    "/api/specifications/{id}/connectors": {
+      "get": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Get specification connectors by ID",
+        "description": "Returns only connector data for a specification: data connector, source connector, and project connector.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Specification connectors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecificationConnectorsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.view"
+          },
+          "404": {
+            "description": "Specification not found"
+          }
+        }
+      }
+    },
     "/api/stages": {
       "get": {
         "tags": [
@@ -23274,6 +23487,138 @@
                 }
               }
             }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Import specification parts from FORAN",
+        "description": "Imports parts into specification_parts for the given specification version. If the request body already contains a FORAN JSON payload, it will be used directly; otherwise the server will fetch data from FORAN using connector settings stored in the database.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification version ID"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Optional FORAN API response payload with a rows array"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Imported parts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SpecificationPartImportResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid specification version id or request payload"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Specification version or connectors not found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Import specification parts from FORAN",
+        "description": "Imports parts into specification_parts for the given specification version. If the request body already contains a FORAN JSON payload, it will be used directly; otherwise the server will fetch data from FORAN using connector settings stored in the database.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification version ID"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Optional FORAN API response payload with a rows array"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Imported parts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SpecificationPartImportResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid specification version id or request payload"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Specification version or connectors not found"
           }
         }
       },

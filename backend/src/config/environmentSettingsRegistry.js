@@ -12,6 +12,7 @@ const definitions = [
   { key: 'PASSWORD_RESET_EXPIRES_MINUTES', valueType: 'number', defaultValue: 60, description: 'Срок жизни токена сброса пароля в минутах', isSecret: false, requiresRestart: false },
   { key: 'FRONTEND_URL', valueType: 'string', defaultValue: '', description: 'Базовый URL фронтенда для ссылок в письмах', isSecret: false, requiresRestart: false },
   { key: 'FORAN_SERVICE_URL', valueType: 'string', defaultValue: '', description: 'Базовый URL отдельного FORAN backend для HTTP API', isSecret: false, requiresRestart: false },
+  { key: 'FORAN_SERVICE_TOKEN', valueType: 'string', defaultValue: '', description: 'Токен для авторизации запросов к FORAN backend', isSecret: true, requiresRestart: false },
   { key: 'ROCKET_CHAT_URL', valueType: 'string', defaultValue: '', description: 'Базовый URL Rocket.Chat', isSecret: false, requiresRestart: false },
   { key: 'ROCKET_CHAT_TOKEN', valueType: 'string', defaultValue: '', description: 'Токен Rocket.Chat REST API', isSecret: true, requiresRestart: false },
   { key: 'ROCKET_CHAT_USER_ID', valueType: 'string', defaultValue: '', description: 'User ID для Rocket.Chat token auth', isSecret: true, requiresRestart: false },

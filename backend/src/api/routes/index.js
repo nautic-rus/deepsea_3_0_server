@@ -481,6 +481,7 @@ router.delete('/suppliers/:id', authMiddleware, suppliersController.delete);
 
 // ===== Specifications routes =====
 router.get('/specifications', authMiddleware, specificationsController.list);
+router.get('/specifications/:id/connectors', authMiddleware, specificationsController.getConnectors);
 router.get('/specifications/:id', authMiddleware, specificationsController.get);
 router.post('/specifications', authMiddleware, specificationsController.create);
 router.put('/specifications/:id', authMiddleware, specificationsController.update);
@@ -489,6 +490,8 @@ router.delete('/specifications/:id', authMiddleware, specificationsController.de
 // ===== Specification versions / parts routes =====
 router.get('/specification_versions', authMiddleware, specificationVersionsController.list);
 router.get('/specification_versions/:id', authMiddleware, specificationVersionsController.get);
+router.post('/specification_versions/:id', authMiddleware, specificationVersionsController.importParts);
+router.post('/specification_versions/:id/import_parts', authMiddleware, specificationVersionsController.importParts);
 
 // Specification parts
 router.get('/specification_parts', authMiddleware, specificationPartsController.list);
