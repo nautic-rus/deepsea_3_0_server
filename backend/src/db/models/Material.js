@@ -52,25 +52,50 @@ class Material {
     const materialIds = [...new Set(materials.map((m) => Number(m && m.id)).filter((n) => !Number.isNaN(n)))];
     if (materialIds.length === 0) {
       for (const material of materials) {
-        material.statement_parts_count = 0;
         material.statements = [];
       }
       return materials;
     }
 
     const countQ = `
+      WITH linked_statements AS (
+        SELECT DISTINCT
+          emp.equipment_material_id,
+          emp.statement_id,
+          st.project_id
+        FROM equipment_materials_projects emp
+        JOIN statements st ON st.id = emp.statement_id
+        WHERE emp.equipment_material_id = ANY($1::int[])
+          AND emp.statement_id IS NOT NULL
+      ),
+      latest_versions AS (
+        SELECT DISTINCT ON (ls.equipment_material_id, ls.statement_id, spec.id)
+          ls.equipment_material_id,
+          ls.statement_id,
+          spec.id AS specification_id,
+          sv.id AS specification_version_id
+        FROM linked_statements ls
+        JOIN specification spec ON spec.project_id = ls.project_id
+        JOIN specification_version sv ON sv.specification_id = spec.id
+        ORDER BY
+          ls.equipment_material_id,
+          ls.statement_id,
+          spec.id,
+          sv.created_at DESC NULLS LAST,
+          sv.id DESC
+      )
       SELECT
-        emp.equipment_material_id,
-        emp.statement_id,
-        COUNT(DISTINCT sp.id)::int AS statement_parts_count
-      FROM equipment_materials_projects emp
-      JOIN statements st ON st.id = emp.statement_id
-      JOIN specification spec ON spec.project_id = st.project_id
-      JOIN specification_version sv ON sv.specification_id = spec.id
-      JOIN specification_parts sp ON sp.specification_version_id = sv.id
-      WHERE emp.equipment_material_id = ANY($1::int[])
-        AND emp.statement_id IS NOT NULL
-      GROUP BY emp.equipment_material_id, emp.statement_id
+        lv.equipment_material_id,
+        lv.statement_id,
+        COALESCE(
+          SUM(CASE WHEN sp.id IS NULL THEN 0 ELSE COALESCE(sp.quantity, 1) END),
+          0
+        )::numeric AS statement_parts_count
+      FROM latest_versions lv
+      LEFT JOIN specification_parts sp
+        ON sp.specification_version_id = lv.specification_version_id
+       AND sp.material_id = lv.equipment_material_id
+      GROUP BY lv.equipment_material_id, lv.statement_id
     `;
     const statementsQ = `
       SELECT
@@ -138,10 +163,6 @@ class Material {
 
     for (const material of materials) {
       const materialId = Number(material.id);
-      const materialCounts = countMap.get(materialId);
-      material.statement_parts_count = materialCounts
-        ? [...materialCounts.values()].reduce((sum, value) => sum + (Number(value) || 0), 0)
-        : 0;
       material.statements = statementsByMaterial.get(materialId) || [];
     }
 
