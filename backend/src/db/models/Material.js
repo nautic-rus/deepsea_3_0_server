@@ -155,9 +155,8 @@ class Material {
         project: row.statement_project_id ? { id: row.statement_project_id, code: row.project_code || null, name: row.project_name || null } : null,
         shipments: row.shipment_id ? {
           id: row.shipment_id,
-          supplier_id: row.shipment_supplier_id || null,
           code: row.shipment_code || null,
-          supplier: row.shipment_supplier_id ? { id: row.shipment_supplier_id, name: row.supplier_name || null, description: row.supplier_description || null } : null
+          suppliers: row.shipment_supplier_id ? { id: row.shipment_supplier_id, name: row.supplier_name || null } : null,
         } : null
       });
     }
@@ -188,8 +187,14 @@ class Material {
         s.id AS statement_id,
         s.code AS statement_code,
         s.name AS statement_name
+        ,sh.id AS shipment_id
+        ,sh.code AS shipment_code
+        ,sh.supplier_id AS shipment_supplier_id
+        ,sup.name AS shipment_supplier_name
       FROM equipment_materials_projects p
       JOIN statements s ON p.statement_id = s.id
+      LEFT JOIN shipments sh ON p.shipments_id = sh.id
+      LEFT JOIN suppliers sup ON sup.id = sh.supplier_id
       WHERE p.equipment_material_id = ANY($1::int[])
       ORDER BY p.equipment_material_id, p.id DESC
     `;
@@ -205,6 +210,14 @@ class Material {
         code: row.statement_code || null,
         name: row.statement_name || null,
         binding_id: row.binding_id ?? row.id ?? null,
+        shipments: row.shipment_id ? {
+          id: row.shipment_id,
+          code: row.shipment_code || null,
+          suppliers: row.shipment_supplier_id ? {
+            id: row.shipment_supplier_id,
+            name: row.shipment_supplier_name || null,
+          } : null,
+        } : null,
       });
     }
 

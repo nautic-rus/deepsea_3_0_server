@@ -2232,6 +2232,34 @@
                 "binding_id": {
                   "type": "integer",
                   "nullable": true
+                },
+                "shipments": {
+                  "type": "object",
+                  "nullable": true,
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "code": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "suppliers": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "id": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "name": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
@@ -5053,7 +5081,15 @@
                           "id": 7,
                           "code": "ST-01",
                           "name": "Statement A",
-                          "binding_id": 42
+                          "binding_id": 42,
+                          "shipments": {
+                            "id": 55,
+                            "code": "SHP-55",
+                            "suppliers": {
+                              "id": 9,
+                              "name": "Supplier A"
+                            }
+                          }
                         }
                       ]
                     }
