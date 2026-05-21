@@ -100,7 +100,7 @@ class Material {
     const statementsQ = `
       SELECT
         p.equipment_material_id,
-        p.id,
+        p.id AS binding_id,
         p.statement_id,
         p.shipments_id,
         p.created_at,
@@ -148,7 +148,8 @@ class Material {
         id: row.statement_id || null,
         code: row.statement_code || null,
         name: row.statement_name || null,
-        equipment_material_project_id: row.id,
+        binding_id: row.binding_id ?? row.id ?? null,
+        equipment_material_project_id: row.binding_id ?? row.id ?? null,
         created_at: row.created_at,
         statement_parts_count: statementPartsCount,
         project: row.statement_project_id ? { id: row.statement_project_id, code: row.project_code || null, name: row.project_name || null } : null,
@@ -183,6 +184,7 @@ class Material {
     const statementsQ = `
       SELECT
         p.equipment_material_id,
+        p.id AS binding_id,
         s.id AS statement_id,
         s.code AS statement_code,
         s.name AS statement_name
@@ -202,6 +204,7 @@ class Material {
         id: row.statement_id || null,
         code: row.statement_code || null,
         name: row.statement_name || null,
+        binding_id: row.binding_id ?? row.id ?? null,
       });
     }
 

@@ -17,7 +17,6 @@ class SpecificationPart {
       `${prefix}width`,
       `${prefix}thickness`,
       `${prefix}symmetry`,
-      `${prefix}unit`,
       `${prefix}descriptions`,
       `${prefix}cog_x`,
       `${prefix}cog_y`,
@@ -40,11 +39,20 @@ class SpecificationPart {
     if (specification_version_id) { where.push(`specification_version_id = $${idx++}`); values.push(specification_version_id); }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     let q = `SELECT ${SpecificationPart._selectColumns('sp')},
-      row_to_json(m.*) AS material,
+      jsonb_set(
+        to_jsonb(m),
+        '{unit}',
+        CASE
+          WHEN uo.id IS NULL THEN 'null'::jsonb
+          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'kei', uo.kei)
+        END,
+        true
+      ) AS material,
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
       LEFT JOIN equipment_materials m ON m.id = sp.material_id
+      LEFT JOIN units uo ON uo.id = m.unit_id
       LEFT JOIN users cu ON cu.id = sp.created_by
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       ${whereSql} ORDER BY sp.id`;
@@ -61,11 +69,20 @@ class SpecificationPart {
 
   static async findById(id) {
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
-      row_to_json(m.*) AS material,
+      jsonb_set(
+        to_jsonb(m),
+        '{unit}',
+        CASE
+          WHEN uo.id IS NULL THEN 'null'::jsonb
+          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'kei', uo.kei)
+        END,
+        true
+      ) AS material,
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
       LEFT JOIN equipment_materials m ON m.id = sp.material_id
+      LEFT JOIN units uo ON uo.id = m.unit_id
       LEFT JOIN users cu ON cu.id = sp.created_by
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       WHERE sp.id = $1 LIMIT 1`;
@@ -77,11 +94,20 @@ class SpecificationPart {
     const uniqueIds = [...new Set((ids || []).map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id > 0))];
     if (uniqueIds.length === 0) return [];
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
-      row_to_json(m.*) AS material,
+      jsonb_set(
+        to_jsonb(m),
+        '{unit}',
+        CASE
+          WHEN uo.id IS NULL THEN 'null'::jsonb
+          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'kei', uo.kei)
+        END,
+        true
+      ) AS material,
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
       LEFT JOIN equipment_materials m ON m.id = sp.material_id
+      LEFT JOIN units uo ON uo.id = m.unit_id
       LEFT JOIN users cu ON cu.id = sp.created_by
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       WHERE sp.id = ANY($1::int[])

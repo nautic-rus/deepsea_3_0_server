@@ -2056,7 +2056,7 @@
                 "description": "Unit name"
               },
               "kei": {
-                "type": "integer",
+                "type": "string",
                 "nullable": true,
                 "description": "Unit kei"
               }
@@ -2227,6 +2227,10 @@
                 },
                 "name": {
                   "type": "string",
+                  "nullable": true
+                },
+                "binding_id": {
+                  "type": "integer",
                   "nullable": true
                 }
               }
@@ -2605,8 +2609,20 @@
             "nullable": true
           },
           "unit": {
-            "type": "string",
-            "nullable": true
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "kei": {
+                "type": "string",
+                "nullable": true
+              }
+            }
           },
           "part_type": {
             "type": "string",
@@ -5036,7 +5052,8 @@
                         {
                           "id": 7,
                           "code": "ST-01",
-                          "name": "Statement A"
+                          "name": "Statement A",
+                          "binding_id": 42
                         }
                       ]
                     }
