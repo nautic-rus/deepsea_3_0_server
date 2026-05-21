@@ -2209,6 +2209,28 @@
                 }
               }
             }
+          },
+          "statements": {
+            "type": "array",
+            "nullable": true,
+            "description": "Linked statements from equipment_materials_projects (returned when load_statements=true)",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "code": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "name": {
+                  "type": "string",
+                  "nullable": true
+                }
+              }
+            }
           }
         }
       },
@@ -4951,6 +4973,15 @@
             "schema": {
               "type": "integer"
             }
+          },
+          {
+            "name": "load_statements",
+            "in": "query",
+            "description": "Load linked statements for each material (true/false)",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -4982,7 +5013,8 @@
                       },
                       "unit": {
                         "id": 2,
-                        "name": "pcs"
+                        "name": "pcs",
+                        "kei": 796
                       },
                       "weight": 12.5,
                       "sfi_code": {
@@ -5000,24 +5032,11 @@
                       "created_at": "2026-01-15T10:30:00.000Z",
                       "updated_by": null,
                       "updated_at": null,
-                      "projects": [
+                      "statements": [
                         {
                           "id": 7,
-                          "statement": {
-                            "code": "ST-01",
-                            "name": "Statement A",
-                            "project_id": 3
-                          },
-                          "shipments": [
-                            {
-                              "id": 1,
-                              "supplier_id": 2,
-                              "code": "SH-2026-001",
-                              "model": "M-100",
-                              "manufacturer": "ACME",
-                              "description": "Initial shipment"
-                            }
-                          ]
+                          "code": "ST-01",
+                          "name": "Statement A"
                         }
                       ]
                     }

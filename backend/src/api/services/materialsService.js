@@ -15,6 +15,10 @@ class MaterialsService {
       normalized.project_id = normalized.projectId;
     }
     delete normalized.projectId;
+    if (normalized.load_statements === undefined && normalized.loadStatements !== undefined) {
+      normalized.load_statements = normalized.loadStatements;
+    }
+    delete normalized.loadStatements;
     return normalized;
   }
 
