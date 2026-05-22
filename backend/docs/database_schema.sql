@@ -2480,7 +2480,8 @@ CREATE TABLE public.specifications_data_connector (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     specifications_source_connector_id integer,
-    specifications_project_connector_id integer
+    specifications_project_connector_id integer,
+    oid text
 );
 
 
@@ -2545,8 +2546,7 @@ CREATE TABLE public.specifications_source_connector (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     code text,
     url text,
-    name text,
-    oid integer NOT NULL
+    name text
 );
 
 
@@ -4855,6 +4855,14 @@ ALTER TABLE ONLY public.specifications_data_connector
 
 
 --
+-- Name: specifications_data_connector specifications_data_connector_oid_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.specifications_data_connector
+    ADD CONSTRAINT specifications_data_connector_oid_key UNIQUE (oid);
+
+
+--
 -- Name: specifications_data_connector specifications_data_connector_specification_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4868,14 +4876,6 @@ ALTER TABLE ONLY public.specifications_data_connector
 
 ALTER TABLE ONLY public.specifications_source_connector
     ADD CONSTRAINT specifications_resource_connector_pkey PRIMARY KEY (id);
-
-
---
--- Name: specifications_source_connector specifications_source_connector_unique; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.specifications_source_connector
-    ADD CONSTRAINT specifications_source_connector_unique UNIQUE (oid);
 
 
 --

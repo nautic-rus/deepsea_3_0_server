@@ -4030,6 +4030,18 @@
               "specification_id": {
                 "type": "integer"
               },
+              "specifications_source_connector_id": {
+                "type": "integer",
+                "nullable": true
+              },
+              "specifications_project_connector_id": {
+                "type": "integer",
+                "nullable": true
+              },
+              "oid": {
+                "type": "string",
+                "nullable": true
+              },
               "created_at": {
                 "type": "string",
                 "format": "date-time"
@@ -4052,10 +4064,6 @@
                 "nullable": true
               },
               "url": {
-                "type": "string",
-                "nullable": true
-              },
-              "oid": {
                 "type": "string",
                 "nullable": true
               },
@@ -4085,6 +4093,81 @@
                 "format": "date-time"
               }
             }
+          }
+        }
+      },
+      "SpecificationDataConnector": {
+        "type": "object",
+        "description": "Specification data connector row",
+        "properties": {
+          "specifications_source_connector_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "specifications_project_connector_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "oid": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "SpecificationDataConnectorUpdate": {
+        "type": "object",
+        "description": "Request body for creating or updating specification connectors",
+        "properties": {
+          "specifications_source_connector_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "specifications_project_connector_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "oid": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "SpecificationProjectConnectorUpdate": {
+        "type": "object",
+        "description": "Request body for creating or updating a specification project connector",
+        "properties": {
+          "project_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "SpecificationSourceConnector": {
+        "type": "object",
+        "description": "Specification source connector record",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "url": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -19343,7 +19426,7 @@
           }
         ],
         "x-permissions": [
-          "specifications.view"
+          "specifications.create"
         ],
         "parameters": [
           {
@@ -19550,7 +19633,7 @@
             "description": "Authentication required"
           },
           "403": {
-            "description": "Forbidden — missing permission specifications.view"
+            "description": "Forbidden — missing permission specifications.create"
           },
           "404": {
             "description": "Specification not found"
@@ -19569,7 +19652,7 @@
           }
         ],
         "x-permissions": [
-          "specifications.update"
+          "specifications.create"
         ],
         "parameters": [
           {
@@ -19649,7 +19732,7 @@
             "description": "Authentication required"
           },
           "403": {
-            "description": "Forbidden — missing permission specifications.update"
+            "description": "Forbidden — missing permission specifications.create"
           },
           "404": {
             "description": "Specification not found"
@@ -19763,6 +19846,457 @@
           },
           "404": {
             "description": "Specification not found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Create specification connectors",
+        "description": "Creates or replaces the connector data row for a specification.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.create"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpecificationDataConnectorUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Specification connectors created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecificationConnectorsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id or missing fields"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.create"
+          },
+          "404": {
+            "description": "Specification not found or connectors not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Update specification connectors",
+        "description": "Updates the connector data row for a specification.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.create"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpecificationDataConnectorUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Specification connectors updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecificationConnectorsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.create"
+          },
+          "404": {
+            "description": "Specification not found or connectors not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Delete specification connectors",
+        "description": "Deletes the connector data row for a specification.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.create"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Specification connectors deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Specification connectors deleted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.create"
+          },
+          "404": {
+            "description": "Specification not found or connectors not found"
+          }
+        }
+      }
+    },
+    "/api/specifications/{id}/project_connector": {
+      "get": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Get specification project connector by ID",
+        "description": "Returns the project connector linked to a specification.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Specification project connector",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecificationConnectorsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.view"
+          },
+          "404": {
+            "description": "Specification not found or connectors not found"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Create specification project connector",
+        "description": "Creates or replaces the project connector row linked to a specification.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpecificationProjectConnectorUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Specification project connector created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecificationConnectorsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id or missing fields"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.update"
+          },
+          "404": {
+            "description": "Specification not found or connectors not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Update specification project connector",
+        "description": "Updates the project connector row linked to a specification.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SpecificationProjectConnectorUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Specification project connector updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecificationConnectorsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.update"
+          },
+          "404": {
+            "description": "Specification not found or connectors not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Delete specification project connector",
+        "description": "Deletes the project connector row linked to a specification.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Specification project connector deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Specification project connector deleted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.update"
+          },
+          "404": {
+            "description": "Specification not found or connectors not found"
+          }
+        }
+      }
+    },
+    "/api/specifications_source_connectors": {
+      "get": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "List specification source connectors",
+        "description": "Returns all source connectors used by specifications.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "Specification source connectors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpecificationSourceConnector"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.view"
           }
         }
       }

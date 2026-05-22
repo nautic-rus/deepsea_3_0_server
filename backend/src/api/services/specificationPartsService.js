@@ -314,10 +314,17 @@ class SpecificationPartsService {
 
     const sourceConnector = connectorRow.source_connector;
     const projectConnector = connectorRow.project_connector;
+    const dataConnector = connectorRow.data_connector;
+    const oid = dataConnector ? dataConnector.oid : null;
+    if (oid === null || oid === undefined || String(oid).trim() === '') {
+      const err = new Error('Specification connectors not found');
+      err.statusCode = 404;
+      throw err;
+    }
     const requestUrl = SpecificationPartsService._buildForanRequestUrl(
       sourceConnector.url,
       projectConnector.project_code,
-      sourceConnector.oid,
+      oid,
       sourceConnector.code,
       options.requestBaseUrl || null
     );
@@ -327,7 +334,7 @@ class SpecificationPartsService {
       : await SpecificationPartsService._fetchForanParts({
         url: requestUrl,
         project_code: projectConnector.project_code,
-        oid: sourceConnector.oid
+        oid
       });
 
     const externalRows = SpecificationPartsService._normalizePayloadRows(externalPayload);
@@ -338,7 +345,7 @@ class SpecificationPartsService {
         source: {
           url: requestUrl,
           project_code: projectConnector.project_code,
-          oid: sourceConnector.oid
+          oid
         }
       };
     }
@@ -409,7 +416,7 @@ class SpecificationPartsService {
         source: {
           url: requestUrl,
           project_code: projectConnector.project_code,
-          oid: sourceConnector.oid
+          oid
         }
       };
     } catch (err) {
