@@ -169,6 +169,7 @@ class SpecificationPartsService {
       unit: row.UNIT != null && String(row.UNIT).trim() !== ''
         ? String(row.UNIT).trim()
         : null,
+      sfi_code_id: SpecificationPartsService._toNumberOrNull(row.SFI_CODE_ID ?? row.sfi_code_id ?? null),
       descriptions: row.PART_DESC != null && String(row.PART_DESC).trim() !== ''
         ? String(row.PART_DESC).trim()
         : null
@@ -367,11 +368,12 @@ class SpecificationPartsService {
         const material = row.stock_code ? (materialMap.get(row.stock_code) || null) : null;
         const materialId = material ? material.id : null;
         const resolvedQuantity = SpecificationPartsService._resolveQuantity(row, material);
-        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
         values.push(
           versionId,
           row.part_code,
           materialId,
+          row.sfi_code_id ?? null,
           resolvedQuantity,
           row.num_eq_part,
           row.zone,
@@ -389,7 +391,7 @@ class SpecificationPartsService {
 
       const insertRes = await client.query(
         `INSERT INTO specification_parts
-          (specification_version_id, part_code, material_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, created_by, source)
+          (specification_version_id, part_code, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, created_by, source)
          VALUES ${placeholders.join(', ')}
          RETURNING id`,
         values

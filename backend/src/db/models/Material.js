@@ -36,7 +36,6 @@ class Material {
       directory: r.directory_id ? { id: r.directory_id, name: r.directory_name } : null,
       unit: r.unit_id ? { id: r.unit_id, name: r.unit_name, kei: r.unit_kei ?? null } : null,
       weight: r.weight,
-      sfi_code: r.sfi_code_id ? { id: r.sfi_code_id, code: r.sfi_code_code || null, name_ru: r.sfi_code_name_ru || null, name_en: r.sfi_code_name_en || null } : null,
       type: r.type,
       status: r.status,
       created_by: r.created_by ? { id: r.created_by, name: Material._formatUserDisplay(r.created_by_last_name, r.created_by_first_name, r.created_by_middle_name), avatar_id: r.created_by_avatar_id || null } : null,
@@ -292,11 +291,10 @@ class Material {
       values.push(projectIds);
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `${directoryScopeSql} SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, uo.kei AS unit_kei, m.weight, m.sfi_code_id, sc.code AS sfi_code_code, sc.name_ru AS sfi_code_name_ru, sc.name_en AS sfi_code_name_en, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.middle_name AS created_by_middle_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.middle_name AS updated_by_middle_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
+    let q = `${directoryScopeSql} SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, uo.kei AS unit_kei, m.weight, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.middle_name AS created_by_middle_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.middle_name AS updated_by_middle_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
         FROM equipment_materials m
       LEFT JOIN equipment_materials_directories d ON m.directory_id = d.id
       LEFT JOIN units uo ON m.unit_id = uo.id
-      LEFT JOIN sfi_codes sc ON m.sfi_code_id = sc.id
       LEFT JOIN users cu ON m.created_by = cu.id
       LEFT JOIN users uu ON m.updated_by = uu.id
       ${whereSql} ORDER BY m.id`;
@@ -316,11 +314,10 @@ class Material {
   }
 
   static async findById(id) {
-    const q = `SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, uo.kei AS unit_kei, m.weight, m.sfi_code_id, sc.code AS sfi_code_code, sc.name_ru AS sfi_code_name_ru, sc.name_en AS sfi_code_name_en, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.middle_name AS created_by_middle_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.middle_name AS updated_by_middle_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
+    const q = `SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, uo.kei AS unit_kei, m.weight, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.middle_name AS created_by_middle_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.middle_name AS updated_by_middle_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
         FROM equipment_materials m
       LEFT JOIN equipment_materials_directories d ON m.directory_id = d.id
       LEFT JOIN units uo ON m.unit_id = uo.id
-      LEFT JOIN sfi_codes sc ON m.sfi_code_id = sc.id
       LEFT JOIN users cu ON m.created_by = cu.id
       LEFT JOIN users uu ON m.updated_by = uu.id
       WHERE m.id = $1 LIMIT 1`;
@@ -393,8 +390,8 @@ class Material {
   }
 
   static async create(fields) {
-    const q = `INSERT INTO equipment_materials (stock_code, name, description, directory_id, unit_id, weight, sfi_code_id, type, status, created_by, updated_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`;
-    const vals = [fields.stock_code, fields.name, fields.description || null, fields.directory_id, fields.unit_id || null, fields.weight ?? 0, fields.sfi_code_id || null, fields.type || 'material', fields.status || 'active', fields.created_by, fields.updated_by || null];
+    const q = `INSERT INTO equipment_materials (stock_code, name, description, directory_id, unit_id, weight, type, status, created_by, updated_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`;
+    const vals = [fields.stock_code, fields.name, fields.description || null, fields.directory_id, fields.unit_id || null, fields.weight ?? 0, fields.type || 'material', fields.status || 'active', fields.created_by, fields.updated_by || null];
     const res = await pool.query(q, vals);
     const newId = res.rows[0] && res.rows[0].id;
     return await Material.findById(newId);
@@ -404,7 +401,7 @@ class Material {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['stock_code','name','description','directory_id','unit_id','weight','sfi_code_id','type','status','updated_by'].forEach((k) => {
+    ['stock_code','name','description','directory_id','unit_id','weight','type','status','updated_by'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Material.findById(id);

@@ -2067,28 +2067,6 @@
             "nullable": true,
             "description": "Material weight"
           },
-          "sfi_code": {
-            "type": "object",
-            "nullable": true,
-            "description": "SFI classification object",
-            "properties": {
-              "id": {
-                "type": "integer",
-                "nullable": true
-              },
-              "code": {
-                "type": "string"
-              },
-              "name_ru": {
-                "type": "string",
-                "nullable": true
-              },
-              "name_en": {
-                "type": "string",
-                "nullable": true
-              }
-            }
-          },
           "type": {
             "type": "string",
             "enum": [
@@ -2453,6 +2431,10 @@
                 "type": "string",
                 "nullable": true
               },
+              "sfi_code_id": {
+                "type": "integer",
+                "nullable": true
+              },
               "quantity": {
                 "type": "number"
               },
@@ -2475,6 +2457,27 @@
               "source": {
                 "type": "string",
                 "nullable": true
+              },
+              "sfi_code": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "code": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "name_ru": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "name_en": {
+                    "type": "string",
+                    "nullable": true
+                  }
+                }
               },
               "created_at": {
                 "type": "string",
@@ -2609,6 +2612,10 @@
             "type": "integer",
             "nullable": true
           },
+          "sfi_code_id": {
+            "type": "integer",
+            "nullable": true
+          },
           "quantity": {
             "type": "number"
           },
@@ -2659,6 +2666,27 @@
           "part_type": {
             "type": "string",
             "nullable": true
+          },
+          "sfi_code": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "code": {
+                "type": "string",
+                "nullable": true
+              },
+              "name_ru": {
+                "type": "string",
+                "nullable": true
+              },
+              "name_en": {
+                "type": "string",
+                "nullable": true
+              }
+            }
           },
           "descriptions": {
             "type": "string",
@@ -2766,6 +2794,10 @@
             "nullable": true
           },
           "material_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "sfi_code_id": {
             "type": "integer",
             "nullable": true
           },
@@ -3103,11 +3135,6 @@
             "nullable": true,
             "description": "Weight"
           },
-          "sfi_code_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "SFI code identifier"
-          },
           "type": {
             "type": "string",
             "enum": [
@@ -3176,11 +3203,6 @@
             "type": "number",
             "nullable": true,
             "description": "Weight"
-          },
-          "sfi_code_id": {
-            "type": "integer",
-            "nullable": true,
-            "description": "SFI code identifier"
           },
           "type": {
             "type": "string",
@@ -4406,6 +4428,122 @@
           "caption": "Profile",
           "sort_order": 0
         }
+      },
+      "SfiCode": {
+        "type": "object",
+        "description": "SFI classification code record",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "parent": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "code": {
+                "type": "string",
+                "nullable": true
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "level": {
+            "type": "integer"
+          },
+          "order_index": {
+            "type": "integer"
+          },
+          "name_ru": {
+            "type": "string",
+            "nullable": true
+          },
+          "name_en": {
+            "type": "string",
+            "nullable": true
+          },
+          "description_ru": {
+            "type": "string",
+            "nullable": true
+          },
+          "description_en": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "SfiCodeCreate": {
+        "type": "object",
+        "description": "Request body for creating/updating an SFI code",
+        "required": [
+          "code",
+          "name"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "order_index": {
+            "type": "integer",
+            "nullable": true
+          },
+          "name_ru": {
+            "type": "string",
+            "nullable": true
+          },
+          "name_en": {
+            "type": "string",
+            "nullable": true
+          },
+          "description_ru": {
+            "type": "string",
+            "nullable": true
+          },
+          "description_en": {
+            "type": "string",
+            "nullable": true
+          }
+        }
       }
     }
   },
@@ -4929,6 +5067,258 @@
         }
       }
     },
+    "/api/sfi_codes": {
+      "get": {
+        "tags": [
+          "sfi_codes"
+        ],
+        "summary": "List SFI codes",
+        "description": "Returns SFI classification records with optional search and parent filtering.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search by code or name",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "parent_id",
+            "in": "query",
+            "description": "Filter by parent id",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default 1)",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Records per page (if not specified — no limit)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of SFI codes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SfiCode"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sfi_codes"
+        ],
+        "summary": "Create SFI code",
+        "description": "Creates a new SFI classification record. Required fields: code, name.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SfiCodeCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "SFI code created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SfiCode"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields or invalid parent_id"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/sfi_codes/{id}": {
+      "get": {
+        "tags": [
+          "sfi_codes"
+        ],
+        "summary": "Get SFI code by ID",
+        "description": "Returns a single SFI classification record by identifier.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "SFI code ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SFI code record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SfiCode"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "sfi_codes"
+        ],
+        "summary": "Update SFI code",
+        "description": "Partial update of a SFI classification record.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "SFI code ID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SfiCodeCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SfiCode"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parent or circular reference"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sfi_codes"
+        ],
+        "summary": "Delete SFI code",
+        "description": "Deletes a SFI classification record if it has no child items.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "SFI code ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "SFI code has child items and cannot be deleted"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/api/materials": {
       "get": {
         "tags": [
@@ -5059,20 +5449,15 @@
                         "id": 5,
                         "name": "Pipes"
                       },
-                      "unit": {
-                        "id": 2,
-                        "name": "pcs",
-                        "kei": 796
-                      },
-                      "weight": 12.5,
-                      "sfi_code": {
-                        "code": "120",
-                        "name_ru": "Секция",
-                        "name_en": "Section"
-                      },
-                      "type": "material",
-                      "status": "active",
-                      "created_by": {
+                    "unit": {
+                      "id": 2,
+                      "name": "pcs",
+                      "kei": 796
+                    },
+                    "weight": 12.5,
+                    "type": "material",
+                    "status": "active",
+                    "created_by": {
                         "id": 1,
                         "name": "Ivan Petrov",
                         "avatar_id": 12
@@ -5137,7 +5522,6 @@
                 "directory_id": 5,
                 "unit_id": 2,
                 "weight": 100,
-                "sfi_code_id": 120,
                 "type": "material",
                 "status": "active"
               }
@@ -5172,11 +5556,6 @@
                       "name": "pcs"
                     },
                     "weight": 100,
-                    "sfi_code": {
-                      "code": "120",
-                      "name_ru": "Секция",
-                      "name_en": "Section"
-                    },
                     "type": "material",
                     "status": "active",
                     "created_by": {
@@ -5632,11 +6011,6 @@
                     "name": "pcs"
                   },
                   "weight": 12.5,
-                  "sfi_code": {
-                    "code": "120",
-                    "name_ru": "Секция",
-                    "name_en": "Section"
-                  },
                   "type": "material",
                   "status": "active",
                   "created_by": {
@@ -5722,7 +6096,6 @@
                 "directory_id": 5,
                 "unit_id": 2,
                 "weight": 200,
-                "sfi_code_id": 120,
                 "type": "equipment",
                 "status": "active"
               }
@@ -5757,12 +6130,6 @@
                       "name": "pcs"
                     },
                     "weight": 200,
-                    "sfi_code": {
-                      "id": 120,
-                      "code": "120",
-                      "name_ru": "Секция",
-                      "name_en": "Section"
-                    },
                     "type": "equipment",
                     "status": "active",
                     "created_by": {

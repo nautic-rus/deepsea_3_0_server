@@ -1063,7 +1063,6 @@ CREATE TABLE public.equipment_materials (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     weight numeric(14,3) DEFAULT 0,
-    sfi_code_id integer,
     status character varying(50) DEFAULT 'active'::character varying,
     type public.equipment_materials_type DEFAULT 'material'::public.equipment_materials_type NOT NULL
 );
@@ -2409,6 +2408,7 @@ CREATE TABLE public.specification_parts (
     symmetry text,
     unit text,
     descriptions text,
+    sfi_code_id integer,
     qty numeric(15,3),
     CONSTRAINT specification_parts_source_check CHECK (((source)::text = ANY (ARRAY[('import'::character varying)::text, ('manual'::character varying)::text, ('foran'::character varying)::text])))
 );
@@ -7072,14 +7072,6 @@ ALTER TABLE ONLY public.equipment_materials_projects
 
 
 --
--- Name: equipment_materials equipment_materials_sfi_codes_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.equipment_materials
-    ADD CONSTRAINT equipment_materials_sfi_codes_fk FOREIGN KEY (sfi_code_id) REFERENCES public.sfi_codes(id);
-
-
---
 -- Name: file_categories file_categories_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7517,6 +7509,14 @@ ALTER TABLE ONLY public.specification
 
 ALTER TABLE ONLY public.specification_parts
     ADD CONSTRAINT specification_parts_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: specification_parts specification_parts_sfi_codes_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.specification_parts
+    ADD CONSTRAINT specification_parts_sfi_codes_fk FOREIGN KEY (sfi_code_id) REFERENCES public.sfi_codes(id) ON DELETE SET NULL;
 
 
 --
@@ -7964,4 +7964,3 @@ ALTER TABLE ONLY public.wiki_sections
 --
 
 \unrestrict S52xBZymcgSu2b5KZ3yFw8zGuf5YaAcxg15hCrdIx0KXQiR83c8e1h2sINbG5eS
-

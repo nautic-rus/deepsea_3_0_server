@@ -28,6 +28,7 @@ const materialKitsController = require('../controllers/materialKitsController');
 const unitsController = require('../controllers/unitsController');
 const shipmentsController = require('../controllers/shipmentsController');
 const suppliersController = require('../controllers/suppliersController');
+const sfiCodesController = require('../controllers/sfiCodesController');
 const specificationsController = require('../controllers/specificationsController');
 const specificationVersionsController = require('../controllers/specificationVersionsController');
 const stagesController = require('../controllers/stagesController');
@@ -437,6 +438,13 @@ router.get('/units/:id', authMiddleware, unitsController.get);
 router.post('/units', authMiddleware, unitsController.create);
 router.put('/units/:id', authMiddleware, unitsController.update);
 router.delete('/units/:id', authMiddleware, unitsController.remove);
+
+// ===== SFI codes routes =====
+router.get('/sfi_codes', authMiddleware, sfiCodesController.list);
+router.get('/sfi_codes/:id', authMiddleware, sfiCodesController.get);
+router.post('/sfi_codes', authMiddleware, sfiCodesController.create);
+router.put('/sfi_codes/:id', authMiddleware, sfiCodesController.update);
+router.delete('/sfi_codes/:id', authMiddleware, sfiCodesController.remove);
 
 // ===== Material kits routes =====
 router.get('/material_kits', authMiddleware, materialKitsController.list);

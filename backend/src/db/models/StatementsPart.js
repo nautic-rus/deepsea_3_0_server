@@ -30,20 +30,30 @@ class StatementsPart {
         CASE
           WHEN spt.id IS NULL THEN NULL
           ELSE json_build_object(
-            'id', spt.id,
-            'specification_version_id', spt.specification_version_id,
-            'parent_id', spt.parent_id,
-            'part_code', spt.part_code,
-            'quantity', spt.quantity,
-            'zone', spt.zone,
-            'cog_x', spt.cog_x,
-            'cog_y', spt.cog_y,
-            'cog_z', spt.cog_z,
-            'source', spt.source,
-            'created_at', spt.created_at,
-            'specification_version', row_to_json(sv.*),
-            'specification', CASE
-              WHEN spec.id IS NULL THEN NULL
+              'id', spt.id,
+              'specification_version_id', spt.specification_version_id,
+              'parent_id', spt.parent_id,
+              'part_code', spt.part_code,
+              'sfi_code_id', spt.sfi_code_id,
+              'quantity', spt.quantity,
+              'zone', spt.zone,
+              'cog_x', spt.cog_x,
+              'cog_y', spt.cog_y,
+              'cog_z', spt.cog_z,
+              'source', spt.source,
+              'created_at', spt.created_at,
+              'sfi_code', CASE
+                WHEN sc.id IS NULL THEN NULL
+                ELSE json_build_object(
+                  'id', sc.id,
+                  'code', sc.code,
+                  'name_ru', sc.name_ru,
+                  'name_en', sc.name_en
+                )
+              END,
+              'specification_version', row_to_json(sv.*),
+              'specification', CASE
+                WHEN spec.id IS NULL THEN NULL
               ELSE json_build_object(
                 'id', spec.id,
                 'project_id', spec.project_id,
@@ -83,6 +93,7 @@ class StatementsPart {
       LEFT JOIN specification_parts spt ON spt.id = sp.specification_part_id
       LEFT JOIN equipment_materials m ON m.id = spt.material_id
       LEFT JOIN units uo ON uo.id = m.unit_id
+      LEFT JOIN sfi_codes sc ON sc.id = spt.sfi_code_id
       LEFT JOIN specification_version sv ON sv.id = spt.specification_version_id
       LEFT JOIN specification spec ON spec.id = sv.specification_id
       LEFT JOIN users scu ON scu.id = spec.created_by
@@ -105,6 +116,7 @@ class StatementsPart {
       LEFT JOIN specification_parts spt ON spt.id = sp.specification_part_id
       LEFT JOIN equipment_materials m ON m.id = spt.material_id
       LEFT JOIN units uo ON uo.id = m.unit_id
+      LEFT JOIN sfi_codes sc ON sc.id = spt.sfi_code_id
       LEFT JOIN specification_version sv ON sv.id = spt.specification_version_id
       LEFT JOIN specification spec ON spec.id = sv.specification_id
       LEFT JOIN users scu ON scu.id = spec.created_by

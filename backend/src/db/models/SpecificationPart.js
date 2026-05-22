@@ -9,6 +9,7 @@ class SpecificationPart {
       `${prefix}parent_id`,
       `${prefix}part_code`,
       `${prefix}material_id`,
+      `${prefix}sfi_code_id`,
       `${prefix}quantity`,
       `${prefix}qty`,
       `${prefix}zone`,
@@ -48,11 +49,16 @@ class SpecificationPart {
         END,
         true
       ) AS material,
+      CASE
+        WHEN sc.id IS NULL THEN NULL
+        ELSE jsonb_build_object('id', sc.id, 'code', sc.code, 'name_ru', sc.name_ru, 'name_en', sc.name_en)
+      END AS sfi_code,
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
       LEFT JOIN equipment_materials m ON m.id = sp.material_id
       LEFT JOIN units uo ON uo.id = m.unit_id
+      LEFT JOIN sfi_codes sc ON sc.id = sp.sfi_code_id
       LEFT JOIN users cu ON cu.id = sp.created_by
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       ${whereSql} ORDER BY sp.id`;
@@ -78,11 +84,16 @@ class SpecificationPart {
         END,
         true
       ) AS material,
+      CASE
+        WHEN sc.id IS NULL THEN NULL
+        ELSE jsonb_build_object('id', sc.id, 'code', sc.code, 'name_ru', sc.name_ru, 'name_en', sc.name_en)
+      END AS sfi_code,
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
       LEFT JOIN equipment_materials m ON m.id = sp.material_id
       LEFT JOIN units uo ON uo.id = m.unit_id
+      LEFT JOIN sfi_codes sc ON sc.id = sp.sfi_code_id
       LEFT JOIN users cu ON cu.id = sp.created_by
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       WHERE sp.id = $1 LIMIT 1`;
@@ -103,11 +114,16 @@ class SpecificationPart {
         END,
         true
       ) AS material,
+      CASE
+        WHEN sc.id IS NULL THEN NULL
+        ELSE jsonb_build_object('id', sc.id, 'code', sc.code, 'name_ru', sc.name_ru, 'name_en', sc.name_en)
+      END AS sfi_code,
       json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
       row_to_json(sv.*) AS specification_version
       FROM specification_parts sp
       LEFT JOIN equipment_materials m ON m.id = sp.material_id
       LEFT JOIN units uo ON uo.id = m.unit_id
+      LEFT JOIN sfi_codes sc ON sc.id = sp.sfi_code_id
       LEFT JOIN users cu ON cu.id = sp.created_by
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       WHERE sp.id = ANY($1::int[])
@@ -117,12 +133,13 @@ class SpecificationPart {
   }
 
   static async create(fields) {
-    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, material_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19) RETURNING id`;
+    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id`;
     const vals = [
       fields.specification_version_id,
       fields.parent_id || null,
       fields.part_code || null,
       fields.material_id || null,
+      fields.sfi_code_id || null,
       fields.quantity || 1,
       fields.qty ?? null,
       fields.zone || null,
@@ -149,7 +166,7 @@ class SpecificationPart {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['parent_id','part_code','material_id','quantity','qty','zone','length','width','thickness','symmetry','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
+    ['parent_id','part_code','material_id','sfi_code_id','quantity','qty','zone','length','width','thickness','symmetry','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
       if (fields[k] !== undefined) {
         parts.push(`${k} = $${idx++}`);
         const normalized = ['length', 'width', 'thickness'].includes(k)
