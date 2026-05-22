@@ -130,6 +130,18 @@ class MaterialProject {
     return MaterialProject._formatRow((res.rows || [])[0] || null);
   }
 
+  static async findByMaterialAndProject(equipmentMaterialId, projectId, excludeId = null) {
+    const values = [equipmentMaterialId, projectId];
+    let q = `${MaterialProject._baseQuery()} WHERE emp.equipment_material_id = $1 AND s.project_id = $2`;
+    if (excludeId !== null && excludeId !== undefined) {
+      q += ` AND emp.id <> $3`;
+      values.push(excludeId);
+    }
+    q += ' LIMIT 1';
+    const res = await pool.query(q, values);
+    return MaterialProject._formatRow((res.rows || [])[0] || null);
+  }
+
   static async create(fields) {
     const q = `INSERT INTO equipment_materials_projects (equipment_material_id, statement_id, shipments_id) VALUES ($1,$2,$3) RETURNING id`;
     const vals = [fields.equipment_material_id, fields.statement_id, fields.shipments_id || null];

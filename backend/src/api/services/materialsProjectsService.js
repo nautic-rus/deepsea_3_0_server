@@ -189,6 +189,15 @@ class MaterialsProjectsService {
 
     await MaterialsProjectsService._ensureWriteAccess(actor, resolvedProjectId);
 
+    if (resolvedProjectId !== null) {
+      const existingLink = await MaterialProject.findByMaterialAndProject(materialId, resolvedProjectId);
+      if (existingLink) {
+        const err = new Error('Conflict: material is already linked to a statement in this project');
+        err.statusCode = 409;
+        throw err;
+      }
+    }
+
     if (shipmentsId !== undefined) {
       const shipment = await Shipment.findById(shipmentsId);
       if (!shipment) { const err = new Error('Shipment not found'); err.statusCode = 404; throw err; }
@@ -256,7 +265,16 @@ class MaterialsProjectsService {
       await MaterialsProjectsService._ensureWriteAccess(actor, resolvedProjectId);
     }
 
-    if (payload.shipments_id !== undefined && nextShipmentsId !== undefined) {
+    if (resolvedProjectId !== null) {
+      const conflictingLink = await MaterialProject.findByMaterialAndProject(nextMaterialId, resolvedProjectId, Number(id));
+      if (conflictingLink) {
+        const err = new Error('Conflict: material is already linked to a statement in this project');
+        err.statusCode = 409;
+        throw err;
+      }
+    }
+
+    if (payload.shipments_id !== undefined && nextShipmentsId !== undefined && nextShipmentsId !== null) {
       const shipment = await Shipment.findById(nextShipmentsId);
       if (!shipment) { const err = new Error('Shipment not found'); err.statusCode = 404; throw err; }
     }

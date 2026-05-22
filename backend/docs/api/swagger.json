@@ -5668,6 +5668,9 @@
           },
           "404": {
             "description": "Material, statement, or shipment not found"
+          },
+          "409": {
+            "description": "Material is already linked to a statement in this project"
           }
         }
       }
