@@ -9,15 +9,6 @@ class SpecificationPartsController {
     } catch (err) { next(err); }
   }
 
-  static async get(req, res, next) {
-    try {
-      const actor = req.user || null;
-      const id = Number(req.params.id);
-      const row = await SpecificationPartsService.getById(id, actor);
-      res.json(row);
-    } catch (err) { next(err); }
-  }
-
   static async create(req, res, next) {
     try {
       const actor = req.user || null;
@@ -29,18 +20,8 @@ class SpecificationPartsController {
   static async update(req, res, next) {
     try {
       const actor = req.user || null;
-      const id = Number(req.params.id);
-      const updated = await SpecificationPartsService.update(id, req.body || {}, actor);
+      const updated = await SpecificationPartsService.update(req.body || {}, actor);
       res.json(updated);
-    } catch (err) { next(err); }
-  }
-
-  static async delete(req, res, next) {
-    try {
-      const actor = req.user || null;
-      const id = Number(req.params.id);
-      await SpecificationPartsService.delete(id, actor);
-      res.json({ message: 'Deleted' });
     } catch (err) { next(err); }
   }
 }

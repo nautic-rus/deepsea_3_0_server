@@ -2612,6 +2612,10 @@
           "quantity": {
             "type": "number"
           },
+          "total_weight": {
+            "type": "number",
+            "nullable": true
+          },
           "qty": {
             "type": "number",
             "nullable": true
@@ -23305,44 +23309,6 @@
             }
           }
         }
-      }
-    },
-    "/api/specification_parts/{id}": {
-      "get": {
-        "tags": [
-          "specifications"
-        ],
-        "summary": "Get specification part by id",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "specifications.view"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SpecificationPart"
-                }
-              }
-            }
-          }
-        }
       },
       "put": {
         "tags": [
@@ -23357,21 +23323,20 @@
         "x-permissions": [
           "specifications.update"
         ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "required": [
+                  "id"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  }
+                }
               }
             }
           }
@@ -23388,50 +23353,6 @@
                       "$ref": "#/components/schemas/SpecificationPart"
                     }
                   }
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "specifications"
-        ],
-        "summary": "Delete specification part",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "specifications.update"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "example": {
-                  "message": "Deleted"
                 }
               }
             }
