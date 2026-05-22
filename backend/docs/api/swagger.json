@@ -24290,6 +24290,52 @@
         }
       }
     },
+    "/api/specification_parts/{id}": {
+      "delete": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Delete specification part",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Specification part not found"
+          }
+        }
+      }
+    },
     "/api/specification_versions": {
       "get": {
         "tags": [

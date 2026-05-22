@@ -24,6 +24,15 @@ class SpecificationPartsController {
       res.json(updated);
     } catch (err) { next(err); }
   }
+
+  static async delete(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      await SpecificationPartsService.delete(id, actor);
+      res.json({ message: 'Specification part deleted' });
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = SpecificationPartsController;

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>A4 Drawing Frame</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+
+    html, body {
+      width: 297mm;
+      height: 210mm;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .sheet {
+      position: relative;
+      width: 297mm;
+      height: 210mm;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .frame {
+      position: absolute;
+      inset: 5mm;
+      border: 0.7mm solid #000;
+      box-sizing: border-box;
+    }
+
+    .content {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 8mm;
+    }
+
+    .stamp {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 155mm;
+      height: 62mm;
+      border: 0.3mm solid #000;
+      box-sizing: border-box;
+      background: #fff;
+      color: #000;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stamp__meta {
+      display: grid;
+      grid-template-columns: 44mm 1fr 24mm 24mm;
+      grid-template-rows: 12mm 12mm;
+      border-bottom: 0.3mm solid #000;
+    }
+
+    .stamp__cell {
+      border-right: 0.3mm solid #000;
+      border-bottom: 0.3mm solid #000;
+      box-sizing: border-box;
+      padding: 1.6mm 1.8mm;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .stamp__cell--no-right {
+      border-right: none;
+    }
+
+    .stamp__cell--span2 {
+      grid-row: span 2;
+    }
+
+    .stamp__label {
+      font-size: 2.05mm;
+      line-height: 1.05;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .stamp__value {
+      font-size: 3.2mm;
+      line-height: 1.1;
+      font-weight: 700;
+      margin-top: 0.8mm;
+      word-break: break-word;
+    }
+
+    .stamp__value--big {
+      font-size: 4.2mm;
+      line-height: 1;
+    }
+
+    .stamp__subhead {
+      padding: 1.2mm 1.8mm;
+      border-bottom: 0.3mm solid #000;
+      font-size: 3.9mm;
+      line-height: 1.1;
+      font-weight: 700;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .stamp__table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 1.8mm;
+      line-height: 1.05;
+    }
+
+    .stamp__table th,
+    .stamp__table td {
+      border-right: 0.3mm solid #000;
+      border-bottom: 0.3mm solid #000;
+      padding: 1mm 1.1mm;
+      vertical-align: middle;
+      word-break: break-word;
+    }
+
+    .stamp__table th {
+      font-size: 1.55mm;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+      text-align: center;
+    }
+
+    .stamp__table tr > *:last-child {
+      border-right: none;
+    }
+
+    .stamp__table tbody tr:last-child > * {
+      border-bottom: none;
+    }
+
+    .stamp__table .col-no { width: 7mm; text-align: center; }
+    .stamp__table .col-title { width: 34mm; }
+    .stamp__table .col-desc { width: 34mm; }
+    .stamp__table .col-units { width: 12mm; text-align: center; }
+    .stamp__table .col-qty { width: 12mm; text-align: center; }
+    .stamp__table .col-wgt { width: 12mm; text-align: center; }
+    .stamp__table .col-st { width: 18mm; text-align: center; }
+    .stamp__table .col-mat { width: auto; }
+
+    .stamp__table td {
+      height: 7mm;
+      font-size: 2.1mm;
+    }
+
+    .stamp__table td[data-empty="true"] {
+      color: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="frame">
+      <div class="content">
+        <div class="stamp">
+          <div class="stamp__meta">
+            <div class="stamp__cell stamp__cell--span2">
+              <div class="stamp__label">DRAWING NUMBER / НОМЕР ЧЕРТЕЖА</div>
+              <div class="stamp__value stamp__value--big">{{drawingNumber}}</div>
+            </div>
+            <div class="stamp__cell">
+              <div class="stamp__label">REV. / РЕВ.</div>
+              <div class="stamp__value">{{revision}}</div>
+            </div>
+            <div class="stamp__cell">
+              <div class="stamp__label">PAGE / ЛИСТ</div>
+              <div class="stamp__value">{{pageNumber}}</div>
+            </div>
+            <div class="stamp__cell stamp__cell--no-right">
+              <div class="stamp__label">DATE / ДАТА</div>
+              <div class="stamp__value">{{date}}</div>
+            </div>
+
+            <div class="stamp__cell stamp__cell--span2">
+              <div class="stamp__label">TITLE / НАИМЕНОВАНИЕ</div>
+              <div class="stamp__value">{{title}}</div>
+            </div>
+            <div class="stamp__cell">
+              <div class="stamp__label">BILLING TITLE</div>
+              <div class="stamp__value">{{billingTitle}}</div>
+            </div>
+            <div class="stamp__cell">
+              <div class="stamp__label">DESCRIPTION / ОБОЗНАЧЕНИЕ</div>
+              <div class="stamp__value">{{description}}</div>
+            </div>
+            <div class="stamp__cell stamp__cell--no-right">
+              <div class="stamp__label">UNITS / ЕД.</div>
+              <div class="stamp__value">{{units}}</div>
+            </div>
+          </div>
+          <div class="stamp__subhead">{{billingTitle}}</div>
+          <table class="stamp__table">
+            <thead>
+              <tr>
+                <th class="col-no">№</th>
+                <th class="col-title">TITLE / НАИМЕНОВАНИЕ</th>
+                <th class="col-desc">DESCRIPTION / ОБОЗНАЧЕНИЕ</th>
+                <th class="col-units">UNITS / ЕД.</th>
+                <th class="col-qty">QTY / К-ВО</th>
+                <th class="col-wgt">WGT / ВЕС</th>
+                <th class="col-st">ST.CODE / К.ВЕД.</th>
+                <th class="col-mat">MAT.CODE / КОД МАТ.</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-no">{{rowNumber}}</td>
+                <td class="col-title">{{rowTitle}}</td>
+                <td class="col-desc">{{rowDescription}}</td>
+                <td class="col-units">{{rowUnits}}</td>
+                <td class="col-qty">{{rowQty}}</td>
+                <td class="col-wgt">{{rowWeight}}</td>
+                <td class="col-st">{{rowStCode}}</td>
+                <td class="col-mat">{{rowMatCode}}</td>
+              </tr>
+              <tr>
+                <td class="col-no" data-empty="true">&nbsp;</td>
+                <td class="col-title" data-empty="true">&nbsp;</td>
+                <td class="col-desc" data-empty="true">&nbsp;</td>
+                <td class="col-units" data-empty="true">&nbsp;</td>
+                <td class="col-qty" data-empty="true">&nbsp;</td>
+                <td class="col-wgt" data-empty="true">&nbsp;</td>
+                <td class="col-st" data-empty="true">&nbsp;</td>
+                <td class="col-mat" data-empty="true">&nbsp;</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

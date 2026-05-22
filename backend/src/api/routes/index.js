@@ -513,6 +513,7 @@ router.post('/specification_versions/:id/import_parts', authMiddleware, specific
 router.get('/specification_parts', authMiddleware, specificationPartsController.list);
 router.post('/specification_parts', authMiddleware, specificationPartsController.create);
 router.put('/specification_parts', authMiddleware, specificationPartsController.update);
+router.delete('/specification_parts/:id', authMiddleware, specificationPartsController.delete);
 
 // ===== Stages routes =====
 router.get('/stages', authMiddleware, stagesController.list);

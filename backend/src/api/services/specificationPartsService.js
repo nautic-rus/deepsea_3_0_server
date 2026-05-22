@@ -471,6 +471,28 @@ class SpecificationPartsService {
       data: SpecificationPartsService._stripVersionMeta(SpecificationPartsService._withComputedTotalWeight(updated))
     };
   }
+
+  static async delete(id, actor) {
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, 'specifications.update');
+    if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
+
+    const partId = Number(id);
+    if (!partId || Number.isNaN(partId)) {
+      const err = new Error('Missing fields');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const ok = await SpecificationPart.softDelete(partId);
+    if (!ok) {
+      const err = new Error('Not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    return { success: true };
+  }
 }
 
 module.exports = SpecificationPartsService;
