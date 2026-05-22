@@ -4209,6 +4209,90 @@
           }
         }
       },
+      "SpecificationVersion": {
+        "type": "object",
+        "description": "Specification version record",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "specification_id": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_by": {
+            "type": "integer"
+          },
+          "created_by_first_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_by_last_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_by_middle_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_by": {
+            "type": "integer",
+            "nullable": true
+          },
+          "updated_by_first_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "updated_by_last_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "updated_by_middle_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "SpecificationVersionCreate": {
+        "type": "object",
+        "description": "Request body for creating a specification version",
+        "required": [
+          "specification_id"
+        ],
+        "properties": {
+          "specification_id": {
+            "type": "integer",
+            "description": "Specification ID"
+          },
+          "version": {
+            "type": "string",
+            "nullable": true,
+            "description": "Version label"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional notes"
+          }
+        }
+      },
       "ProjectCharacteristics": {
         "type": "object",
         "properties": {
@@ -24129,6 +24213,62 @@
       }
       }
     },
+    "/api/specification_versions/{id}/pdf": {
+      "get": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Download specification version as PDF",
+        "description": "Generates a PDF file for the specified specification version based on the drawing template.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification version ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF file",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Specification version not found"
+          },
+          "500": {
+            "description": "PDF generation failed"
+          }
+        }
+      }
+    },
     "/api/specification_parts": {
       "get": {
         "tags": [
@@ -24385,6 +24525,7 @@
           "specifications"
         ],
         "summary": "Create specification version",
+        "description": "Creates a new version record for an existing specification.",
         "security": [
           {
             "bearerAuth": []
@@ -24399,6 +24540,11 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SpecificationVersionCreate"
+              },
+              "example": {
+                "specification_id": 1,
+                "version": "v1.0",
+                "notes": "Initial issue"
               }
             }
           }
@@ -24418,6 +24564,18 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Invalid specification_id or request payload"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Specification not found"
           }
         }
       }
@@ -24682,6 +24840,74 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/specification_versions/{id}/import_parts": {
+      "post": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Import specification parts from FORAN",
+        "description": "Imports parts into specification_parts for the given specification version. If the request body already contains a FORAN JSON payload, it will be used directly; otherwise the server will fetch data from FORAN using connector settings stored in the database.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification version ID"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Optional FORAN API response payload with a rows array"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Imported parts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SpecificationPartImportResponse"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid specification version id or request payload"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Specification version or connectors not found"
           }
         }
       }

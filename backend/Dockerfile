@@ -3,6 +3,9 @@ FROM node:18-alpine
 # Create app directory
 WORKDIR /usr/src/app
 
+# Install Chromium for server-side PDF generation
+RUN apk add --no-cache chromium nss freetype harfbuzz ttf-dejavu
+
 # Install app dependencies
 COPY package.json package-lock.json* ./
 RUN npm install --production --no-audit --no-fund

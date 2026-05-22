@@ -45,7 +45,7 @@ class SpecificationPart {
         '{unit}',
         CASE
           WHEN uo.id IS NULL THEN 'null'::jsonb
-          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'kei', uo.kei)
+          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'symbol', uo.symbol, 'kei', uo.kei)
         END,
         true
       ) AS material,
@@ -80,7 +80,7 @@ class SpecificationPart {
         '{unit}',
         CASE
           WHEN uo.id IS NULL THEN 'null'::jsonb
-          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'kei', uo.kei)
+          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'symbol', uo.symbol, 'kei', uo.kei)
         END,
         true
       ) AS material,
@@ -110,7 +110,7 @@ class SpecificationPart {
         '{unit}',
         CASE
           WHEN uo.id IS NULL THEN 'null'::jsonb
-          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'kei', uo.kei)
+          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'symbol', uo.symbol, 'kei', uo.kei)
         END,
         true
       ) AS material,

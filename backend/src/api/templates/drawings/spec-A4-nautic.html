@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{docName}}</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #000;
+    }
+
+    @font-face {
+      font-family: "ArialCyr";
+      src: url("../fonts/ArialCyr.ttf") format("truetype");
+    }
+
+    @font-face {
+      font-family: "CourierC";
+      src: url("../fonts/courierC.ttf") format("truetype");
+    }
+
+    .page {
+      position: relative;
+      width: 297mm;
+      height: 210mm;
+      overflow: hidden;
+      box-sizing: border-box;
+      break-after: page;
+      page-break-after: always;
+      font-family: ArialCyr, Arial, sans-serif;
+    }
+
+    .border {
+      position: absolute;
+      left: 5mm;
+      top: 5mm;
+      width: 287mm;
+      height: 200mm;
+      border: 0.5mm solid #000;
+      box-sizing: border-box;
+    }
+
+    .logo {
+      position: absolute;
+      left: 95.3mm;
+      top: 195.6mm;
+      width: 19.3mm;
+      height: 7.1mm;
+      object-fit: contain;
+    }
+
+    .stamp-frame {
+      position: absolute;
+      right: 5.1mm;
+      bottom: 5.6mm;
+      width: 200mm;
+      height: 21mm;
+      box-sizing: border-box;
+    }
+
+    .stamp-table {
+      width: 100%;
+      height: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      border: 0.4mm solid #000;
+    }
+
+    .stamp-table col:nth-child(1) { width: 27mm; }
+    .stamp-table col:nth-child(2) { width: 136mm; }
+    .stamp-table col:nth-child(3) { width: 18.5mm; }
+    .stamp-table col:nth-child(4) { width: 18.5mm; }
+
+    .stamp-table td {
+      border: 0.4mm solid #000;
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+    }
+
+    .stamp-cell {
+      padding: 0.5mm 1mm;
+      box-sizing: border-box;
+      overflow: hidden;
+      vertical-align: middle;
+      font-family: CourierC, "Courier New", monospace;
+      white-space: nowrap;
+    }
+
+    .stamp-logo-cell {
+      text-align: center;
+      vertical-align: middle;
+      padding: 0;
+    }
+
+    .stamp-logo {
+      display: block;
+      width: 19.3mm;
+      height: 7.1mm;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+
+    .stamp-doc-name-cell {
+      text-align: left;
+      font-size: 5mm;
+      font-weight: 700;
+    }
+
+    .stamp-drawing-cell {
+      text-align: left;
+      font-size: 5mm;
+      font-weight: 700;
+    }
+
+    .stamp-meta-cell {
+      text-align: left;
+      font-size: 2.5mm;
+      font-weight: 700;
+    }
+
+    .stamp-label {
+      display: block;
+      line-height: 1;
+      font-family: ArialCyr, Arial, sans-serif;
+      font-size: 2.5mm;
+      font-weight: 400;
+      white-space: nowrap;
+    }
+
+    .stamp-value {
+      display: block;
+      line-height: 1.05;
+      white-space: nowrap;
+    }
+
+    .stamp-doc-name-value {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      line-height: 1;
+    }
+
+    .stamp-doc-number-value {
+      display: flex;
+      align-items: center;
+      height: calc(100% - 3mm);
+      font-size: 10mm;
+    }
+
+    .stamp-meta-cell .stamp-value {
+      font-size: 5mm;
+      font-family: CourierC, "Courier New", monospace;
+      font-weight: 700;
+    }
+
+    .stamp-page-cell .stamp-value {
+      font-size: 5mm;
+    }
+
+    .page-title {
+      position: absolute;
+      left: 130.6mm;
+      top: 7.1mm;
+      width: 35.8mm;
+      height: 2.5mm;
+      text-align: center;
+      font-size: 3mm;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+      font-family: ArialCyr, Arial, sans-serif;
+    }
+
+    .part-table,
+    .summary-table {
+      border-collapse: collapse;
+      table-layout: fixed;
+      width: calc(100% - 10mm);
+      position: absolute;
+      left: 5mm;
+      box-sizing: border-box;
+    }
+
+    .summary-title {
+      position: absolute;
+      left: 108.5mm;
+      top: 7.1mm;
+      width: 80mm;
+      height: 2.5mm;
+      text-align: center;
+      font-size: 3mm;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+      font-family: ArialCyr, Arial, sans-serif;
+    }
+
+    .part-table th,
+    .part-table td,
+    .summary-table th,
+    .summary-table td {
+      border: 0.35mm solid #000;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      text-align: center;
+      vertical-align: middle;
+      overflow: hidden;
+      white-space: nowrap;
+      font-size: 3mm;
+      line-height: 1;
+      font-family: ArialCyr, Arial, sans-serif;
+      height: 5.3mm;
+    }
+
+    .part-table th,
+    .summary-table th {
+      font-weight: 700;
+    }
+
+    .left {
+      text-align: left !important;
+      padding-left: 1mm !important;
+    }
+
+    .wrap {
+      white-space: normal !important;
+      word-break: break-word;
+      line-height: 1.05;
+    }
+
+    .part-table col:nth-child(1) { width: 6.706%; }
+    .part-table col:nth-child(2) { width: 29.297%; }
+    .part-table col:nth-child(3) { width: 15.394%; }
+    .part-table col:nth-child(4) { width: 6.706%; }
+    .part-table col:nth-child(5) { width: 4.969%; }
+    .part-table col:nth-child(6) { width: 6.706%; }
+    .part-table col:nth-child(7) { width: 6.706%; }
+    .part-table col:nth-child(8) { width: 4.969%; }
+    .part-table col:nth-child(9) { width: 6.706%; }
+    .part-table col:nth-child(10) { width: 11.845%; }
+
+    .summary-table col:nth-child(1) { width: 6.706%; }
+    .summary-table col:nth-child(2) { width: 33.998%; }
+    .summary-table col:nth-child(3) { width: 20.612%; }
+    .summary-table col:nth-child(4) { width: 4.969%; }
+    .summary-table col:nth-child(5) { width: 6.706%; }
+    .summary-table col:nth-child(6) { width: 6.706%; }
+    .summary-table col:nth-child(7) { width: 8.453%; }
+    .summary-table col:nth-child(8) { width: 11.845%; }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <div class="border"></div>
+    <div class="stamp-frame">
+      <table class="stamp-table">
+        <colgroup>
+          <col><col><col><col>
+        </colgroup>
+        <tbody>
+        <tr>
+          <td rowspan="3" class="stamp-cell stamp-logo-cell">
+            <img class="stamp-logo" src="{{logoUrl}}" alt="logo">
+          </td>
+          <td colspan="3" class="stamp-cell stamp-doc-name-cell">
+            <div class="stamp-doc-name-value">{{docName}}</div>
+          </td>
+        </tr>
+        <tr>
+          <td rowspan="2" class="stamp-cell stamp-drawing-cell">
+            <div class="stamp-label">DRAWING NUMBER / НОМЕР ЧЕРТЕЖА</div>
+            <div class="stamp-doc-number-value">{{docNumber}}</div>
+          </td>
+          <td colspan="2" class="stamp-cell stamp-meta-cell">
+            <div class="stamp-label">DATE / ДАТА</div>
+            <div class="stamp-value">{{date}}</div>
+          </td>
+        </tr>
+        <tr>
+          <td class="stamp-cell stamp-meta-cell">
+            <div class="stamp-label">REV. / РЕВ.</div>
+            <div class="stamp-value">{{rev}}</div>
+          </td>
+          <td class="stamp-cell stamp-meta-cell stamp-page-cell">
+            <div class="stamp-label">PAGE / ЛИСТ</div>
+            <div class="stamp-value">{{pageNo}}</div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="border"></div>
+    <div class="stamp-frame">
+      <table class="stamp-table">
+        <colgroup>
+          <col><col><col><col>
+        </colgroup>
+        <tbody>
+        <tr>
+          <td rowspan="3" class="stamp-cell stamp-logo-cell">
+            <img class="stamp-logo" src="{{logoUrl}}" alt="logo">
+          </td>
+          <td colspan="3" class="stamp-cell stamp-doc-name-cell">
+            <div class="stamp-doc-name-value">{{docName}}</div>
+          </td>
+        </tr>
+        <tr>
+          <td rowspan="2" class="stamp-cell stamp-drawing-cell">
+            <div class="stamp-label">DRAWING NUMBER / НОМЕР ЧЕРТЕЖА</div>
+            <div class="stamp-doc-number-value">{{docNumber}}</div>
+          </td>
+          <td colspan="2" class="stamp-cell stamp-meta-cell">
+            <div class="stamp-label">DATE / ДАТА</div>
+            <div class="stamp-value">{{date}}</div>
+          </td>
+        </tr>
+        <tr>
+          <td class="stamp-cell stamp-meta-cell">
+            <div class="stamp-label">REV. / РЕВ.</div>
+            <div class="stamp-value">{{rev}}</div>
+          </td>
+          <td class="stamp-cell stamp-meta-cell stamp-page-cell">
+            <div class="stamp-label">PAGE / ЛИСТ</div>
+            <div class="stamp-value">{{pageNo}}</div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="page-title">PART LIST | СПЕЦИФИКАЦИЯ</div>
+    <table class="part-table" style="top:13.2mm;">
+      <colgroup>
+        <col><col><col><col><col><col><col><col><col><col>
+      </colgroup>
+      <thead>
+      <tr>
+        <th>№</th>
+        <th>TITLE / НАИМЕНОВАНИЕ</th>
+        <th>DESCRIPTION / ОБОЗНАЧЕНИЕ</th>
+        <th>UNITS / КЕИ</th>
+        <th>QTY / К-ВО</th>
+        <th>WGT / ВЕС</th>
+        <th>T.WGT / О.ВЕС</th>
+        <th>ROOM / ПОМ.</th>
+        <th>PLACE / АДРЕС</th>
+        <th>MAT.CODE / КОД МАТ.</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>{{label}}</td>
+        <td class="left wrap">{{title}}</td>
+        <td>{{descr}}</td>
+        <td>{{units}}</td>
+        <td>{{qty}}</td>
+        <td>{{wgt}}</td>
+        <td>{{tWgt}}</td>
+        <td>{{room}}</td>
+        <td>{{place}}</td>
+        <td>{{matCode}}</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="page">
+    <div class="border"></div>
+    <div class="stamp-frame">
+      <table class="stamp-table">
+        <colgroup>
+          <col><col><col><col>
+        </colgroup>
+        <tbody>
+        <tr>
+          <td rowspan="3" class="stamp-cell stamp-logo-cell">
+            <img class="stamp-logo" src="{{logoUrl}}" alt="logo">
+          </td>
+          <td colspan="3" class="stamp-cell stamp-doc-name-cell">
+            <div class="stamp-doc-name-value">{{docName}}</div>
+          </td>
+        </tr>
+        <tr>
+          <td rowspan="2" class="stamp-cell stamp-drawing-cell">
+            <div class="stamp-label">DRAWING NUMBER / НОМЕР ЧЕРТЕЖА</div>
+            <div class="stamp-doc-number-value">{{docNumber}}</div>
+          </td>
+          <td colspan="2" class="stamp-cell stamp-meta-cell">
+            <div class="stamp-label">DATE / ДАТА</div>
+            <div class="stamp-value">{{date}}</div>
+          </td>
+        </tr>
+        <tr>
+          <td class="stamp-cell stamp-meta-cell">
+            <div class="stamp-label">REV. / РЕВ.</div>
+            <div class="stamp-value">{{rev}}</div>
+          </td>
+          <td class="stamp-cell stamp-meta-cell stamp-page-cell">
+            <div class="stamp-label">PAGE / ЛИСТ</div>
+            <div class="stamp-value">{{pageNo}}</div>
+          </td>
+        </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="summary-title">BILLING OF MATERIALS | ЗАКАЗ МАТЕРИАЛОВ</div>
+    <table class="summary-table" style="top:13.2mm;">
+      <colgroup>
+        <col><col><col><col><col><col><col><col>
+      </colgroup>
+      <thead>
+      <tr>
+        <th>№</th>
+        <th>TITLE / НАИМЕНОВАНИЕ</th>
+        <th>DESCRIPTION / ОБОЗНАЧЕНИЕ</th>
+        <th>UNITS / ЕД.</th>
+        <th>QTY / К-ВО</th>
+        <th>WGT / ВЕС</th>
+        <th>ST.CODE / К.ВЕД.</th>
+        <th>MAT.CODE / КОД МАТ.</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr>
+        <td>{{label}}</td>
+        <td class="left wrap">{{title}}</td>
+        <td>{{descr}}</td>
+        <td>{{units}}</td>
+        <td>{{qty}}</td>
+        <td>{{tWgt}}</td>
+        <td>{{stmt}}</td>
+        <td>{{matCode}}</td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>

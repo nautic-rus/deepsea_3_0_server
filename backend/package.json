@@ -30,6 +30,7 @@
     "nodemailer": "^8.0.7",
     "pg": "^8.11.3",
     "prom-client": "^14.2.0",
+    "puppeteer-core": "^24.17.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-parser": "^10.0.3",
     "swagger-ui-express": "^5.0.0"

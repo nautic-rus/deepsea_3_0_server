@@ -505,6 +505,8 @@ router.delete('/specifications/:id', authMiddleware, specificationsController.de
 
 // ===== Specification versions / parts routes =====
 router.get('/specification_versions', authMiddleware, specificationVersionsController.list);
+router.post('/specification_versions', authMiddleware, specificationVersionsController.create);
+router.get('/specification_versions/:id/pdf', authMiddleware, specificationVersionsController.downloadPdf);
 router.get('/specification_versions/:id', authMiddleware, specificationVersionsController.get);
 router.post('/specification_versions/:id', authMiddleware, specificationVersionsController.importParts);
 router.post('/specification_versions/:id/import_parts', authMiddleware, specificationVersionsController.importParts);
