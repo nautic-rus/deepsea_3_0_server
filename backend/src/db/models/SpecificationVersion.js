@@ -43,6 +43,12 @@ class SpecificationVersion {
     const res = await pool.query(q, vals);
     return res.rows[0];
   }
+
+  static async delete(id) {
+    const q = `DELETE FROM specification_version WHERE id = $1`;
+    const res = await pool.query(q, [id]);
+    return res.rowCount > 0;
+  }
 }
 
 module.exports = SpecificationVersion;

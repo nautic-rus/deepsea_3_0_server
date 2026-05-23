@@ -130,6 +130,36 @@ class SpecificationVersionsController {
       next(err);
     }
   }
+
+  static async delete(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const allowed = await hasPermission(actor, 'specifications.update');
+      if (!allowed) {
+        const err = new Error('Forbidden: missing permission specifications.update');
+        err.statusCode = 403;
+        throw err;
+      }
+
+      const id = Number(req.params.id);
+      if (!id || Number.isNaN(id)) {
+        const err = new Error('Invalid id');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const deleted = await SpecificationVersion.delete(id);
+      if (!deleted) {
+        const err = new Error('Specification version not found');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      res.json({ message: 'Deleted' });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = SpecificationVersionsController;
