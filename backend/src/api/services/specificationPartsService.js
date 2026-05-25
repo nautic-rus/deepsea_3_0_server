@@ -1,6 +1,7 @@
 const SpecificationPart = require('../../db/models/SpecificationPart');
 const Specification = require('../../db/models/Specification');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
+const EnvironmentSetting = require('../../db/models/EnvironmentSetting');
 const pool = require('../../db/connection');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
@@ -9,6 +10,28 @@ const { hasPermission } = require('./permissionChecker');
 const execFileAsync = promisify(execFile);
 
 class SpecificationPartsService {
+  static async _loadForanRuntimeSettings() {
+    try {
+      const rows = await EnvironmentSetting.list(['FORAN_SERVICE_URL', 'FORAN_SERVICE_TOKEN']);
+      const byKey = new Map((rows || []).map((row) => [row.key, row]));
+      const urlRow = byKey.get('FORAN_SERVICE_URL');
+      const tokenRow = byKey.get('FORAN_SERVICE_TOKEN');
+      return {
+        url: urlRow && urlRow.value !== undefined && urlRow.value !== null && String(urlRow.value).trim() !== ''
+          ? String(urlRow.value).trim()
+          : String(process.env.FORAN_SERVICE_URL || '').trim(),
+        token: tokenRow && tokenRow.value !== undefined && tokenRow.value !== null && String(tokenRow.value).trim() !== ''
+          ? String(tokenRow.value).trim()
+          : String(process.env.FORAN_SERVICE_TOKEN || '').trim()
+      };
+    } catch (err) {
+      return {
+        url: String(process.env.FORAN_SERVICE_URL || '').trim(),
+        token: String(process.env.FORAN_SERVICE_TOKEN || '').trim()
+      };
+    }
+  }
+
   static _toNumberOrNull(value) {
     if (value === null || value === undefined || value === '') return null;
     const n = Number(value);
@@ -211,8 +234,8 @@ class SpecificationPartsService {
     return totalWeight !== null ? totalWeight : fallbackQuantity;
   }
 
-  static _resolveForanBaseUrl(requestBaseUrl = null) {
-    const configured = String(process.env.FORAN_SERVICE_URL || '').trim();
+  static _resolveForanBaseUrl(requestBaseUrl = null, runtimeUrl = null) {
+    const configured = String(runtimeUrl || '').trim();
     if (configured) return configured;
     const fallback = String(requestBaseUrl || '').trim();
     if (fallback) return fallback;
@@ -221,14 +244,14 @@ class SpecificationPartsService {
     return `http://${host}:${port}`;
   }
 
-  static _buildForanRequestUrl(template, projectCode, oid, sourceCode = null, requestBaseUrl = null) {
+  static _buildForanRequestUrl(template, projectCode, oid, sourceCode = null, requestBaseUrl = null, runtimeUrl = null) {
     const hasOidPlaceholder = String(template || '').includes('{oid}');
     const normalizedProjectCode = String(projectCode || '').trim().toLowerCase();
     const relativePath = String(template || '')
       .replaceAll('{project_code}', encodeURIComponent(normalizedProjectCode))
       .replaceAll('{oid}', encodeURIComponent(String(oid || '')));
 
-    const url = new URL(relativePath, SpecificationPartsService._resolveForanBaseUrl(requestBaseUrl));
+    const url = new URL(relativePath, SpecificationPartsService._resolveForanBaseUrl(requestBaseUrl, runtimeUrl));
     if (!hasOidPlaceholder && oid !== undefined && oid !== null && String(oid).trim() !== '') {
       const paramName = String(sourceCode || '').trim() || 'oid';
       if (!url.searchParams.has(paramName)) {
@@ -238,8 +261,8 @@ class SpecificationPartsService {
     return url.toString();
   }
 
-  static async _fetchForanParts(payloadMeta) {
-    const token = String(process.env.FORAN_SERVICE_TOKEN || '').trim();
+  static async _fetchForanParts(payloadMeta, runtimeToken = null) {
+    const token = String(runtimeToken || '').trim();
     const curlArgs = [
       '-sS',
       '-f',
@@ -329,6 +352,8 @@ class SpecificationPartsService {
       throw err;
     }
 
+    const foranSettings = await SpecificationPartsService._loadForanRuntimeSettings();
+
     const connectorRows = await Specification.listConnectorsBySpecificationId(Number(version.specification_id));
     const validConnectorRows = (connectorRows || []).filter((connectorRow) => {
       if (!connectorRow) return false;
@@ -366,7 +391,8 @@ class SpecificationPartsService {
         projectConnector.project_code,
         oid,
         sourceConnector.code,
-        options.requestBaseUrl || null
+        options.requestBaseUrl || null,
+        foranSettings.url
       );
       return {
         requestUrl,
@@ -396,7 +422,7 @@ class SpecificationPartsService {
             url: connector.requestUrl,
             project_code: connector.project_code,
             oid: connector.oid
-          });
+          }, foranSettings.token);
           const externalRows = SpecificationPartsService._normalizePayloadRows(externalPayload);
           if (externalRows.length === 0) {
             continue;
