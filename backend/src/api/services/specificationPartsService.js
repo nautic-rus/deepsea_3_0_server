@@ -3,11 +3,7 @@ const Specification = require('../../db/models/Specification');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
 const EnvironmentSetting = require('../../db/models/EnvironmentSetting');
 const pool = require('../../db/connection');
-const { execFile } = require('child_process');
-const { promisify } = require('util');
 const { hasPermission } = require('./permissionChecker');
-
-const execFileAsync = promisify(execFile);
 
 class SpecificationPartsService {
   static async _loadForanRuntimeSettings() {
@@ -262,31 +258,17 @@ class SpecificationPartsService {
   }
 
   static async _fetchForanParts(payloadMeta, runtimeToken = null) {
+    const headers = {
+      Accept: 'application/json'
+    };
     const token = String(runtimeToken || '').trim();
-    const curlArgs = [
-      '-sS',
-      '-f',
-      '-L',
-      '--compressed',
-      '--connect-timeout',
-      String(process.env.FORAN_SERVICE_CONNECT_TIMEOUT || 20),
-      '--max-time',
-      String(process.env.FORAN_SERVICE_MAX_TIME || 120),
-      '-H',
-      'Accept: application/json'
-    ];
-    if (token) {
-      curlArgs.push('-H', `Authorization: Bearer ${token}`);
-    }
-    curlArgs.push(payloadMeta.url);
+    if (token) headers.Authorization = `Bearer ${token}`;
 
+    let response;
     try {
-      const { stdout } = await execFileAsync('curl', curlArgs, {
-        maxBuffer: 20 * 1024 * 1024
-      });
-      return JSON.parse(stdout);
+      response = await fetch(payloadMeta.url, { method: 'GET', headers });
     } catch (cause) {
-      const causeMessage = cause && cause.message ? cause.message : 'curl failed';
+      const causeMessage = cause && cause.message ? cause.message : 'fetch failed';
       const baseUrlHint = String(process.env.FORAN_SERVICE_URL || '').trim()
         ? ''
         : ' Set FORAN_SERVICE_URL to an internal FORAN backend URL in production.';
@@ -296,6 +278,14 @@ class SpecificationPartsService {
       err.url = payloadMeta.url;
       throw err;
     }
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      const err = new Error(`FORAN request failed with status ${response.status}${text ? `: ${text.slice(0, 300)}` : ''}`);
+      err.statusCode = response.status >= 400 && response.status < 600 ? response.status : 502;
+      err.url = payloadMeta.url;
+      throw err;
+    }
+    return await response.json();
   }
 
   static async _resolveMaterialMap(rows = []) {
