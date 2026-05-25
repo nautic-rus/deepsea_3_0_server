@@ -30,9 +30,9 @@ class SpecificationDataConnector {
       VALUES ($1, $2, $3, $4)
       ON CONFLICT (specification_id) DO UPDATE
       SET
-        specifications_source_connector_id = EXCLUDED.specifications_source_connector_id,
-        specifications_project_connector_id = EXCLUDED.specifications_project_connector_id,
-        oid = EXCLUDED.oid,
+        specifications_source_connector_id = COALESCE(EXCLUDED.specifications_source_connector_id, specifications_data_connector.specifications_source_connector_id),
+        specifications_project_connector_id = COALESCE(EXCLUDED.specifications_project_connector_id, specifications_data_connector.specifications_project_connector_id),
+        oid = COALESCE(EXCLUDED.oid, specifications_data_connector.oid),
         updated_at = CURRENT_TIMESTAMP
       RETURNING id
     `;

@@ -319,67 +319,97 @@ class SpecificationPartsService {
       throw err;
     }
 
-    const connectorRow = await Specification.findConnectorsBySpecificationId(Number(version.specification_id));
-    if (!connectorRow || !connectorRow.source_connector || !connectorRow.project_connector) {
+    const connectorRows = await Specification.listConnectorsBySpecificationId(Number(version.specification_id));
+    const validConnectorRows = (connectorRows || []).filter((connectorRow) => {
+      if (!connectorRow) return false;
+      const sourceConnector = connectorRow.source_connector || null;
+      const projectConnector = connectorRow.project_connector || null;
+      const dataConnector = connectorRow.data_connector || null;
+      const oidValue = dataConnector ? dataConnector.oid : null;
+      return Boolean(
+        sourceConnector &&
+        projectConnector &&
+        oidValue !== null &&
+        oidValue !== undefined &&
+        String(oidValue).trim() !== ''
+      );
+    });
+
+    if (validConnectorRows.length === 0) {
       const err = new Error('Specification connectors not found');
       err.statusCode = 404;
       throw err;
     }
 
-    const sourceConnector = connectorRow.source_connector;
-    const projectConnector = connectorRow.project_connector;
-    const dataConnector = connectorRow.data_connector;
-    const oid = dataConnector ? dataConnector.oid : null;
-    if (oid === null || oid === undefined || String(oid).trim() === '') {
-      const err = new Error('Specification connectors not found');
-      err.statusCode = 404;
-      throw err;
-    }
-    const requestUrl = SpecificationPartsService._buildForanRequestUrl(
-      sourceConnector.url,
-      projectConnector.project_code,
-      oid,
-      sourceConnector.code,
-      options.requestBaseUrl || null
-    );
-
-    const externalPayload = payload && (Array.isArray(payload) || payload.rows || (payload.data && payload.data.rows) || (payload.result && payload.result.rows))
+    const directPayload = payload && (Array.isArray(payload) || payload.rows || (payload.data && payload.data.rows) || (payload.result && payload.result.rows))
       ? payload
-      : await SpecificationPartsService._fetchForanParts({
-        url: requestUrl,
-        project_code: projectConnector.project_code,
-        oid
-      });
+      : null;
 
-    const externalRows = SpecificationPartsService._normalizePayloadRows(externalPayload);
-    if (externalRows.length === 0) {
+    const connectorSources = validConnectorRows.map((connectorRow) => {
+      const sourceConnector = connectorRow.source_connector;
+      const projectConnector = connectorRow.project_connector;
+      const dataConnector = connectorRow.data_connector;
+      const oid = dataConnector ? dataConnector.oid : null;
+      const sourceValue = String(projectConnector.source || 'foran').trim() || 'foran';
+      const requestUrl = SpecificationPartsService._buildForanRequestUrl(
+        sourceConnector.url,
+        projectConnector.project_code,
+        oid,
+        sourceConnector.code,
+        options.requestBaseUrl || null
+      );
+      return {
+        requestUrl,
+        project_code: projectConnector.project_code,
+        oid,
+        sourceValue,
+        sourceConnector,
+        projectConnector,
+        dataConnector
+      };
+    });
+
+    const externalPayloads = directPayload
+      ? [directPayload]
+      : await Promise.all(connectorSources.map((connector) => SpecificationPartsService._fetchForanParts({
+        url: connector.requestUrl,
+        project_code: connector.project_code,
+        oid: connector.oid
+      })));
+
+    const normalizedRows = externalPayloads.flatMap((externalPayload, index) => {
+      const sourceValue = connectorSources[index] ? connectorSources[index].sourceValue : connectorSources[0].sourceValue;
+      return SpecificationPartsService._normalizePayloadRows(externalPayload)
+        .map((row) => ({ ...row, sourceValue }));
+    });
+    if (normalizedRows.length === 0) {
       return {
         imported_count: 0,
         data: [],
         source: {
-          url: requestUrl,
-          project_code: projectConnector.project_code,
-          oid
+          url: connectorSources[0].requestUrl,
+          project_code: connectorSources[0].project_code,
+          oid: connectorSources[0].oid
         }
       };
     }
 
-    const normalizedRows = externalRows
+    const materialRows = normalizedRows
       .map((row) => SpecificationPartsService._normalizeExternalRow(row))
       .filter(Boolean);
 
-    const materialMap = await SpecificationPartsService._resolveMaterialMap(normalizedRows);
+    const materialMap = await SpecificationPartsService._resolveMaterialMap(materialRows);
     const client = await pool.connect();
     try {
       await SpecificationPartsService._ensureForanSourceAllowed(client);
       await client.query('BEGIN');
 
-      const sourceValue = String(projectConnector.source || 'foran').trim() || 'foran';
+      const sourceValues = [...new Set(connectorSources.map((connector) => connector.sourceValue))];
       await client.query(
         `DELETE FROM specification_parts
          WHERE specification_version_id = $1
-           AND source = $2`,
-        [versionId, sourceValue]
+           AND source = ANY($2::text[])`,
+        [versionId, sourceValues]
       );
 
       const values = [];
@@ -406,7 +436,7 @@ class SpecificationPartsService {
           row.part_type,
           row.descriptions,
           actor.id,
-          sourceValue
+          row.sourceValue
         );
       }
 
@@ -428,9 +458,9 @@ class SpecificationPartsService {
         imported_count: data.length,
         data,
         source: {
-          url: requestUrl,
-          project_code: projectConnector.project_code,
-          oid
+          url: connectorSources[0].requestUrl,
+          project_code: connectorSources[0].project_code,
+          oid: connectorSources[0].oid
         }
       };
     } catch (err) {
