@@ -81,18 +81,57 @@ class SpecificationPdfService {
     return `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`;
   }
 
-  static async _resolveCompanyLogoUrl() {
+  static async _fetchImageAsDataUrl(url, timeoutMs = 5000) {
+    if (typeof fetch !== 'function') {
+      return null;
+    }
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeout = setTimeout(() => {
+      if (controller) controller.abort();
+    }, timeoutMs);
+
+    try {
+      const response = await fetch(url, controller ? { signal: controller.signal } : undefined);
+      if (!response.ok) {
+        return null;
+      }
+
+      const contentType = response.headers.get('content-type') || 'application/octet-stream';
+      const buffer = Buffer.from(await response.arrayBuffer());
+      return `data:${contentType};base64,${buffer.toString('base64')}`;
+    } catch (err) {
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  static async _resolveCompanyLogoAsset() {
     try {
       const setting = await getEnvironmentSetting('COMPANY_LOGO_URL');
       const value = setting && setting.value !== undefined && setting.value !== null
         ? String(setting.value).trim()
         : '';
-      if (value) return value;
+      if (!value) {
+        return SpecificationPdfService._logoDataUrl();
+      }
+
+      if (value.startsWith('data:')) {
+        return value;
+      }
+
+      if (/^https?:\/\//i.test(value)) {
+        const fetched = await SpecificationPdfService._fetchImageAsDataUrl(value);
+        return fetched || SpecificationPdfService._logoDataUrl();
+      }
+
+      return value;
     } catch (err) {
-      // Ignore DB lookup errors here and fall back to an empty logo URL.
+      // Ignore DB lookup errors here and fall back to the bundled logo asset.
     }
 
-    return '';
+    return SpecificationPdfService._logoDataUrl();
   }
 
   static _buildStampPage({ pageNo, docName, docNumber, date, rev, logoUrl }) {
@@ -537,7 +576,7 @@ ${pages.join('\n')}
       ...row,
       statement_code: statementMap.get(Number(row.material_id)) || '',
     }));
-    const logoUrl = await SpecificationPdfService._resolveCompanyLogoUrl();
+    const logoUrl = await SpecificationPdfService._resolveCompanyLogoAsset();
     const html = SpecificationPdfService._buildHtml({ spec, version, rows: enrichedRows, logoUrl });
     const executablePath = SpecificationPdfService._resolveChromiumExecutablePath();
     if (!executablePath) {
@@ -558,7 +597,7 @@ ${pages.join('\n')}
 
     try {
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
       await page.emulateMediaType('screen');
       const buffer = await page.pdf({
         format: 'A4',
