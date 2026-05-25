@@ -109,7 +109,7 @@ class SpecificationPdfService {
 
   static async _resolveCompanyLogoAsset() {
     try {
-      const setting = await getEnvironmentSetting('COMPANY_LOGO_URL');
+      const setting = await getEnvironmentSetting('COMPANY_LOGO_URL_SPEC');
       const value = setting && setting.value !== undefined && setting.value !== null
         ? String(setting.value).trim()
         : '';

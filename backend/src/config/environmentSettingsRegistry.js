@@ -33,6 +33,7 @@ const definitions = [
   { key: 'S3_DEFAULT_BUCKET', valueType: 'string', defaultValue: '', description: 'Бакет по умолчанию для файлов', isSecret: false, requiresRestart: false },
   { key: 'COMPANY_NAME', valueType: 'string', defaultValue: 'Deep Sea', description: 'Название компании в уведомлениях', isSecret: false, requiresRestart: false },
   { key: 'COMPANY_LOGO_URL', valueType: 'string', defaultValue: '', description: 'URL логотипа компании в уведомлениях', isSecret: false, requiresRestart: false },
+  { key: 'COMPANY_LOGO_URL_SPEC', valueType: 'string', defaultValue: '', description: 'URL логотипа компании для спецификаций', isSecret: false, requiresRestart: false },
   { key: 'COMPANY_ADDRESS', valueType: 'string', defaultValue: '', description: 'Адрес компании в уведомлениях', isSecret: false, requiresRestart: false },
   { key: 'SUPPORT_EMAIL', valueType: 'string', defaultValue: '', description: 'Контактный email поддержки', isSecret: false, requiresRestart: false },
   { key: 'DEBUG_PAGES', valueType: 'boolean', defaultValue: false, description: 'Включить отладочное логирование pages service', isSecret: false, requiresRestart: false }
