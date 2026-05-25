@@ -9,7 +9,18 @@ const SpecificationPart = require('../../db/models/SpecificationPart');
 const { getEnvironmentSetting } = require('../../config/environmentSettings');
 const { hasPermission } = require('./permissionChecker');
 
+const PDF_LAUNCH_TIMEOUT_MS = Number(process.env.PDF_PUPPETEER_LAUNCH_TIMEOUT_MS || 60000);
+const PDF_PROTOCOL_TIMEOUT_MS = Number(process.env.PDF_PUPPETEER_PROTOCOL_TIMEOUT_MS || 180000);
+const PDF_PAGE_TIMEOUT_MS = Number(process.env.PDF_PUPPETEER_PAGE_TIMEOUT_MS || 120000);
+const PDF_MAX_CONCURRENCY = Math.max(1, Number(process.env.PDF_PUPPETEER_MAX_CONCURRENCY || 10));
+
 class SpecificationPdfService {
+  static _browserInstance = null;
+  static _browserLaunchPromise = null;
+  static _activeJobs = 0;
+  static _waitQueue = [];
+  static _inFlightGenerations = new Map();
+
   static _escapeHtml(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -63,6 +74,97 @@ class SpecificationPdfService {
       }
     }
     return null;
+  }
+
+  static _isTransientBrowserError(err) {
+    const message = String(err && err.message ? err.message : err || '');
+    return message.includes('Network.enable timed out')
+      || message.includes('Target closed')
+      || message.includes('Session closed')
+      || message.includes('Browser disconnected');
+  }
+
+  static async _newPageWithRetry(browser) {
+    let lastErr = null;
+
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        return await browser.newPage();
+      } catch (err) {
+        lastErr = err;
+        if (attempt === 2 || !SpecificationPdfService._isTransientBrowserError(err)) {
+          throw err;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+      }
+    }
+
+    throw lastErr;
+  }
+
+  static async _acquireSlot() {
+    if (SpecificationPdfService._activeJobs < PDF_MAX_CONCURRENCY) {
+      SpecificationPdfService._activeJobs += 1;
+      return;
+    }
+
+    await new Promise((resolve) => {
+      SpecificationPdfService._waitQueue.push(resolve);
+    });
+    SpecificationPdfService._activeJobs += 1;
+  }
+
+  static _releaseSlot() {
+    SpecificationPdfService._activeJobs = Math.max(0, SpecificationPdfService._activeJobs - 1);
+    const next = SpecificationPdfService._waitQueue.shift();
+    if (next) {
+      next();
+    }
+  }
+
+  static async _getBrowser(executablePath) {
+    if (
+      SpecificationPdfService._browserInstance &&
+      typeof SpecificationPdfService._browserInstance.isConnected === 'function' &&
+      SpecificationPdfService._browserInstance.isConnected()
+    ) {
+      return SpecificationPdfService._browserInstance;
+    }
+
+    if (!SpecificationPdfService._browserLaunchPromise) {
+      SpecificationPdfService._browserLaunchPromise = puppeteer.launch(
+        SpecificationPdfService._getBrowserLaunchOptions(executablePath)
+      ).then((browser) => {
+        SpecificationPdfService._browserInstance = browser;
+        browser.on('disconnected', () => {
+          if (SpecificationPdfService._browserInstance === browser) {
+            SpecificationPdfService._browserInstance = null;
+          }
+        });
+        return browser;
+      }).finally(() => {
+        SpecificationPdfService._browserLaunchPromise = null;
+      });
+    }
+
+    return SpecificationPdfService._browserLaunchPromise;
+  }
+
+  static _getBrowserLaunchOptions(executablePath) {
+    return {
+      executablePath,
+      headless: true,
+      protocolTimeout: PDF_PROTOCOL_TIMEOUT_MS,
+      timeout: PDF_LAUNCH_TIMEOUT_MS,
+      waitForInitialPage: false,
+      networkEnabled: false,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+      ],
+    };
   }
 
   static _readTemplateStyles() {
@@ -603,54 +705,81 @@ ${pages.join('\n')}
       throw err;
     }
 
-    const rows = await SpecificationPart.list({ specification_version_id: parsedVersionId });
-    const materialIds = [...new Set((rows || [])
-      .map((row) => Number(row && row.material_id))
-      .filter((value) => !Number.isNaN(value) && value > 0))];
-    const statementMap = await SpecificationPdfService._loadStatementCodesByMaterialIds(materialIds);
-    const enrichedRows = (rows || []).map((row) => ({
-      ...row,
-      statement_code: statementMap.get(Number(row.material_id)) || '',
-    }));
-    const logoUrl = await SpecificationPdfService._resolveCompanyLogoAsset();
-    const html = SpecificationPdfService._buildHtml({ spec, version, rows: enrichedRows, logoUrl });
-    const executablePath = SpecificationPdfService._resolveChromiumExecutablePath();
-    if (!executablePath) {
-      const err = new Error('Chromium executable not found');
-      err.statusCode = 500;
-      throw err;
+    const existingPromise = SpecificationPdfService._inFlightGenerations.get(parsedVersionId);
+    if (existingPromise) {
+      return existingPromise;
     }
 
-    const browser = await puppeteer.launch({
-      executablePath,
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-      ],
-    });
+    const generationPromise = (async () => {
+      const rows = await SpecificationPart.list({ specification_version_id: parsedVersionId });
+      const materialIds = [...new Set((rows || [])
+        .map((row) => Number(row && row.material_id))
+        .filter((value) => !Number.isNaN(value) && value > 0))];
+      const statementMap = await SpecificationPdfService._loadStatementCodesByMaterialIds(materialIds);
+      const enrichedRows = (rows || []).map((row) => ({
+        ...row,
+        statement_code: statementMap.get(Number(row.material_id)) || '',
+      }));
+      const logoUrl = await SpecificationPdfService._resolveCompanyLogoAsset();
+      const html = SpecificationPdfService._buildHtml({ spec, version, rows: enrichedRows, logoUrl });
+      const executablePath = SpecificationPdfService._resolveChromiumExecutablePath();
+      if (!executablePath) {
+        const err = new Error('Chromium executable not found');
+        err.statusCode = 500;
+        throw err;
+      }
+
+      return SpecificationPdfService._renderPdf({ executablePath, html, spec, version });
+    })();
+
+    SpecificationPdfService._inFlightGenerations.set(parsedVersionId, generationPromise);
 
     try {
-      const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'domcontentloaded' });
-      await page.emulateMediaType('screen');
-      const buffer = await page.pdf({
-        format: 'A4',
-        landscape: true,
-        printBackground: true,
-        preferCSSPageSize: true,
-        margin: { top: 0, right: 0, bottom: 0, left: 0 }
-      });
-
-      return {
-        buffer: Buffer.from(buffer),
-        filename: `${docNumberSafe(spec.code)} ${docNumberSafe(spec.name)}.pdf`,
-        spec,
-        version
-      };
+      return await generationPromise;
     } finally {
-      await browser.close().catch(() => {});
+      const current = SpecificationPdfService._inFlightGenerations.get(parsedVersionId);
+      if (current === generationPromise) {
+        SpecificationPdfService._inFlightGenerations.delete(parsedVersionId);
+      }
+    }
+  }
+
+  static async _renderPdf({ executablePath, html, spec, version }) {
+    await SpecificationPdfService._acquireSlot();
+
+    try {
+      const browser = await SpecificationPdfService._getBrowser(executablePath);
+      const context = await browser.createBrowserContext();
+
+      try {
+        const page = await SpecificationPdfService._newPageWithRetry(context);
+        page.setDefaultTimeout(PDF_PAGE_TIMEOUT_MS);
+        page.setDefaultNavigationTimeout(PDF_PAGE_TIMEOUT_MS);
+
+        await page.setContent(html, {
+          waitUntil: 'domcontentloaded',
+          timeout: PDF_PAGE_TIMEOUT_MS,
+        });
+        await page.emulateMediaType('screen');
+        const buffer = await page.pdf({
+          format: 'A4',
+          landscape: true,
+          printBackground: true,
+          preferCSSPageSize: true,
+          margin: { top: 0, right: 0, bottom: 0, left: 0 }
+        });
+
+        return {
+          buffer: Buffer.from(buffer),
+          filename: `${docNumberSafe(spec.code)} ${docNumberSafe(spec.name)}.pdf`,
+          spec,
+          version
+        };
+      } finally {
+        await context.close().catch(() => {});
+      }
+    } finally {
+      SpecificationPdfService._releaseSlot();
     }
   }
 
