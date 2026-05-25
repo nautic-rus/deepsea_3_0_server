@@ -252,6 +252,35 @@ class SpecificationPdfService {
     return part.part_code || '';
   }
 
+  static _buildSummaryEntries(rows) {
+    const grouped = new Map();
+
+    for (const row of rows || []) {
+      const materialId = SpecificationPdfService._toNumberOrNull(row && row.material_id);
+      const key = materialId && materialId > 0 ? `material:${materialId}` : `row:${row && row.id ? row.id : grouped.size}`;
+      const existing = grouped.get(key);
+      const quantity = SpecificationPdfService._toNumberOrNull(row && row.quantity) ?? 1;
+
+      if (!existing) {
+        grouped.set(key, {
+          ...row,
+          quantity,
+        });
+        continue;
+      }
+
+      existing.quantity = (SpecificationPdfService._toNumberOrNull(existing.quantity) ?? 0) + quantity;
+    }
+
+    return Array.from(grouped.values());
+  }
+
+  static _formatSummaryQuantity(value) {
+    const n = SpecificationPdfService._toNumberOrNull(value);
+    if (n === null) return '0';
+    return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
+  }
+
   static _buildPartRows(rows, startIndex = 1) {
     if (!rows.length) {
       return `
@@ -310,7 +339,7 @@ class SpecificationPdfService {
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._toNumberOrNull(part.quantity) ?? 1)}</td>
+        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._formatSummaryQuantity(part.quantity ?? 1))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveTotalWeight(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveStatementCode(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMatCode(part))}</td>
@@ -468,7 +497,8 @@ class SpecificationPdfService {
     const partChunkSize = 24;
     const summaryChunkSize = 24;
     const partChunks = SpecificationPdfService._chunk(rows, partChunkSize);
-    const summaryChunks = SpecificationPdfService._chunk(rows, summaryChunkSize);
+    const summaryRows = SpecificationPdfService._buildSummaryEntries(rows);
+    const summaryChunks = SpecificationPdfService._chunk(summaryRows, summaryChunkSize);
 
     const pages = [];
     let pageNo = 1;
@@ -648,8 +678,10 @@ ${pages.join('\n')}
 function docNumberSafe(value) {
   return String(value ?? '')
     .trim()
-    .replace(/[^a-zA-Z0-9._-]+/g, '_')
-    .replace(/^_+|_+$/g, '') || 'document';
+    .replace(/[\/\\?%*:|"<>[\]\u0000-\u001F]+/g, '_')
+    .replace(/\s+/g, ' ')
+    .replace(/^\.+|\.+$/g, '')
+    .trim() || 'document';
 }
 
 module.exports = SpecificationPdfService;
