@@ -2,7 +2,11 @@ const SpecificationPart = require('../../db/models/SpecificationPart');
 const Specification = require('../../db/models/Specification');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
 const pool = require('../../db/connection');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
 const { hasPermission } = require('./permissionChecker');
+
+const execFileAsync = promisify(execFile);
 
 class SpecificationPartsService {
   static _toNumberOrNull(value) {
@@ -235,17 +239,31 @@ class SpecificationPartsService {
   }
 
   static async _fetchForanParts(payloadMeta) {
-    const headers = {
-      Accept: 'application/json'
-    };
     const token = String(process.env.FORAN_SERVICE_TOKEN || '').trim();
-    if (token) headers.Authorization = `Bearer ${token}`;
+    const curlArgs = [
+      '-sS',
+      '-f',
+      '-L',
+      '--compressed',
+      '--connect-timeout',
+      String(process.env.FORAN_SERVICE_CONNECT_TIMEOUT || 20),
+      '--max-time',
+      String(process.env.FORAN_SERVICE_MAX_TIME || 120),
+      '-H',
+      'Accept: application/json'
+    ];
+    if (token) {
+      curlArgs.push('-H', `Authorization: Bearer ${token}`);
+    }
+    curlArgs.push(payloadMeta.url);
 
-    let response;
     try {
-      response = await fetch(payloadMeta.url, { method: 'GET', headers });
+      const { stdout } = await execFileAsync('curl', curlArgs, {
+        maxBuffer: 20 * 1024 * 1024
+      });
+      return JSON.parse(stdout);
     } catch (cause) {
-      const causeMessage = cause && cause.message ? cause.message : 'fetch failed';
+      const causeMessage = cause && cause.message ? cause.message : 'curl failed';
       const baseUrlHint = String(process.env.FORAN_SERVICE_URL || '').trim()
         ? ''
         : ' Set FORAN_SERVICE_URL to an internal FORAN backend URL in production.';
@@ -255,14 +273,6 @@ class SpecificationPartsService {
       err.url = payloadMeta.url;
       throw err;
     }
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      const err = new Error(`FORAN request failed with status ${response.status}${text ? `: ${text.slice(0, 300)}` : ''}`);
-      err.statusCode = response.status >= 400 && response.status < 600 ? response.status : 502;
-      err.url = payloadMeta.url;
-      throw err;
-    }
-    return await response.json();
   }
 
   static async _resolveMaterialMap(rows = []) {
@@ -270,7 +280,7 @@ class SpecificationPartsService {
       (rows || [])
         .map((row) => row && row.stock_code)
         .filter((value) => value !== null && value !== undefined && String(value).trim() !== '')
-        .map((value) => String(value).trim())
+        .map((value) => String(value).trim().toUpperCase())
     )];
 
     if (stockCodes.length === 0) return new Map();
@@ -278,10 +288,10 @@ class SpecificationPartsService {
     const res = await pool.query(
       `SELECT m.id, m.stock_code, m.weight, m.unit_id
        FROM equipment_materials m
-       WHERE m.stock_code = ANY($1::text[])`,
+       WHERE UPPER(m.stock_code) = ANY($1::text[])`,
       [stockCodes]
     );
-    return new Map((res.rows || []).map((row) => [String(row.stock_code), {
+    return new Map((res.rows || []).map((row) => [String(row.stock_code).trim().toUpperCase(), {
       id: row.id,
       weight: row.weight,
       unit_id: row.unit_id
@@ -369,19 +379,40 @@ class SpecificationPartsService {
       };
     });
 
-    const externalPayloads = directPayload
-      ? [directPayload]
-      : await Promise.all(connectorSources.map((connector) => SpecificationPartsService._fetchForanParts({
-        url: connector.requestUrl,
-        project_code: connector.project_code,
-        oid: connector.oid
-      })));
+    const normalizedRows = [];
+    if (directPayload) {
+      const sourceValue = connectorSources[0] ? connectorSources[0].sourceValue : 'foran';
+      const directRows = SpecificationPartsService._normalizePayloadRows(directPayload);
+      for (const row of directRows) {
+        const normalizedRow = SpecificationPartsService._normalizeExternalRow(row);
+        if (normalizedRow) {
+          normalizedRows.push({ ...normalizedRow, sourceValue });
+        }
+      }
+    } else {
+      for (const connector of connectorSources) {
+        try {
+          const externalPayload = await SpecificationPartsService._fetchForanParts({
+            url: connector.requestUrl,
+            project_code: connector.project_code,
+            oid: connector.oid
+          });
+          const externalRows = SpecificationPartsService._normalizePayloadRows(externalPayload);
+          if (externalRows.length === 0) {
+            continue;
+          }
+          for (const row of externalRows) {
+            const normalizedRow = SpecificationPartsService._normalizeExternalRow(row);
+            if (normalizedRow) {
+              normalizedRows.push({ ...normalizedRow, sourceValue: connector.sourceValue });
+            }
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+    }
 
-    const normalizedRows = externalPayloads.flatMap((externalPayload, index) => {
-      const sourceValue = connectorSources[index] ? connectorSources[index].sourceValue : connectorSources[0].sourceValue;
-      return SpecificationPartsService._normalizePayloadRows(externalPayload)
-        .map((row) => ({ ...row, sourceValue }));
-    });
     if (normalizedRows.length === 0) {
       return {
         imported_count: 0,
@@ -394,11 +425,7 @@ class SpecificationPartsService {
       };
     }
 
-    const materialRows = normalizedRows
-      .map((row) => SpecificationPartsService._normalizeExternalRow(row))
-      .filter(Boolean);
-
-    const materialMap = await SpecificationPartsService._resolveMaterialMap(materialRows);
+    const materialMap = await SpecificationPartsService._resolveMaterialMap(normalizedRows);
     const client = await pool.connect();
     try {
       await SpecificationPartsService._ensureForanSourceAllowed(client);
@@ -416,7 +443,8 @@ class SpecificationPartsService {
       const placeholders = [];
       let idx = 1;
       for (const row of normalizedRows) {
-        const material = row.stock_code ? (materialMap.get(row.stock_code) || null) : null;
+        const materialKey = row.stock_code ? String(row.stock_code).trim().toUpperCase() : null;
+        const material = materialKey ? (materialMap.get(materialKey) || null) : null;
         const materialId = material ? material.id : null;
         const resolvedQuantity = SpecificationPartsService._resolveQuantity(row, material);
         placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
