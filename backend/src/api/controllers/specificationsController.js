@@ -79,7 +79,7 @@ class SpecificationsController {
   }
 
   /**
-   * Get project connector for a specification.
+   * Get a project connector by connector id.
    */
   static async getProjectConnector(req, res, next) {
     try {
@@ -91,19 +91,18 @@ class SpecificationsController {
   }
 
   /**
-   * Create or replace project connector for a specification.
+   * Create or replace a project connector.
    */
   static async createProjectConnector(req, res, next) {
     try {
       const actor = req.user || null;
-      const id = parseInt(req.params.id, 10);
-      const row = await SpecificationsService.upsertSpecificationProjectConnector(id, req.body || {}, actor);
+      const row = await SpecificationsService.upsertSpecificationProjectConnector(req.body || {}, actor);
       res.status(201).json({ data: row });
     } catch (err) { next(err); }
   }
 
   /**
-   * Update project connector for a specification.
+   * Update a project connector.
    */
   static async updateProjectConnector(req, res, next) {
     try {
@@ -115,7 +114,7 @@ class SpecificationsController {
   }
 
   /**
-   * Delete project connector for a specification.
+   * Delete a project connector.
    */
   static async deleteProjectConnector(req, res, next) {
     try {
@@ -133,6 +132,17 @@ class SpecificationsController {
     try {
       const actor = req.user || null;
       const rows = await SpecificationsService.listSpecificationSourceConnectors(actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * List all project connectors.
+   */
+  static async listProjectConnectors(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const rows = await SpecificationsService.listSpecificationProjectConnectors(actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }

@@ -155,34 +155,22 @@ class SpecificationsService {
   }
 
   static async getSpecificationProjectConnectorById(id, actor) {
-    const requiredPermission = 'specifications.create';
+    const requiredPermission = 'specifications.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.create'); err.statusCode = 403; throw err; }
+    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
-    const spec = await Specification.findById(Number(id));
-    if (!spec) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
-
-    const row = await SpecificationProjectConnector.findBySpecificationId(Number(id));
-    if (!row) { const err = new Error('Specification connectors not found'); err.statusCode = 404; throw err; }
-
-    return {
-      data_connector: row.data_connector,
-      source_connector: row.source_connector,
-      project_connector: row.project_connector
-    };
+    const row = await SpecificationProjectConnector.findById(Number(id));
+    if (!row) { const err = new Error('Specification project connector not found'); err.statusCode = 404; throw err; }
+    return row;
   }
 
-  static async upsertSpecificationProjectConnector(id, fields = {}, actor) {
+  static async upsertSpecificationProjectConnector(fields = {}, actor) {
     const requiredPermission = 'specifications.create';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission specifications.create'); err.statusCode = 403; throw err; }
-    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
-
-    const spec = await Specification.findById(Number(id));
-    if (!spec) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
 
     const payload = {
       project_code: SpecificationsService._toTextOrNull(fields.project_code ?? null),
@@ -195,24 +183,17 @@ class SpecificationsService {
       throw err;
     }
 
-    const row = await SpecificationProjectConnector.createOrUpdate(Number(id), payload);
-    if (!row) { const err = new Error('Specification connectors not found'); err.statusCode = 404; throw err; }
-    return {
-      data_connector: row.data_connector,
-      source_connector: row.source_connector,
-      project_connector: row.project_connector
-    };
+    const row = await SpecificationProjectConnector.create(payload);
+    if (!row) { const err = new Error('Specification project connector not found'); err.statusCode = 404; throw err; }
+    return row;
   }
 
   static async updateSpecificationProjectConnector(id, fields = {}, actor) {
-    const requiredPermission = 'specifications.create';
+    const requiredPermission = 'specifications.update';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.create'); err.statusCode = 403; throw err; }
+    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
-
-    const spec = await Specification.findById(Number(id));
-    if (!spec) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
 
     const payload = {};
     if (Object.prototype.hasOwnProperty.call(fields, 'project_code')) {
@@ -227,27 +208,20 @@ class SpecificationsService {
       payload.source = SpecificationsService._toTextOrNull(fields.source ?? null);
     }
 
-    const row = await SpecificationProjectConnector.updateBySpecificationId(Number(id), payload);
-    if (!row) { const err = new Error('Specification connectors not found'); err.statusCode = 404; throw err; }
-    return {
-      data_connector: row.data_connector,
-      source_connector: row.source_connector,
-      project_connector: row.project_connector
-    };
+    const row = await SpecificationProjectConnector.updateById(Number(id), payload);
+    if (!row) { const err = new Error('Specification project connector not found'); err.statusCode = 404; throw err; }
+    return row;
   }
 
   static async deleteSpecificationProjectConnector(id, actor) {
-    const requiredPermission = 'specifications.create';
+    const requiredPermission = 'specifications.delete';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.create'); err.statusCode = 403; throw err; }
+    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
-    const spec = await Specification.findById(Number(id));
-    if (!spec) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
-
-    const ok = await SpecificationProjectConnector.deleteBySpecificationId(Number(id));
-    if (!ok) { const err = new Error('Specification connectors not found'); err.statusCode = 404; throw err; }
+    const ok = await SpecificationProjectConnector.deleteById(Number(id));
+    if (!ok) { const err = new Error('Specification project connector not found'); err.statusCode = 404; throw err; }
     return { success: true };
   }
 
@@ -257,6 +231,14 @@ class SpecificationsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission specifications.create'); err.statusCode = 403; throw err; }
     return await SpecificationSourceConnector.listAll();
+  }
+
+  static async listSpecificationProjectConnectors(actor) {
+    const requiredPermission = 'specifications.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.view'); err.statusCode = 403; throw err; }
+    return await SpecificationProjectConnector.listAll();
   }
 
   static async createSpecification(fields, actor) {
