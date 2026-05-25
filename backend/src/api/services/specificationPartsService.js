@@ -241,11 +241,25 @@ class SpecificationPartsService {
     const token = String(process.env.FORAN_SERVICE_TOKEN || '').trim();
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const response = await fetch(payloadMeta.url, { method: 'GET', headers });
+    let response;
+    try {
+      response = await fetch(payloadMeta.url, { method: 'GET', headers });
+    } catch (cause) {
+      const causeMessage = cause && cause.message ? cause.message : 'fetch failed';
+      const baseUrlHint = String(process.env.FORAN_SERVICE_URL || '').trim()
+        ? ''
+        : ' Set FORAN_SERVICE_URL to an internal FORAN backend URL in production.';
+      const err = new Error(`FORAN request failed for ${payloadMeta.url}: ${causeMessage}${baseUrlHint}`);
+      err.statusCode = 502;
+      err.cause = cause;
+      err.url = payloadMeta.url;
+      throw err;
+    }
     if (!response.ok) {
       const text = await response.text().catch(() => '');
       const err = new Error(`FORAN request failed with status ${response.status}${text ? `: ${text.slice(0, 300)}` : ''}`);
       err.statusCode = response.status >= 400 && response.status < 600 ? response.status : 502;
+      err.url = payloadMeta.url;
       throw err;
     }
     return await response.json();
