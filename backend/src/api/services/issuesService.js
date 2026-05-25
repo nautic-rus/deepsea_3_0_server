@@ -7,6 +7,7 @@ const ProtectionService = require('./protectionService');
 const IssueMessage = require('../../db/models/IssueMessage');
 const IssueStorage = require('../../db/models/IssueStorage');
 const Storage = require('../../db/models/Storage');
+const SearchService = require('./searchService');
 
 /**
  * Service layer for issue-related business logic.
@@ -296,6 +297,19 @@ class IssuesService {
     if (!fields.author_id) fields.author_id = actor.id;
     const created = await Issue.create(fields);
     // Intentionally do not write a history entry for issue creation per request.
+    try {
+      await SearchService.syncIndexRow({
+        entity_type: 'issues',
+        entity_id: created.id,
+        project_id: created.project_id,
+        title: created.title,
+        description: created.description,
+        code: '',
+        comment: created.comment
+      });
+    } catch (e) {
+      console.error('Failed to sync issue to search index after create', e && e.message ? e.message : e);
+    }
 
     // Notify: issue_created
     const frontendRoot = process.env.FRONTEND_URL || '';
@@ -342,6 +356,19 @@ class IssuesService {
         await HistoryService.addIssueHistory(Number(id), actor, 'updated', { before: existing, after: updated });
       } catch (e) { console.error('Failed to write issue history for update', e && e.message ? e.message : e); }
     })();
+    try {
+      await SearchService.syncIndexRow({
+        entity_type: 'issues',
+        entity_id: updated.id,
+        project_id: updated.project_id,
+        title: updated.title,
+        description: updated.description,
+        code: '',
+        comment: updated.comment
+      });
+    } catch (e) {
+      console.error('Failed to sync issue to search index after update', e && e.message ? e.message : e);
+    }
     // Fire-and-forget: notify users subscribed to 'issue_updated'
     {
       const Project = require('../../db/models/Project');
@@ -808,6 +835,11 @@ class IssuesService {
         await HistoryService.addIssueHistory(Number(id), actor, 'deleted', { before: existing, after });
       } catch (e) { console.error('Failed to write issue history for deletion', e && e.message ? e.message : e); }
     })();
+    try {
+      await SearchService.removeIndexRow('issues', Number(id));
+    } catch (e) {
+      console.error('Failed to remove issue from search index after delete', e && e.message ? e.message : e);
+    }
     return { success: true };
   }
 }

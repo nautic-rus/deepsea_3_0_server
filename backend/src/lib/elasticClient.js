@@ -17,8 +17,10 @@ const client = createClient();
 
 async function indexExists(index = ELASTIC_INDEX) {
   try {
-    const { body } = await client.indices.exists({ index });
-    return body === true || body === undefined ? !!body : body;
+    const res = await client.indices.exists({ index });
+    if (typeof res === 'boolean') return res;
+    if (res && typeof res.body === 'boolean') return res.body;
+    return !!res;
   } catch (err) {
     return false;
   }
@@ -79,15 +81,52 @@ async function bulkIndex(docs = [], index = ELASTIC_INDEX, chunkSize = 500) {
   }
 }
 
-async function search(index = ELASTIC_INDEX, body) {
-  const res = await client.search({ index, body });
+async function upsertDocument(doc = {}, index = ELASTIC_INDEX) {
+  if (!doc || !doc.id) return null;
+  await ensureIndex({}, index);
+  const res = await client.index({ index, id: doc.id, document: doc, refresh: true });
   return res.body || res;
+}
+
+async function deleteDocument(id, index = ELASTIC_INDEX) {
+  if (!id) return false;
+  const exists = await indexExists(index);
+  if (!exists) return false;
+  try {
+    const res = await client.delete({ index, id, refresh: true });
+    return res.body || res;
+  } catch (err) {
+    const errType = err && err.meta && err.meta.body && err.meta.body.error && err.meta.body.error.type;
+    const statusCode = err && err.meta && err.meta.statusCode;
+    if (errType === 'index_not_found_exception' || errType === 'document_missing_exception' || statusCode === 404) {
+      return false;
+    }
+    throw err;
+  }
+}
+
+async function search(index = ELASTIC_INDEX, body) {
+  try {
+    const res = await client.search({ index, body });
+    return res.body || res;
+  } catch (err) {
+    const errType = err && err.meta && err.meta.body && err.meta.body.error && err.meta.body.error.type;
+    const statusCode = err && err.meta && err.meta.statusCode;
+    if (errType === 'index_not_found_exception' || statusCode === 404) {
+      await ensureIndex({}, index);
+      const retry = await client.search({ index, body });
+      return retry.body || retry;
+    }
+    throw err;
+  }
 }
 
 module.exports = {
   client,
   ensureIndex,
   bulkIndex,
+  upsertDocument,
+  deleteDocument,
   search,
   ELASTIC_INDEX
 };

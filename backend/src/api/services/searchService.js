@@ -1,7 +1,14 @@
 // MiniSearch removed — using Elasticsearch as primary search engine
 const pool = require('../../db/connection');
 const { getPermissionProjectScope } = require('./permissionChecker');
-const { ensureIndex, bulkIndex, search: esSearch, ELASTIC_INDEX } = require('../../lib/elasticClient');
+const {
+  ensureIndex,
+  bulkIndex,
+  upsertDocument: esUpsertDocument,
+  deleteDocument: esDeleteDocument,
+  search: esSearch,
+  ELASTIC_INDEX
+} = require('../../lib/elasticClient');
 
 const ENTITY_DOCUMENT = 'documents';
 const ENTITY_ISSUE = 'issues';
@@ -121,6 +128,47 @@ function rerankResults(found, query, numericLike) {
       return a._sort_idx - b._sort_idx;
     })
     .map(({ _sort_idx, ...item }) => item);
+}
+
+function buildSearchIndexDoc(row) {
+  if (!row) return null;
+
+  const entityType = row.entity_type || row.entityType || null;
+  const entityId = row.entity_id !== undefined && row.entity_id !== null
+    ? Number(row.entity_id)
+    : row.id !== undefined && row.id !== null
+      ? Number(row.id)
+      : null;
+
+  if (!entityType || entityId === null || Number.isNaN(entityId)) return null;
+
+  return {
+    id: `${entityType}:${entityId}`,
+    entity_type: entityType,
+    entity_id_text: String(entityId),
+    project_id_text: row.project_id !== null && row.project_id !== undefined ? String(row.project_id) : '',
+    title: stripHtml(row.title || row.question_title),
+    description: stripHtml(row.description || row.question_text),
+    code: stripHtml(row.code),
+    comment: stripHtml(row.comment),
+    messages_text: stripHtml(row.messages_text),
+    files_text: stripHtml(row.files_text)
+  };
+}
+
+async function syncSearchIndexRow(row) {
+  const useElastic = String(process.env.USE_ELASTIC || '').toLowerCase() === 'true';
+  if (!useElastic) return null;
+  const doc = buildSearchIndexDoc(row);
+  if (!doc) return null;
+  return esUpsertDocument(doc, ELASTIC_INDEX);
+}
+
+async function removeSearchIndexRow(entityType, entityId) {
+  const useElastic = String(process.env.USE_ELASTIC || '').toLowerCase() === 'true';
+  if (!useElastic) return false;
+  if (!entityType || entityId === undefined || entityId === null || Number.isNaN(Number(entityId))) return false;
+  return esDeleteDocument(`${entityType}:${Number(entityId)}`, ELASTIC_INDEX);
 }
 
 
@@ -595,6 +643,14 @@ SearchService.reindexToElastic = async function reindexToElastic() {
   await bulkIndex(rows);
   SearchService._esReady = true;
   return { indexed: rows.length };
+};
+
+SearchService.syncIndexRow = async function syncIndexRow(row) {
+  return syncSearchIndexRow(row);
+};
+
+SearchService.removeIndexRow = async function removeIndexRow(entityType, entityId) {
+  return removeSearchIndexRow(entityType, entityId);
 };
 
 module.exports = SearchService;

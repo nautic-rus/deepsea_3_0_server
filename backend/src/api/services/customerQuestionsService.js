@@ -6,6 +6,7 @@ const { hasPermission, hasPermissionForProject, getPermissionProjectScope } = re
 const NotificationDispatcher = require('./notificationDispatcher');
 const HistoryService = require('./historyService');
 const ProtectionService = require('./protectionService');
+const SearchService = require('./searchService');
 
 
 
@@ -336,6 +337,19 @@ class CustomerQuestionsService {
       delete fields.status;
     }
     const created = await CustomerQuestion.create(fields);
+    try {
+      await SearchService.syncIndexRow({
+        entity_type: 'customer_questions',
+        entity_id: created.id,
+        project_id: created.project_id,
+        title: created.question_title,
+        description: created.question_text,
+        code: '',
+        comment: created.comment
+      });
+    } catch (e) {
+      console.error('Failed to sync customer question to search index after create', e && e.message ? e.message : e);
+    }
     // Notify: question_created_in_project
     {
       const prsRes = await pool.query('SELECT DISTINCT user_id FROM user_roles WHERE project_id = $1', [created.project_id]);
@@ -397,6 +411,19 @@ class CustomerQuestionsService {
         await HistoryService.addCustomerQuestionHistory(Number(id), actor, 'updated', { before: existing, after: updated });
       } catch (e) { console.error('Failed to write customer question history for update', e && e.message ? e.message : e); }
     })();
+    try {
+      await SearchService.syncIndexRow({
+        entity_type: 'customer_questions',
+        entity_id: updated.id,
+        project_id: updated.project_id,
+        title: updated.question_title,
+        description: updated.question_text,
+        code: '',
+        comment: updated.comment
+      });
+    } catch (e) {
+      console.error('Failed to sync customer question to search index after update', e && e.message ? e.message : e);
+    }
 
     // Notify: question_updated_in_project
     {
@@ -447,6 +474,11 @@ class CustomerQuestionsService {
     if (!allowed) { const err = new Error('Forbidden: missing permission customer_questions.delete for this project'); err.statusCode = 403; throw err; }
     const ok = await CustomerQuestion.softDelete(Number(id));
     if (!ok) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
+    try {
+      await SearchService.removeIndexRow('customer_questions', Number(id));
+    } catch (e) {
+      console.error('Failed to remove customer question from search index after delete', e && e.message ? e.message : e);
+    }
     return { success: true };
   }
 

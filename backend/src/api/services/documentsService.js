@@ -9,6 +9,7 @@ const DocumentStorage = require('../../db/models/DocumentStorage');
 const Storage = require('../../db/models/Storage');
 const ProtectionService = require('./protectionService');
 const DocumentUploadNotificationService = require('./documentUploadNotificationService');
+const SearchService = require('./searchService');
 
 /**
  * DocumentsService
@@ -520,6 +521,19 @@ class DocumentsService {
 
     const created = await Document.create(fields);
     // Intentionally do not write a history entry for document creation per request.
+    try {
+      await SearchService.syncIndexRow({
+        entity_type: 'documents',
+        entity_id: created.id,
+        project_id: created.project_id,
+        title: created.title,
+        description: created.description,
+        code: created.code,
+        comment: created.comment
+      });
+    } catch (e) {
+      console.error('Failed to sync document to search index after create', e && e.message ? e.message : e);
+    }
 
     // Notify: document_created
     {
@@ -597,6 +611,19 @@ class DocumentsService {
         await HistoryService.addDocumentHistory(Number(id), actor, 'updated', { before: existing, after: updated });
       } catch (e) { console.error('Failed to write document history for update', e && e.message ? e.message : e); }
     })();
+    try {
+      await SearchService.syncIndexRow({
+        entity_type: 'documents',
+        entity_id: updated.id,
+        project_id: updated.project_id,
+        title: updated.title,
+        description: updated.description,
+        code: updated.code,
+        comment: updated.comment
+      });
+    } catch (e) {
+      console.error('Failed to sync document to search index after update', e && e.message ? e.message : e);
+    }
     // Notify: document_updated
     {
       const Project = require('../../db/models/Project');
@@ -674,6 +701,11 @@ class DocumentsService {
         await HistoryService.addDocumentHistory(Number(id), actor, 'deleted', { before: existing, after });
       } catch (e) { console.error('Failed to write document history for deletion', e && e.message ? e.message : e); }
     })();
+    try {
+      await SearchService.removeIndexRow('documents', Number(id));
+    } catch (e) {
+      console.error('Failed to remove document from search index after delete', e && e.message ? e.message : e);
+    }
     return { success: true };
   }
 
