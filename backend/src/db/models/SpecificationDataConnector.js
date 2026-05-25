@@ -14,12 +14,18 @@ class SpecificationDataConnector {
   }
 
   static async findBySpecificationId(specificationId) {
-    const q = `${SpecificationDataConnector._rowQuery()} WHERE d.specification_id = $1 LIMIT 1`;
+    const q = `${SpecificationDataConnector._rowQuery()} WHERE d.specification_id = $1 ORDER BY d.id DESC LIMIT 1`;
     const res = await pool.query(q, [specificationId]);
     return res.rows[0] || null;
   }
 
-  static async createOrUpdate(specificationId, fields = {}) {
+  static async findById(id) {
+    const q = `${SpecificationDataConnector._rowQuery()} WHERE d.id = $1 LIMIT 1`;
+    const res = await pool.query(q, [id]);
+    return res.rows[0] || null;
+  }
+
+  static async create(specificationId, fields = {}) {
     const q = `
       INSERT INTO specifications_data_connector (
         specification_id,
@@ -28,12 +34,6 @@ class SpecificationDataConnector {
         oid
       )
       VALUES ($1, $2, $3, $4)
-      ON CONFLICT (specification_id) DO UPDATE
-      SET
-        specifications_source_connector_id = COALESCE(EXCLUDED.specifications_source_connector_id, specifications_data_connector.specifications_source_connector_id),
-        specifications_project_connector_id = COALESCE(EXCLUDED.specifications_project_connector_id, specifications_data_connector.specifications_project_connector_id),
-        oid = COALESCE(EXCLUDED.oid, specifications_data_connector.oid),
-        updated_at = CURRENT_TIMESTAMP
       RETURNING id
     `;
     const values = [
@@ -44,7 +44,11 @@ class SpecificationDataConnector {
     ];
     const res = await pool.query(q, values);
     if (!res.rows[0] || !res.rows[0].id) return null;
-    return await SpecificationDataConnector.findBySpecificationId(specificationId);
+    return await SpecificationDataConnector.findById(res.rows[0].id);
+  }
+
+  static async createOrUpdate(specificationId, fields = {}) {
+    return await SpecificationDataConnector.create(specificationId, fields);
   }
 
   static async updateBySpecificationId(specificationId, fields = {}) {
@@ -74,17 +78,31 @@ class SpecificationDataConnector {
     const q = `
       UPDATE specifications_data_connector
       SET ${sets.join(', ')}
-      WHERE specification_id = $${idx}
+      WHERE id = (
+        SELECT id
+        FROM specifications_data_connector
+        WHERE specification_id = $${idx}
+        ORDER BY id DESC
+        LIMIT 1
+      )
       RETURNING id
     `;
     const res = await pool.query(q, values);
     if (!res.rows[0] || !res.rows[0].id) return null;
-    return await SpecificationDataConnector.findBySpecificationId(specificationId);
+    return await SpecificationDataConnector.findById(res.rows[0].id);
   }
 
   static async deleteBySpecificationId(specificationId) {
     const res = await pool.query(
-      `DELETE FROM specifications_data_connector WHERE specification_id = $1 RETURNING id`,
+      `DELETE FROM specifications_data_connector
+       WHERE id = (
+         SELECT id
+         FROM specifications_data_connector
+         WHERE specification_id = $1
+         ORDER BY id DESC
+         LIMIT 1
+       )
+       RETURNING id`,
       [specificationId]
     );
     return res.rowCount > 0;

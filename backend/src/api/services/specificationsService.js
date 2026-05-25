@@ -100,7 +100,7 @@ class SpecificationsService {
       throw err;
     }
 
-    const row = await SpecificationDataConnector.createOrUpdate(Number(id), payload);
+    const row = await SpecificationDataConnector.create(Number(id), payload);
     if (!row) { const err = new Error('Specification connectors not found'); err.statusCode = 404; throw err; }
     return {
       data_connector: row.data_connector,

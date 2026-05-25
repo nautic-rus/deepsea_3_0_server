@@ -19959,7 +19959,7 @@
           "specifications"
         ],
         "summary": "Create specification connectors",
-        "description": "Creates or replaces the connector data row for a specification.",
+        "description": "Creates a new connector data row for a specification.",
         "security": [
           {
             "bearerAuth": []
@@ -20019,7 +20019,7 @@
           "specifications"
         ],
         "summary": "Update specification connectors",
-        "description": "Updates the connector data row for a specification.",
+        "description": "Updates the latest connector data row for a specification.",
         "security": [
           {
             "bearerAuth": []
