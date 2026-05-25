@@ -58,10 +58,10 @@ class SpecificationsService {
   }
 
   static async getSpecificationConnectorsById(id, actor) {
-    const requiredPermission = 'specifications.create';
+    const requiredPermission = 'specifications.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
-    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.create'); err.statusCode = 403; throw err; }
+    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.view'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
 
     const spec = await Specification.findById(Number(id));
