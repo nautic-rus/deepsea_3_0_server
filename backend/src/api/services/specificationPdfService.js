@@ -215,10 +215,16 @@ class SpecificationPdfService {
     return part.statement_code || '';
   }
 
+  static _formatWeightValue(value) {
+    const weight = SpecificationPdfService._toNumberOrNull(value);
+    if (weight === null) return '-';
+    return weight.toFixed(2);
+  }
+
   static _resolveMaterialWeight(part) {
     const material = part.material || null;
     const weight = material ? SpecificationPdfService._toNumberOrNull(material.weight) : null;
-    return weight === null ? '-' : String(weight);
+    return SpecificationPdfService._formatWeightValue(weight);
   }
 
   static _resolveTotalWeight(part) {
@@ -228,11 +234,11 @@ class SpecificationPdfService {
     const weight = material ? SpecificationPdfService._toNumberOrNull(material.weight) : null;
 
     if (unitId === 2) {
-      return String(quantity);
+      return SpecificationPdfService._formatWeightValue(quantity);
     }
 
     if (weight !== null) {
-      return String(quantity * weight);
+      return SpecificationPdfService._formatWeightValue(quantity * weight);
     }
 
     return '-';
