@@ -4096,6 +4096,18 @@
           }
         }
       },
+      "SpecificationConnectorsListResponse": {
+        "type": "object",
+        "description": "List of connector rows for a specification",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpecificationConnectorsResponse"
+            }
+          }
+        }
+      },
       "SpecificationDataConnector": {
         "type": "object",
         "description": "Specification data connector row",
@@ -19909,7 +19921,7 @@
           "specifications"
         ],
         "summary": "Get specification connectors by ID",
-        "description": "Returns only connector data for a specification: data connector, source connector, and project connector.",
+        "description": "Returns all connector rows for a specification.",
         "security": [
           {
             "bearerAuth": []
@@ -19935,7 +19947,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SpecificationConnectorsResponse"
+                  "$ref": "#/components/schemas/SpecificationConnectorsListResponse"
                 }
               }
             }

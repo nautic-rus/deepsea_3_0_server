@@ -67,14 +67,12 @@ class SpecificationsService {
     const spec = await Specification.findById(Number(id));
     if (!spec) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
 
-    const row = await SpecificationDataConnector.findBySpecificationId(Number(id));
-    if (!row) { const err = new Error('Specification connectors not found'); err.statusCode = 404; throw err; }
-
-    return {
+    const rows = await SpecificationDataConnector.listBySpecificationId(Number(id));
+    return rows.map((row) => ({
       data_connector: row.data_connector,
       source_connector: row.source_connector,
       project_connector: row.project_connector
-    };
+    }));
   }
 
   static async upsertSpecificationConnectors(id, fields = {}, actor) {

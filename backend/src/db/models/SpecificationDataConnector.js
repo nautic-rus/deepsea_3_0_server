@@ -25,6 +25,12 @@ class SpecificationDataConnector {
     return res.rows[0] || null;
   }
 
+  static async listBySpecificationId(specificationId) {
+    const q = `${SpecificationDataConnector._rowQuery()} WHERE d.specification_id = $1 ORDER BY d.id ASC`;
+    const res = await pool.query(q, [specificationId]);
+    return res.rows || [];
+  }
+
   static async create(specificationId, fields = {}) {
     const q = `
       INSERT INTO specifications_data_connector (

@@ -37,8 +37,8 @@ class SpecificationsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const row = await SpecificationsService.getSpecificationConnectorsById(id, actor);
-      res.json(row);
+      const rows = await SpecificationsService.getSpecificationConnectorsById(id, actor);
+      res.json({ data: rows });
     } catch (err) { next(err); }
   }
 
