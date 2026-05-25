@@ -406,6 +406,7 @@ class SpecificationPartsService {
     });
 
     const normalizedRows = [];
+    const connectorFailures = [];
     if (directPayload) {
       const sourceValue = connectorSources[0] ? connectorSources[0].sourceValue : 'foran';
       const directRows = SpecificationPartsService._normalizePayloadRows(directPayload);
@@ -434,12 +435,25 @@ class SpecificationPartsService {
             }
           }
         } catch (err) {
+          connectorFailures.push({
+            url: connector.requestUrl,
+            message: err && err.message ? err.message : 'Unknown FORAN error'
+          });
           continue;
         }
       }
     }
 
     if (normalizedRows.length === 0) {
+      if (connectorFailures.length > 0) {
+        const firstFailure = connectorFailures[0];
+        const err = new Error(
+          `FORAN import failed for all connectors. First failure: ${firstFailure.url} -> ${firstFailure.message}`
+        );
+        err.statusCode = 502;
+        err.details = connectorFailures;
+        throw err;
+      }
       return {
         imported_count: 0,
         data: [],
