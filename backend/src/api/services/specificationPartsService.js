@@ -446,6 +446,7 @@ class SpecificationPartsService {
       }
       return {
         imported_count: 0,
+        report: [],
         data: [],
         source: {
           url: connectorSources[0].requestUrl,
@@ -456,6 +457,7 @@ class SpecificationPartsService {
     }
 
     const materialMap = await SpecificationPartsService._resolveMaterialMap(normalizedRows);
+    const report = [];
     const client = await pool.connect();
     try {
       await SpecificationPartsService._ensureForanSourceAllowed(client);
@@ -472,10 +474,22 @@ class SpecificationPartsService {
       const values = [];
       const placeholders = [];
       let idx = 1;
-      for (const row of normalizedRows) {
+      for (let rowIndex = 0; rowIndex < normalizedRows.length; rowIndex += 1) {
+        const row = normalizedRows[rowIndex];
         const materialKey = row.stock_code ? String(row.stock_code).trim().toUpperCase() : null;
         const material = materialKey ? (materialMap.get(materialKey) || null) : null;
         const materialId = material ? material.id : null;
+        if (!materialId) {
+          report.push({
+            row_index: rowIndex + 1,
+            part_code: row.part_code ?? null,
+            stock_code: row.stock_code ?? null,
+            material_id: null,
+            reason: materialKey
+              ? `Material not found for stock_code ${materialKey}`
+              : 'stock_code is missing, material_id could not be resolved'
+          });
+        }
         const resolvedQuantity = SpecificationPartsService._resolveQuantity(row, material);
         placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
         values.push(
@@ -514,6 +528,7 @@ class SpecificationPartsService {
       const data = await SpecificationPart.findByIds(insertedIds);
       return {
         imported_count: data.length,
+        report,
         data,
         source: {
           url: connectorSources[0].requestUrl,

@@ -2858,6 +2858,12 @@
           "imported_count": {
             "type": "integer"
           },
+          "report": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpecificationPartImportReportItem"
+            }
+          },
           "source": {
             "type": "object",
             "nullable": true,
@@ -2881,6 +2887,31 @@
             "items": {
               "$ref": "#/components/schemas/SpecificationPart"
             }
+          }
+        }
+      },
+      "SpecificationPartImportReportItem": {
+        "type": "object",
+        "description": "Warning item for a specification part that could not be linked to a material_id",
+        "properties": {
+          "row_index": {
+            "type": "integer",
+            "description": "1-based index of the source row"
+          },
+          "part_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "stock_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "material_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string"
           }
         }
       },
@@ -24817,7 +24848,7 @@
           "specifications"
         ],
         "summary": "Import specification parts from FORAN",
-        "description": "Imports parts into specification_parts for the given specification version. If the request body already contains a FORAN JSON payload, it will be used directly; otherwise the server will fetch data from FORAN using connector settings stored in the database.",
+        "description": "Imports parts into specification_parts for the given specification version. If the request body already contains a FORAN JSON payload, it will be used directly; otherwise the server will fetch data from FORAN using connector settings stored in the database. The response also includes a report for rows that could not be linked to a material_id.",
         "security": [
           {
             "bearerAuth": []
