@@ -489,6 +489,7 @@ class SpecificationPartsService {
               ? `Material not found for stock_code ${materialKey}`
               : 'stock_code is missing, material_id could not be resolved'
           });
+          continue;
         }
         const resolvedQuantity = SpecificationPartsService._resolveQuantity(row, material);
         placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
@@ -510,6 +511,20 @@ class SpecificationPartsService {
           actor.id,
           row.sourceValue
         );
+      }
+
+      if (placeholders.length === 0) {
+        await client.query('COMMIT');
+        return {
+          imported_count: 0,
+          report,
+          data: [],
+          source: {
+            url: connectorSources[0].requestUrl,
+            project_code: connectorSources[0].project_code,
+            oid: connectorSources[0].oid
+          }
+        };
       }
 
       const insertRes = await client.query(

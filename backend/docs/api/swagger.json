@@ -24848,7 +24848,7 @@
           "specifications"
         ],
         "summary": "Import specification parts from FORAN",
-        "description": "Imports parts into specification_parts for the given specification version. If the request body already contains a FORAN JSON payload, it will be used directly; otherwise the server will fetch data from FORAN using connector settings stored in the database. The response also includes a report for rows that could not be linked to a material_id.",
+        "description": "Imports parts into specification_parts for the given specification version. If the request body already contains a FORAN JSON payload, it will be used directly; otherwise the server will fetch data from FORAN using connector settings stored in the database. Rows that could not be linked to a material_id are skipped and returned in the report.",
         "security": [
           {
             "bearerAuth": []
