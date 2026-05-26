@@ -4,6 +4,18 @@ const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 
 class StatementsPartsService {
+  static _toNumberOrNull(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Number(value);
+    return Number.isNaN(n) ? null : n;
+  }
+
+  static _formatNumeric(value) {
+    const n = StatementsPartsService._toNumberOrNull(value);
+    if (n === null) return '0.000';
+    return n.toFixed(3);
+  }
+
   static _toUserObject(row) {
     if (!row) return null;
     const fullName = [row.last_name, row.first_name, row.middle_name].filter(Boolean).join(' ').trim() || null;
@@ -79,6 +91,63 @@ class StatementsPartsService {
     };
   }
 
+  static _groupRowsByMaterial(rows = []) {
+    const groups = new Map();
+
+    for (const row of rows || []) {
+      const materialId = Number(row && row.material_id);
+      if (Number.isNaN(materialId)) continue;
+
+      if (!groups.has(materialId)) {
+        groups.set(materialId, {
+          material: row.material || null,
+          quantity: 0,
+          totalWeight: 0,
+          versions: new Map(),
+        });
+      }
+
+      const group = groups.get(materialId);
+      const quantity = StatementsPartsService._toNumberOrNull(row.quantity) ?? 0;
+      const totalWeight = StatementsPartsService._toNumberOrNull(row.total_waight) ?? 0;
+
+      group.quantity += quantity;
+      group.totalWeight += totalWeight;
+
+      const versionId = row.specification_version_id === null || row.specification_version_id === undefined
+        ? null
+        : Number(row.specification_version_id);
+      const versionKey = versionId === null || Number.isNaN(versionId) ? '__null__' : String(versionId);
+
+      if (!group.versions.has(versionKey)) {
+        group.versions.set(versionKey, {
+          specification_version_id: row.specification_version_id ?? null,
+          specification_version: row.specification_version || null,
+          specification: row.specification || null,
+          quantity: 0,
+          totalWeight: 0,
+        });
+      }
+
+      const versionGroup = group.versions.get(versionKey);
+      versionGroup.quantity += quantity;
+      versionGroup.totalWeight += totalWeight;
+    }
+
+    return [...groups.values()].map((group) => ({
+      material: group.material,
+      quantity: StatementsPartsService._formatNumeric(group.quantity),
+      total_waight: StatementsPartsService._formatNumeric(group.totalWeight),
+      specification_versions: [...group.versions.values()].map((version) => ({
+        specification_version_id: version.specification_version_id,
+        specification_version: version.specification_version,
+        specification: version.specification,
+        quantity: StatementsPartsService._formatNumeric(version.quantity),
+        total_waight: StatementsPartsService._formatNumeric(version.totalWeight),
+      }))
+    }));
+  }
+
   static async _resolveVersionMeta(query = {}, rows = []) {
     const requestedVersionId = query && query.statements_version_id !== undefined && query.statements_version_id !== null
       ? Number(query.statements_version_id)
@@ -129,10 +198,15 @@ class StatementsPartsService {
     const allowed = await hasPermission(actor, 'statements.view');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
     const rows = await StatementsPart.list(query);
+    const page = Number(query && query.page !== undefined ? query.page : 1);
+    const limit = Number(query && query.limit !== undefined ? query.limit : 0);
+    const grouped = StatementsPartsService._groupRowsByMaterial(rows);
+    const offset = Number.isFinite(page) && Number.isFinite(limit) && page > 0 && limit > 0 ? (page - 1) * limit : 0;
+    const paged = limit > 0 ? grouped.slice(offset, offset + limit) : grouped;
     const meta = await StatementsPartsService._resolveVersionMeta(query, rows);
     return {
       ...meta,
-      data: rows.map((row) => StatementsPartsService._stripVersionMeta(row))
+      data: paged
     };
   }
 
@@ -227,26 +301,36 @@ class StatementsPartsService {
       await client.query('DELETE FROM statements_parts WHERE statements_version_id = $1', [versionId]);
 
       const candidateQuery = `
-        WITH latest_spec_versions AS (
-          SELECT DISTINCT ON (emp.equipment_material_id)
-            emp.equipment_material_id,
-            sv.id AS specification_version_id
+        WITH statement_materials AS (
+          SELECT DISTINCT emp.equipment_material_id AS material_id
           FROM equipment_materials_projects emp
-          JOIN specification_parts sp ON sp.material_id = emp.equipment_material_id
-          JOIN specification_version sv ON sv.id = sp.specification_version_id
           WHERE emp.statement_id = $1
-          ORDER BY emp.equipment_material_id, sv.created_at DESC NULLS LAST, sv.id DESC
+        ),
+        latest_spec_versions AS (
+          SELECT DISTINCT ON (spec.id)
+            spec.id AS specification_id,
+            sv.id AS specification_version_id
+          FROM statements st
+          JOIN specification spec ON spec.project_id = st.project_id
+          JOIN specification_version sv ON sv.specification_id = spec.id
+          WHERE st.id = $1
+          ORDER BY spec.id, sv.created_at DESC NULLS LAST, sv.id DESC
         )
         SELECT
-          l.equipment_material_id,
-          MIN(sp.id) AS specification_part_id,
+          sm.material_id,
+          lsv.specification_version_id,
           SUM(COALESCE(sp.quantity, 1))::numeric AS quantity
-        FROM latest_spec_versions l
+        FROM statement_materials sm
+        JOIN latest_spec_versions lsv ON TRUE
         JOIN specification_parts sp
-          ON sp.material_id = l.equipment_material_id
-         AND sp.specification_version_id = l.specification_version_id
-        GROUP BY l.equipment_material_id
-        ORDER BY l.equipment_material_id
+          ON sp.material_id = sm.material_id
+         AND sp.specification_version_id = lsv.specification_version_id
+        GROUP BY
+          sm.material_id,
+          lsv.specification_version_id
+        ORDER BY
+          sm.material_id,
+          lsv.specification_version_id
       `;
 
       const candidateRes = await client.query(candidateQuery, [statementId]);
@@ -254,10 +338,10 @@ class StatementsPartsService {
 
       for (const row of candidateRes.rows || []) {
         const insertRes = await client.query(
-          `INSERT INTO statements_parts (statements_version_id, specification_part_id, quantity, created_by)
-           VALUES ($1, $2, $3, $4)
+          `INSERT INTO statements_parts (statements_version_id, specification_version_id, material_id, quantity, created_by)
+           VALUES ($1, $2, $3, $4, $5)
            RETURNING id`,
-          [versionId, row.specification_part_id, row.quantity, actor.id]
+          [versionId, row.specification_version_id, row.material_id, row.quantity, actor.id]
         );
         if (insertRes.rows[0] && insertRes.rows[0].id) {
           insertedIds.push(insertRes.rows[0].id);

@@ -2886,7 +2886,7 @@
       },
       "StatementsPart": {
         "type": "object",
-        "description": "Statement part with linked specification part, material and specification data.",
+        "description": "Statement part with linked specification version, material and specification data.",
         "properties": {
           "id": {
             "type": "integer"
@@ -2895,7 +2895,11 @@
             "type": "integer",
             "nullable": true
           },
-          "specification_part_id": {
+          "specification_version_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "material_id": {
             "type": "integer",
             "nullable": true
           },
@@ -2906,83 +2910,104 @@
           "material": {
             "$ref": "#/components/schemas/Material"
           },
-          "specification_part": {
+          "specification_version": {
             "type": "object",
             "nullable": true,
             "properties": {
               "id": {
                 "type": "integer"
               },
-              "specification_version_id": {
+              "specification_id": {
                 "type": "integer"
               },
-              "parent_id": {
-                "type": "integer",
-                "nullable": true
-              },
-              "part_code": {
+              "version": {
                 "type": "string",
                 "nullable": true
               },
-              "quantity": {
-                "type": "number"
-              },
-              "zone": {
+              "notes": {
                 "type": "string",
                 "nullable": true
               },
-              "cog_x": {
-                "type": "number",
-                "nullable": true
-              },
-              "cog_y": {
-                "type": "number",
-                "nullable": true
-              },
-              "cog_z": {
-                "type": "number",
-                "nullable": true
-              },
-              "source": {
-                "type": "string",
-                "nullable": true
+              "created_by": {
+                "type": "integer"
               },
               "created_at": {
                 "type": "string",
                 "format": "date-time",
                 "nullable": true
-              },
-              "specification_version": {
-                "type": "object",
-                "nullable": true,
-                "properties": {
-                  "id": {
-                    "type": "integer"
-                  },
-                  "specification_id": {
-                    "type": "integer"
-                  },
-                  "version": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "notes": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "created_by": {
-                    "type": "integer"
-                  },
-                  "created_at": {
-                    "type": "string",
-                    "format": "date-time",
-                    "nullable": true
-                  }
-                }
-              },
-              "specification": {
-                "$ref": "#/components/schemas/Specification"
               }
+            }
+          },
+          "specification": {
+            "$ref": "#/components/schemas/Specification"
+          }
+        }
+      },
+      "StatementsPartGroupedVersion": {
+        "type": "object",
+        "description": "Aggregated specification version entry inside a grouped statement part.",
+        "properties": {
+          "specification_version_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "specification_version": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "specification_id": {
+                "type": "integer"
+              },
+              "version": {
+                "type": "string",
+                "nullable": true
+              },
+              "notes": {
+                "type": "string",
+                "nullable": true
+              },
+              "created_by": {
+                "type": "integer"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          },
+          "specification": {
+            "$ref": "#/components/schemas/Specification",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "total_waight": {
+            "type": "string"
+          }
+        }
+      },
+      "StatementsPartGrouped": {
+        "type": "object",
+        "description": "Grouped statement part summary by material with included specification versions.",
+        "properties": {
+          "material": {
+            "$ref": "#/components/schemas/Material"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "total_waight": {
+            "type": "string"
+          },
+          "specification_versions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatementsPartGroupedVersion"
             }
           }
         }
@@ -3003,10 +3028,15 @@
             "nullable": true,
             "description": "Parent statement part ID"
           },
-          "specification_part_id": {
+          "specification_version_id": {
             "type": "integer",
             "nullable": true,
-            "description": "Related specification part ID"
+            "description": "Related specification version ID"
+          },
+          "material_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Related material ID"
           },
           "quantity": {
             "type": "number",
@@ -3023,7 +3053,11 @@
             "type": "integer",
             "nullable": true
           },
-          "specification_part_id": {
+          "specification_version_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "material_id": {
             "type": "integer",
             "nullable": true
           },
@@ -23779,7 +23813,7 @@
           "statements"
         ],
         "summary": "Refresh statement parts from statement version",
-        "description": "Finds materials linked to the statement, resolves the latest specification version for each material, groups rows by material_id, sums quantity across all specification parts in that version, fully replaces statements_parts for the selected statement version, and inserts the refreshed links.",
+        "description": "Finds materials linked to the statement, resolves the latest version of every specification, groups matching specification_parts by material and specification version, sums quantity across the matching rows, fully replaces statements_parts for the selected statement version, and inserts the refreshed links.",
         "security": [
           {
             "bearerAuth": []
@@ -23914,7 +23948,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/StatementsPart"
+                        "$ref": "#/components/schemas/StatementsPartGrouped"
                       }
                     }
                   }
@@ -23935,37 +23969,35 @@
                   "updated_at": "2026-05-19T06:51:33.181Z",
                   "data": [
                     {
-                      "id": 101,
-                      "parent_id": null,
-                      "specification_part_id": 2201,
-                      "quantity": 3,
-                      "material_id": 55,
-                      "material_stock_code": "MAT-055",
-                      "material_name": "Steel plate",
-                      "material_description": "Base plate",
-                      "material_directory": null,
-                      "material_unit": null,
-                      "material_weight": 12.5,
-                      "material_sfi_code": null,
-                      "material_type": "material",
-                      "material_status": "active",
-                      "specification_version_id": 88,
-                      "specification_part_parent_id": null,
-                      "part_code": "A-01",
-                      "specification_part_quantity": 3,
-                      "zone": "Z1",
-                      "cog_x": null,
-                      "cog_y": null,
-                      "cog_z": null,
-                      "source": "manual",
-                      "specification_part_created_at": "2026-05-18T10:00:00.000Z",
-                      "specification_version": null,
-                      "specification": null,
-                      "project": null,
-                      "document": null,
-                      "material": null,
-                      "specification_part": null,
-                      "total_waight": "37.5"
+                      "material": {
+                        "id": 55,
+                        "stock_code": "MAT-055",
+                        "name": "Steel plate",
+                        "description": "Base plate",
+                        "directory": null,
+                        "unit": null,
+                        "weight": 12.5,
+                        "type": "material",
+                        "status": "active"
+                      },
+                      "quantity": "725.172",
+                      "total_waight": "725.172",
+                      "specification_versions": [
+                        {
+                          "specification_version_id": 88,
+                          "specification_version": {
+                            "id": 88,
+                            "specification_id": 12,
+                            "version": "1.0",
+                            "notes": null,
+                            "created_by": 341,
+                            "created_at": "2026-05-18T10:00:00.000Z"
+                          },
+                          "specification": null,
+                          "quantity": "312.172",
+                          "total_waight": "312.172"
+                        }
+                      ]
                     }
                   ]
                 }

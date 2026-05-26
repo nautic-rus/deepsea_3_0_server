@@ -2669,10 +2669,11 @@ CREATE TABLE public.statements_parts (
     id integer NOT NULL,
     statements_version_id integer NOT NULL,
     parent_id integer,
-    specification_part_id integer,
+    specification_version_id integer,
     quantity numeric(15,3) DEFAULT 1,
     created_by integer NOT NULL,
-    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    material_id integer
 );
 
 
@@ -6157,10 +6158,10 @@ CREATE INDEX idx_statements_created_by ON public.statements USING btree (created
 
 
 --
--- Name: idx_statements_parts_specification_part_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_statements_parts_material_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_statements_parts_specification_part_id ON public.statements_parts USING btree (specification_part_id);
+CREATE INDEX idx_statements_parts_material_id ON public.statements_parts USING btree (material_id);
 
 
 --
@@ -7648,11 +7649,19 @@ ALTER TABLE ONLY public.statements_parts
 
 
 --
--- Name: statements_parts statements_parts_specification_part_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: statements_parts statements_parts_specification_version_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.statements_parts
-    ADD CONSTRAINT statements_parts_specification_part_id_fkey FOREIGN KEY (specification_part_id) REFERENCES public.specification_parts(id) ON DELETE SET NULL;
+    ADD CONSTRAINT statements_parts_specification_version_id_fkey FOREIGN KEY (specification_version_id) REFERENCES public.specification_version(id) ON DELETE SET NULL;
+
+
+--
+-- Name: statements_parts statements_parts_material_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.statements_parts
+    ADD CONSTRAINT statements_parts_material_id_fkey FOREIGN KEY (material_id) REFERENCES public.equipment_materials(id) ON DELETE SET NULL;
 
 
 --
