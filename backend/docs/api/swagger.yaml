@@ -4630,6 +4630,116 @@ paths:
       responses:
         '200':
           description: OK
+  /api/specifications/{id}/connectors:
+    get:
+      tags:
+        - specifications
+      summary: Получить коннекторы спецификации
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.view
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      responses:
+        '200':
+          description: OK
+    post:
+      tags:
+        - specifications
+      summary: Создать коннекторы спецификации
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.create
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+      responses:
+        '201':
+          description: Created
+    put:
+      tags:
+        - specifications
+      summary: Обновить коннекторы спецификации
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.create
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+            example: {}
+      responses:
+        '200':
+          description: OK
+    delete:
+      tags:
+        - specifications
+      summary: Удалить коннекторы спецификации
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.create
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+      responses:
+        '200':
+          description: OK
+  /api/specifications/{id}/connectors/{connectorId}:
+    delete:
+      tags:
+        - specifications
+      summary: Удалить конкретный коннектор спецификации
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - specifications.create
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+          example: '{{id}}'
+        - in: path
+          name: connectorId
+          required: true
+          schema:
+            type: integer
+          example: '{{connectorId}}'
+      responses:
+        '200':
+          description: OK
   /api/stages:
     get:
       tags:

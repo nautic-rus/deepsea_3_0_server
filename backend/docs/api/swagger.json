@@ -20210,6 +20210,75 @@
         }
       }
     },
+    "/api/specifications/{id}/connectors/{connectorId}": {
+      "delete": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Delete specification connector",
+        "description": "Deletes a specific connector row for a specification by connector ID.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.create"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification ID"
+          },
+          {
+            "name": "connectorId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Connector row ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Specification connector deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid id or invalid connector id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission specifications.create"
+          },
+          "404": {
+            "description": "Specification not found or specification connector not found"
+          }
+        }
+      }
+    },
     "/api/specifications_project_connectors": {
       "get": {
         "tags": [

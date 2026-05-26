@@ -113,6 +113,17 @@ class SpecificationDataConnector {
     );
     return res.rowCount > 0;
   }
+
+  static async deleteByIdAndSpecificationId(specificationId, id) {
+    const res = await pool.query(
+      `DELETE FROM specifications_data_connector
+       WHERE id = $2
+         AND specification_id = $1
+       RETURNING id`,
+      [specificationId, id]
+    );
+    return res.rowCount > 0;
+  }
 }
 
 module.exports = SpecificationDataConnector;

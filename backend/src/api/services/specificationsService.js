@@ -152,6 +152,22 @@ class SpecificationsService {
     return { success: true };
   }
 
+  static async deleteSpecificationConnector(id, connectorId, actor) {
+    const requiredPermission = 'specifications.create';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission specifications.create'); err.statusCode = 403; throw err; }
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    if (!connectorId || Number.isNaN(Number(connectorId))) { const err = new Error('Invalid connector id'); err.statusCode = 400; throw err; }
+
+    const spec = await Specification.findById(Number(id));
+    if (!spec) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
+
+    const ok = await SpecificationDataConnector.deleteByIdAndSpecificationId(Number(id), Number(connectorId));
+    if (!ok) { const err = new Error('Specification connector not found'); err.statusCode = 404; throw err; }
+    return { success: true };
+  }
+
   static async getSpecificationProjectConnectorById(id, actor) {
     const requiredPermission = 'specifications.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }

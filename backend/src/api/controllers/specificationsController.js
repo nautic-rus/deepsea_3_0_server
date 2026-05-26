@@ -73,6 +73,18 @@ class SpecificationsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
+      const hasConnectorId = Object.prototype.hasOwnProperty.call(req.params, 'connectorId');
+      const connectorId = hasConnectorId ? parseInt(req.params.connectorId, 10) : null;
+      if (hasConnectorId) {
+        if (!connectorId || Number.isNaN(connectorId)) {
+          const err = new Error('Invalid connector id');
+          err.statusCode = 400;
+          throw err;
+        }
+        await SpecificationsService.deleteSpecificationConnector(id, connectorId, actor);
+        res.json({ message: 'Specification connector deleted' });
+        return;
+      }
       await SpecificationsService.deleteSpecificationConnectors(id, actor);
       res.json({ message: 'Specification connectors deleted' });
     } catch (err) { next(err); }

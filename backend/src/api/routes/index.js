@@ -498,6 +498,7 @@ router.delete('/specifications_project_connectors/:id', authMiddleware, specific
 router.get('/specifications/:id/connectors', authMiddleware, specificationsController.getConnectors);
 router.post('/specifications/:id/connectors', authMiddleware, specificationsController.createConnectors);
 router.put('/specifications/:id/connectors', authMiddleware, specificationsController.updateConnectors);
+router.delete('/specifications/:id/connectors/:connectorId', authMiddleware, specificationsController.deleteConnectors);
 router.delete('/specifications/:id/connectors', authMiddleware, specificationsController.deleteConnectors);
 router.get('/specifications/:id', authMiddleware, specificationsController.get);
 router.post('/specifications', authMiddleware, specificationsController.create);
