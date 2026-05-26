@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "DeepSea 3.0 API_",
+    "title": "DeepSea 3.0 API",
     "description": "API documentation for the DeepSea 3.0 system",
     "version": "3.0.0"
   },
