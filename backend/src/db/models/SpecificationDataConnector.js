@@ -37,9 +37,10 @@ class SpecificationDataConnector {
         specification_id,
         specifications_source_connector_id,
         specifications_project_connector_id,
-        oid
+        oid,
+        oid_name
       )
-      VALUES ($1, $2, $3, $4)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id
     `;
     const values = [
@@ -47,6 +48,7 @@ class SpecificationDataConnector {
       fields.specifications_source_connector_id ?? null,
       fields.specifications_project_connector_id ?? null,
       fields.oid ?? null,
+      fields.oid_name ?? null,
     ];
     const res = await pool.query(q, values);
     if (!res.rows[0] || !res.rows[0].id) return null;
@@ -62,6 +64,7 @@ class SpecificationDataConnector {
       'specifications_source_connector_id',
       'specifications_project_connector_id',
       'oid',
+      'oid_name',
     ];
     const sets = [];
     const values = [];

@@ -2482,7 +2482,8 @@ CREATE TABLE public.specifications_data_connector (
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     specifications_source_connector_id integer,
     specifications_project_connector_id integer,
-    oid text
+    oid text,
+    oid_name text
 );
 
 

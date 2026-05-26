@@ -4107,6 +4107,10 @@
                 "type": "string",
                 "nullable": true
               },
+              "oid_name": {
+                "type": "string",
+                "nullable": true
+              },
               "created_at": {
                 "type": "string",
                 "format": "date-time"
@@ -4188,6 +4192,10 @@
           "oid": {
             "type": "string",
             "nullable": true
+          },
+          "oid_name": {
+            "type": "string",
+            "nullable": true
           }
         }
       },
@@ -4204,6 +4212,10 @@
             "nullable": true
           },
           "oid": {
+            "type": "string",
+            "nullable": true
+          },
+          "oid_name": {
             "type": "string",
             "nullable": true
           }

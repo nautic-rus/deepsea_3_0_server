@@ -88,7 +88,8 @@ class SpecificationsService {
     const payload = {
       specifications_source_connector_id: SpecificationsService._toIntOrNull(fields.specifications_source_connector_id ?? fields.source_connector_id ?? null),
       specifications_project_connector_id: SpecificationsService._toIntOrNull(fields.specifications_project_connector_id ?? fields.project_connector_id ?? null),
-      oid: SpecificationsService._toTextOrNull(fields.oid ?? null)
+      oid: SpecificationsService._toTextOrNull(fields.oid ?? null),
+      oid_name: SpecificationsService._toTextOrNull(fields.oid_name ?? null)
     };
 
     const hasAnyField = Object.values(payload).some((value) => value !== null && value !== undefined && String(value).trim() !== '');
@@ -126,6 +127,9 @@ class SpecificationsService {
     }
     if (Object.prototype.hasOwnProperty.call(fields, 'oid')) {
       payload.oid = SpecificationsService._toTextOrNull(fields.oid ?? null);
+    }
+    if (Object.prototype.hasOwnProperty.call(fields, 'oid_name')) {
+      payload.oid_name = SpecificationsService._toTextOrNull(fields.oid_name ?? null);
     }
 
     const row = await SpecificationDataConnector.updateBySpecificationId(Number(id), payload);
