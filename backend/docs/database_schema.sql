@@ -2391,6 +2391,7 @@ CREATE TABLE public.specification_parts (
     id integer NOT NULL,
     specification_version_id integer NOT NULL,
     part_code character varying(100),
+    part_oid bigint,
     quantity numeric(15,3) DEFAULT 1,
     created_by integer NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,

@@ -153,6 +153,7 @@ class SpecificationPartsService {
     const partCode = row.PART_CODE != null && String(row.PART_CODE).trim() !== ''
       ? String(row.PART_CODE).trim()
       : (row.PART_OID != null ? String(row.PART_OID) : null);
+    const partOid = SpecificationPartsService._toNumberOrNull(row.PART_OID ?? row.part_oid ?? null);
     const quantity = row.QTY !== undefined && row.QTY !== null && row.QTY !== ''
       ? Number(row.QTY)
       : 1;
@@ -165,8 +166,21 @@ class SpecificationPartsService {
     const thickness = row.THICKNESS !== undefined && row.THICKNESS !== null && row.THICKNESS !== ''
       ? Number(row.THICKNESS)
       : null;
+    const cogXRaw = row.COG_X ?? row.cog_x ?? null;
+    const cogYRaw = row.COG_Y ?? row.cog_y ?? null;
+    const cogZRaw = row.COG_Z ?? row.cog_z ?? null;
+    const cogX = cogXRaw !== undefined && cogXRaw !== null && cogXRaw !== ''
+      ? Number(cogXRaw)
+      : null;
+    const cogY = cogYRaw !== undefined && cogYRaw !== null && cogYRaw !== ''
+      ? Number(cogYRaw)
+      : null;
+    const cogZ = cogZRaw !== undefined && cogZRaw !== null && cogZRaw !== ''
+      ? Number(cogZRaw)
+      : null;
     return {
       part_code: partCode,
+      part_oid: partOid,
       quantity: Number.isNaN(quantity) ? 1 : quantity,
       total_weight: row.TOTAL_WEIGHT !== undefined && row.TOTAL_WEIGHT !== null && row.TOTAL_WEIGHT !== ''
         ? Number(row.TOTAL_WEIGHT)
@@ -183,6 +197,9 @@ class SpecificationPartsService {
       length: Number.isNaN(length) ? null : length,
       width: Number.isNaN(width) ? null : width,
       thickness: Number.isNaN(thickness) ? null : thickness,
+      cog_x: Number.isNaN(cogX) ? null : cogX,
+      cog_y: Number.isNaN(cogY) ? null : cogY,
+      cog_z: Number.isNaN(cogZ) ? null : cogZ,
       part_type: row.ELEM_TYPE != null && String(row.ELEM_TYPE).trim() !== ''
         ? String(row.ELEM_TYPE).trim()
         : null,
@@ -492,10 +509,11 @@ class SpecificationPartsService {
           continue;
         }
         const resolvedQuantity = SpecificationPartsService._resolveQuantity(row, material);
-        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
         values.push(
           versionId,
           row.part_code,
+          row.part_oid,
           materialId,
           row.sfi_code_id ?? null,
           resolvedQuantity,
@@ -508,6 +526,9 @@ class SpecificationPartsService {
           row.unit,
           row.part_type,
           row.descriptions,
+          row.cog_x,
+          row.cog_y,
+          row.cog_z,
           actor.id,
           row.sourceValue
         );
@@ -529,7 +550,7 @@ class SpecificationPartsService {
 
       const insertRes = await client.query(
         `INSERT INTO specification_parts
-          (specification_version_id, part_code, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, created_by, source)
+          (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
          VALUES ${placeholders.join(', ')}
          RETURNING id`,
         values

@@ -2083,6 +2083,7 @@ CREATE TABLE public.specification_parts (
     id integer NOT NULL,
     specification_version_id integer NOT NULL,
     part_code character varying(100),
+    part_oid bigint,
     stock_code character varying(255),
     name character varying(255) NOT NULL,
     description text,

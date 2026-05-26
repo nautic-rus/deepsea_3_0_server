@@ -8,6 +8,7 @@ class SpecificationPart {
       `${prefix}specification_version_id`,
       `${prefix}parent_id`,
       `${prefix}part_code`,
+      `${prefix}part_oid`,
       `${prefix}material_id`,
       `${prefix}sfi_code_id`,
       `${prefix}quantity`,
@@ -133,11 +134,12 @@ class SpecificationPart {
   }
 
   static async create(fields) {
-    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id`;
+    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`;
     const vals = [
       fields.specification_version_id,
       fields.parent_id || null,
       fields.part_code || null,
+      fields.part_oid ?? null,
       fields.material_id || null,
       fields.sfi_code_id || null,
       fields.quantity || 1,
@@ -166,7 +168,7 @@ class SpecificationPart {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['parent_id','part_code','material_id','sfi_code_id','quantity','qty','zone','length','width','thickness','symmetry','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
+    ['parent_id','part_code','part_oid','material_id','sfi_code_id','quantity','qty','zone','length','width','thickness','symmetry','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
       if (fields[k] !== undefined) {
         parts.push(`${k} = $${idx++}`);
         const normalized = ['length', 'width', 'thickness'].includes(k)
