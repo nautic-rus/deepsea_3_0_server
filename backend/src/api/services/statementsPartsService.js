@@ -1,6 +1,7 @@
 const StatementsPart = require('../../db/models/StatementsPart');
 const StatementsVersion = require('../../db/models/StatementsVersion');
 const pool = require('../../db/connection');
+const XLSX = require('xlsx');
 const { hasPermission } = require('./permissionChecker');
 
 class StatementsPartsService {
@@ -370,6 +371,254 @@ class StatementsPartsService {
     } finally {
       client.release();
     }
+  }
+
+  static _normalizeSpecificationIds(payload = {}) {
+    const candidates = [
+      payload.specification_ids,
+      payload.specificationIds,
+      payload.ids,
+      payload.specification_id,
+      payload.specificationId,
+      payload.specification && payload.specification.id,
+      payload.specification,
+      payload.specifications,
+      payload.selected_specifications,
+      payload.selectedSpecifications,
+    ].filter((value) => value !== null && value !== undefined);
+
+    const values = [];
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate)) {
+        for (const item of candidate) {
+          if (item && typeof item === 'object') {
+            if (item.id !== undefined && item.id !== null) {
+              values.push(item.id);
+            }
+          } else {
+            values.push(item);
+          }
+        }
+        continue;
+      }
+      if (candidate && typeof candidate === 'object') {
+        if (candidate.id !== undefined && candidate.id !== null) {
+          values.push(candidate.id);
+        }
+        continue;
+      }
+      values.push(candidate);
+    }
+
+    return [...new Set(values
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0))];
+  }
+
+  static _buildSpecificationWorkbook(rows = [], selectedSpecificationIds = []) {
+    const headers = [
+      '№',
+      'Material ID',
+      'Stock Code',
+      'Material Name',
+      'Unit',
+      'Specification Code',
+      'Quantity',
+      'Total Weight',
+    ];
+
+    const grouped = new Map();
+
+    for (const row of rows || []) {
+      const materialId = StatementsPartsService._toNumberOrNull(row.material_id);
+      if (materialId === null) {
+        continue;
+      }
+
+      if (!grouped.has(materialId)) {
+        grouped.set(materialId, {
+          material_id: materialId,
+          stock_code: '',
+          material_name: '',
+          unit_name: '',
+          unit_kei: '',
+          specification_labels: new Set(),
+          quantity: 0,
+          total_weight: 0,
+        });
+      }
+
+      const group = grouped.get(materialId);
+      const quantity = StatementsPartsService._toNumberOrNull(row.quantity) ?? 0;
+      const unitId = StatementsPartsService._toNumberOrNull(row.unit_id);
+      const materialWeight = StatementsPartsService._toNumberOrNull(row.material_weight);
+      const rowUnitName = row.unit_name ? String(row.unit_name) : '';
+      const rowUnitKei = row.unit_kei ? String(row.unit_kei) : '';
+      const totalWeight = unitId === 2
+        ? quantity
+        : (materialWeight === null ? 0 : quantity * materialWeight);
+
+      group.quantity += quantity;
+      group.total_weight += totalWeight;
+      if (!group.stock_code && row.stock_code) group.stock_code = String(row.stock_code);
+      if (!group.material_name && row.material_name) group.material_name = String(row.material_name);
+      if (!group.unit_name && rowUnitName) group.unit_name = rowUnitName;
+      if (!group.unit_kei && rowUnitKei) group.unit_kei = rowUnitKei;
+      if (row.specification_code) {
+        const versionSuffix = row.specification_version ? ` (${String(row.specification_version)})` : '';
+        group.specification_labels.add(`${String(row.specification_code)}${versionSuffix}`);
+      }
+    }
+
+    const data = [...grouped.values()]
+      .sort((a, b) => a.material_id - b.material_id)
+      .map((group, index) => [
+        index + 1,
+        group.material_id,
+        group.stock_code,
+        group.material_name,
+        group.unit_name ? `${group.unit_name}${group.unit_kei ? ` (${group.unit_kei})` : ''}` : '',
+        [...group.specification_labels].join(', '),
+        group.quantity,
+        group.total_weight,
+      ]);
+
+    const sheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    sheet['!cols'] = [
+      { wch: 6 },
+      { wch: 16 },
+      { wch: 18 },
+      { wch: 30 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 14 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, 'Ведомость');
+
+    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
+    const datePart = new Date().toISOString().slice(0, 10);
+    const suffix = selectedSpecificationIds.length > 1
+      ? `_${selectedSpecificationIds.join('_')}`
+      : selectedSpecificationIds[0] ? `_${selectedSpecificationIds[0]}` : '';
+
+    return {
+      buffer,
+      filename: `statements_by_specifications${suffix}_${datePart}.xlsx`,
+      rows_count: data.length,
+    };
+  }
+
+  static async exportFromSpecifications(payload = {}, actor) {
+    if (!actor || !actor.id) {
+      const err = new Error('Authentication required');
+      err.statusCode = 401;
+      throw err;
+    }
+
+    const allowed = await hasPermission(actor, 'specifications.view');
+    if (!allowed) {
+      const err = new Error('Forbidden');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    const specificationIds = StatementsPartsService._normalizeSpecificationIds(payload);
+    if (!specificationIds.length) {
+      const err = new Error('Missing specification_id');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const latestVersionsRes = await pool.query(
+      `
+        WITH selected_specs AS (
+          SELECT DISTINCT unnest($1::int[]) AS specification_id
+        )
+        SELECT DISTINCT ON (sv.specification_id)
+          sv.specification_id,
+          sv.id AS specification_version_id,
+          sv.version AS specification_version,
+          spec.code AS specification_code,
+          spec.name AS specification_name
+        FROM specification_version sv
+        JOIN specification spec ON spec.id = sv.specification_id
+        JOIN selected_specs ss ON ss.specification_id = sv.specification_id
+        ORDER BY sv.specification_id, sv.created_at DESC NULLS LAST, sv.id DESC
+      `,
+      [specificationIds]
+    );
+
+    const latestVersions = latestVersionsRes.rows || [];
+    const foundIds = new Set(latestVersions.map((row) => Number(row.specification_id)).filter((id) => Number.isInteger(id)));
+    const missingIds = specificationIds.filter((id) => !foundIds.has(id));
+    if (missingIds.length > 0) {
+      const err = new Error(`Specification not found: ${missingIds.join(', ')}`);
+      err.statusCode = 404;
+      err.details = { missing_specification_ids: missingIds };
+      throw err;
+    }
+
+    const partsRes = await pool.query(
+      `
+        WITH latest_spec_versions AS (
+          SELECT DISTINCT ON (sv.specification_id)
+            sv.specification_id,
+            sv.id AS specification_version_id,
+            sv.version AS specification_version,
+            spec.code AS specification_code,
+            spec.name AS specification_name
+          FROM specification_version sv
+          JOIN specification spec ON spec.id = sv.specification_id
+          WHERE sv.specification_id = ANY($1::int[])
+          ORDER BY sv.specification_id, sv.created_at DESC NULLS LAST, sv.id DESC
+        )
+        SELECT
+          lsv.specification_id,
+          lsv.specification_version_id,
+          lsv.specification_version,
+          lsv.specification_code,
+          lsv.specification_name,
+          sp.material_id,
+          m.stock_code,
+          m.name AS material_name,
+          m.description AS material_description,
+          m.weight AS material_weight,
+          m.unit_id,
+          u.name AS unit_name,
+          u.kei AS unit_kei,
+          SUM(COALESCE(sp.quantity, 1))::numeric AS quantity
+        FROM latest_spec_versions lsv
+        JOIN specification_parts sp ON sp.specification_version_id = lsv.specification_version_id
+        LEFT JOIN equipment_materials m ON m.id = sp.material_id
+        LEFT JOIN units u ON u.id = m.unit_id
+        GROUP BY
+          lsv.specification_id,
+          lsv.specification_version_id,
+          lsv.specification_version,
+          lsv.specification_code,
+          lsv.specification_name,
+          sp.material_id,
+          m.stock_code,
+          m.name,
+          m.description,
+          m.weight,
+          m.unit_id,
+          u.name,
+          u.kei
+        ORDER BY
+          sp.material_id,
+          lsv.specification_code,
+          lsv.specification_version,
+          lsv.specification_id
+      `,
+      [specificationIds]
+    );
+
+    return StatementsPartsService._buildSpecificationWorkbook(partsRes.rows || [], specificationIds);
   }
 }
 

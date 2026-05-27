@@ -53,6 +53,21 @@ class StatementsVersionController {
       res.json({ data: result });
     } catch (err) { next(err); }
   }
+
+  static async exportPartsFromSpecifications(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const result = await StatementsPartsService.exportFromSpecifications(req.body || {}, actor);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Length', String(result.buffer.length));
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="statements_by_specifications.xlsx"; filename*=UTF-8''${encodeURIComponent(result.filename)}`
+      );
+      res.status(200).end(result.buffer);
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = StatementsVersionController;

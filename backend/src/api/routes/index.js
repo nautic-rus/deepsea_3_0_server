@@ -556,6 +556,7 @@ router.post('/statements_versions', authMiddleware, statementsVersionController.
 router.put('/statements_versions/:id', authMiddleware, statementsVersionController.update);
 router.delete('/statements_versions/:id', authMiddleware, statementsVersionController.delete);
 router.post('/statements_versions/:id/apply_parts', authMiddleware, statementsVersionController.applyParts);
+router.post('/statements_versions/export_from_specifications', authMiddleware, statementsVersionController.exportPartsFromSpecifications);
 
 router.get('/statements_parts', authMiddleware, statementsPartsController.list);
 router.get('/statements_parts/:id', authMiddleware, statementsPartsController.get);

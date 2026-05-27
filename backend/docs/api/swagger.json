@@ -3116,6 +3116,23 @@
           }
         }
       },
+      "StatementsSpecificationsExportRequest": {
+        "type": "object",
+        "description": "Request payload for exporting a statement from selected specifications",
+        "properties": {
+          "specification_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "specification_ids": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      },
       "StatementsPartsEnvelope": {
         "type": "object",
         "description": "Statements parts response with version metadata pulled out of each part",
@@ -23978,6 +23995,75 @@
           },
           "423": {
             "description": "Statements version is locked"
+          }
+        }
+      }
+    },
+    "/api/statements_versions/export_from_specifications": {
+      "post": {
+        "tags": [
+          "statements"
+        ],
+        "summary": "Export statement from selected specifications",
+        "description": "Builds an Excel statement from one or more selected specifications using the latest version of each specification and returns the result as an .xlsx file.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.view"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StatementsSpecificationsExportRequest"
+              },
+              "examples": {
+                "single": {
+                  "summary": "Single specification",
+                  "value": {
+                    "specification_id": 123
+                  }
+                },
+                "multiple": {
+                  "summary": "Multiple specifications",
+                  "value": {
+                    "specification_ids": [
+                      123,
+                      456
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Excel file",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid specification_id or specification_ids"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "One or more specifications not found"
           }
         }
       }
