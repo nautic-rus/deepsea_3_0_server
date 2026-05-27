@@ -242,9 +242,23 @@ class SpecificationPartsImportService {
           continue;
         }
         // ASTRUCTURE uses a dedicated quantity resolver; BLOCKS keeps the legacy behavior.
-        const resolvedQuantity = row.importBranch === 'astructure'
-          ? SpecificationPartsService._resolveAstructureQuantity(row, material)
-          : SpecificationPartsService._resolveQuantity(row, material);
+        const quantityResolution = row.importBranch === 'astructure'
+          ? SpecificationPartsService._resolveAstructureQuantityDetails(row, material)
+          : SpecificationPartsService._resolveQuantityDetails(row, material);
+        const resolvedQuantity = quantityResolution.quantity;
+        if (!quantityResolution.calculated) {
+          report.push({
+            row_index: rowIndex + 1,
+            part_code: row.part_code ?? null,
+            stock_code: row.stock_code ?? null,
+            material_id: materialId,
+            branch: row.importBranch,
+            unit_id: material.unit_id ?? null,
+            quantity: resolvedQuantity,
+            reason: quantityResolution.reason || 'Quantity fell back to a default value'
+          });
+          continue;
+        }
         placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
         values.push(
           versionId,

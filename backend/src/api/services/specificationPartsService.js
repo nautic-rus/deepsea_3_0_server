@@ -278,6 +278,10 @@ class SpecificationPartsService {
   }
 
   static _resolveQuantity(row, material) {
+    return SpecificationPartsService._resolveQuantityDetails(row, material);
+  }
+
+  static _resolveQuantityDetails(row, material) {
     // Legacy BLOCKS quantity logic.
     // This intentionally keeps the existing behavior for the older import branch.
     const fallbackQuantity = row.quantity !== undefined && row.quantity !== null && !Number.isNaN(Number(row.quantity))
@@ -296,27 +300,44 @@ class SpecificationPartsService {
     // BLOCKS follows the generic legacy import rules:
     // - unit 2 means we already have the final weight, so use TOTAL_WEIGHT.
     // - unit 1 means the part is counted by pieces, so prefer NUM_EQ_PART.
+    // - unit 3 means the part is counted by length, so use LENGTH.
     // - for every other unit, we derive quantity from TOTAL_WEIGHT / material.weight.
     // - if we cannot calculate anything meaningful, we fall back to the raw quantity
     //   from the payload, and then to 1 as the final safety net.
     if (unitId === 2) {
-      return totalWeight !== null ? totalWeight : fallbackQuantity;
+      return totalWeight !== null
+        ? { quantity: totalWeight, calculated: true, reason: null }
+        : { quantity: fallbackQuantity, calculated: false, reason: 'TOTAL_WEIGHT is missing, fell back to raw quantity' };
     }
 
     if (unitId === 1) {
       return row.num_eq_part !== null && row.num_eq_part !== undefined && !Number.isNaN(Number(row.num_eq_part))
-        ? Number(row.num_eq_part)
-        : fallbackQuantity;
+        ? { quantity: Number(row.num_eq_part), calculated: true, reason: null }
+        : { quantity: fallbackQuantity, calculated: false, reason: 'NUM_EQ_PART is missing, fell back to raw quantity' };
+    }
+
+    if (unitId === 3) {
+      return row.length !== null && row.length !== undefined && !Number.isNaN(Number(row.length))
+        ? { quantity: Number(row.length), calculated: true, reason: null }
+        : { quantity: fallbackQuantity, calculated: false, reason: 'LENGTH is missing, fell back to raw quantity' };
     }
 
     if (totalWeight !== null && materialWeight !== null && materialWeight > 0) {
-      return totalWeight / materialWeight;
+      return { quantity: totalWeight / materialWeight, calculated: true, reason: null };
     }
 
-    return totalWeight !== null ? totalWeight : fallbackQuantity;
+    if (totalWeight !== null) {
+      return { quantity: totalWeight, calculated: false, reason: 'Material weight is missing or invalid, fell back to TOTAL_WEIGHT' };
+    }
+
+    return { quantity: fallbackQuantity, calculated: false, reason: 'TOTAL_WEIGHT and material weight are missing, fell back to raw quantity' };
   }
 
   static _resolveAstructureQuantity(row, material) {
+    return SpecificationPartsService._resolveAstructureQuantityDetails(row, material);
+  }
+
+  static _resolveAstructureQuantityDetails(row, material) {
     // ASTRUCTURE quantity logic follows its own unit semantics.
     // We keep this separate so BLOCKS behavior cannot accidentally regress.
     const unitId = material && material.unit_id !== null && material.unit_id !== undefined && !Number.isNaN(Number(material.unit_id))
@@ -341,25 +362,29 @@ class SpecificationPartsService {
     //   material's unit weight from equipment_materials.weight.
     // The final fallback is 1, so we never write a null quantity into the table.
     if (unitId === 2) {
-      return totalWeight !== null ? totalWeight : 1;
+      return totalWeight !== null
+        ? { quantity: totalWeight, calculated: true, reason: null }
+        : { quantity: 1, calculated: false, reason: 'WEIGHT is missing, fell back to 1' };
     }
 
     if (unitId === 1) {
-      return 1;
+      return { quantity: 1, calculated: true, reason: null };
     }
 
     if (unitId === 3) {
-      return length !== null ? length : 1;
+      return length !== null
+        ? { quantity: length, calculated: true, reason: null }
+        : { quantity: 1, calculated: false, reason: 'LENGTH is missing, fell back to 1' };
     }
 
     // Same fallback principle as in BLOCKS, but without the piece-count branch:
     // if the incoming payload already carries WEIGHT and material weight is known,
     // we can derive quantity from that relationship. Otherwise we keep 1.
     if (totalWeight !== null && materialWeight !== null && materialWeight > 0) {
-      return totalWeight / materialWeight;
+      return { quantity: totalWeight / materialWeight, calculated: true, reason: null };
     }
 
-    return 1;
+    return { quantity: 1, calculated: false, reason: 'WEIGHT or material weight is missing, fell back to 1' };
   }
 
   static _resolveForanBaseUrl(requestBaseUrl = null, runtimeUrl = null) {
