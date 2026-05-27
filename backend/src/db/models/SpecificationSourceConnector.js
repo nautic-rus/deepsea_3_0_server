@@ -3,7 +3,20 @@ const pool = require('../connection');
 class SpecificationSourceConnector {
   static async listAll() {
     const q = `
-      SELECT id, code, url, url_source, name, created_at
+      SELECT
+        id,
+        code,
+        url,
+        COALESCE(
+          url_source,
+          CASE lower(code)
+            WHEN 'block_oid' THEN '/api/oracle/{project_code}/blocks'
+            WHEN 'as_oid' THEN '/api/oracle/{project_code}/astructure'
+            ELSE NULL
+          END
+        ) AS url_source,
+        name,
+        created_at
       FROM specifications_source_connector
       ORDER BY id ASC
     `;
