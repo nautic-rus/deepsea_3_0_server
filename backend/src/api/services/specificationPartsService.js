@@ -1,11 +1,14 @@
 const SpecificationPart = require('../../db/models/SpecificationPart');
-const Specification = require('../../db/models/Specification');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
 const EnvironmentSetting = require('../../db/models/EnvironmentSetting');
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 
+// SpecificationPartsService owns the canonical CRUD behavior for specification_parts.
+// Import orchestration lives in SpecificationPartsImportService so this file stays focused
+// on row transformation, lookup helpers, and direct part persistence.
 class SpecificationPartsService {
+  // Runtime FORAN-style settings are shared by import flows.
   static async _loadForanRuntimeSettings() {
     try {
       const rows = await EnvironmentSetting.list(['FORAN_SERVICE_URL', 'FORAN_SERVICE_TOKEN']);
@@ -34,6 +37,7 @@ class SpecificationPartsService {
     return Number.isNaN(n) ? null : n;
   }
 
+  // Convert a users row into the compact shape used in API responses.
   static _toUserObject(row) {
     if (!row) return null;
     const fullName = [row.last_name, row.first_name, row.middle_name].filter(Boolean).join(' ').trim() || null;
@@ -44,6 +48,28 @@ class SpecificationPartsService {
     };
   }
 
+  static _normalizeText(value) {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  }
+
+  static _normalizeLowerText(value) {
+    return SpecificationPartsService._normalizeText(value).toLowerCase();
+  }
+
+  static _pickExternalValue(row, keys = []) {
+    if (!row || typeof row !== 'object') return null;
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(row, key)) continue;
+      const value = row[key];
+      if (value !== undefined && value !== null && String(value).trim() !== '') {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  // Enrich part rows with derived total weight when we already know the material.
   static _withComputedTotalWeight(row) {
     if (!row) return row;
 
@@ -66,6 +92,7 @@ class SpecificationPartsService {
   }
 
   static async _loadUsersByIds(ids = []) {
+    // Batch-load user profiles so list responses do not issue per-row queries.
     const uniqueIds = [...new Set((ids || []).map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id > 0))];
     if (uniqueIds.length === 0) return new Map();
 
@@ -83,6 +110,7 @@ class SpecificationPartsService {
   }
 
   static async _versionMetaFromVersion(version) {
+    // Attach creator/updater metadata to part lists and part mutations.
     if (!version) {
       return {
         specification_version_id: null,
@@ -104,6 +132,7 @@ class SpecificationPartsService {
   }
 
   static async _resolveVersionMeta(query = {}, rows = []) {
+    // Prefer the requested version id, but fall back to the first row when listing parts.
     const requestedVersionId = query && query.specification_version_id !== undefined && query.specification_version_id !== null
       ? Number(query.specification_version_id)
       : null;
@@ -140,35 +169,69 @@ class SpecificationPartsService {
   }
 
   static _normalizePayloadRows(payload) {
+    // Accept a few common payload envelopes so both APIs and direct JSON payloads work.
     if (!payload) return [];
     if (Array.isArray(payload)) return payload;
     if (Array.isArray(payload.rows)) return payload.rows;
+    if (Array.isArray(payload.data)) return payload.data;
+    if (Array.isArray(payload.items)) return payload.items;
     if (payload.data && Array.isArray(payload.data.rows)) return payload.data.rows;
+    if (payload.data && Array.isArray(payload.data.items)) return payload.data.items;
     if (payload.result && Array.isArray(payload.result.rows)) return payload.result.rows;
+    if (payload.result && Array.isArray(payload.result.items)) return payload.result.items;
     return [];
   }
 
-  static _normalizeExternalRow(row) {
+  static _normalizeExternalRow(row, sourceKey = 'blocks') {
+    // Normalize a single external row into the internal specification_parts shape.
+    // The mapping varies slightly between BLOCKS and ASTRUCTURE.
     if (!row || typeof row !== 'object') return null;
-    const partCode = row.PART_CODE != null && String(row.PART_CODE).trim() !== ''
-      ? String(row.PART_CODE).trim()
-      : (row.PART_OID != null ? String(row.PART_OID) : null);
-    const partOid = SpecificationPartsService._toNumberOrNull(row.PART_OID ?? row.part_oid ?? null);
-    const quantity = row.QTY !== undefined && row.QTY !== null && row.QTY !== ''
-      ? Number(row.QTY)
+    const sourceMode = SpecificationPartsService._normalizeLowerText(sourceKey) === 'astructure'
+      ? 'astructure'
+      : 'blocks';
+    const partCodeKeys = sourceMode === 'astructure'
+      ? ['CODEID', 'codeid', 'CODE_ID', 'code_id', 'PART_CODE', 'part_code', 'code', 'CODE']
+      : ['PART_CODE', 'part_code', 'code', 'CODE'];
+    const partOidKeys = sourceMode === 'astructure'
+      ? ['MOD_OID', 'mod_oid', 'AS_OID', 'as_oid', 'PART_OID', 'part_oid', 'oid', 'OID']
+      : ['PART_OID', 'part_oid', 'oid', 'OID'];
+    const totalWeightKeys = sourceMode === 'astructure'
+      ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
+      : ['TOTAL_WEIGHT', 'total_weight', 'weight'];
+    const zoneKeys = sourceMode === 'astructure'
+      ? ['ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
+      : ['BLOCK_CODE', 'block_code', 'zone', 'ZONE', 'STRGROUP', 'strgroup'];
+    const stockCodeKeys = sourceMode === 'astructure'
+      ? ['STOCK', 'stock', 'STOCK_CODE', 'stock_code']
+      : ['STOCK_CODE', 'stock_code'];
+    const descriptionsKeys = sourceMode === 'astructure'
+      ? ['MATERIAL_DESCRIPTION', 'material_description', 'NORM_DESCR', 'norm_descr', 'DESCRIPTION', 'description', 'PART_DESC', 'part_desc']
+      : ['PART_DESC', 'part_desc', 'description', 'DESCRIPTION'];
+    const partCodeRaw = SpecificationPartsService._pickExternalValue(row, partCodeKeys);
+    const partOidRaw = SpecificationPartsService._pickExternalValue(row, partOidKeys);
+    const partCode = partCodeRaw != null && String(partCodeRaw).trim() !== ''
+      ? String(partCodeRaw).trim()
+      : (partOidRaw != null ? String(partOidRaw) : null);
+    const partOid = SpecificationPartsService._toNumberOrNull(partOidRaw);
+    const quantityRaw = SpecificationPartsService._pickExternalValue(row, ['QTY', 'qty', 'quantity', 'QUANTITY']);
+    const quantity = quantityRaw !== null && quantityRaw !== undefined && quantityRaw !== ''
+      ? Number(quantityRaw)
       : 1;
-    const length = row.LENGTH !== undefined && row.LENGTH !== null && row.LENGTH !== ''
-      ? Number(row.LENGTH)
+    const lengthRaw = SpecificationPartsService._pickExternalValue(row, ['LENGTH', 'length']);
+    const widthRaw = SpecificationPartsService._pickExternalValue(row, ['WIDTH', 'width']);
+    const thicknessRaw = SpecificationPartsService._pickExternalValue(row, ['THICKNESS', 'thickness']);
+    const length = lengthRaw !== undefined && lengthRaw !== null && lengthRaw !== ''
+      ? Number(lengthRaw)
       : null;
-    const width = row.WIDTH !== undefined && row.WIDTH !== null && row.WIDTH !== ''
-      ? Number(row.WIDTH)
+    const width = widthRaw !== undefined && widthRaw !== null && widthRaw !== ''
+      ? Number(widthRaw)
       : null;
-    const thickness = row.THICKNESS !== undefined && row.THICKNESS !== null && row.THICKNESS !== ''
-      ? Number(row.THICKNESS)
+    const thickness = thicknessRaw !== undefined && thicknessRaw !== null && thicknessRaw !== ''
+      ? Number(thicknessRaw)
       : null;
-    const cogXRaw = row.COG_X ?? row.cog_x ?? null;
-    const cogYRaw = row.COG_Y ?? row.cog_y ?? null;
-    const cogZRaw = row.COG_Z ?? row.cog_z ?? null;
+    const cogXRaw = SpecificationPartsService._pickExternalValue(row, ['COG_X', 'cog_x', 'cogX']);
+    const cogYRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Y', 'cog_y', 'cogY']);
+    const cogZRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Z', 'cog_z', 'cogZ']);
     const cogX = cogXRaw !== undefined && cogXRaw !== null && cogXRaw !== ''
       ? Number(cogXRaw)
       : null;
@@ -182,41 +245,41 @@ class SpecificationPartsService {
       part_code: partCode,
       part_oid: partOid,
       quantity: Number.isNaN(quantity) ? 1 : quantity,
-      total_weight: row.TOTAL_WEIGHT !== undefined && row.TOTAL_WEIGHT !== null && row.TOTAL_WEIGHT !== ''
-        ? Number(row.TOTAL_WEIGHT)
+      total_weight: SpecificationPartsService._pickExternalValue(row, totalWeightKeys) !== null
+        ? Number(SpecificationPartsService._pickExternalValue(row, totalWeightKeys))
         : null,
-      num_eq_part: row.NUM_EQ_PART !== undefined && row.NUM_EQ_PART !== null && row.NUM_EQ_PART !== ''
-        ? Number(row.NUM_EQ_PART)
+      num_eq_part: SpecificationPartsService._pickExternalValue(row, ['NUM_EQ_PART', 'num_eq_part', 'numEqPart']) !== null
+        ? Number(SpecificationPartsService._pickExternalValue(row, ['NUM_EQ_PART', 'num_eq_part', 'numEqPart']))
         : null,
-      zone: row.BLOCK_CODE != null && String(row.BLOCK_CODE).trim() !== ''
-        ? String(row.BLOCK_CODE).trim()
-        : (row.STRGROUP != null && String(row.STRGROUP).trim() !== '' ? String(row.STRGROUP).trim() : null),
-      stock_code: row.STOCK_CODE != null && String(row.STOCK_CODE).trim() !== ''
-        ? String(row.STOCK_CODE).trim()
+      zone: SpecificationPartsService._pickExternalValue(row, zoneKeys) != null
+        ? String(SpecificationPartsService._pickExternalValue(row, zoneKeys)).trim()
         : null,
-      length: Number.isNaN(length) ? null : length,
+      stock_code: SpecificationPartsService._pickExternalValue(row, stockCodeKeys) != null
+        ? String(SpecificationPartsService._pickExternalValue(row, stockCodeKeys)).trim()
+        : null,
+      // ASTRUCTURE returns LENGTH in millimeters; the internal model stores meters.
+      length: Number.isNaN(length) ? null : (sourceMode === 'astructure' && length !== null ? length / 1000 : length),
       width: Number.isNaN(width) ? null : width,
       thickness: Number.isNaN(thickness) ? null : thickness,
       cog_x: Number.isNaN(cogX) ? null : cogX,
       cog_y: Number.isNaN(cogY) ? null : cogY,
       cog_z: Number.isNaN(cogZ) ? null : cogZ,
-      part_type: row.ELEM_TYPE != null && String(row.ELEM_TYPE).trim() !== ''
-        ? String(row.ELEM_TYPE).trim()
-        : null,
-      symmetry: row.SYMMETRY != null && String(row.SYMMETRY).trim() !== ''
-        ? String(row.SYMMETRY).trim()
-        : null,
-      unit: row.UNIT != null && String(row.UNIT).trim() !== ''
-        ? String(row.UNIT).trim()
-        : null,
-      sfi_code_id: SpecificationPartsService._toNumberOrNull(row.SFI_CODE_ID ?? row.sfi_code_id ?? null),
-      descriptions: row.PART_DESC != null && String(row.PART_DESC).trim() !== ''
-        ? String(row.PART_DESC).trim()
+      // These fields are intentionally left empty during import.
+      part_type: null,
+      symmetry: null,
+      unit: null,
+      sfi_code_id: SpecificationPartsService._toNumberOrNull(
+        SpecificationPartsService._pickExternalValue(row, ['SFI_CODE_ID', 'sfi_code_id'])
+      ),
+      descriptions: SpecificationPartsService._pickExternalValue(row, descriptionsKeys) != null
+        ? String(SpecificationPartsService._pickExternalValue(row, descriptionsKeys)).trim()
         : null
     };
   }
 
   static _resolveQuantity(row, material) {
+    // Legacy BLOCKS quantity logic.
+    // This intentionally keeps the existing behavior for the older import branch.
     const fallbackQuantity = row.quantity !== undefined && row.quantity !== null && !Number.isNaN(Number(row.quantity))
       ? Number(row.quantity)
       : 1;
@@ -230,6 +293,12 @@ class SpecificationPartsService {
       ? Number(material.weight)
       : null;
 
+    // BLOCKS follows the generic legacy import rules:
+    // - unit 2 means we already have the final weight, so use TOTAL_WEIGHT.
+    // - unit 1 means the part is counted by pieces, so prefer NUM_EQ_PART.
+    // - for every other unit, we derive quantity from TOTAL_WEIGHT / material.weight.
+    // - if we cannot calculate anything meaningful, we fall back to the raw quantity
+    //   from the payload, and then to 1 as the final safety net.
     if (unitId === 2) {
       return totalWeight !== null ? totalWeight : fallbackQuantity;
     }
@@ -247,7 +316,54 @@ class SpecificationPartsService {
     return totalWeight !== null ? totalWeight : fallbackQuantity;
   }
 
+  static _resolveAstructureQuantity(row, material) {
+    // ASTRUCTURE quantity logic follows its own unit semantics.
+    // We keep this separate so BLOCKS behavior cannot accidentally regress.
+    const unitId = material && material.unit_id !== null && material.unit_id !== undefined && !Number.isNaN(Number(material.unit_id))
+      ? Number(material.unit_id)
+      : null;
+    const totalWeight = row.total_weight !== null && row.total_weight !== undefined && !Number.isNaN(Number(row.total_weight))
+      ? Number(row.total_weight)
+      : null;
+    const length = row.length !== null && row.length !== undefined && !Number.isNaN(Number(row.length))
+      ? Number(row.length)
+      : null;
+    const materialWeight = material && material.weight !== null && material.weight !== undefined && !Number.isNaN(Number(material.weight))
+      ? Number(material.weight)
+      : null;
+
+    // ASTRUCTURE uses unit-specific quantity rules instead of the generic
+    // FORAN/BLOCKS behavior:
+    // - unit 2 means the part is tracked by weight, so we store the incoming WEIGHT.
+    // - unit 1 means the part is counted as a single item, so quantity is always 1.
+    // - unit 3 means the part is tracked by length, so we store the incoming LENGTH.
+    // - for every other unit, we approximate quantity by dividing WEIGHT by the
+    //   material's unit weight from equipment_materials.weight.
+    // The final fallback is 1, so we never write a null quantity into the table.
+    if (unitId === 2) {
+      return totalWeight !== null ? totalWeight : 1;
+    }
+
+    if (unitId === 1) {
+      return 1;
+    }
+
+    if (unitId === 3) {
+      return length !== null ? length : 1;
+    }
+
+    // Same fallback principle as in BLOCKS, but without the piece-count branch:
+    // if the incoming payload already carries WEIGHT and material weight is known,
+    // we can derive quantity from that relationship. Otherwise we keep 1.
+    if (totalWeight !== null && materialWeight !== null && materialWeight > 0) {
+      return totalWeight / materialWeight;
+    }
+
+    return 1;
+  }
+
   static _resolveForanBaseUrl(requestBaseUrl = null, runtimeUrl = null) {
+    // Resolve the base URL for external import services with sane fallbacks.
     const configured = String(runtimeUrl || '').trim();
     if (configured) return configured;
     const fallback = String(requestBaseUrl || '').trim();
@@ -258,6 +374,7 @@ class SpecificationPartsService {
   }
 
   static _buildForanRequestUrl(template, projectCode, oid, sourceCode = null, requestBaseUrl = null, runtimeUrl = null) {
+    // BLOCKS uses project_code placeholders and may append oid as a query param.
     const hasOidPlaceholder = String(template || '').includes('{oid}');
     const normalizedProjectCode = String(projectCode || '').trim().toLowerCase();
     const relativePath = String(template || '')
@@ -274,7 +391,47 @@ class SpecificationPartsService {
     return url.toString();
   }
 
-  static async _fetchForanParts(payloadMeta, runtimeToken = null) {
+  static _buildBlocksRequestUrl(template, projectCode, oid, sourceCode = null, requestBaseUrl = null, runtimeUrl = null) {
+    // Compatibility wrapper so callers can speak in BLOCKS terminology.
+    return SpecificationPartsService._buildForanRequestUrl(template, projectCode, oid, sourceCode, requestBaseUrl, runtimeUrl);
+  }
+
+  static _buildAstructureRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+    // ASTRUCTURE uses schemaName and a dedicated oid query parameter shape.
+    let relativePath = String(template || '')
+      .replaceAll('{schemaName}', encodeURIComponent(String(schemaName || '').trim()))
+      .replaceAll('{oid}', encodeURIComponent(String(oid || '')));
+    if (relativePath.includes('/parts-by-as-oid=')) {
+      relativePath = relativePath.replace('/parts-by-as-oid=', '/parts-by-as-oid?oid=');
+    }
+
+    const url = new URL(relativePath, SpecificationPartsService._resolveForanBaseUrl(requestBaseUrl, runtimeUrl));
+    if (!url.searchParams.has('oid') && oid !== undefined && oid !== null && String(oid).trim() !== '' && /parts-by-as-oid/i.test(url.pathname)) {
+      url.searchParams.set('oid', String(oid));
+    }
+    return url.toString();
+  }
+
+  static _resolveConnectorImportStrategy(connectorRow) {
+    // Source connector metadata decides which import branch to use.
+    const sourceConnector = connectorRow && connectorRow.source_connector ? connectorRow.source_connector : null;
+    const code = SpecificationPartsService._normalizeLowerText(sourceConnector && sourceConnector.code);
+    const name = SpecificationPartsService._normalizeLowerText(sourceConnector && sourceConnector.name);
+    if (code === 'as_oid' || name === 'astructure') {
+      return {
+        key: 'astructure',
+        sourceValue: 'astructure'
+      };
+    }
+
+    return {
+      key: 'blocks',
+      sourceValue: 'blocks'
+    };
+  }
+
+  static async _fetchForanParts(payloadMeta, runtimeToken = null, sourceLabel = 'FORAN') {
+    // Shared fetch helper for both external services; the source label keeps errors readable.
     const headers = {
       Accept: 'application/json'
     };
@@ -289,7 +446,7 @@ class SpecificationPartsService {
       const baseUrlHint = String(process.env.FORAN_SERVICE_URL || '').trim()
         ? ''
         : ' Set FORAN_SERVICE_URL to an internal FORAN backend URL in production.';
-      const err = new Error(`FORAN request failed for ${payloadMeta.url}: ${causeMessage}${baseUrlHint}`);
+      const err = new Error(`${sourceLabel} request failed for ${payloadMeta.url}: ${causeMessage}${baseUrlHint}`);
       err.statusCode = 502;
       err.cause = cause;
       err.url = payloadMeta.url;
@@ -297,7 +454,7 @@ class SpecificationPartsService {
     }
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      const err = new Error(`FORAN request failed with status ${response.status}${text ? `: ${text.slice(0, 300)}` : ''}`);
+      const err = new Error(`${sourceLabel} request failed with status ${response.status}${text ? `: ${text.slice(0, 300)}` : ''}`);
       err.statusCode = response.status >= 400 && response.status < 600 ? response.status : 502;
       err.url = payloadMeta.url;
       throw err;
@@ -306,6 +463,7 @@ class SpecificationPartsService {
   }
 
   static async _resolveMaterialMap(rows = []) {
+    // Materials are keyed by stock_code because import rows only know the external stock identifier.
     const stockCodes = [...new Set(
       (rows || [])
         .map((row) => row && row.stock_code)
@@ -328,7 +486,21 @@ class SpecificationPartsService {
     }]));
   }
 
-  static async _ensureForanSourceAllowed(client = pool) {
+  static async _ensureForanSourceAllowed(client = pool, sourceValues = []) {
+    // Keep the source check in sync with the import branches.
+    // We use NOT VALID here so existing historical rows do not block the current import path.
+    const allowedSources = [
+      'import',
+      'manual',
+      'blocks',
+      'astructure',
+      ...new Set((sourceValues || [])
+        .map((value) => SpecificationPartsService._normalizeLowerText(value))
+        .filter((value) => value !== ''))
+    ];
+    const allowedSourcesSql = allowedSources
+      .map((value) => `'${String(value).replace(/'/g, "''")}'`)
+      .join(', ');
     await client.query(
       `ALTER TABLE IF EXISTS public.specification_parts
          DROP CONSTRAINT IF EXISTS specification_parts_source_check`
@@ -336,251 +508,12 @@ class SpecificationPartsService {
     await client.query(
       `ALTER TABLE IF EXISTS public.specification_parts
          ADD CONSTRAINT specification_parts_source_check
-         CHECK (source::text = ANY (ARRAY['import'::character varying, 'manual'::character varying, 'foran'::character varying]::text[]))`
+         CHECK (source::text = ANY (ARRAY[${allowedSourcesSql}]::text[])) NOT VALID`
     );
   }
 
-  static async importFromForan(specificationVersionId, payload, actor, options = {}) {
-    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, 'specifications.update');
-    if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
-
-    const versionId = Number(specificationVersionId);
-    if (!versionId || Number.isNaN(versionId)) {
-      const err = new Error('Invalid specification_version_id');
-      err.statusCode = 400;
-      throw err;
-    }
-
-    const version = await SpecificationVersion.findById(versionId);
-    if (!version) {
-      const err = new Error('Specification version not found');
-      err.statusCode = 404;
-      throw err;
-    }
-
-    const foranSettings = await SpecificationPartsService._loadForanRuntimeSettings();
-
-    const connectorRows = await Specification.listConnectorsBySpecificationId(Number(version.specification_id));
-    const validConnectorRows = (connectorRows || []).filter((connectorRow) => {
-      if (!connectorRow) return false;
-      const sourceConnector = connectorRow.source_connector || null;
-      const projectConnector = connectorRow.project_connector || null;
-      const dataConnector = connectorRow.data_connector || null;
-      const oidValue = dataConnector ? dataConnector.oid : null;
-      return Boolean(
-        sourceConnector &&
-        projectConnector &&
-        oidValue !== null &&
-        oidValue !== undefined &&
-        String(oidValue).trim() !== ''
-      );
-    });
-
-    if (validConnectorRows.length === 0) {
-      const err = new Error('Specification connectors not found');
-      err.statusCode = 404;
-      throw err;
-    }
-
-    const directPayload = payload && (Array.isArray(payload) || payload.rows || (payload.data && payload.data.rows) || (payload.result && payload.result.rows))
-      ? payload
-      : null;
-
-    const connectorSources = validConnectorRows.map((connectorRow) => {
-      const sourceConnector = connectorRow.source_connector;
-      const projectConnector = connectorRow.project_connector;
-      const dataConnector = connectorRow.data_connector;
-      const oid = dataConnector ? dataConnector.oid : null;
-      const sourceValue = String(projectConnector.source || 'foran').trim() || 'foran';
-      const requestUrl = SpecificationPartsService._buildForanRequestUrl(
-        sourceConnector.url,
-        projectConnector.project_code,
-        oid,
-        sourceConnector.code,
-        options.requestBaseUrl || null,
-        foranSettings.url
-      );
-      return {
-        requestUrl,
-        project_code: projectConnector.project_code,
-        oid,
-        sourceValue,
-        sourceConnector,
-        projectConnector,
-        dataConnector
-      };
-    });
-
-    const normalizedRows = [];
-    const connectorFailures = [];
-    if (directPayload) {
-      const sourceValue = connectorSources[0] ? connectorSources[0].sourceValue : 'foran';
-      const directRows = SpecificationPartsService._normalizePayloadRows(directPayload);
-      for (const row of directRows) {
-        const normalizedRow = SpecificationPartsService._normalizeExternalRow(row);
-        if (normalizedRow) {
-          normalizedRows.push({ ...normalizedRow, sourceValue });
-        }
-      }
-    } else {
-      for (const connector of connectorSources) {
-        try {
-          const externalPayload = await SpecificationPartsService._fetchForanParts({
-            url: connector.requestUrl,
-            project_code: connector.project_code,
-            oid: connector.oid
-          }, foranSettings.token);
-          const externalRows = SpecificationPartsService._normalizePayloadRows(externalPayload);
-          if (externalRows.length === 0) {
-            continue;
-          }
-          for (const row of externalRows) {
-            const normalizedRow = SpecificationPartsService._normalizeExternalRow(row);
-            if (normalizedRow) {
-              normalizedRows.push({ ...normalizedRow, sourceValue: connector.sourceValue });
-            }
-          }
-        } catch (err) {
-          connectorFailures.push({
-            url: connector.requestUrl,
-            message: err && err.message ? err.message : 'Unknown FORAN error'
-          });
-          continue;
-        }
-      }
-    }
-
-    if (normalizedRows.length === 0) {
-      if (connectorFailures.length > 0) {
-        const firstFailure = connectorFailures[0];
-        const err = new Error(
-          `FORAN import failed for all connectors. First failure: ${firstFailure.url} -> ${firstFailure.message}`
-        );
-        err.statusCode = 502;
-        err.details = connectorFailures;
-        throw err;
-      }
-      return {
-        imported_count: 0,
-        report: [],
-        data: [],
-        source: {
-          url: connectorSources[0].requestUrl,
-          project_code: connectorSources[0].project_code,
-          oid: connectorSources[0].oid
-        }
-      };
-    }
-
-    const materialMap = await SpecificationPartsService._resolveMaterialMap(normalizedRows);
-    const report = [];
-    const client = await pool.connect();
-    try {
-      await SpecificationPartsService._ensureForanSourceAllowed(client);
-      await client.query('BEGIN');
-
-      const sourceValues = [...new Set(connectorSources.map((connector) => connector.sourceValue))];
-      await client.query(
-        `DELETE FROM specification_parts
-         WHERE specification_version_id = $1
-           AND source = ANY($2::text[])`,
-        [versionId, sourceValues]
-      );
-
-      const values = [];
-      const placeholders = [];
-      let idx = 1;
-      for (let rowIndex = 0; rowIndex < normalizedRows.length; rowIndex += 1) {
-        const row = normalizedRows[rowIndex];
-        const materialKey = row.stock_code ? String(row.stock_code).trim().toUpperCase() : null;
-        const material = materialKey ? (materialMap.get(materialKey) || null) : null;
-        const materialId = material ? material.id : null;
-        if (!materialId) {
-          report.push({
-            row_index: rowIndex + 1,
-            part_code: row.part_code ?? null,
-            stock_code: row.stock_code ?? null,
-            material_id: null,
-            reason: materialKey
-              ? `Material not found for stock_code ${materialKey}`
-              : 'stock_code is missing, material_id could not be resolved'
-          });
-          continue;
-        }
-        const resolvedQuantity = SpecificationPartsService._resolveQuantity(row, material);
-        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
-        values.push(
-          versionId,
-          row.part_code,
-          row.part_oid,
-          materialId,
-          row.sfi_code_id ?? null,
-          resolvedQuantity,
-          row.num_eq_part,
-          row.zone,
-          row.length,
-          row.width,
-          row.thickness,
-          row.symmetry,
-          row.unit,
-          row.part_type,
-          row.descriptions,
-          row.cog_x,
-          row.cog_y,
-          row.cog_z,
-          actor.id,
-          row.sourceValue
-        );
-      }
-
-      if (placeholders.length === 0) {
-        await client.query('COMMIT');
-        return {
-          imported_count: 0,
-          report,
-          data: [],
-          source: {
-            url: connectorSources[0].requestUrl,
-            project_code: connectorSources[0].project_code,
-            oid: connectorSources[0].oid
-          }
-        };
-      }
-
-      const insertRes = await client.query(
-        `INSERT INTO specification_parts
-          (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
-         VALUES ${placeholders.join(', ')}
-         RETURNING id`,
-        values
-      );
-      const insertedIds = (insertRes.rows || [])
-        .map((row) => row && row.id)
-        .filter((id) => id !== null && id !== undefined);
-
-      await client.query('COMMIT');
-
-      const data = await SpecificationPart.findByIds(insertedIds);
-      return {
-        imported_count: data.length,
-        report,
-        data,
-        source: {
-          url: connectorSources[0].requestUrl,
-          project_code: connectorSources[0].project_code,
-          oid: connectorSources[0].oid
-        }
-      };
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-  }
-
   static async list(query = {}, actor) {
+    // Standard listing endpoint for already stored parts.
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, 'specifications.view');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
@@ -595,6 +528,7 @@ class SpecificationPartsService {
   }
 
   static async create(fields, actor) {
+    // Manual creation keeps the current user as the author.
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, 'specifications.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
@@ -610,6 +544,7 @@ class SpecificationPartsService {
   }
 
   static async update(fields, actor) {
+    // Update a single part row and preserve the version metadata.
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, 'specifications.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
@@ -626,6 +561,7 @@ class SpecificationPartsService {
   }
 
   static async delete(id, actor) {
+    // Soft-delete first, hard-delete only when the schema allows it.
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, 'specifications.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }

@@ -2411,7 +2411,7 @@ CREATE TABLE public.specification_parts (
     descriptions text,
     sfi_code_id integer,
     qty numeric(15,3),
-    CONSTRAINT specification_parts_source_check CHECK (((source)::text = ANY (ARRAY[('import'::character varying)::text, ('manual'::character varying)::text, ('foran'::character varying)::text])))
+    CONSTRAINT specification_parts_source_check CHECK (((source)::text = ANY (ARRAY[('import'::character varying)::text, ('manual'::character varying)::text, ('foran'::character varying)::text, ('astructure'::character varying)::text])))
 );
 
 
@@ -4863,6 +4863,14 @@ ALTER TABLE ONLY public.specifications_data_connector
 
 ALTER TABLE ONLY public.specifications_data_connector
     ADD CONSTRAINT specifications_data_connector_oid_key UNIQUE (oid);
+
+
+--
+-- Name: specifications_data_connector specifications_data_connector_source_project_oid_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.specifications_data_connector
+    ADD CONSTRAINT specifications_data_connector_source_project_oid_key UNIQUE (specifications_source_connector_id, specifications_project_connector_id, oid);
 
 
 --

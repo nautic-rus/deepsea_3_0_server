@@ -1,7 +1,7 @@
 const Specification = require('../../db/models/Specification');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
 const { hasPermission } = require('../services/permissionChecker');
-const SpecificationPartsService = require('../services/specificationPartsService');
+const SpecificationPartsImportService = require('../services/specificationPartsImportService');
 const SpecificationPdfService = require('../services/specificationPdfService');
 
 class SpecificationVersionsController {
@@ -104,7 +104,7 @@ class SpecificationVersionsController {
       const actor = req.user || null;
       const id = Number(req.params.id);
       const requestBaseUrl = `${req.protocol}://${req.get('host')}`;
-      const result = await SpecificationPartsService.importFromForan(id, req.body || null, actor, {
+      const result = await SpecificationPartsImportService.importFromBlocks(id, req.body || null, actor, {
         requestBaseUrl
       });
       res.json({ data: result });

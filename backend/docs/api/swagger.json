@@ -24928,8 +24928,8 @@
         "tags": [
           "specifications"
         ],
-        "summary": "Import specification parts from FORAN",
-        "description": "Imports parts into specification_parts for the given specification version. If the request body already contains a FORAN JSON payload, it will be used directly; otherwise the server will fetch data from FORAN using connector settings stored in the database. Rows that could not be linked to a material_id are skipped and returned in the report.",
+        "summary": "Import specification parts from external source",
+        "description": "Imports parts into specification_parts for the given specification version. If the request body already contains a supported JSON payload, it will be used directly; otherwise the server will fetch data from the configured source connector. Rows that could not be linked to a material_id are skipped and returned in the report.",
         "security": [
           {
             "bearerAuth": []
