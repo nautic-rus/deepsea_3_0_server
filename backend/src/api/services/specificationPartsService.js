@@ -190,7 +190,7 @@ class SpecificationPartsService {
       ? 'astructure'
       : 'blocks';
     const partCodeKeys = sourceMode === 'astructure'
-      ? ['CODEID', 'codeid', 'CODE_ID', 'code_id', 'PART_CODE', 'part_code', 'code', 'CODE']
+      ? ['CODEID', 'codeid']
       : ['PART_CODE', 'part_code', 'code', 'CODE'];
     const partOidKeys = sourceMode === 'astructure'
       ? ['MOD_OID', 'mod_oid', 'AS_OID', 'as_oid', 'PART_OID', 'part_oid', 'oid', 'OID']
@@ -211,7 +211,7 @@ class SpecificationPartsService {
     const partOidRaw = SpecificationPartsService._pickExternalValue(row, partOidKeys);
     const partCode = partCodeRaw != null && String(partCodeRaw).trim() !== ''
       ? String(partCodeRaw).trim()
-      : (partOidRaw != null ? String(partOidRaw) : null);
+      : null;
     const partOid = SpecificationPartsService._toNumberOrNull(partOidRaw);
     const quantityRaw = SpecificationPartsService._pickExternalValue(row, ['QTY', 'qty', 'quantity', 'QUANTITY']);
     const quantity = quantityRaw !== null && quantityRaw !== undefined && quantityRaw !== ''
