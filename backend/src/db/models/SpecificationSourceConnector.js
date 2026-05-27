@@ -3,7 +3,7 @@ const pool = require('../connection');
 class SpecificationSourceConnector {
   static async listAll() {
     const q = `
-      SELECT id, code, url, name, created_at
+      SELECT id, code, url, url_source, name, created_at
       FROM specifications_source_connector
       ORDER BY id ASC
     `;

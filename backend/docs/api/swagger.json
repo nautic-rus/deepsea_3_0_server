@@ -4250,6 +4250,10 @@
             "type": "string",
             "nullable": true
           },
+          "url_source": {
+            "type": "string",
+            "nullable": true
+          },
           "name": {
             "type": "string",
             "nullable": true

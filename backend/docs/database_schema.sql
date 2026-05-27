@@ -2548,6 +2548,7 @@ CREATE TABLE public.specifications_source_connector (
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     code text,
     url text,
+    url_source text,
     name text
 );
 
