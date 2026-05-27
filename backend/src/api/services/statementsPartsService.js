@@ -554,12 +554,9 @@ class StatementsPartsService {
 
     const latestVersions = latestVersionsRes.rows || [];
     const foundIds = new Set(latestVersions.map((row) => Number(row.specification_id)).filter((id) => Number.isInteger(id)));
-    const missingIds = specificationIds.filter((id) => !foundIds.has(id));
-    if (missingIds.length > 0) {
-      const err = new Error(`Specification not found: ${missingIds.join(', ')}`);
-      err.statusCode = 404;
-      err.details = { missing_specification_ids: missingIds };
-      throw err;
+    const validSpecificationIds = specificationIds.filter((id) => foundIds.has(id));
+    if (validSpecificationIds.length === 0) {
+      return StatementsPartsService._buildSpecificationWorkbook([], specificationIds);
     }
 
     const partsRes = await pool.query(
@@ -615,7 +612,7 @@ class StatementsPartsService {
           lsv.specification_version,
           lsv.specification_id
       `,
-      [specificationIds]
+      [validSpecificationIds]
     );
 
     return StatementsPartsService._buildSpecificationWorkbook(partsRes.rows || [], specificationIds);
