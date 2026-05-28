@@ -2345,6 +2345,7 @@ CREATE TABLE public.specification (
     id integer NOT NULL,
     project_id integer NOT NULL,
     document_id integer,
+    specialization_id integer,
     code character varying(100),
     name character varying(255) NOT NULL,
     description text,
@@ -6099,6 +6100,13 @@ CREATE INDEX idx_specification_document_id ON public.specification USING btree (
 
 
 --
+-- Name: idx_specification_specialization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_specification_specialization_id ON public.specification USING btree (specialization_id);
+
+
+--
 -- Name: idx_specification_parts_source; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7513,6 +7521,14 @@ ALTER TABLE ONLY public.specification
 
 ALTER TABLE ONLY public.specification
     ADD CONSTRAINT specification_document_id_fkey FOREIGN KEY (document_id) REFERENCES public.documents(id) ON DELETE SET NULL;
+
+
+--
+-- Name: specification specification_specialization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.specification
+    ADD CONSTRAINT specification_specialization_id_fkey FOREIGN KEY (specialization_id) REFERENCES public.specializations(id) ON DELETE SET NULL;
 
 
 --

@@ -29,6 +29,17 @@ class SpecificationsService {
     return text ? text : null;
   }
 
+  static _toNullableInteger(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const n = Number(value);
+    if (!Number.isInteger(n)) {
+      const err = new Error('Invalid integer value');
+      err.statusCode = 400;
+      throw err;
+    }
+    return n;
+  }
+
   static async listSpecifications(query = {}, actor) {
     const requiredPermission = 'specifications.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
@@ -266,7 +277,11 @@ class SpecificationsService {
     if (!allowed) { const err = new Error('Forbidden: missing permission specifications.create'); err.statusCode = 403; throw err; }
     if (!fields || !fields.project_id || !fields.name) { const err = new Error('Missing required fields'); err.statusCode = 400; throw err; }
     if (!fields.created_by) fields.created_by = actor.id;
-    return await Specification.create(fields);
+    const payload = {
+      ...fields,
+      specialization_id: SpecificationsService._toNullableInteger(fields.specialization_id)
+    };
+    return await Specification.create(payload);
   }
 
   static async updateSpecification(id, fields, actor) {
@@ -275,7 +290,11 @@ class SpecificationsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission specifications.update'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
-    const updated = await Specification.update(Number(id), fields);
+    const payload = { ...fields };
+    if (Object.prototype.hasOwnProperty.call(fields, 'specialization_id')) {
+      payload.specialization_id = SpecificationsService._toNullableInteger(fields.specialization_id);
+    }
+    const updated = await Specification.update(Number(id), payload);
     if (!updated) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
     return updated;
   }

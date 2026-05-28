@@ -8,16 +8,18 @@ class Specification {
     const values = [];
     let idx = 1;
     if (project_id) { where.push(`specification.project_id = $${idx++}`); values.push(project_id); }
-    if (search) { where.push(`(name ILIKE $${idx} OR description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
+    if (search) { where.push(`(specification.name ILIKE $${idx} OR specification.description ILIKE $${idx})`); values.push(`%${search}%`); idx++; }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT specification.id, specification.code, specification.name, specification.description, specification.created_at,
+    let q = `SELECT specification.id, specification.project_id, specification.document_id, specification.specialization_id, specification.code, specification.name, specification.description, specification.created_at,
       row_to_json(p.*) AS project,
       row_to_json(d.*) AS document,
+      row_to_json(sp.*) AS specialization,
       json_build_object('id', u.id, 'username', u.username, 'first_name', u.first_name, 'last_name', u.last_name, 'middle_name', u.middle_name, 'full_name', concat_ws(' ', u.last_name, u.first_name, u.middle_name), 'email', u.email, 'avatar_id', u.avatar_id) AS created_by,
       (SELECT version FROM specification_version sv WHERE sv.specification_id = specification.id ORDER BY sv.created_at DESC LIMIT 1) AS version
       FROM specification
       LEFT JOIN projects p ON p.id = specification.project_id
       LEFT JOIN documents d ON d.id = specification.document_id
+      LEFT JOIN specializations sp ON sp.id = specification.specialization_id
       LEFT JOIN users u ON u.id = specification.created_by
       ${whereSql} ORDER BY specification.id`;
     if (limit != null) {
@@ -32,14 +34,16 @@ class Specification {
   }
 
   static async findById(id) {
-    const q = `SELECT specification.id, specification.code, specification.name, specification.description, specification.created_at,
+    const q = `SELECT specification.id, specification.project_id, specification.document_id, specification.specialization_id, specification.code, specification.name, specification.description, specification.created_at,
       row_to_json(p.*) AS project,
       row_to_json(d.*) AS document,
+      row_to_json(sp.*) AS specialization,
       json_build_object('id', u.id, 'username', u.username, 'first_name', u.first_name, 'last_name', u.last_name, 'middle_name', u.middle_name, 'full_name', concat_ws(' ', u.last_name, u.first_name, u.middle_name), 'email', u.email, 'avatar_id', u.avatar_id) AS created_by,
       (SELECT version FROM specification_version sv WHERE sv.specification_id = specification.id ORDER BY sv.created_at DESC LIMIT 1) AS version
       FROM specification
       LEFT JOIN projects p ON p.id = specification.project_id
       LEFT JOIN documents d ON d.id = specification.document_id
+      LEFT JOIN specializations sp ON sp.id = specification.specialization_id
       LEFT JOIN users u ON u.id = specification.created_by
       WHERE specification.id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
@@ -75,8 +79,8 @@ class Specification {
   }
 
   static async create(fields) {
-    const q = `INSERT INTO specification (project_id, document_id, code, name, description, created_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, project_id, document_id, code, name, description, created_by, created_at`;
-    const vals = [fields.project_id, fields.document_id, fields.code, fields.name, fields.description, fields.created_by];
+    const q = `INSERT INTO specification (project_id, document_id, specialization_id, code, name, description, created_by) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, project_id, document_id, specialization_id, code, name, description, created_by, created_at`;
+    const vals = [fields.project_id, fields.document_id, fields.specialization_id ?? null, fields.code, fields.name, fields.description, fields.created_by];
     const res = await pool.query(q, vals);
     const spec = res.rows[0];
     if (!spec || !spec.id) return spec;
@@ -87,11 +91,11 @@ class Specification {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['document_id','code','name','description'].forEach((k) => {
+    ['document_id','specialization_id','code','name','description'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await Specification.findById(id);
-    const q = `UPDATE specification SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, project_id, document_id, code, name, description, created_by, created_at`;
+    const q = `UPDATE specification SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, project_id, document_id, specialization_id, code, name, description, created_by, created_at`;
     values.push(id);
     const res = await pool.query(q, values);
     const updated = res.rows[0] || null;

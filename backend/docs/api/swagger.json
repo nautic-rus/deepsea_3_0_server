@@ -4068,6 +4068,11 @@
             "nullable": true,
             "description": "Document ID"
           },
+          "specialization_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Specialization ID"
+          },
           "code": {
             "type": "string",
             "nullable": true,
@@ -4081,6 +4086,26 @@
             "type": "string",
             "nullable": true,
             "description": "Description"
+          },
+          "specialization": {
+            "type": "object",
+            "nullable": true,
+            "description": "Specialization record",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "code": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string",
+                "nullable": true
+              }
+            }
           },
           "version": {
             "type": "string",
@@ -4318,6 +4343,11 @@
             "type": "integer",
             "nullable": true,
             "description": "Document ID"
+          },
+          "specialization_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Specialization ID"
           },
           "code": {
             "type": "string",
@@ -19700,12 +19730,19 @@
                       "id": 1,
                       "project_id": 1,
                       "document_id": 5,
+                      "specialization_id": 3,
                       "code": "SPEC-001",
                       "name": "Main engine specification",
                       "description": "Technical specification MAN 6S60ME",
                       "version": "v1.0",
                       "created_by": 2,
-                      "created_at": "2026-01-15T10:00:00.000Z"
+                      "created_at": "2026-01-15T10:00:00.000Z",
+                      "specialization": {
+                        "id": 3,
+                        "name": "Marine engineering",
+                        "code": "MARINE",
+                        "description": "Marine engineering specialization"
+                      }
                     }
                   ]
                 }
@@ -19744,6 +19781,7 @@
               "example": {
                 "project_id": 1,
                 "document_id": 5,
+                "specialization_id": 3,
                 "code": "SPEC-002",
                 "name": "Generator specification",
                 "description": "Technical specification Caterpillar C32",
@@ -19770,12 +19808,19 @@
                     "id": 2,
                     "project_id": 1,
                     "document_id": 5,
+                    "specialization_id": 3,
                     "code": "SPEC-002",
                     "name": "Generator specification",
                     "description": "Technical specification Caterpillar C32",
                     "version": "v1.0",
                     "created_by": 2,
-                    "created_at": "2026-02-01T12:00:00.000Z"
+                    "created_at": "2026-02-01T12:00:00.000Z",
+                    "specialization": {
+                      "id": 3,
+                      "name": "Marine engineering",
+                      "code": "MARINE",
+                      "description": "Marine engineering specialization"
+                    }
                   }
                 }
               }
@@ -19831,12 +19876,19 @@
                   "id": 1,
                   "project_id": 1,
                   "document_id": 5,
+                  "specialization_id": 3,
                   "code": "SPEC-001",
                   "name": "Main engine specification",
                   "description": "Technical specification MAN 6S60ME",
                   "version": "v1.0",
                   "created_by": 2,
-                  "created_at": "2026-01-15T10:00:00.000Z"
+                  "created_at": "2026-01-15T10:00:00.000Z",
+                  "specialization": {
+                    "id": 3,
+                    "name": "Marine engineering",
+                    "code": "MARINE",
+                    "description": "Marine engineering specialization"
+                  }
                 }
               }
             }
@@ -19860,7 +19912,7 @@
           "specifications"
         ],
         "summary": "Update specification",
-        "description": "Partial update of a specification. Changeable fields: document_id, code, name, description, version. If version changes, a new record is created in specification_version.",
+        "description": "Partial update of a specification. Changeable fields: document_id, specialization_id, code, name, description, version. If version changes, a new record is created in specification_version.",
         "security": [
           {
             "bearerAuth": []
@@ -19887,6 +19939,10 @@
                 "type": "object",
                 "properties": {
                   "document_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "specialization_id": {
                     "type": "integer",
                     "nullable": true
                   },
@@ -19929,12 +19985,19 @@
                     "id": 1,
                     "project_id": 1,
                     "document_id": 5,
+                    "specialization_id": 3,
                     "code": "SPEC-001",
                     "name": "Main engine specification (updated)",
                     "description": "Technical specification MAN 6S60ME",
                     "version": "v2.0",
                     "created_by": 2,
-                    "created_at": "2026-01-15T10:00:00.000Z"
+                    "created_at": "2026-01-15T10:00:00.000Z",
+                    "specialization": {
+                      "id": 3,
+                      "name": "Marine engineering",
+                      "code": "MARINE",
+                      "description": "Marine engineering specialization"
+                    }
                   }
                 }
               }
