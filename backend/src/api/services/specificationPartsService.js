@@ -57,6 +57,18 @@ class SpecificationPartsService {
     return SpecificationPartsService._normalizeText(value).toLowerCase();
   }
 
+  static _toBoolean(value) {
+    if (value === true || value === false) return value;
+    if (value === 1 || value === '1') return true;
+    if (value === 0 || value === '0') return false;
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === 'true') return true;
+      if (normalized === 'false') return false;
+    }
+    return false;
+  }
+
   static _pickExternalValue(row, keys = []) {
     if (!row || typeof row !== 'object') return null;
     for (const key of keys) {
@@ -88,6 +100,111 @@ class SpecificationPartsService {
     return {
       ...row,
       total_weight: totalWeight,
+    };
+  }
+
+  static _resolvePartMass(row) {
+    if (!row) return null;
+
+    const quantity = SpecificationPartsService._toNumberOrNull(row.quantity) ?? 1;
+    const material = row.material || null;
+    const unitId = SpecificationPartsService._toNumberOrNull(material && material.unit ? material.unit.id : null);
+    const materialWeight = SpecificationPartsService._toNumberOrNull(material ? material.weight : null);
+
+    if (unitId === 2) {
+      return quantity;
+    }
+
+    if (materialWeight === null) {
+      return null;
+    }
+
+    return quantity * materialWeight;
+  }
+
+  static _resolvePartCog(row) {
+    if (!row) return null;
+
+    const cogX = SpecificationPartsService._toNumberOrNull(row.cog_x);
+    const cogY = SpecificationPartsService._toNumberOrNull(row.cog_y);
+    const cogZ = SpecificationPartsService._toNumberOrNull(row.cog_z);
+
+    if (cogX === null || cogY === null || cogZ === null) {
+      return null;
+    }
+
+    return { x: cogX, y: cogY, z: cogZ };
+  }
+
+  static _buildCenterOfMassError(message, details = null, statusCode = 400) {
+    const err = new Error(message);
+    err.statusCode = statusCode;
+    if (details) {
+      err.details = details;
+    }
+    return err;
+  }
+
+  static _calculateCenterOfMass(rows = []) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      throw SpecificationPartsService._buildCenterOfMassError(
+        'Specification version has no parts',
+        null,
+        404
+      );
+    }
+
+    let totalMass = 0;
+    let weightedX = 0;
+    let weightedY = 0;
+    let weightedZ = 0;
+    const invalidParts = [];
+
+    for (const row of rows) {
+      const mass = SpecificationPartsService._resolvePartMass(row);
+      const cog = SpecificationPartsService._resolvePartCog(row);
+      const partId = row && row.id !== undefined && row.id !== null ? Number(row.id) : null;
+
+      if (mass === null || !Number.isFinite(mass) || mass <= 0 || !cog) {
+        invalidParts.push({
+          id: partId,
+          part_code: row && row.part_code ? row.part_code : null,
+          reason: mass === null || !Number.isFinite(mass) || mass <= 0
+            ? 'mass is missing or invalid'
+            : 'cog is missing or invalid'
+        });
+        continue;
+      }
+
+      totalMass += mass;
+      weightedX += mass * cog.x;
+      weightedY += mass * cog.y;
+      weightedZ += mass * cog.z;
+    }
+
+    if (invalidParts.length > 0) {
+      throw SpecificationPartsService._buildCenterOfMassError(
+        'One or more parts are missing mass or COG',
+        { invalid_parts: invalidParts },
+        400
+      );
+    }
+
+    if (!Number.isFinite(totalMass) || totalMass <= 0) {
+      throw SpecificationPartsService._buildCenterOfMassError(
+        'Unable to calculate center of mass because total mass is zero',
+        null,
+        400
+      );
+    }
+
+    return {
+      total_mass: totalMass,
+      center_of_mass: {
+        x: weightedX / totalMass,
+        y: weightedY / totalMass,
+        z: weightedZ / totalMass,
+      },
     };
   }
 
@@ -558,6 +675,27 @@ class SpecificationPartsService {
     const allowed = await hasPermission(actor, 'specifications.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
     if (!fields.specification_version_id) { const err = new Error('Missing fields'); err.statusCode = 400; throw err; }
+
+    if (SpecificationPartsService._toBoolean(fields.cog_from_parent)) {
+      const parentId = Number(fields.parent_id);
+      if (!parentId || Number.isNaN(parentId)) {
+        const err = new Error('parent_id is required when cog_from_parent is true');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const parent = await SpecificationPart.findById(parentId);
+      if (!parent) {
+        const err = new Error('Parent specification part not found');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      fields.cog_x = parent.cog_x ?? null;
+      fields.cog_y = parent.cog_y ?? null;
+      fields.cog_z = parent.cog_z ?? null;
+    }
+
     fields.created_by = actor.id;
     const created = await SpecificationPart.create(fields);
     if (!created) return null;
@@ -606,6 +744,40 @@ class SpecificationPartsService {
     }
 
     return { success: true };
+  }
+
+  static async calculateCenterOfMassBySpecificationVersionId(specificationVersionId, actor) {
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, 'specifications.view');
+    if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
+
+    const versionId = Number(specificationVersionId);
+    if (!versionId || Number.isNaN(versionId)) {
+      const err = new Error('Invalid specification_version_id');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const version = await SpecificationVersion.findById(versionId);
+    if (!version) {
+      const err = new Error('Specification version not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const rows = await SpecificationPart.list({ specification_version_id: versionId });
+    if (!rows || rows.length === 0) {
+      const err = new Error('Specification version has no parts');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const result = SpecificationPartsService._calculateCenterOfMass(rows);
+    return {
+      specification_version_id: versionId,
+      specification_id: version.specification_id,
+      ...result,
+    };
   }
 }
 

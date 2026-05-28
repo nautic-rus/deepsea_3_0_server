@@ -2845,6 +2845,10 @@
             "type": "number",
             "nullable": true
           },
+          "cog_from_parent": {
+            "type": "boolean",
+            "nullable": true
+          },
           "source": {
             "type": "string",
             "nullable": true
@@ -24641,6 +24645,88 @@
         }
       }
     },
+    "/api/specification_versions/{id}/center_of_mass": {
+      "get": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Calculate specification version center of mass",
+        "description": "Calculates the overall center of mass for all parts in the specified specification version. The request fails if the version has no parts or if any part is missing mass or COG coordinates.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification version ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Center of mass calculated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "specification_version_id": {
+                          "type": "integer"
+                        },
+                        "specification_id": {
+                          "type": "integer"
+                        },
+                        "total_mass": {
+                          "type": "number"
+                        },
+                        "center_of_mass": {
+                          "type": "object",
+                          "properties": {
+                            "x": {
+                              "type": "number"
+                            },
+                            "y": {
+                              "type": "number"
+                            },
+                            "z": {
+                              "type": "number"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or parts are missing mass/COG"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Specification version not found or has no parts"
+          }
+        }
+      }
+    },
     "/api/specification_parts": {
       "get": {
         "tags": [
@@ -24704,6 +24790,22 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SpecificationPartCreate"
+              },
+              "example": {
+                "specification_version_id": 42,
+                "parent_id": 128,
+                "part_code": "SP-129",
+                "material_id": 615,
+                "quantity": 3,
+                "zone": "A-1",
+                "length": 1200,
+                "width": 800,
+                "thickness": 12,
+                "symmetry": "L",
+                "unit": "pcs",
+                "descriptions": "Child part that inherits COG from parent",
+                "cog_from_parent": true,
+                "source": "manual"
               }
             }
           }

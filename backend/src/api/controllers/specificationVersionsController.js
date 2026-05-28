@@ -1,6 +1,7 @@
 const Specification = require('../../db/models/Specification');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
 const { hasPermission } = require('../services/permissionChecker');
+const SpecificationPartsService = require('../services/specificationPartsService');
 const SpecificationPartsImportService = require('../services/specificationPartsImportService');
 const SpecificationPdfService = require('../services/specificationPdfService');
 
@@ -126,6 +127,17 @@ class SpecificationVersionsController {
         `attachment; filename="specification.pdf"; filename*=UTF-8''${encodeURIComponent(result.filename)}`
       );
       res.status(200).end(result.buffer);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async centerOfMass(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = Number(req.params.id);
+      const result = await SpecificationPartsService.calculateCenterOfMassBySpecificationVersionId(id, actor);
+      res.json({ data: result });
     } catch (err) {
       next(err);
     }

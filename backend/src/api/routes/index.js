@@ -509,6 +509,7 @@ router.delete('/specifications/:id', authMiddleware, specificationsController.de
 router.get('/specification_versions', authMiddleware, specificationVersionsController.list);
 router.post('/specification_versions', authMiddleware, specificationVersionsController.create);
 router.get('/specification_versions/:id/pdf', authMiddleware, specificationVersionsController.downloadPdf);
+router.get('/specification_versions/:id/center_of_mass', authMiddleware, specificationVersionsController.centerOfMass);
 router.get('/specification_versions/:id', authMiddleware, specificationVersionsController.get);
 router.delete('/specification_versions/:id', authMiddleware, specificationVersionsController.delete);
 router.post('/specification_versions/:id/import_parts', authMiddleware, specificationVersionsController.importParts);
