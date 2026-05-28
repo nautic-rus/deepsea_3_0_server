@@ -501,13 +501,10 @@ class StatementsPartsService {
 
     const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
     const datePart = new Date().toISOString().slice(0, 10);
-    const suffix = selectedSpecificationIds.length > 1
-      ? `_${selectedSpecificationIds.join('_')}`
-      : selectedSpecificationIds[0] ? `_${selectedSpecificationIds[0]}` : '';
 
     return {
       buffer,
-      filename: `statements_by_specifications${suffix}_${datePart}.xlsx`,
+      filename: `statements_by_specifications_${datePart}.xlsx`,
       rows_count: data.length,
     };
   }
