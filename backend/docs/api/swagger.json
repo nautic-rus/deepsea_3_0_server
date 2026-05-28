@@ -24106,12 +24106,20 @@
         },
         "responses": {
           "200": {
-            "description": "Excel file",
+            "description": "Excel file attachment named `statements_by_specifications_YYYY-MM-DD.xlsx`",
             "content": {
               "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
+                }
+              }
+            },
+            "headers": {
+              "Content-Disposition": {
+                "description": "attachment; filename=\"statements_by_specifications_YYYY-MM-DD.xlsx\"",
+                "schema": {
+                  "type": "string"
                 }
               }
             }

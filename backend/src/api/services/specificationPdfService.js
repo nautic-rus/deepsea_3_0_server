@@ -20,6 +20,7 @@ class SpecificationPdfService {
   static _activeJobs = 0;
   static _waitQueue = [];
   static _inFlightGenerations = new Map();
+  static _fontCssCache = null;
 
   static _escapeHtml(value) {
     return String(value ?? '')
@@ -74,6 +75,87 @@ class SpecificationPdfService {
       }
     }
     return null;
+  }
+
+  static _fontToDataUrl(fontPath) {
+    const ext = path.extname(fontPath).toLowerCase();
+    const mimeType = ext === '.otf'
+      ? 'font/otf'
+      : ext === '.ttc'
+        ? 'font/collection'
+        : 'font/ttf';
+    const buffer = fs.readFileSync(fontPath);
+    return `data:${mimeType};base64,${buffer.toString('base64')}`;
+  }
+
+  static _resolveFirstExistingPath(candidates) {
+    for (const candidate of candidates) {
+      if (candidate && fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  static _buildEmbeddedFontCss() {
+    if (SpecificationPdfService._fontCssCache !== null) {
+      return SpecificationPdfService._fontCssCache;
+    }
+
+    const fontCandidates = {
+      sansRegular: [
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
+        '/usr/share/fonts/liberation/LiberationSans-Regular.ttf',
+        '/Library/Fonts/Arial.ttf',
+        '/System/Library/Fonts/Supplemental/Arial.ttf',
+      ],
+      sansBold: [
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+        '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
+        '/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf',
+        '/usr/share/fonts/liberation/LiberationSans-Bold.ttf',
+        '/Library/Fonts/Arial Bold.ttf',
+        '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+      ],
+      monoRegular: [
+        '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
+        '/usr/share/fonts/dejavu/DejaVuSansMono.ttf',
+        '/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf',
+        '/usr/share/fonts/liberation/LiberationMono-Regular.ttf',
+        '/System/Library/Fonts/Supplemental/Courier New.ttf',
+      ],
+      monoBold: [
+        '/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf',
+        '/usr/share/fonts/dejavu/DejaVuSansMono-Bold.ttf',
+        '/usr/share/fonts/truetype/liberation2/LiberationMono-Bold.ttf',
+        '/usr/share/fonts/liberation/LiberationMono-Bold.ttf',
+        '/System/Library/Fonts/Supplemental/Courier New Bold.ttf',
+      ],
+    };
+
+    const rules = [];
+    for (const [weightName, candidates] of Object.entries(fontCandidates)) {
+      const fontPath = SpecificationPdfService._resolveFirstExistingPath(candidates);
+      if (!fontPath) {
+        continue;
+      }
+
+      const family = weightName.startsWith('mono') ? 'SpecMono' : 'SpecSans';
+      const weight = weightName.endsWith('Bold') ? '700' : '400';
+      rules.push(`
+    @font-face {
+      font-family: "${family}";
+      src: url("${SpecificationPdfService._fontToDataUrl(fontPath)}") format("truetype");
+      font-weight: ${weight};
+      font-style: normal;
+      font-display: swap;
+    }`);
+    }
+
+    SpecificationPdfService._fontCssCache = rules.join('\n');
+    return SpecificationPdfService._fontCssCache;
   }
 
   static _isTransientBrowserError(err) {
@@ -174,7 +256,7 @@ class SpecificationPdfService {
     if (!match) {
       throw new Error('Specification template styles not found');
     }
-    return match[1].replace(/@font-face\s*{[\s\S]*?}\s*/gi, '');
+    return `${SpecificationPdfService._buildEmbeddedFontCss()}\n${match[1]}`;
   }
 
   static _logoDataUrl() {
@@ -760,6 +842,11 @@ ${pages.join('\n')}
           waitUntil: 'domcontentloaded',
           timeout: PDF_PAGE_TIMEOUT_MS,
         });
+        await page.evaluate(async () => {
+          if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+          }
+        }).catch(() => {});
         await page.emulateMediaType('screen');
         const buffer = await page.pdf({
           format: 'A4',
