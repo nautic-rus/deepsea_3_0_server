@@ -51,7 +51,7 @@
     .stamp-frame {
       position: absolute;
       right: 5.1mm;
-      bottom: 5.6mm;
+      bottom:5mm;
       width: 200mm;
       height: 21mm;
       box-sizing: border-box;
@@ -87,33 +87,40 @@
     }
 
     .stamp-logo-cell {
-      text-align: center;
-      vertical-align: middle;
+      position: relative;
       padding: 0;
     }
 
+    .stamp-logo-box {
+      position: absolute;
+      inset: 0;
+    }
+
     .stamp-logo {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       display: block;
-      width: 19.3mm;
-      height: 7.1mm;
-      margin: 0 auto;
+      max-width: 80%;
+      height: auto;
       object-fit: contain;
     }
 
     .stamp-doc-name-cell {
       text-align: left;
-      font-size: 5mm;
+      font-size: 4mm;
       font-weight: 700;
     }
 
     .stamp-drawing-cell {
       text-align: left;
-      font-size: 5mm;
+      font-size: 4mm;
       font-weight: 700;
     }
 
     .stamp-meta-cell {
-      text-align: left;
+      text-align: center;
       font-size: 2.5mm;
       font-weight: 700;
     }
@@ -125,7 +132,6 @@
       font-size: 2.5mm;
       font-weight: 400;
       white-space: nowrap;
-      transform-origin: left center;
     }
 
     .stamp-value {
@@ -145,17 +151,17 @@
       display: flex;
       align-items: center;
       height: calc(100% - 3mm);
-      font-size: 10mm;
+      font-size: 7mm;
     }
 
     .stamp-meta-cell .stamp-value {
-      font-size: 5mm;
+      font-size: 4mm;
       font-family: "DejaVu Sans Mono", "Liberation Mono", "Courier New", monospace;
       font-weight: 700;
     }
 
     .stamp-page-cell .stamp-value {
-      font-size: 5mm;
+      font-size: 4mm;
     }
 
     .page-title {
@@ -230,16 +236,16 @@
       line-height: 1.05;
     }
 
-    .part-table col:nth-child(1) { width: 7%; }
-    .part-table col:nth-child(2) { width: 30%; }
+    .part-table col:nth-child(1) { width: 5%; }
+    .part-table col:nth-child(2) { width: 24%; }
     .part-table col:nth-child(3) { width: 15%; }
     .part-table col:nth-child(4) { width: 7%; }
     .part-table col:nth-child(5) { width: 7%; }
     .part-table col:nth-child(6) { width: 7%; }
     .part-table col:nth-child(7) { width: 7%; }
     .part-table col:nth-child(8) { width: 7%; }
-    .part-table col:nth-child(9) { width: 7%; }
-    .part-table col:nth-child(10) { width: 15%; }
+    .part-table col:nth-child(9) { width: 9%; }
+    .part-table col:nth-child(10) { width: 12%; }
 
     .summary-table col:nth-child(1) { width: 5%; }
     .summary-table col:nth-child(2) { width: 30%; }
@@ -262,7 +268,9 @@
         <tbody>
         <tr>
           <td rowspan="3" class="stamp-cell stamp-logo-cell">
-            <img class="stamp-logo" src="{{logoUrl}}" alt="logo">
+            <div class="stamp-logo-box">
+              <img class="stamp-logo" src="{{logoUrl}}" alt="logo">
+            </div>
           </td>
           <td colspan="3" class="stamp-cell stamp-doc-name-cell">
             <div class="stamp-doc-name-value">{{docName}}</div>
@@ -303,7 +311,9 @@
         <tbody>
         <tr>
           <td rowspan="3" class="stamp-cell stamp-logo-cell">
-            <img class="stamp-logo" src="{{logoUrl}}" alt="logo">
+            <div class="stamp-logo-box">
+              <img class="stamp-logo" src="{{logoUrl}}" alt="logo">
+            </div>
           </td>
           <td colspan="3" class="stamp-cell stamp-doc-name-cell">
             <div class="stamp-doc-name-value">{{docName}}</div>
@@ -379,7 +389,9 @@
         <tbody>
         <tr>
           <td rowspan="3" class="stamp-cell stamp-logo-cell">
-            <img class="stamp-logo" src="{{logoUrl}}" alt="logo">
+            <div class="stamp-logo-box">
+              <img class="stamp-logo" src="{{logoUrl}}" alt="logo">
+            </div>
           </td>
           <td colspan="3" class="stamp-cell stamp-doc-name-cell">
             <div class="stamp-doc-name-value">{{docName}}</div>
