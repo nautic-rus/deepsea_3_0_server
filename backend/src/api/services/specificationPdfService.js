@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execFileSync } = require('child_process');
 const puppeteer = require('puppeteer-core');
 
 const pool = require('../../db/connection');
@@ -97,47 +98,58 @@ class SpecificationPdfService {
     return null;
   }
 
+  static _resolveFontconfigMatch(query) {
+    try {
+      const output = execFileSync('fc-match', ['-f', '%{file}\n', query], {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim();
+      if (!output) {
+        return null;
+      }
+      return fs.existsSync(output) ? output : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
   static _buildEmbeddedFontCss() {
     if (SpecificationPdfService._fontCssCache !== null) {
       return SpecificationPdfService._fontCssCache;
     }
 
-    const fontCandidates = {
+    const fontQueries = {
       sansRegular: [
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-        '/usr/share/fonts/dejavu/DejaVuSans.ttf',
-        '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
-        '/usr/share/fonts/liberation/LiberationSans-Regular.ttf',
-        '/Library/Fonts/Arial.ttf',
-        '/System/Library/Fonts/Supplemental/Arial.ttf',
+        'Arial:style=Regular',
+        'Arial',
+        'Liberation Sans:style=Regular',
+        'DejaVu Sans:style=Regular',
       ],
       sansBold: [
-        '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
-        '/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf',
-        '/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf',
-        '/usr/share/fonts/liberation/LiberationSans-Bold.ttf',
-        '/Library/Fonts/Arial Bold.ttf',
-        '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+        'Arial:style=Bold',
+        'Arial Bold',
+        'Liberation Sans:style=Bold',
+        'DejaVu Sans:style=Bold',
       ],
       monoRegular: [
-        '/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf',
-        '/usr/share/fonts/dejavu/DejaVuSansMono.ttf',
-        '/usr/share/fonts/truetype/liberation2/LiberationMono-Regular.ttf',
-        '/usr/share/fonts/liberation/LiberationMono-Regular.ttf',
-        '/System/Library/Fonts/Supplemental/Courier New.ttf',
+        'Courier New:style=Regular',
+        'Courier New',
+        'Liberation Mono:style=Regular',
+        'DejaVu Sans Mono:style=Regular',
       ],
       monoBold: [
-        '/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf',
-        '/usr/share/fonts/dejavu/DejaVuSansMono-Bold.ttf',
-        '/usr/share/fonts/truetype/liberation2/LiberationMono-Bold.ttf',
-        '/usr/share/fonts/liberation/LiberationMono-Bold.ttf',
-        '/System/Library/Fonts/Supplemental/Courier New Bold.ttf',
+        'Courier New:style=Bold',
+        'Courier New Bold',
+        'Liberation Mono:style=Bold',
+        'DejaVu Sans Mono:style=Bold',
       ],
     };
 
     const rules = [];
-    for (const [weightName, candidates] of Object.entries(fontCandidates)) {
-      const fontPath = SpecificationPdfService._resolveFirstExistingPath(candidates);
+    for (const [weightName, queries] of Object.entries(fontQueries)) {
+      const fontPath = queries
+        .map((query) => SpecificationPdfService._resolveFontconfigMatch(query))
+        .find(Boolean);
       if (!fontPath) {
         continue;
       }
