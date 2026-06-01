@@ -1,6 +1,6 @@
 const Material = require('../../db/models/Material');
 const pool = require('../../db/connection');
-const { hasPermission, hasPermissionForProject, getPermissionProjectScope } = require('./permissionChecker');
+const { hasPermission, hasPermissionForProject } = require('./permissionChecker');
 
 /**
  * MaterialsService
@@ -38,16 +38,9 @@ class MaterialsService {
     const requiredPermission = 'materials.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     query = MaterialsService._normalizeProjectFilter(query);
-    const permissionScope = await getPermissionProjectScope(actor, requiredPermission);
-    if (!permissionScope.hasGlobal && permissionScope.projectIds.length === 0) {
-      const err = new Error('Forbidden: missing permission materials.view'); err.statusCode = 403; throw err;
-    }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission materials.view'); err.statusCode = 403; throw err; }
 
-    if (permissionScope.hasGlobal) {
-      return await Material.list(query);
-    }
-
-    const allowedProjectIds = permissionScope.projectIds;
     if (query.project_id !== undefined && query.project_id !== null) {
       const requestedProjectIds = Array.isArray(query.project_id)
         ? query.project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
@@ -57,16 +50,10 @@ class MaterialsService {
         const err = new Error('Invalid project_id'); err.statusCode = 400; throw err;
       }
 
-      const forbiddenProject = requestedProjectIds.find(pid => !allowedProjectIds.includes(pid));
-      if (forbiddenProject !== undefined) {
-        const err = new Error('Forbidden: missing permission materials.view for requested project'); err.statusCode = 403; throw err;
-      }
-
       query.project_id = requestedProjectIds.length === 1 ? requestedProjectIds[0] : requestedProjectIds;
     }
 
-    const filters = Object.assign({}, query, { allowed_project_ids: allowedProjectIds });
-    return await Material.list(filters);
+    return await Material.list(query);
   }
 
   static async getMaterialById(id, actor) {

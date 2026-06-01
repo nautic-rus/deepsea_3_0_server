@@ -229,7 +229,7 @@ class Material {
   }
 
   static async list(filters = {}) {
-    const { directory_id, unit_id, shipment_id, type, status, project_id, allowed_project_ids, page = 1, limit, search, load_statements } = filters;
+    const { directory_id, unit_id, shipment_id, type, status, project_id, page = 1, limit, search, load_statements } = filters;
     const offset = limit ? (page - 1) * limit : 0;
     const where = [];
     const values = [];
@@ -268,18 +268,6 @@ class Material {
       const projectIds = Array.isArray(project_id)
         ? project_id.map(p => Number(p)).filter(p => !Number.isNaN(p))
         : [Number(project_id)].filter(p => !Number.isNaN(p));
-      if (projectIds.length === 0) return [];
-      where.push(`EXISTS (
-        SELECT 1
-        FROM equipment_materials_projects emp
-        JOIN statements s ON s.id = emp.statement_id
-        WHERE emp.equipment_material_id = m.id
-          AND s.project_id = ANY($${idx++}::int[])
-      )`);
-      values.push(projectIds);
-    }
-    if (Array.isArray(allowed_project_ids) && allowed_project_ids.length > 0) {
-      const projectIds = allowed_project_ids.map(p => Number(p)).filter(p => !Number.isNaN(p));
       if (projectIds.length === 0) return [];
       where.push(`EXISTS (
         SELECT 1
