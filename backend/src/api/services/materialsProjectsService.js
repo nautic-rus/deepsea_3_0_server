@@ -1,5 +1,7 @@
 const MaterialProject = require('../../db/models/MaterialProject');
 const Material = require('../../db/models/Material');
+const MaterialKit = require('../../db/models/MaterialKit');
+const MaterialProjectKit = require('../../db/models/MaterialProjectKit');
 const Statement = require('../../db/models/Statement');
 const Shipment = require('../../db/models/Shipment');
 const pool = require('../../db/connection');
@@ -16,7 +18,62 @@ class MaterialsProjectsService {
   }
 
   static _normalizePayload(fields = {}) {
-    return Object.assign({}, fields || {});
+    const normalized = Object.assign({}, fields || {});
+    if (normalized.kitIds !== undefined && normalized.kit_ids === undefined) {
+      normalized.kit_ids = normalized.kitIds;
+    }
+    if (normalized.kits !== undefined && normalized.kit_ids === undefined) {
+      normalized.kit_ids = normalized.kits;
+    }
+    delete normalized.kitIds;
+    delete normalized.kits;
+    return normalized;
+  }
+
+  static _extractKitIds(payload = {}) {
+    const raw = payload.kit_ids;
+    if (raw === undefined || raw === null || raw === '') return undefined;
+    const source = Array.isArray(raw) ? raw : String(raw).split(',');
+    const ids = source
+      .map((item) => {
+        if (item && typeof item === 'object') {
+          return item.material_kit_id || item.kit_id || item.id || null;
+        }
+        return item;
+      })
+      .map((value) => Number(value))
+      .filter((value) => !Number.isNaN(value) && value > 0);
+    return [...new Set(ids)];
+  }
+
+  static async _syncKits(materialProjectId, kitIds, resolvedProjectId = null) {
+    if (!Array.isArray(kitIds)) return;
+    await MaterialsProjectsService._validateKits(kitIds, resolvedProjectId);
+    await MaterialProjectKit.replaceForMaterialProject(materialProjectId, kitIds);
+  }
+
+  static async _validateKits(kitIds, resolvedProjectId = null) {
+    const kits = kitIds.length > 0 ? await MaterialKit.findByIds(kitIds) : [];
+    const kitMap = new Map(kits.map((kit) => [Number(kit.id), kit]));
+    const missing = kitIds.filter((kitId) => !kitMap.has(Number(kitId)));
+    if (missing.length > 0) {
+      const err = new Error('Kit not found');
+      err.statusCode = 404;
+      err.details = { missing_kit_ids: missing };
+      throw err;
+    }
+
+    for (const kitId of kitIds) {
+      const kit = kitMap.get(Number(kitId));
+      if (!kit) continue;
+      if (resolvedProjectId !== null && resolvedProjectId !== undefined && kit.project_id !== null && Number(kit.project_id) !== Number(resolvedProjectId)) {
+        const err = new Error('Forbidden: kit belongs to another project');
+        err.statusCode = 409;
+        err.details = { kit_id: kit.id, kit_project_id: kit.project_id, target_project_id: resolvedProjectId };
+        throw err;
+      }
+    }
+    return kits;
   }
 
   static async listProjectDirectories(query = {}, actor) {
@@ -166,6 +223,7 @@ class MaterialsProjectsService {
     const materialId = MaterialsProjectsService._toInt(payload.equipment_material_id);
     const statementId = MaterialsProjectsService._toInt(payload.statement_id);
     const shipmentsId = MaterialsProjectsService._toInt(payload.shipments_id);
+    const kitIds = MaterialsProjectsService._extractKitIds(payload);
 
     if (!materialId || !statementId) {
       const err = new Error('Missing required fields: equipment_material_id, statement_id');
@@ -203,11 +261,20 @@ class MaterialsProjectsService {
       if (!shipment) { const err = new Error('Shipment not found'); err.statusCode = 404; throw err; }
     }
 
-    return await MaterialProject.create({
+    if (kitIds !== undefined) {
+      await MaterialsProjectsService._validateKits(kitIds, resolvedProjectId);
+    }
+
+    const created = await MaterialProject.create({
       equipment_material_id: materialId,
       statement_id: statementId,
       shipments_id: shipmentsId !== undefined ? shipmentsId : null
     });
+    if (kitIds !== undefined) {
+      await MaterialsProjectsService._syncKits(created.id, kitIds, resolvedProjectId);
+      return await MaterialProject.findById(created.id);
+    }
+    return created;
   }
 
   static async update(id, fields, actor) {
@@ -222,12 +289,15 @@ class MaterialsProjectsService {
     const materialProvided = Object.prototype.hasOwnProperty.call(payload, 'equipment_material_id');
     const statementProvided = Object.prototype.hasOwnProperty.call(payload, 'statement_id');
     const shipmentsProvided = Object.prototype.hasOwnProperty.call(payload, 'shipments_id');
+    const kitsProvided = Object.prototype.hasOwnProperty.call(payload, 'kit_ids');
 
     const nextMaterialId = materialProvided ? MaterialsProjectsService._toInt(payload.equipment_material_id) : existing.equipment_material_id;
     const nextStatementId = statementProvided ? MaterialsProjectsService._toInt(payload.statement_id) : existing.statement_id;
     const nextShipmentsId = shipmentsProvided
       ? (payload.shipments_id === null ? null : MaterialsProjectsService._toInt(payload.shipments_id))
       : existing.shipments_id;
+    const nextKitIds = kitsProvided ? MaterialsProjectsService._extractKitIds(payload) : undefined;
+    const existingKits = Array.isArray(existing.kits) ? existing.kits : [];
 
     if (materialProvided && nextMaterialId === undefined) {
       const err = new Error('Invalid equipment_material_id');
@@ -259,6 +329,20 @@ class MaterialsProjectsService {
 
     const resolvedProjectId = Number(statement.project_id) || null;
 
+    if (statementProvided && !kitsProvided && existingKits.length > 0) {
+      const incompatibleKit = existingKits.find((kit) => kit && kit.project_id !== null && kit.project_id !== undefined && Number(kit.project_id) !== Number(resolvedProjectId));
+      if (incompatibleKit) {
+        const err = new Error('Forbidden: existing kits belong to another project');
+        err.statusCode = 409;
+        err.details = {
+          kit_id: incompatibleKit.id,
+          kit_project_id: incompatibleKit.project_id,
+          target_project_id: resolvedProjectId
+        };
+        throw err;
+      }
+    }
+
     const existingAllowed = existing.project_id !== null ? existing.project_id : resolvedProjectId;
     await MaterialsProjectsService._ensureWriteAccess(actor, existingAllowed);
     if (resolvedProjectId !== null && existingAllowed !== null && Number(existingAllowed) !== Number(resolvedProjectId)) {
@@ -279,11 +363,20 @@ class MaterialsProjectsService {
       if (!shipment) { const err = new Error('Shipment not found'); err.statusCode = 404; throw err; }
     }
 
-    return await MaterialProject.update(Number(id), {
+    if (kitsProvided) {
+      await MaterialsProjectsService._validateKits(nextKitIds || [], resolvedProjectId);
+    }
+
+    const updated = await MaterialProject.update(Number(id), {
       equipment_material_id: nextMaterialId,
       statement_id: nextStatementId,
       shipments_id: nextShipmentsId
     });
+    if (kitsProvided) {
+      await MaterialsProjectsService._syncKits(Number(id), nextKitIds || [], resolvedProjectId);
+      return await MaterialProject.findById(Number(id));
+    }
+    return updated;
   }
 
   static async delete(id, actor) {

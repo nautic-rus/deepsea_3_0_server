@@ -2266,6 +2266,13 @@
             "type": "integer",
             "nullable": true
           },
+          "kits": {
+            "type": "array",
+            "description": "Linked material kits",
+            "items": {
+              "$ref": "#/components/schemas/MaterialKit"
+            }
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -2608,6 +2615,10 @@
             "type": "string",
             "nullable": true
           },
+          "drawing_address": {
+            "type": "string",
+            "nullable": true
+          },
           "material_id": {
             "type": "integer",
             "nullable": true
@@ -2790,6 +2801,10 @@
             "nullable": true
           },
           "part_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "drawing_address": {
             "type": "string",
             "nullable": true
           },
@@ -3972,6 +3987,213 @@
             "type": "boolean",
             "nullable": true,
             "description": "Lock flag"
+          }
+        }
+      },
+      "MaterialKit": {
+        "type": "object",
+        "description": "Material kit",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "project": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "code": {
+                "type": "string",
+                "nullable": true
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_by": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          },
+          "updated_by": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MaterialKitCreate": {
+        "type": "object",
+        "description": "Request body for creating a material kit",
+        "required": [
+          "code",
+          "name"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "description": "Kit code"
+          },
+          "name": {
+            "type": "string",
+            "description": "Kit name"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Kit description"
+          }
+        }
+      },
+      "MaterialKitUpdate": {
+        "type": "object",
+        "description": "Request body for updating a material kit",
+        "properties": {
+          "project_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MaterialKitItem": {
+        "type": "object",
+        "description": "Material kit item",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "kit_id": {
+            "type": "integer"
+          },
+          "material_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "material": {
+            "$ref": "#/components/schemas/Material"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "MaterialKitItemCreate": {
+        "type": "object",
+        "description": "Request body for creating a material kit item",
+        "properties": {
+          "material_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MaterialKitItemUpdate": {
+        "type": "object",
+        "description": "Request body for updating a material kit item",
+        "properties": {
+          "material_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "MaterialKitApplyRequest": {
+        "type": "object",
+        "description": "Request body for applying a material kit to a specification version",
+        "required": [
+          "specification_version_id"
+        ],
+        "properties": {
+          "specification_version_id": {
+            "type": "integer"
           }
         }
       },
@@ -5938,7 +6160,7 @@
           "materials"
         ],
         "summary": "Create material-project link",
-        "description": "Creates a row in equipment_materials_projects. statement_id is required because project is resolved through the linked statement.",
+        "description": "Creates a row in equipment_materials_projects. statement_id is required because project is resolved through the linked statement. kit_ids can be used to attach one or more kits to the same material-project link.",
         "security": [
           {
             "bearerAuth": []
@@ -5967,7 +6189,22 @@
                   "shipments_id": {
                     "type": "integer",
                     "nullable": true
+                  },
+                  "kit_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
                   }
+                },
+                "example": {
+                  "equipment_material_id": 45,
+                  "statement_id": 13,
+                  "shipments_id": null,
+                  "kit_ids": [
+                    1,
+                    2
+                  ]
                 }
               }
             }
@@ -5983,6 +6220,53 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/MaterialProjectLink"
+                    }
+                  },
+                  "example": {
+                    "data": {
+                      "id": 40,
+                      "equipment_material_id": 45,
+                      "project_id": 48,
+                      "statement_id": 13,
+                      "shipments_id": null,
+                      "material": {
+                        "id": 45,
+                        "stock_code": "NR00000000000045",
+                        "name": "Steel pipe DN50",
+                        "description": null,
+                        "type": "material",
+                        "status": "active"
+                      },
+                      "project": {
+                        "id": 48,
+                        "code": "240402",
+                        "name": "ТРАУЛЕР (70/13.5м)"
+                      },
+                      "statement": {
+                        "id": 13,
+                        "code": "240402-101-103",
+                        "name": "ВЕДОМОСТЬ ЗАКАЗА ТРУБНОГО ПРОКАТА И ФАСОННЫХ ЧАСТЕЙ",
+                        "project_id": 48
+                      },
+                      "shipments": null,
+                      "kits": [
+                        {
+                          "id": 1,
+                          "project_id": 48,
+                          "code": "KT-001",
+                          "name": "Pipe kit",
+                          "description": null,
+                          "created_by": {
+                            "id": 341,
+                            "name": "Спиридович Павел Вячеславович",
+                            "avatar_id": 297
+                          },
+                          "updated_by": null,
+                          "created_at": "2026-05-31T11:00:00.000Z",
+                          "updated_at": null
+                        }
+                      ],
+                      "created_at": "2026-05-31T12:00:00.000Z"
                     }
                   }
                 }
@@ -6111,7 +6395,22 @@
                   "shipments_id": {
                     "type": "integer",
                     "nullable": true
+                  },
+                  "kit_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
                   }
+                },
+                "example": {
+                  "equipment_material_id": 45,
+                  "statement_id": 13,
+                  "shipments_id": null,
+                  "kit_ids": [
+                    1,
+                    2
+                  ]
                 }
               }
             }
@@ -6127,6 +6426,53 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/MaterialProjectLink"
+                    }
+                  },
+                  "example": {
+                    "data": {
+                      "id": 40,
+                      "equipment_material_id": 45,
+                      "project_id": 48,
+                      "statement_id": 13,
+                      "shipments_id": null,
+                      "material": {
+                        "id": 45,
+                        "stock_code": "NR00000000000045",
+                        "name": "Steel pipe DN50",
+                        "description": null,
+                        "type": "material",
+                        "status": "active"
+                      },
+                      "project": {
+                        "id": 48,
+                        "code": "240402",
+                        "name": "ТРАУЛЕР (70/13.5м)"
+                      },
+                      "statement": {
+                        "id": 13,
+                        "code": "240402-101-103",
+                        "name": "ВЕДОМОСТЬ ЗАКАЗА ТРУБНОГО ПРОКАТА И ФАСОННЫХ ЧАСТЕЙ",
+                        "project_id": 48
+                      },
+                      "shipments": null,
+                      "kits": [
+                        {
+                          "id": 1,
+                          "project_id": 48,
+                          "code": "KT-001",
+                          "name": "Pipe kit",
+                          "description": null,
+                          "created_by": {
+                            "id": 341,
+                            "name": "Спиридович Павел Вячеславович",
+                            "avatar_id": 297
+                          },
+                          "updated_by": null,
+                          "created_at": "2026-05-31T11:00:00.000Z",
+                          "updated_at": null
+                        }
+                      ],
+                      "created_at": "2026-05-31T12:00:00.000Z"
                     }
                   }
                 }
@@ -16354,36 +16700,58 @@
           "material_kits.create"
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "required": [
-                  "code",
-                  "name"
-                ],
-                "properties": {
-                  "code": {
-                    "type": "string",
-                    "description": "Kit code"
-                  },
-                  "name": {
-                    "type": "string",
-                    "description": "Kit name"
-                  },
-                  "description": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "Kit description"
-                  }
-                }
+                "$ref": "#/components/schemas/MaterialKitCreate"
+              },
+              "example": {
+                "project_id": 12,
+                "code": "MK-002",
+                "name": "Electrical kit",
+                "description": "Kit for electrical package"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created"
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MaterialKit"
+                    }
+                  }
+                },
+                "example": {
+                "data": {
+                  "id": 2,
+                  "project_id": 12,
+                  "project": {
+                    "id": 12,
+                    "code": "PRJ-012",
+                    "name": "Factory expansion"
+                  },
+                  "code": "MK-002",
+                  "name": "Electrical kit",
+                  "description": "Kit for electrical package",
+                  "created_by": {
+                    "id": 341,
+                    "name": "Спиридович Павел Вячеславович",
+                    "avatar_id": 297
+                  },
+                  "updated_by": null,
+                  "created_at": "2026-05-31T12:00:00.000Z",
+                  "updated_at": "2026-05-31T12:00:00.000Z"
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -16400,12 +16768,65 @@
         "x-permissions": [
           "material_kits.view"
         ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter kits by project. Global kits have project_id = null."
+          }
+        ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MaterialKit"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 1,
+                      "project_id": 12,
+                      "project": {
+                        "id": 12,
+                        "code": "PRJ-012",
+                        "name": "Factory expansion"
+                      },
+                      "code": "MK-001",
+                      "name": "Pipe kit",
+                      "description": "Kit for piping package",
+                      "created_by": {
+                        "id": 341,
+                        "name": "Спиридович Павел Вячеславович",
+                        "avatar_id": 297
+                      },
+                      "updated_by": {
+                        "id": 341,
+                        "name": "Спиридович Павел Вячеславович",
+                        "avatar_id": 297
+                      },
+                      "created_at": "2026-05-31T12:00:00.000Z",
+                      "updated_at": "2026-05-31T12:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
           }
-        },
-        "parameters": []
+        }
       }
     },
     "/api/material_kits/{id}": {
@@ -16433,17 +16854,62 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StatementsVersionUpdate"
+                "$ref": "#/components/schemas/MaterialKitUpdate"
+              },
+              "example": {
+                "project_id": 12,
+                "code": "MK-001",
+                "name": "Pipe kit updated",
+                "description": "Updated kit description"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MaterialKit"
+                    }
+                  }
+                },
+                "example": {
+                "data": {
+                  "id": 1,
+                  "project_id": 12,
+                  "project": {
+                    "id": 12,
+                    "code": "PRJ-012",
+                    "name": "Factory expansion"
+                  },
+                  "code": "MK-001",
+                  "name": "Pipe kit updated",
+                  "description": "Updated kit description",
+                  "created_by": {
+                    "id": 341,
+                    "name": "Спиридович Павел Вячеславович",
+                    "avatar_id": 297
+                  },
+                  "updated_by": {
+                    "id": 342,
+                    "name": "Иванов Иван Иванович",
+                    "avatar_id": 298
+                  },
+                  "created_at": "2026-05-31T12:00:00.000Z",
+                  "updated_at": "2026-05-31T12:30:00.000Z"
+                }
+                }
+              }
+            }
           }
         }
       },
@@ -16472,7 +16938,22 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Material kit deleted"
+                }
+              }
+            }
           }
         }
       },
@@ -16501,7 +16982,12 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "$ref": "#/components/schemas/MaterialKit"
+              }
+            }
           }
         }
       }
@@ -16531,22 +17017,49 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StatementsVersionUpdate"
+                "$ref": "#/components/schemas/MaterialKitApplyRequest"
               },
               "example": {
-                "version": "v2",
-                "notes": "Updated after review",
-                "lock": true
+                "specification_version_id": 123
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SpecificationPart"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 901,
+                      "specification_version_id": 123,
+                      "part_code": "P-001",
+                      "material_id": 45,
+                      "quantity": 10,
+                      "source": "import",
+                      "created_at": "2026-05-31T12:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -16576,22 +17089,71 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StatementsVersionUpdate"
+                "$ref": "#/components/schemas/MaterialKitItemCreate"
               },
               "example": {
-                "version": "v2",
-                "notes": "Updated after review",
-                "lock": true
+                "material_id": 45,
+                "quantity": 10,
+                "notes": "Main pipe bundle"
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created"
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MaterialKitItem"
+                    }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": 1,
+                    "kit_id": 1,
+                    "material_id": 45,
+                    "material": {
+                      "id": 45,
+                      "stock_code": "NR00000000000045",
+                      "name": "Steel pipe DN50",
+                      "description": null,
+                      "directory": {
+                        "id": 8,
+                        "name": "Pipes"
+                      },
+                      "unit": {
+                        "id": 3,
+                        "name": "meter",
+                        "kei": "m"
+                      },
+                      "weight": 12.5,
+                      "type": "material",
+                      "status": "active",
+                      "created_by": {
+                        "id": 341,
+                        "name": "Спиридович Павел Вячеславович",
+                        "avatar_id": 297
+                      },
+                      "created_at": "2026-05-31T11:00:00.000Z",
+                      "updated_by": null,
+                      "updated_at": null
+                    },
+                    "quantity": 10,
+                    "notes": "Main pipe bundle",
+                    "created_at": "2026-05-31T12:00:00.000Z"
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -16620,7 +17182,60 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MaterialKitItem"
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 1,
+                      "kit_id": 1,
+                      "material_id": 45,
+                      "material": {
+                        "id": 45,
+                        "stock_code": "NR00000000000045",
+                        "name": "Steel pipe DN50",
+                        "description": null,
+                        "directory": {
+                          "id": 8,
+                          "name": "Pipes"
+                        },
+                        "unit": {
+                          "id": 3,
+                          "name": "meter",
+                          "kei": "m"
+                        },
+                        "weight": 12.5,
+                        "type": "material",
+                        "status": "active",
+                        "created_by": {
+                          "id": 341,
+                          "name": "Спиридович Павел Вячеславович",
+                          "avatar_id": 297
+                        },
+                        "created_at": "2026-05-31T11:00:00.000Z",
+                        "updated_by": null,
+                        "updated_at": null
+                      },
+                      "quantity": 10,
+                      "notes": "Main pipe bundle",
+                      "created_at": "2026-05-31T12:00:00.000Z"
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -16650,22 +17265,71 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StatementsVersionUpdate"
+                "$ref": "#/components/schemas/MaterialKitItemUpdate"
               },
               "example": {
-                "version": "v2",
-                "notes": "Updated after review",
-                "lock": true
+                "material_id": 45,
+                "quantity": 20,
+                "notes": "Updated pipe bundle"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MaterialKitItem"
+                    }
+                  }
+                },
+                "example": {
+                  "data": {
+                    "id": 1,
+                    "kit_id": 1,
+                    "material_id": 45,
+                    "material": {
+                      "id": 45,
+                      "stock_code": "NR00000000000045",
+                      "name": "Steel pipe DN50",
+                      "description": null,
+                      "directory": {
+                        "id": 8,
+                        "name": "Pipes"
+                      },
+                      "unit": {
+                        "id": 3,
+                        "name": "meter",
+                        "kei": "m"
+                      },
+                      "weight": 12.5,
+                      "type": "material",
+                      "status": "active",
+                      "created_by": {
+                        "id": 341,
+                        "name": "Спиридович Павел Вячеславович",
+                        "avatar_id": 297
+                      },
+                      "created_at": "2026-05-31T11:00:00.000Z",
+                      "updated_by": null,
+                      "updated_at": null
+                    },
+                    "quantity": 20,
+                    "notes": "Updated pipe bundle",
+                    "created_at": "2026-05-31T12:00:00.000Z"
+                  }
+                }
+              }
+            }
           }
         }
       },
@@ -16694,7 +17358,22 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Material kit item deleted"
+                }
+              }
+            }
           }
         }
       }
@@ -24943,6 +25622,74 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Specification part not found"
+          }
+        }
+      }
+    },
+    "/api/specification_parts/{id}/drawing_address": {
+      "post": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Update drawing address by part id",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "drawing_address"
+                ],
+                "properties": {
+                  "drawing_address": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "drawing_address": "A-123-456"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpecificationPart"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "403": {
+            "description": "Forbidden"
           },
           "404": {
             "description": "Specification part not found"

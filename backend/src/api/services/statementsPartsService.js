@@ -303,8 +303,22 @@ class StatementsPartsService {
 
       const candidateQuery = `
         WITH statement_materials AS (
-          SELECT DISTINCT emp.equipment_material_id AS material_id
+          SELECT DISTINCT
+            emp.equipment_material_id AS material_id,
+            1::numeric AS quantity_factor
           FROM equipment_materials_projects emp
+          WHERE emp.statement_id = $1
+
+          UNION ALL
+
+          SELECT
+            mki.material_id AS material_id,
+            COALESCE(mki.quantity, 1)::numeric AS quantity_factor
+          FROM equipment_materials_projects emp
+          JOIN equipment_materials_project_kits empk
+            ON empk.material_project_id = emp.id
+          JOIN equipment_material_kit_items mki
+            ON mki.kit_id = empk.material_kit_id
           WHERE emp.statement_id = $1
         ),
         latest_spec_versions AS (
@@ -320,7 +334,7 @@ class StatementsPartsService {
         SELECT
           sm.material_id,
           lsv.specification_version_id,
-          SUM(COALESCE(sp.quantity, 1))::numeric AS quantity
+          SUM(COALESCE(sp.quantity, 1) * COALESCE(sm.quantity_factor, 1))::numeric AS quantity
         FROM statement_materials sm
         JOIN latest_spec_versions lsv ON TRUE
         JOIN specification_parts sp

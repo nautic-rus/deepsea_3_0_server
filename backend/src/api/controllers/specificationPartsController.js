@@ -33,6 +33,16 @@ class SpecificationPartsController {
       res.json({ message: 'Specification part deleted' });
     } catch (err) { next(err); }
   }
+
+  static async updateDrawingAddress(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const drawingAddress = req.body ? req.body.drawing_address : undefined;
+      const updated = await SpecificationPartsService.updateDrawingAddressById(id, drawingAddress, actor);
+      res.json(updated);
+    } catch (err) { next(err); }
+  }
 }
 
 module.exports = SpecificationPartsController;

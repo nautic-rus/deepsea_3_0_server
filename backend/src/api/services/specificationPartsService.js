@@ -723,6 +723,38 @@ class SpecificationPartsService {
     };
   }
 
+  static async updateDrawingAddressById(id, drawingAddress, actor) {
+    // Narrow update used by external integrations that only know the specification part id.
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, 'specifications.update');
+    if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
+
+    const normalizedId = Number(id);
+    if (!normalizedId || Number.isNaN(normalizedId)) {
+      const err = new Error('Invalid id');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const normalizedDrawingAddress = drawingAddress === undefined || drawingAddress === null
+      ? ''
+      : String(drawingAddress).trim();
+    if (!normalizedDrawingAddress) {
+      const err = new Error('Invalid drawing_address');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const updated = await SpecificationPart.updateDrawingAddressById(normalizedId, normalizedDrawingAddress);
+    if (!updated) {
+      const err = new Error('Not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    return SpecificationPartsService._stripVersionMeta(SpecificationPartsService._withComputedTotalWeight(updated));
+  }
+
   static async delete(id, actor) {
     // Soft-delete first, hard-delete only when the schema allows it.
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }

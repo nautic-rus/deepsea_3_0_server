@@ -1154,6 +1154,41 @@ ALTER SEQUENCE public.equipment_materials_projects_id_seq OWNED BY public.equipm
 
 
 --
+-- Name: equipment_materials_project_kits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.equipment_materials_project_kits (
+    id integer NOT NULL,
+    material_project_id integer NOT NULL,
+    material_kit_id integer NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+
+--
+-- Name: equipment_materials_project_kits_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.equipment_materials_project_kits_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: equipment_materials_project_kits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.equipment_materials_project_kits_id_seq OWNED BY public.equipment_materials_project_kits.id;
+
+ALTER TABLE ONLY public.equipment_materials_project_kits
+    ALTER COLUMN id SET DEFAULT nextval('public.equipment_materials_project_kits_id_seq'::regclass);
+
+
+--
 -- Name: file_categories; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1576,10 +1611,10 @@ ALTER SEQUENCE public.job_title_id_seq OWNED BY public.job_title.id;
 
 
 --
--- Name: material_kit_items; Type: TABLE; Schema: public; Owner: -
+-- Name: equipment_material_kit_items; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.material_kit_items (
+CREATE TABLE public.equipment_material_kit_items (
     id integer NOT NULL,
     kit_id integer NOT NULL,
     material_id integer,
@@ -1606,15 +1641,16 @@ CREATE SEQUENCE public.material_kit_items_id_seq
 -- Name: material_kit_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.material_kit_items_id_seq OWNED BY public.material_kit_items.id;
+ALTER SEQUENCE public.material_kit_items_id_seq OWNED BY public.equipment_material_kit_items.id;
 
 
 --
--- Name: material_kits; Type: TABLE; Schema: public; Owner: -
+-- Name: equipment_material_kits; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.material_kits (
+CREATE TABLE public.equipment_material_kits (
     id integer NOT NULL,
+    project_id integer,
     code character varying(100) NOT NULL,
     name character varying(255) NOT NULL,
     description text,
@@ -1642,7 +1678,7 @@ CREATE SEQUENCE public.material_kits_id_seq
 -- Name: material_kits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.material_kits_id_seq OWNED BY public.material_kits.id;
+ALTER SEQUENCE public.material_kits_id_seq OWNED BY public.equipment_material_kits.id;
 
 
 --
@@ -2393,6 +2429,7 @@ CREATE TABLE public.specification_parts (
     specification_version_id integer NOT NULL,
     part_code character varying(100),
     part_oid bigint,
+    drawing_address text,
     quantity numeric(15,3) DEFAULT 1,
     created_by integer NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
@@ -3740,17 +3777,17 @@ ALTER TABLE ONLY public.job_title ALTER COLUMN id SET DEFAULT nextval('public.jo
 
 
 --
--- Name: material_kit_items id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: equipment_material_kit_items id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.material_kit_items ALTER COLUMN id SET DEFAULT nextval('public.material_kit_items_id_seq'::regclass);
+ALTER TABLE ONLY public.equipment_material_kit_items ALTER COLUMN id SET DEFAULT nextval('public.material_kit_items_id_seq'::regclass);
 
 
 --
--- Name: material_kits id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: equipment_material_kits id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.material_kits ALTER COLUMN id SET DEFAULT nextval('public.material_kits_id_seq'::regclass);
+ALTER TABLE ONLY public.equipment_material_kits ALTER COLUMN id SET DEFAULT nextval('public.material_kits_id_seq'::regclass);
 
 
 --
@@ -4492,27 +4529,27 @@ ALTER TABLE ONLY public.job_title
 
 
 --
--- Name: material_kit_items material_kit_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: equipment_material_kit_items equipment_material_kit_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.material_kit_items
-    ADD CONSTRAINT material_kit_items_pkey PRIMARY KEY (id);
-
-
---
--- Name: material_kits material_kits_code_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.material_kits
-    ADD CONSTRAINT material_kits_code_key UNIQUE (code);
+ALTER TABLE ONLY public.equipment_material_kit_items
+    ADD CONSTRAINT equipment_material_kit_items_pkey PRIMARY KEY (id);
 
 
 --
--- Name: material_kits material_kits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: equipment_material_kits equipment_material_kits_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.material_kits
-    ADD CONSTRAINT material_kits_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.equipment_material_kits
+    ADD CONSTRAINT equipment_material_kits_code_key UNIQUE (code);
+
+
+--
+-- Name: equipment_material_kits equipment_material_kits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.equipment_material_kits
+    ADD CONSTRAINT equipment_material_kits_pkey PRIMARY KEY (id);
 
 
 --
@@ -7092,6 +7129,30 @@ ALTER TABLE ONLY public.equipment_materials_projects
 
 
 --
+-- Name: equipment_materials_project_kits equipment_materials_project_kits_material_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.equipment_materials_project_kits
+    ADD CONSTRAINT equipment_materials_project_kits_material_project_id_fkey FOREIGN KEY (material_project_id) REFERENCES public.equipment_materials_projects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: equipment_materials_project_kits equipment_materials_project_kits_material_kit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.equipment_materials_project_kits
+    ADD CONSTRAINT equipment_materials_project_kits_material_kit_id_fkey FOREIGN KEY (material_kit_id) REFERENCES public.equipment_material_kits(id) ON DELETE CASCADE;
+
+
+--
+-- Name: equipment_materials_project_kits equipment_materials_project_kits_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.equipment_materials_project_kits
+    ADD CONSTRAINT equipment_materials_project_kits_unique UNIQUE (material_project_id, material_kit_id);
+
+
+--
 -- Name: file_categories file_categories_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7316,35 +7377,43 @@ ALTER TABLE ONLY public.issue_work_flow
 
 
 --
--- Name: material_kit_items material_kit_items_kit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: equipment_material_kit_items equipment_material_kit_items_kit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.material_kit_items
-    ADD CONSTRAINT material_kit_items_kit_id_fkey FOREIGN KEY (kit_id) REFERENCES public.material_kits(id) ON DELETE CASCADE;
-
-
---
--- Name: material_kit_items material_kit_items_material_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.material_kit_items
-    ADD CONSTRAINT material_kit_items_material_id_fkey FOREIGN KEY (material_id) REFERENCES public.equipment_materials(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.equipment_material_kit_items
+    ADD CONSTRAINT equipment_material_kit_items_kit_id_fkey FOREIGN KEY (kit_id) REFERENCES public.equipment_material_kits(id) ON DELETE CASCADE;
 
 
 --
--- Name: material_kits material_kits_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: equipment_material_kit_items equipment_material_kit_items_material_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.material_kits
-    ADD CONSTRAINT material_kits_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+ALTER TABLE ONLY public.equipment_material_kit_items
+    ADD CONSTRAINT equipment_material_kit_items_material_id_fkey FOREIGN KEY (material_id) REFERENCES public.equipment_materials(id) ON DELETE SET NULL;
 
 
 --
--- Name: material_kits material_kits_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: equipment_material_kits equipment_material_kits_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.material_kits
-    ADD CONSTRAINT material_kits_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL;
+ALTER TABLE ONLY public.equipment_material_kits
+    ADD CONSTRAINT equipment_material_kits_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: equipment_material_kits equipment_material_kits_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.equipment_material_kits
+    ADD CONSTRAINT equipment_material_kits_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE SET NULL;
+
+
+--
+-- Name: equipment_material_kits equipment_material_kits_updated_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.equipment_material_kits
+    ADD CONSTRAINT equipment_material_kits_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES public.users(id) ON DELETE SET NULL;
 
 
 --

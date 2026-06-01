@@ -329,6 +329,23 @@ class Material {
     return row;
   }
 
+  static async findByIds(ids = []) {
+    const uniqueIds = [...new Set((ids || []).map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id > 0))];
+    if (uniqueIds.length === 0) return [];
+    const q = `SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, uo.kei AS unit_kei, m.weight, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.middle_name AS created_by_middle_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.middle_name AS updated_by_middle_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
+        FROM equipment_materials m
+      LEFT JOIN equipment_materials_directories d ON m.directory_id = d.id
+      LEFT JOIN units uo ON m.unit_id = uo.id
+      LEFT JOIN users cu ON m.created_by = cu.id
+      LEFT JOIN users uu ON m.updated_by = uu.id
+      WHERE m.id = ANY($1::int[])
+      ORDER BY m.id`;
+    const res = await pool.query(q, [uniqueIds]);
+    const rows = res.rows.map((r) => Material._formatBaseRow(r));
+    await Material._attachStatementUsage(rows);
+    return rows;
+  }
+
   static async findSpecificationsByMaterialId(materialId, filters = {}) {
     const { allowed_project_ids } = filters;
     const values = [Number(materialId)];

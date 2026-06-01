@@ -1,4 +1,6 @@
 const pool = require('../connection');
+const MaterialKit = require('./MaterialKit');
+const MaterialProjectKit = require('./MaterialProjectKit');
 
 class MaterialProject {
   static _toInt(v) {
@@ -48,8 +50,38 @@ class MaterialProject {
         model: r.shipment_model || null,
         manufacturer: r.shipment_manufacturer || null,
         description: r.shipment_description || null
-      }
+      },
+      kits: []
     };
+  }
+
+  static async _attachKits(rows = []) {
+    if (!Array.isArray(rows) || rows.length === 0) return rows;
+    const ids = [...new Set(rows.map((row) => Number(row && row.id)).filter((id) => !Number.isNaN(id) && id > 0))];
+    if (ids.length === 0) {
+      for (const row of rows) row.kits = [];
+      return rows;
+    }
+
+    const linkRows = await MaterialProjectKit.listByMaterialProjectIds(ids);
+    const kitIds = [...new Set((linkRows || []).map((row) => Number(row.material_kit_id)).filter((id) => !Number.isNaN(id) && id > 0))];
+    const kits = kitIds.length > 0 ? await MaterialKit.findByIds(kitIds) : [];
+    const kitMap = new Map(kits.map((kit) => [Number(kit.id), kit]));
+    const byMaterialProjectId = new Map();
+
+    for (const link of linkRows || []) {
+      const materialProjectId = Number(link.material_project_id);
+      const kit = kitMap.get(Number(link.material_kit_id)) || null;
+      if (!kit) continue;
+      if (!byMaterialProjectId.has(materialProjectId)) byMaterialProjectId.set(materialProjectId, []);
+      byMaterialProjectId.get(materialProjectId).push(kit);
+    }
+
+    for (const row of rows) {
+      row.kits = byMaterialProjectId.get(Number(row.id)) || [];
+    }
+
+    return rows;
   }
 
   static _baseQuery() {
@@ -121,13 +153,18 @@ class MaterialProject {
     }
 
     const res = await pool.query(q, values);
-    return (res.rows || []).map((r) => MaterialProject._formatRow(r));
+    const rows = (res.rows || []).map((r) => MaterialProject._formatRow(r));
+    await MaterialProject._attachKits(rows);
+    return rows;
   }
 
   static async findById(id) {
     const q = `${MaterialProject._baseQuery()} WHERE emp.id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
-    return MaterialProject._formatRow((res.rows || [])[0] || null);
+    const row = MaterialProject._formatRow((res.rows || [])[0] || null);
+    if (!row) return null;
+    await MaterialProject._attachKits([row]);
+    return row;
   }
 
   static async findByMaterialAndProject(equipmentMaterialId, projectId, excludeId = null) {
@@ -139,7 +176,10 @@ class MaterialProject {
     }
     q += ' LIMIT 1';
     const res = await pool.query(q, values);
-    return MaterialProject._formatRow((res.rows || [])[0] || null);
+    const row = MaterialProject._formatRow((res.rows || [])[0] || null);
+    if (!row) return null;
+    await MaterialProject._attachKits([row]);
+    return row;
   }
 
   static async create(fields) {

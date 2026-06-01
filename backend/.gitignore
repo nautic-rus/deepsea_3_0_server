@@ -59,4 +59,6 @@ sql/*
 !sql/057_move_sfi_code_from_materials_to_specification_parts.sql
 !sql/062_add_specification_pdf_indexes.sql
 !sql/063_add_part_oid_to_specification_parts.sql
+!sql/066_add_project_id_to_equipment_material_kits.sql
+!sql/067_add_equipment_materials_project_kits.sql
 scripts/
