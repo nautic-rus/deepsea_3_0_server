@@ -5,10 +5,30 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
+const UNSAFE_JWT_SECRET_VALUES = new Set([
+  '',
+  'your-secret-key-change-in-production',
+  'your-refresh-secret-key-change-in-production'
+]);
+
+function normalizeSecret(value) {
+  return String(value || '').trim();
+}
+
+function assertSecretConfigured(value, envName) {
+  const secret = normalizeSecret(value);
+  if (!secret || UNSAFE_JWT_SECRET_VALUES.has(secret)) {
+    const err = new Error(`${envName} is not configured. Set a non-empty secret in environment_settings or process.env.`);
+    err.statusCode = 500;
+    throw err;
+  }
+  return secret;
+}
+
 function getJwtConfig() {
   return {
-    secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-in-production',
+    secret: assertSecretConfigured(process.env.JWT_SECRET, 'JWT_SECRET'),
+    refreshSecret: assertSecretConfigured(process.env.JWT_REFRESH_SECRET, 'JWT_REFRESH_SECRET'),
     expiresIn: process.env.JWT_EXPIRES_IN || '24h',
     refreshExpiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d'
   };
@@ -85,12 +105,21 @@ function getTokenExpiration() {
   return new Date(now.getTime() + milliseconds);
 }
 
+function assertJwtSecretsConfigured() {
+  const config = getJwtConfig();
+  return {
+    secret: config.secret,
+    refreshSecret: config.refreshSecret
+  };
+}
+
 module.exports = {
   generateAccessToken,
   generateRefreshToken,
   verifyAccessToken,
   verifyRefreshToken,
   getTokenExpiration,
+  assertJwtSecretsConfigured,
   get JWT_EXPIRES_IN() {
     return getJwtConfig().expiresIn;
   },
@@ -98,7 +127,6 @@ module.exports = {
     return getJwtConfig().refreshExpiresIn;
   }
 };
-
 
 
 

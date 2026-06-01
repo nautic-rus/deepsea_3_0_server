@@ -9,10 +9,12 @@ if (!process.env.NODE_ENV) {
 }
 
 const { initializeEnvironmentSettings } = require('./config/environmentSettings');
+const { assertJwtSecretsConfigured } = require('./utils/jwt');
 const documentUploadAggregator = require('./workers/documentUploadAggregator');
 
 async function startServer() {
   await initializeEnvironmentSettings();
+  assertJwtSecretsConfigured();
 
   // Initialize file logger after DB-backed settings are applied to process.env.
   require('./utils/logger');
@@ -35,4 +37,3 @@ startServer().catch((error) => {
   console.error('Failed to start server', error && (error.stack || error.message || error));
   process.exit(1);
 });
-
