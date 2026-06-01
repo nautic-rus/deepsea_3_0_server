@@ -16,18 +16,19 @@ class AuthController {
    * and user info on success.
    */
   static async login(req, res, next) {
+    let identifier = null;
     try {
-  let { username, email, password } = req.body || {};
+      let { username, email, password } = req.body || {};
       const ipAddress = req.ip || req.connection.remoteAddress;
       const userAgent = req.get('user-agent') || '';
 
-  // Normalize username/email to lowercase and trim
-  username = username ? String(username).toLowerCase().trim() : null;
-  email = email ? String(email).toLowerCase().trim() : null;
+      // Normalize username/email to lowercase and trim
+      username = username ? String(username).toLowerCase().trim() : null;
+      email = email ? String(email).toLowerCase().trim() : null;
 
-  // Allow login by username OR email. Pass identifier to service.
-  const identifier = username || email || null;
-  const result = await AuthService.login(identifier, password, ipAddress, userAgent);
+      // Allow login by username OR email. Pass identifier to service.
+      identifier = username || email || null;
+      const result = await AuthService.login(identifier, password, ipAddress, userAgent);
 
       // Set HttpOnly cookies for refresh and access tokens (keep returning them in body for backwards compatibility)
       try {
@@ -68,9 +69,20 @@ class AuthController {
         console.error('Failed to set refresh_token cookie', e && e.message ? e.message : e);
       }
 
-  // Return only non-sensitive data in body; tokens are delivered via HttpOnly cookies
-  res.status(200).json({ expires_at: result.expires_at, user: result.user });
+      // Return only non-sensitive data in body; tokens are delivered via HttpOnly cookies
+      res.status(200).json({ expires_at: result.expires_at, user: result.user });
     } catch (error) {
+      const statusCode = error && error.statusCode ? error.statusCode : 500;
+      if (statusCode === 401 || statusCode === 403) {
+        const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
+        const userAgent = req.get('user-agent') || '';
+        console.warn('Auth login failed', {
+          identifier,
+          ip: ipAddress,
+          userAgent,
+          statusCode
+        });
+      }
       next(error);
     }
   }
@@ -256,7 +268,6 @@ class AuthController {
 }
 
 module.exports = AuthController;
-
 
 
 

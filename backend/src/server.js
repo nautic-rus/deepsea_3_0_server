@@ -1,8 +1,8 @@
 
 
-// Загрузка переменных окружения (use repository `env` file so server and scripts behave the same)
+// Load environment variables from the local .env file so server and scripts behave the same.
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '..', 'env') });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 if (!process.env.NODE_ENV) {
   process.env.NODE_ENV = 'development';
