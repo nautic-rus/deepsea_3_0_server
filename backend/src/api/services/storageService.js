@@ -3,7 +3,6 @@ const { hasPermission } = require('./permissionChecker');
 const S3Service = require('./s3Service');
 const fs = require('fs');
 const path = require('path');
-const storageConfig = require('../../config/storage');
 const archiver = require('archiver');
 const { normalizeUploadedFilename } = require('../../utils/textEncoding');
 // ...existing code...
@@ -180,46 +179,6 @@ class StorageService {
     const createFields = { bucket_name: uploaded.bucket, object_key: uploaded.key, storage_type: 's3', file_name: originalName, file_size: uploaded.size, mime_type: uploaded.content_type, uploaded_by: actor.id };
     const created = await Storage.create(createFields);
     return Object.assign({}, created, { url: uploaded.url, size: uploaded.size, content_type: uploaded.content_type });
-  }
-
-  /**
-   * Save file to local uploads directory and create storage DB record.
-   * @param {Object} file - multer file object { buffer, originalname, mimetype }
-   * @param {Object} actor - authenticated user
-   * @param {Object} opts - { subdir }
-   */
-  static async uploadToLocalAndCreate(file, actor, opts = {}) {
-    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
-    const allowed = await hasPermission(actor, 'storage.create');
-    if (!allowed) { const err = new Error('Forbidden: missing permission storage.create'); err.statusCode = 403; throw err; }
-    if (!file || !file.buffer || !file.originalname) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
-
-    const uploadsRoot = storageConfig.uploadsDir;
-    const subdir = opts.subdir ? String(opts.subdir).replace(/[^a-zA-Z0-9_\-\/]/g, '') : '';
-    const targetDir = subdir ? path.join(uploadsRoot, subdir) : uploadsRoot;
-    await fs.promises.mkdir(targetDir, { recursive: true });
-    const originalName = normalizeUploadedFilename(file.originalname);
-    const filename = `${Date.now()}-${originalName.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const filePath = path.join(targetDir, filename);
-    await fs.promises.writeFile(filePath, file.buffer);
-    const relativePath = path.relative(process.cwd(), filePath);
-    // Build a public URL using configured mount path (e.g. /backend/uploads)
-    const relativeToUploads = path.relative(uploadsRoot, filePath).replace(/\\/g, '/');
-    const mount = (storageConfig && storageConfig.mountPath) ? storageConfig.mountPath.replace(/\/$/, '') : '/backend/uploads';
-    const publicUrl = `${mount}/${relativeToUploads}`;
-    const stat = await fs.promises.stat(filePath);
-    const createFields = {
-      url: publicUrl,
-      bucket_name: null,
-      object_key: relativePath,
-      file_name: originalName,
-      file_size: stat.size,
-      mime_type: file.mimetype || 'application/octet-stream',
-      storage_type: 'local',
-      uploaded_by: actor.id
-    };
-    const created = await Storage.create(createFields);
-    return Object.assign({}, created, { url: createFields.url, size: createFields.file_size, content_type: createFields.mime_type });
   }
 
   /**

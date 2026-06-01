@@ -1,8 +1,4 @@
 const StorageService = require('../services/storageService');
-const multer = require('multer');
-
-// Use memory storage: file will be available as buffer on req.file
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
 
 /**
  * StorageController
@@ -41,24 +37,10 @@ class StorageController {
     try {
       const actor = req.user || null;
       // For direct file uploads use explicit endpoints:
-      // - POST /api/storage/local  -> upload to local storage
       // - POST /api/storage/s3     -> upload to S3
       // This create() handler only creates DB records when bucket_name/object_key provided.
-      if (req.file) { const err = new Error('Direct file uploads are not supported on this endpoint. Use /api/storage/local or /api/storage/s3'); err.statusCode = 400; throw err; }
+      if (req.file) { const err = new Error('Direct file uploads are not supported on this endpoint. Use /api/storage/s3'); err.statusCode = 400; throw err; }
       const created = await StorageService.createStorage(req.body || {}, actor);
-      res.status(201).json({ data: created });
-    } catch (err) { next(err); }
-  }
-
-  /**
-   * Create/upload a file specifically to local storage (backend/uploads).
-   * Endpoint: POST /api/storage/local
-   */
-  static async uploadLocal(req, res, next) {
-    try {
-      const actor = req.user || null;
-      if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
-      const created = await StorageService.uploadToLocalAndCreate(req.file, actor, req.body || {});
       res.status(201).json({ data: created });
     } catch (err) { next(err); }
   }

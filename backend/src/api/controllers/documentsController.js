@@ -172,31 +172,6 @@ class DocumentsController {
   }
 
   /**
-   * Attach a file uploaded to local storage and link it to a document.
-   * Endpoint: POST /api/documents/:id/files/local
-   */
-  static async attachLocalFile(req, res, next) {
-    try {
-      const actor = req.user || null;
-      const id = parseInt(req.params.id, 10);
-      if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
-      const StorageService = require('../services/storageService');
-      const createdStorage = await StorageService.uploadToLocalAndCreate(req.file, actor, req.body || {});
-      const metadata = {
-          type_id: req.body && req.body.type_id ? Number(req.body.type_id) : undefined,
-          rev: DocumentsController._parseRev(req.body && req.body.rev),
-        archive: req.body && typeof req.body.archive !== 'undefined' ? (req.body.archive === 'true' || req.body.archive === true) : undefined,
-        archive_data: req.body && req.body.archive_data ? req.body.archive_data : undefined,
-        status_id: req.body && typeof req.body.status !== 'undefined' ? (req.body.status === null ? null : Number(req.body.status)) : undefined,
-        reason_id: req.body && typeof req.body.reason !== 'undefined' ? (req.body.reason === null ? null : Number(req.body.reason)) : undefined,
-        comment: req.body && typeof req.body.comment !== 'undefined' ? req.body.comment : undefined
-      };
-      const created = await DocumentsService.attachFileToDocument(Number(id), Number(createdStorage.id), actor, metadata);
-      res.status(201).json({ data: created });
-    } catch (err) { next(err); }
-  }
-
-  /**
   * DELETE /api/documents/:id/files/:storage_id - detach file from document
   * Note: `:storage_id` here is interpreted as `documents_storage.id` (the attachment record id)
    */
@@ -607,4 +582,3 @@ class DocumentsController {
 }
 
 module.exports = DocumentsController;
-

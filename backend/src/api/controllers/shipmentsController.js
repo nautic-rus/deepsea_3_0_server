@@ -62,18 +62,6 @@ class ShipmentsController {
     } catch (err) { next(err); }
   }
 
-  static async attachLocalFile(req, res, next) {
-    try {
-      const actor = req.user || null;
-      const id = parseInt(req.params.id, 10);
-      if (!req.file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
-      const StorageService = require('../services/storageService');
-      const createdStorage = await StorageService.uploadToLocalAndCreate(req.file, actor, req.body || {});
-      const created = await ShipmentsService.attachFileToShipment(Number(id), Number(createdStorage.id), actor);
-      res.status(201).json({ data: created });
-    } catch (err) { next(err); }
-  }
-
   static async detachFile(req, res, next) {
     try {
       const actor = req.user || null;
