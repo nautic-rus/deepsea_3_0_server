@@ -118,7 +118,10 @@ class SpecificationVersionsController {
     try {
       const actor = req.user || null;
       const id = Number(req.params.id);
-      const result = await SpecificationPdfService.generateBySpecificationVersionId(id, actor);
+      const groupByPartCode = String(req.query?.group_by_part_code || '').toLowerCase();
+      const result = await SpecificationPdfService.generateBySpecificationVersionId(id, actor, {
+        groupByPartCode: groupByPartCode === 'true' || groupByPartCode === '1'
+      });
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Length', String(result.buffer.length));
       res.setHeader('Cache-Control', 'no-store');

@@ -25292,6 +25292,16 @@
               "type": "integer"
             },
             "description": "Specification version ID"
+          },
+          {
+            "name": "group_by_part_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "When true, groups PDF rows by material_id and part_code before rendering."
           }
         ],
         "responses": {

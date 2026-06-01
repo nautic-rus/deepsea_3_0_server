@@ -389,6 +389,61 @@ class SpecificationPdfService {
     return '';
   }
 
+  static _buildPdfGroupingKey(row, groupByPartCode) {
+    const materialId = SpecificationPdfService._toNumberOrNull(row && row.material_id);
+    const materialKey = materialId && materialId > 0 ? String(materialId) : `row:${row && row.id ? row.id : 'unknown'}`;
+    if (!groupByPartCode) {
+      return materialKey;
+    }
+
+    const partCode = String(row && row.part_code !== undefined && row.part_code !== null ? row.part_code : '').trim();
+    return `${materialKey}|${partCode}`;
+  }
+
+  static _pushUniqueDisplayValue(values, rawValue) {
+    const value = String(rawValue ?? '').trim();
+    if (!value) {
+      return;
+    }
+
+    if (!values.includes(value)) {
+      values.push(value);
+    }
+  }
+
+  static _mergeGroupedPdfRow(existing, row) {
+    const quantity = SpecificationPdfService._toNumberOrNull(row && row.quantity) ?? 1;
+    existing.quantity = (SpecificationPdfService._toNumberOrNull(existing.quantity) ?? 0) + quantity;
+    SpecificationPdfService._pushUniqueDisplayValue(existing.room_values, row && row.zone);
+    SpecificationPdfService._pushUniqueDisplayValue(existing.place_values, row && row.drawing_address);
+  }
+
+  static _groupRowsForPdf(rows, groupByPartCode = false) {
+    const grouped = new Map();
+
+    for (const row of rows || []) {
+      const key = SpecificationPdfService._buildPdfGroupingKey(row, groupByPartCode);
+      const existing = grouped.get(key);
+      const quantity = SpecificationPdfService._toNumberOrNull(row && row.quantity) ?? 1;
+      const roomValue = String((row && row.zone) ?? '').trim();
+      const placeValue = String((row && row.drawing_address) ?? '').trim();
+
+      if (!existing) {
+        grouped.set(key, {
+          ...row,
+          quantity,
+          room_values: roomValue ? [roomValue] : [],
+          place_values: placeValue ? [placeValue] : [],
+        });
+        continue;
+      }
+
+      SpecificationPdfService._mergeGroupedPdfRow(existing, row);
+    }
+
+    return Array.from(grouped.values());
+  }
+
   static _resolveMaterialDescr(part) {
     const material = part.material || null;
     if (material && material.description) return material.description;
@@ -441,10 +496,16 @@ class SpecificationPdfService {
   }
 
   static _resolveRoom(part) {
+    if (Array.isArray(part.room_values) && part.room_values.length > 0) {
+      return part.room_values.join(', ');
+    }
     return part.zone || '';
   }
 
   static _resolvePlace(part) {
+    if (Array.isArray(part.place_values) && part.place_values.length > 0) {
+      return part.place_values.join(', ');
+    }
     return '';
   }
 
@@ -483,7 +544,18 @@ class SpecificationPdfService {
     return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
   }
 
-  static _buildPartRows(rows, startIndex = 1) {
+  static _formatPartQuantity(value, grouped = false) {
+    const n = SpecificationPdfService._toNumberOrNull(value);
+    if (n === null) {
+      return grouped ? '0.00' : '0';
+    }
+    if (grouped) {
+      return n.toFixed(2);
+    }
+    return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
+  }
+
+  static _buildPartRows(rows, startIndex = 1, grouped = false) {
     if (!rows.length) {
       return `
       <tr>
@@ -508,7 +580,7 @@ class SpecificationPdfService {
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._toNumberOrNull(part.quantity) ?? 1)}</td>
+        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._formatPartQuantity(part.quantity, grouped))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialWeight(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveTotalWeight(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveRoom(part))}</td>
@@ -518,7 +590,7 @@ class SpecificationPdfService {
     }).join('');
   }
 
-  static _buildSummaryRows(rows, startIndex = 1) {
+  static _buildSummaryRows(rows, startIndex = 1, grouped = false) {
     if (!rows.length) {
       return `
       <tr>
@@ -541,7 +613,7 @@ class SpecificationPdfService {
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._formatSummaryQuantity(part.quantity ?? 1))}</td>
+        <td>${SpecificationPdfService._escapeHtml(grouped ? SpecificationPdfService._formatPartQuantity(part.quantity, true) : SpecificationPdfService._formatSummaryQuantity(part.quantity ?? 1))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveTotalWeight(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveStatementCode(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMatCode(part))}</td>
@@ -549,7 +621,7 @@ class SpecificationPdfService {
     }).join('');
   }
 
-  static _buildPartPage({ pageNo, docName, docNumber, date, rev, logoUrl, rows, startIndex }) {
+  static _buildPartPage({ pageNo, docName, docNumber, date, rev, logoUrl, rows, startIndex, grouped = false }) {
     const logoMarkup = logoUrl
       ? `<img class="stamp-logo" src="${SpecificationPdfService._escapeHtml(logoUrl)}" alt="logo">`
       : '';
@@ -614,13 +686,13 @@ class SpecificationPdfService {
       </tr>
       </thead>
       <tbody>
-      ${SpecificationPdfService._buildPartRows(rows, startIndex)}
+      ${SpecificationPdfService._buildPartRows(rows, startIndex, grouped)}
       </tbody>
     </table>
   </section>`;
   }
 
-  static _buildSummaryPage({ pageNo, docName, docNumber, date, rev, logoUrl, rows, startIndex }) {
+  static _buildSummaryPage({ pageNo, docName, docNumber, date, rev, logoUrl, rows, startIndex, grouped = false }) {
     const logoMarkup = logoUrl
       ? `<img class="stamp-logo" src="${SpecificationPdfService._escapeHtml(logoUrl)}" alt="logo">`
       : '';
@@ -683,13 +755,13 @@ class SpecificationPdfService {
       </tr>
       </thead>
       <tbody>
-      ${SpecificationPdfService._buildSummaryRows(rows, startIndex)}
+      ${SpecificationPdfService._buildSummaryRows(rows, startIndex, grouped)}
       </tbody>
     </table>
   </section>`;
   }
 
-  static _buildHtml({ spec, version, rows, logoUrl }) {
+  static _buildHtml({ spec, version, rows, logoUrl, groupByPartCode = false }) {
     const styles = SpecificationPdfService._readTemplateStyles();
     const docName = spec.name || 'Specification';
     const docNumber = spec.code || `SP-${spec.id}`;
@@ -698,8 +770,13 @@ class SpecificationPdfService {
 
     const partChunkSize = 24;
     const summaryChunkSize = 24;
-    const partChunks = SpecificationPdfService._chunk(rows, partChunkSize);
-    const summaryRows = SpecificationPdfService._buildSummaryEntries(rows);
+    const partRows = groupByPartCode
+      ? SpecificationPdfService._groupRowsForPdf(rows, true)
+      : rows;
+    const summaryRows = groupByPartCode
+      ? SpecificationPdfService._groupRowsForPdf(rows, true)
+      : SpecificationPdfService._buildSummaryEntries(rows);
+    const partChunks = SpecificationPdfService._chunk(partRows, partChunkSize);
     const summaryChunks = SpecificationPdfService._chunk(summaryRows, summaryChunkSize);
 
     const pages = [];
@@ -724,7 +801,8 @@ class SpecificationPdfService {
         rev,
         logoUrl,
         rows: chunk,
-        startIndex
+        startIndex,
+        grouped: groupByPartCode
       }));
       startIndex += chunk.length;
     }
@@ -740,7 +818,8 @@ class SpecificationPdfService {
         rev,
         logoUrl,
         rows: chunk,
-        startIndex
+        startIndex,
+        grouped: groupByPartCode
       }));
       startIndex += chunk.length;
     }
@@ -764,7 +843,7 @@ ${pages.join('\n')}
 </html>`;
   }
 
-  static async generateBySpecificationVersionId(versionId, actor) {
+  static async generateBySpecificationVersionId(versionId, actor, options = {}) {
     if (!actor || !actor.id) {
       const err = new Error('Authentication required');
       err.statusCode = 401;
@@ -785,6 +864,8 @@ ${pages.join('\n')}
       throw err;
     }
 
+    const groupByPartCode = options && options.groupByPartCode === true;
+
     const version = await SpecificationVersion.findById(parsedVersionId);
     if (!version) {
       const err = new Error('Specification version not found');
@@ -799,7 +880,8 @@ ${pages.join('\n')}
       throw err;
     }
 
-    const existingPromise = SpecificationPdfService._inFlightGenerations.get(parsedVersionId);
+    const inFlightKey = `${parsedVersionId}:${groupByPartCode ? 'group' : 'default'}`;
+    const existingPromise = SpecificationPdfService._inFlightGenerations.get(inFlightKey);
     if (existingPromise) {
       return existingPromise;
     }
@@ -815,7 +897,13 @@ ${pages.join('\n')}
         statement_code: statementMap.get(Number(row.material_id)) || '',
       }));
       const logoUrl = await SpecificationPdfService._resolveCompanyLogoAsset();
-      const html = SpecificationPdfService._buildHtml({ spec, version, rows: enrichedRows, logoUrl });
+      const html = SpecificationPdfService._buildHtml({
+        spec,
+        version,
+        rows: enrichedRows,
+        logoUrl,
+        groupByPartCode
+      });
       const executablePath = SpecificationPdfService._resolveChromiumExecutablePath();
       if (!executablePath) {
         const err = new Error('Chromium executable not found');
@@ -826,14 +914,14 @@ ${pages.join('\n')}
       return SpecificationPdfService._renderPdf({ executablePath, html, spec, version });
     })();
 
-    SpecificationPdfService._inFlightGenerations.set(parsedVersionId, generationPromise);
+    SpecificationPdfService._inFlightGenerations.set(inFlightKey, generationPromise);
 
     try {
       return await generationPromise;
     } finally {
-      const current = SpecificationPdfService._inFlightGenerations.get(parsedVersionId);
+      const current = SpecificationPdfService._inFlightGenerations.get(inFlightKey);
       if (current === generationPromise) {
-        SpecificationPdfService._inFlightGenerations.delete(parsedVersionId);
+        SpecificationPdfService._inFlightGenerations.delete(inFlightKey);
       }
     }
   }
