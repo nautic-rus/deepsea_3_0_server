@@ -143,6 +143,28 @@ app.use((req, res, next) => {
   next();
 });
 
+// API responses are user-specific and should not be cached by browsers,
+// shared proxies, or CDN layers. This avoids stale materials lists for
+// some users when upstream caching is enabled.
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  const varyHeader = res.getHeader('Vary');
+  const varyValues = new Set(
+    String(varyHeader || '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
+  );
+  varyValues.add('Authorization');
+  varyValues.add('Cookie');
+  res.setHeader('Vary', Array.from(varyValues).join(', '));
+
+  next();
+});
+
 // Metrics endpoint for Prometheus to scrape
 app.get('/metrics', async (req, res) => {
   try {
@@ -226,4 +248,3 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 module.exports = app;
-
