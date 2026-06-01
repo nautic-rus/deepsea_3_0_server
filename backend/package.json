@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node --use-system-ca src/server.js",
     "dev": "nodemon src/server.js",
-    "fix:storage-filenames": "node scripts/fix_storage_file_names_encoding.js"
+    "fix:storage-filenames": "node scripts/fix_storage_file_names_encoding.js",
+    "seed:login-rate-limit": "node scripts/seed_login_rate_limit_settings.js"
   },
   "keywords": [],
   "author": "",
