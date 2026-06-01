@@ -69,12 +69,11 @@ const searchController = require('../controllers/searchController');
 // Validators and middleware
 const { validateLogin } = require('../validators/authValidator');
 const { validateCreateUser } = require('../validators/usersValidator');
-const loginRateLimit = require('../middleware/loginRateLimit');
 const authMiddleware = require('../middleware/authMiddleware');
 
 // ===== Auth routes =====
 // POST /api/auth/login
-router.post('/auth/login', loginRateLimit, validateLogin, authController.login);
+router.post('/auth/login', validateLogin, authController.login);
 // POST /api/auth/refresh
 router.post('/auth/refresh', authController.refresh);
 // POST /api/auth/logout
