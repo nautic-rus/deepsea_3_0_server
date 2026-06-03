@@ -1,6 +1,6 @@
 const Material = require('../../db/models/Material');
 const pool = require('../../db/connection');
-const { hasPermission, hasPermissionForProject } = require('./permissionChecker');
+const { hasPermission, hasPermissionForProject, getPermissionProjectScope } = require('./permissionChecker');
 
 /**
  * MaterialsService
