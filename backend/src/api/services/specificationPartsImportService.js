@@ -230,6 +230,26 @@ class SpecificationPartsImportService {
       const values = [];
       const placeholders = [];
       let idx = 1;
+      const buildReportRow = (row, rowIndex, material, extra = {}) => ({
+        row_index: rowIndex + 1,
+        part_code: row.part_code ?? null,
+        stock_code: row.stock_code ?? null,
+        material_id: material && material.id !== undefined && material.id !== null ? material.id : null,
+        branch: row.importBranch ?? null,
+        unit_id: material && material.unit_id !== undefined && material.unit_id !== null ? material.unit_id : null,
+        quantity: row.quantity ?? null,
+        zone: row.zone ?? null,
+        part_type: row.part_type ?? null,
+        length: row.length ?? null,
+        width: row.width ?? null,
+        thickness: row.thickness ?? null,
+        symmetry: row.symmetry ?? null,
+        descriptions: row.descriptions ?? null,
+        cog_x: row.cog_x ?? null,
+        cog_y: row.cog_y ?? null,
+        cog_z: row.cog_z ?? null,
+        ...extra
+      });
       for (let rowIndex = 0; rowIndex < normalizedRows.length; rowIndex += 1) {
         const row = normalizedRows[rowIndex];
         // Stock code is the lookup key that links external rows to internal materials.
@@ -237,15 +257,11 @@ class SpecificationPartsImportService {
         const material = materialKey ? (materialMap.get(materialKey) || null) : null;
         const materialId = material ? material.id : null;
         if (!materialId) {
-          report.push({
-            row_index: rowIndex + 1,
-            part_code: row.part_code ?? null,
-            stock_code: row.stock_code ?? null,
-            material_id: null,
+          report.push(buildReportRow(row, rowIndex, null, {
             reason: materialKey
               ? `Material not found for stock_code ${materialKey}`
               : 'stock_code is missing, material_id could not be resolved'
-          });
+          }));
           continue;
         }
         // ASTRUCTURE and SYSTEMS use dedicated quantity resolvers; BLOCKS keeps the legacy behavior.
@@ -253,19 +269,21 @@ class SpecificationPartsImportService {
           ? SpecificationPartsService._resolveAstructureQuantityDetails(row, material)
           : row.importBranch === 'systems'
             ? SpecificationPartsService._resolveSystemsQuantityDetails(row, material)
-          : SpecificationPartsService._resolveQuantityDetails(row, material);
+            : SpecificationPartsService._resolveQuantityDetails(row, material);
         const resolvedQuantity = quantityResolution.quantity;
+        const numericQuantity = SpecificationPartsService._toNumberOrNull(resolvedQuantity);
+        if (numericQuantity === null || !Number.isFinite(numericQuantity) || numericQuantity <= 0) {
+          report.push(buildReportRow(row, rowIndex, material, {
+            quantity: resolvedQuantity,
+            reason: 'Quantity must be greater than 0'
+          }));
+          continue;
+        }
         if (!quantityResolution.calculated) {
-          report.push({
-            row_index: rowIndex + 1,
-            part_code: row.part_code ?? null,
-            stock_code: row.stock_code ?? null,
-            material_id: materialId,
-            branch: row.importBranch,
-            unit_id: material.unit_id ?? null,
+          report.push(buildReportRow(row, rowIndex, material, {
             quantity: resolvedQuantity,
             reason: quantityResolution.reason || 'Quantity fell back to a default value'
-          });
+          }));
           continue;
         }
         placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);

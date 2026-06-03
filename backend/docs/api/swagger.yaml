@@ -16290,7 +16290,7 @@ paths:
           description: Forbidden
         '404':
           description: One or more specifications not found
-  "/api/statements_parts/{id}":
+  "/api/statements_parts":
     get:
       tags:
       - statements
@@ -17014,7 +17014,7 @@ paths:
       tags:
       - specifications
       summary: Import specification parts from external source
-      description: Imports parts into specification_parts for the given specification version. If the request body already contains a supported JSON payload, it will be used directly; otherwise the server will fetch data from the configured source connector. Rows that could not be linked to a material_id are skipped and returned in the report.
+      description: Imports parts into specification_parts for the given specification version. If the request body already contains a supported JSON payload, it will be used directly; otherwise the server will fetch data from the configured source connector. Rows that could not be linked to a material_id or that have quantity <= 0 are skipped and returned in the report.
       security:
       - bearerAuth: []
       x-permissions:
