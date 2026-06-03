@@ -51,16 +51,6 @@ Thumbs.db
 *.log.*
 
 migratons_deepsea_2/
-sql/*
-!sql/053_rename_specification_connectors.sql
-!sql/054_add_specification_connector_links.sql
-!sql/055_add_name_url_to_specifications_source_connector.sql
-!sql/056_drop_connector_links_from_child_tables.sql
-!sql/057_move_sfi_code_from_materials_to_specification_parts.sql
-!sql/062_add_specification_pdf_indexes.sql
-!sql/063_add_part_oid_to_specification_parts.sql
-!sql/066_add_project_id_to_equipment_material_kits.sql
-!sql/067_add_equipment_materials_project_kits.sql
-!sql/068_allow_systems_source_in_specification_parts.sql
-!sql/069_add_radius_angle_to_specification_parts.sql
+sql/
 scripts/
+postman/
