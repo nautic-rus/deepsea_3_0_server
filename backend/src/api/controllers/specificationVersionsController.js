@@ -119,8 +119,10 @@ class SpecificationVersionsController {
       const actor = req.user || null;
       const id = Number(req.params.id);
       const groupByPartCode = String(req.query?.group_by_part_code || '').toLowerCase();
+      const insertEmptyRowBetweenGroups = String(req.query?.insert_empty_row_between_groups || '').toLowerCase();
       const result = await SpecificationPdfService.generateBySpecificationVersionId(id, actor, {
-        groupByPartCode: groupByPartCode === 'true' || groupByPartCode === '1'
+        groupByPartCode: groupByPartCode === 'true' || groupByPartCode === '1',
+        insertBlankRowBetweenGroups: insertEmptyRowBetweenGroups === 'true' || insertEmptyRowBetweenGroups === '1'
       });
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Length', String(result.buffer.length));

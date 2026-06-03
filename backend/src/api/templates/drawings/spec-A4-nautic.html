@@ -203,8 +203,8 @@
     }
 
     .part-table th,
-    .part-table td,
     .summary-table th,
+    .part-table td,
     .summary-table td {
       border: 0.35mm solid #000;
       margin: 0;
@@ -212,12 +212,23 @@
       box-sizing: border-box;
       text-align: center;
       vertical-align: middle;
-      overflow: hidden;
       white-space: nowrap;
       font-size: 2.7mm;
       line-height: 1;
       font-family: "SpecSans", "DejaVu Sans", "Liberation Sans", Arial, sans-serif;
+    }
+
+    .part-table th,
+    .summary-table th {
       height: 5.3mm;
+      overflow: hidden;
+    }
+
+    .part-table td,
+    .summary-table td {
+      height: auto;
+      overflow: visible;
+      padding: 0.8mm 1.6mm;
     }
 
     .part-table th,
@@ -227,13 +238,14 @@
 
     .left {
       text-align: left !important;
-      padding-left: 1mm !important;
+      padding-left: 2mm !important;
     }
 
     .wrap {
       white-space: normal !important;
       word-break: break-word;
       line-height: 1.05;
+      overflow: visible;
     }
 
     .part-table col:nth-child(1) { width: 5%; }

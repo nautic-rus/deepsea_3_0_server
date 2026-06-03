@@ -57,6 +57,76 @@ class SpecificationPdfService {
     return chunks;
   }
 
+  static _mmToPx(mm) {
+    const numericMm = Number(mm);
+    if (!Number.isFinite(numericMm)) {
+      return 0;
+    }
+    return numericMm * 96 / 25.4;
+  }
+
+  static _buildPdfExtraStyles() {
+    return `
+    .group-separator td {
+      height: 4mm;
+      padding: 0;
+      border-left: 0;
+      border-right: 0;
+      border-top: 0;
+      border-bottom: 0;
+      background: transparent;
+    }
+    .pdf-measure-root {
+      position: absolute;
+      left: -10000mm;
+      top: 0;
+      width: 297mm;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .pdf-measure-table {
+      border-collapse: collapse;
+      table-layout: fixed;
+      width: calc(100% - 10mm);
+      position: relative;
+      left: 5mm;
+      box-sizing: border-box;
+    }
+    .pdf-measure-table th,
+    .pdf-measure-table td {
+      border: 0.35mm solid #000;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      text-align: center;
+      vertical-align: middle;
+      white-space: nowrap;
+      font-size: 2.7mm;
+      line-height: 1;
+      font-family: "SpecSans", "DejaVu Sans", "Liberation Sans", Arial, sans-serif;
+    }
+    .pdf-measure-table th {
+      height: 5.3mm;
+      overflow: hidden;
+      font-weight: 700;
+    }
+    .pdf-measure-table td {
+      height: auto;
+      overflow: visible;
+      padding: 0.8mm 1.6mm;
+    }
+    .pdf-measure-table .left {
+      text-align: left !important;
+      padding-left: 2mm !important;
+    }
+    .pdf-measure-table .wrap {
+      white-space: normal !important;
+      word-break: break-word;
+      line-height: 1.05;
+      overflow: visible;
+    }`;
+  }
+
   static _resolveChromiumExecutablePath() {
     const candidates = [
       process.env.PUPPETEER_EXECUTABLE_PATH,
@@ -389,6 +459,332 @@ class SpecificationPdfService {
     return '';
   }
 
+  static _buildPdfSortKey(row) {
+    const label = String(SpecificationPdfService._resolveLabel(row) ?? '').trim();
+    return label;
+  }
+
+  static _comparePdfSortRows(a, b) {
+    const aLabel = SpecificationPdfService._buildPdfSortKey(a);
+    const bLabel = SpecificationPdfService._buildPdfSortKey(b);
+    const aBlank = aLabel === '';
+    const bBlank = bLabel === '';
+
+    if (aBlank && bBlank) {
+      return 0;
+    }
+
+    if (aBlank) {
+      return 1;
+    }
+
+    if (bBlank) {
+      return -1;
+    }
+
+    return aLabel.localeCompare(bLabel, 'ru', { numeric: true, sensitivity: 'base' });
+  }
+
+  static _sortRowsForPdf(rows) {
+    return [...(rows || [])].sort((a, b) => {
+      const byLabel = SpecificationPdfService._comparePdfSortRows(a, b);
+      if (byLabel !== 0) {
+        return byLabel;
+      }
+
+      const aId = SpecificationPdfService._toNumberOrNull(a && a.id);
+      const bId = SpecificationPdfService._toNumberOrNull(b && b.id);
+      if (aId !== null && bId !== null && aId !== bId) {
+        return aId - bId;
+      }
+
+      return 0;
+    });
+  }
+
+  static _buildPdfTitleSortKey(row) {
+    return String(SpecificationPdfService._resolveMaterialTitle(row) ?? '').trim();
+  }
+
+  static _comparePdfTitleRows(a, b) {
+    const aTitle = SpecificationPdfService._buildPdfTitleSortKey(a);
+    const bTitle = SpecificationPdfService._buildPdfTitleSortKey(b);
+    const aBlank = aTitle === '';
+    const bBlank = bTitle === '';
+
+    if (aBlank && bBlank) {
+      return 0;
+    }
+
+    if (aBlank) {
+      return 1;
+    }
+
+    if (bBlank) {
+      return -1;
+    }
+
+    const byTitle = aTitle.localeCompare(bTitle, 'ru', { numeric: true, sensitivity: 'base' });
+    if (byTitle !== 0) {
+      return byTitle;
+    }
+
+    return SpecificationPdfService._comparePdfSortRows(a, b);
+  }
+
+  static _sortRowsByTitleForPdf(rows) {
+    return [...(rows || [])].sort((a, b) => {
+      const byTitle = SpecificationPdfService._comparePdfTitleRows(a, b);
+      if (byTitle !== 0) {
+        return byTitle;
+      }
+
+      const aId = SpecificationPdfService._toNumberOrNull(a && a.id);
+      const bId = SpecificationPdfService._toNumberOrNull(b && b.id);
+      if (aId !== null && bId !== null && aId !== bId) {
+        return aId - bId;
+      }
+
+      return 0;
+    });
+  }
+
+  static _sortRowsWithParentsForPdf(rows) {
+    const items = Array.isArray(rows) ? rows : [];
+    if (items.length <= 1) {
+      return [...items];
+    }
+
+    const nodesById = new Map();
+    const roots = [];
+
+    for (const row of items) {
+      const id = SpecificationPdfService._toNumberOrNull(row && row.id);
+      nodesById.set(id !== null ? id : Symbol('spec-row'), {
+        row,
+        children: [],
+      });
+    }
+
+    const nodeEntries = [...nodesById.entries()];
+    for (const [key, node] of nodeEntries) {
+      const row = node.row;
+      const parentId = SpecificationPdfService._toNumberOrNull(row && row.parent_id);
+      const parentNode = parentId !== null ? nodesById.get(parentId) : null;
+
+      if (parentNode && parentNode !== node) {
+        parentNode.children.push(node);
+        continue;
+      }
+
+      roots.push(node);
+    }
+
+    const sortedRoots = roots.sort((a, b) => SpecificationPdfService._comparePdfSortRows(a.row, b.row));
+    const flattened = [];
+    const visited = new Set();
+
+    const walk = (node) => {
+      if (!node || visited.has(node)) {
+        return;
+      }
+
+      visited.add(node);
+      flattened.push(node.row);
+      node.children.sort((a, b) => SpecificationPdfService._comparePdfSortRows(a.row, b.row));
+      for (const child of node.children) {
+        walk(child);
+      }
+    };
+
+    for (const root of sortedRoots) {
+      walk(root);
+    }
+
+    for (const node of nodesById.values()) {
+      if (!visited.has(node)) {
+        walk(node);
+      }
+    }
+
+    return flattened;
+  }
+
+  static _isPdfSeparatorRow(row) {
+    return !!(row && row.__pdfGroupSeparator === true);
+  }
+
+  static _resolvePdfGroupRootId(row, rowsById, seen = new Set()) {
+    const rowId = SpecificationPdfService._toNumberOrNull(row && row.id);
+    if (rowId === null || !rowsById || !rowsById.has(rowId) || seen.has(rowId)) {
+      return rowId;
+    }
+
+    seen.add(rowId);
+    const parentId = SpecificationPdfService._toNumberOrNull(row && row.parent_id);
+    if (parentId === null || !rowsById.has(parentId)) {
+      return rowId;
+    }
+
+    const parentRow = rowsById.get(parentId);
+    return SpecificationPdfService._resolvePdfGroupRootId(parentRow, rowsById, seen);
+  }
+
+  static _insertPdfGroupSeparators(rows) {
+    const items = Array.isArray(rows) ? rows : [];
+    if (items.length <= 1) {
+      return [...items];
+    }
+
+    const rowsById = new Map();
+    for (const row of items) {
+      const id = SpecificationPdfService._toNumberOrNull(row && row.id);
+      if (id !== null && !rowsById.has(id)) {
+        rowsById.set(id, row);
+      }
+    }
+
+    const output = [];
+    let previousGroupRootId = null;
+    let hasPreviousGroup = false;
+
+    for (const row of items) {
+      if (SpecificationPdfService._isPdfSeparatorRow(row)) {
+        continue;
+      }
+
+      const groupRootId = SpecificationPdfService._resolvePdfGroupRootId(row, rowsById);
+      if (hasPreviousGroup && groupRootId !== null && previousGroupRootId !== null && groupRootId !== previousGroupRootId) {
+        output.push({ __pdfGroupSeparator: true });
+      } else if (hasPreviousGroup && groupRootId !== null && previousGroupRootId === null) {
+        output.push({ __pdfGroupSeparator: true });
+      }
+
+      output.push(row);
+      previousGroupRootId = groupRootId;
+      hasPreviousGroup = true;
+    }
+
+    return output;
+  }
+
+  static _preparePdfRows(rows, groupByPartCode = false, insertBlankRowBetweenGroups = false) {
+    const sortedRows = SpecificationPdfService._sortRowsWithParentsForPdf(rows);
+    const partRowsBase = groupByPartCode
+      ? SpecificationPdfService._sortRowsForPdf(SpecificationPdfService._groupRowsForPdf(sortedRows, true))
+      : sortedRows;
+    const summaryRowsBase = groupByPartCode
+      ? SpecificationPdfService._sortRowsByTitleForPdf(SpecificationPdfService._groupRowsForPdf(sortedRows, true))
+      : SpecificationPdfService._sortRowsByTitleForPdf(SpecificationPdfService._buildSummaryEntries(sortedRows));
+
+    return {
+      partRows: insertBlankRowBetweenGroups
+        ? SpecificationPdfService._insertPdfGroupSeparators(partRowsBase)
+        : partRowsBase,
+      summaryRows: insertBlankRowBetweenGroups
+        ? SpecificationPdfService._insertPdfGroupSeparators(summaryRowsBase)
+        : summaryRowsBase,
+    };
+  }
+
+  static _paginateRowsByHeights(rows, heights, maxHeightPx) {
+    const items = Array.isArray(rows) ? rows : [];
+    const chunks = [];
+    let current = [];
+    let currentHeight = 0;
+    const limit = Number(maxHeightPx);
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : Infinity;
+
+    for (let index = 0; index < items.length; index += 1) {
+      const row = items[index];
+      const rowHeight = Number(heights && heights[index]);
+      const safeRowHeight = Number.isFinite(rowHeight) && rowHeight > 0 ? rowHeight : 0;
+      const isSeparator = SpecificationPdfService._isPdfSeparatorRow(row);
+
+      if (isSeparator && current.length === 0) {
+        continue;
+      }
+
+      if (current.length > 0 && currentHeight + safeRowHeight > safeLimit) {
+        chunks.push(current);
+        current = [];
+        currentHeight = 0;
+
+        if (isSeparator) {
+          continue;
+        }
+      }
+
+      current.push(row);
+      currentHeight += safeRowHeight;
+    }
+
+    if (current.length > 0) {
+      chunks.push(current);
+    }
+
+    return chunks;
+  }
+
+  static _buildMeasurementHtml({ styles, partRows, summaryRows, grouped = false }) {
+    const extraStyles = SpecificationPdfService._buildPdfExtraStyles();
+    return `<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>pdf-measurement</title>
+  <style>${styles}${extraStyles}</style>
+</head>
+<body>
+  <div class="pdf-measure-root">
+    <table class="pdf-measure-table measure-part">
+      <colgroup>
+        <col><col><col><col><col><col><col><col><col><col>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>TITLE / НАИМЕНОВАНИЕ</th>
+          <th>DESCRIPTION / ОБОЗНАЧЕНИЕ</th>
+          <th>UNITS / КЕИ</th>
+          <th>QTY / К-ВО</th>
+          <th>WGT / ВЕС</th>
+          <th>T.WGT / О.ВЕС</th>
+          <th>ROOM / ПОМ.</th>
+          <th>PLACE / АДРЕС</th>
+          <th>MAT.CODE / КОД МАТ.</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${SpecificationPdfService._buildPartRows(partRows, 1, grouped)}
+      </tbody>
+    </table>
+    <table class="pdf-measure-table measure-summary">
+      <colgroup>
+        <col><col><col><col><col><col><col><col>
+      </colgroup>
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>TITLE / НАИМЕНОВАНИЕ</th>
+          <th>DESCRIPTION / ОБОЗНАЧЕНИЕ</th>
+          <th>UNITS / ЕД.</th>
+          <th>QTY / К-ВО</th>
+          <th>WGT / ВЕС</th>
+          <th>ST.CODE / К.ВЕД.</th>
+          <th>MAT.CODE / КОД МАТ.</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${SpecificationPdfService._buildSummaryRows(summaryRows, 1, grouped)}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>`;
+  }
+
   static _buildPdfGroupingKey(row, groupByPartCode) {
     const materialId = SpecificationPdfService._toNumberOrNull(row && row.material_id);
     const materialKey = materialId && materialId > 0 ? String(materialId) : `row:${row && row.id ? row.id : 'unknown'}`;
@@ -445,8 +841,18 @@ class SpecificationPdfService {
   }
 
   static _resolveMaterialDescr(part) {
+    const descriptions = String(part && part.descriptions !== undefined && part.descriptions !== null
+      ? part.descriptions
+      : '').trim();
     const material = part.material || null;
-    if (material && material.description) return material.description;
+    const materialDescription = String(material && material.description ? material.description : '').trim();
+
+    if (descriptions && materialDescription) {
+      return `${descriptions}, ${materialDescription}`;
+    }
+
+    if (descriptions) return descriptions;
+    if (materialDescription) return materialDescription;
     return '';
   }
 
@@ -572,11 +978,20 @@ class SpecificationPdfService {
       </tr>`;
     }
 
-    return rows.map((part, index) => {
-      const label = startIndex + index;
+    let label = startIndex;
+    return rows.map((part) => {
+      if (SpecificationPdfService._isPdfSeparatorRow(part)) {
+        return `
+      <tr class="group-separator">
+        <td colspan="10">&nbsp;</td>
+      </tr>`;
+      }
+
+      const currentLabel = label;
+      label += 1;
       return `
       <tr>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || label)}</td>
+        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || currentLabel)}</td>
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
@@ -605,11 +1020,20 @@ class SpecificationPdfService {
       </tr>`;
     }
 
-    return rows.map((part, index) => {
-      const label = startIndex + index;
+    let label = startIndex;
+    return rows.map((part) => {
+      if (SpecificationPdfService._isPdfSeparatorRow(part)) {
+        return `
+      <tr class="group-separator">
+        <td colspan="8">&nbsp;</td>
+      </tr>`;
+      }
+
+      const currentLabel = label;
+      label += 1;
       return `
       <tr>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || label)}</td>
+        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || currentLabel)}</td>
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
@@ -761,23 +1185,24 @@ class SpecificationPdfService {
   </section>`;
   }
 
-  static _buildHtml({ spec, version, rows, logoUrl, groupByPartCode = false }) {
+  static _buildHtml({
+    spec,
+    version,
+    rows,
+    logoUrl,
+    groupByPartCode = false,
+    insertBlankRowBetweenGroups = false,
+    partChunks = null,
+    summaryChunks = null
+  }) {
     const styles = SpecificationPdfService._readTemplateStyles();
     const docName = spec.name || 'Specification';
     const docNumber = spec.code || `SP-${spec.id}`;
     const rev = version.version ?? version.id ?? '';
     const date = SpecificationPdfService._formatDate(version.updated_at || version.created_at || new Date());
-
-    const partChunkSize = 24;
-    const summaryChunkSize = 24;
-    const partRows = groupByPartCode
-      ? SpecificationPdfService._groupRowsForPdf(rows, true)
-      : rows;
-    const summaryRows = groupByPartCode
-      ? SpecificationPdfService._groupRowsForPdf(rows, true)
-      : SpecificationPdfService._buildSummaryEntries(rows);
-    const partChunks = SpecificationPdfService._chunk(partRows, partChunkSize);
-    const summaryChunks = SpecificationPdfService._chunk(summaryRows, summaryChunkSize);
+    const preparedRows = SpecificationPdfService._preparePdfRows(rows, groupByPartCode, insertBlankRowBetweenGroups);
+    const partRows = partChunks || SpecificationPdfService._chunk(preparedRows.partRows, 24);
+    const summaryRows = summaryChunks || SpecificationPdfService._chunk(preparedRows.summaryRows, 24);
 
     const pages = [];
     let pageNo = 1;
@@ -791,7 +1216,7 @@ class SpecificationPdfService {
     }));
 
     let startIndex = 1;
-    for (const chunk of partChunks.length ? partChunks : [[]]) {
+    for (const chunk of partRows.length ? partRows : [[]]) {
       pageNo += 1;
       pages.push(SpecificationPdfService._buildPartPage({
         pageNo,
@@ -808,7 +1233,7 @@ class SpecificationPdfService {
     }
 
     startIndex = 1;
-    for (const chunk of summaryChunks.length ? summaryChunks : [[]]) {
+    for (const chunk of summaryRows.length ? summaryRows : [[]]) {
       pageNo += 1;
       pages.push(SpecificationPdfService._buildSummaryPage({
         pageNo,
@@ -834,6 +1259,15 @@ class SpecificationPdfService {
     .stamp-value-center {
       text-align: center;
       width: 100%;
+    }
+    .group-separator td {
+      height: 4mm;
+      padding: 0;
+      border-left: 0;
+      border-right: 0;
+      border-top: 0;
+      border-bottom: 0;
+      background: transparent;
     }
   </style>
 </head>
@@ -865,6 +1299,7 @@ ${pages.join('\n')}
     }
 
     const groupByPartCode = options && options.groupByPartCode === true;
+    const insertBlankRowBetweenGroups = options && options.insertBlankRowBetweenGroups === true;
 
     const version = await SpecificationVersion.findById(parsedVersionId);
     if (!version) {
@@ -880,7 +1315,7 @@ ${pages.join('\n')}
       throw err;
     }
 
-    const inFlightKey = `${parsedVersionId}:${groupByPartCode ? 'group' : 'default'}`;
+    const inFlightKey = `${parsedVersionId}:${groupByPartCode ? 'group' : 'default'}:${insertBlankRowBetweenGroups ? 'blank' : 'noblank'}`;
     const existingPromise = SpecificationPdfService._inFlightGenerations.get(inFlightKey);
     if (existingPromise) {
       return existingPromise;
@@ -897,13 +1332,6 @@ ${pages.join('\n')}
         statement_code: statementMap.get(Number(row.material_id)) || '',
       }));
       const logoUrl = await SpecificationPdfService._resolveCompanyLogoAsset();
-      const html = SpecificationPdfService._buildHtml({
-        spec,
-        version,
-        rows: enrichedRows,
-        logoUrl,
-        groupByPartCode
-      });
       const executablePath = SpecificationPdfService._resolveChromiumExecutablePath();
       if (!executablePath) {
         const err = new Error('Chromium executable not found');
@@ -911,7 +1339,15 @@ ${pages.join('\n')}
         throw err;
       }
 
-      return SpecificationPdfService._renderPdf({ executablePath, html, spec, version });
+      return SpecificationPdfService._renderPdf({
+        executablePath,
+        spec,
+        version,
+        rows: enrichedRows,
+        logoUrl,
+        groupByPartCode,
+        insertBlankRowBetweenGroups
+      });
     })();
 
     SpecificationPdfService._inFlightGenerations.set(inFlightKey, generationPromise);
@@ -926,7 +1362,7 @@ ${pages.join('\n')}
     }
   }
 
-  static async _renderPdf({ executablePath, html, spec, version }) {
+  static async _renderPdf({ executablePath, spec, version, rows, logoUrl, groupByPartCode = false, insertBlankRowBetweenGroups = false }) {
     await SpecificationPdfService._acquireSlot();
 
     try {
@@ -937,6 +1373,74 @@ ${pages.join('\n')}
         const page = await SpecificationPdfService._newPageWithRetry(context);
         page.setDefaultTimeout(PDF_PAGE_TIMEOUT_MS);
         page.setDefaultNavigationTimeout(PDF_PAGE_TIMEOUT_MS);
+
+        const styles = SpecificationPdfService._readTemplateStyles();
+        const preparedRows = SpecificationPdfService._preparePdfRows(rows, groupByPartCode, insertBlankRowBetweenGroups);
+        const measurementHtml = SpecificationPdfService._buildMeasurementHtml({
+          styles,
+          partRows: preparedRows.partRows,
+          summaryRows: preparedRows.summaryRows,
+          grouped: groupByPartCode
+        });
+
+        await page.setContent(measurementHtml, {
+          waitUntil: 'domcontentloaded',
+          timeout: PDF_PAGE_TIMEOUT_MS,
+        });
+        await page.evaluate(async () => {
+          if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+          }
+        }).catch(() => {});
+
+        const layout = await page.evaluate(() => {
+          const measureHeights = (selector) => Array.from(document.querySelectorAll(selector))
+            .map((row) => {
+              const rect = row.getBoundingClientRect();
+              return rect ? rect.height : 0;
+            });
+
+          const measureHeaderHeight = (selector) => {
+            const header = document.querySelector(selector);
+            if (!header) {
+              return 0;
+            }
+            const rect = header.getBoundingClientRect();
+            return rect ? rect.height : 0;
+          };
+
+          return {
+            partRowHeights: measureHeights('.measure-part tbody tr'),
+            summaryRowHeights: measureHeights('.measure-summary tbody tr'),
+            partHeaderHeight: measureHeaderHeight('.measure-part thead'),
+            summaryHeaderHeight: measureHeaderHeight('.measure-summary thead')
+          };
+        });
+
+        const availableTableAreaPx = SpecificationPdfService._mmToPx(300);
+        const partMaxBodyHeightPx = Math.max(0, availableTableAreaPx - Number(layout.partHeaderHeight || 0));
+        const summaryMaxBodyHeightPx = Math.max(0, availableTableAreaPx - Number(layout.summaryHeaderHeight || 0));
+        const partChunks = SpecificationPdfService._paginateRowsByHeights(
+          preparedRows.partRows,
+          layout.partRowHeights || [],
+          partMaxBodyHeightPx
+        );
+        const summaryChunks = SpecificationPdfService._paginateRowsByHeights(
+          preparedRows.summaryRows,
+          layout.summaryRowHeights || [],
+          summaryMaxBodyHeightPx
+        );
+
+        const html = SpecificationPdfService._buildHtml({
+          spec,
+          version,
+          rows,
+          logoUrl,
+          groupByPartCode,
+          insertBlankRowBetweenGroups,
+          partChunks,
+          summaryChunks
+        });
 
         await page.setContent(html, {
           waitUntil: 'domcontentloaded',

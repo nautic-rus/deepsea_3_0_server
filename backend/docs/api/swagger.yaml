@@ -16618,6 +16618,13 @@ paths:
           type: boolean
           default: false
         description: When true, groups PDF rows by material_id and part_code before rendering.
+      - name: insert_empty_row_between_groups
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+        description: When true, inserts an empty row between top-level position groups in the generated PDF.
       responses:
         '200':
           description: PDF file
