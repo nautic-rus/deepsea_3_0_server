@@ -12,6 +12,7 @@ class SpecificationSourceConnector {
           CASE lower(code)
             WHEN 'block_oid' THEN '/api/oracle/{project_code}/blocks'
             WHEN 'as_oid' THEN '/api/oracle/{project_code}/astructure'
+            WHEN 'system_oid' THEN '/api/oracle/{schemaName}/parts-by-system-oid?system_oid={oid}'
             ELSE NULL
           END
         ) AS url_source,

@@ -19,6 +19,8 @@ class SpecificationPart {
       `${prefix}length`,
       `${prefix}width`,
       `${prefix}thickness`,
+      `${prefix}radius`,
+      `${prefix}angle`,
       `${prefix}symmetry`,
       `${prefix}descriptions`,
       `${prefix}cog_x`,
@@ -135,7 +137,7 @@ class SpecificationPart {
   }
 
   static async create(fields) {
-    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING id`;
+    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, radius, angle, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id`;
     const vals = [
       fields.specification_version_id,
       fields.parent_id || null,
@@ -150,6 +152,8 @@ class SpecificationPart {
       SpecificationPart._normalizeNullable(fields.length),
       SpecificationPart._normalizeNullable(fields.width),
       SpecificationPart._normalizeNullable(fields.thickness),
+      SpecificationPart._normalizeNullable(fields.radius),
+      SpecificationPart._normalizeNullable(fields.angle),
       fields.symmetry || null,
       fields.unit || null,
       fields.part_type || null,
@@ -170,10 +174,10 @@ class SpecificationPart {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['parent_id','part_code','part_oid','drawing_address','material_id','sfi_code_id','quantity','qty','zone','length','width','thickness','symmetry','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
+    ['parent_id','part_code','part_oid','drawing_address','material_id','sfi_code_id','quantity','qty','zone','length','width','thickness','radius','angle','symmetry','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
       if (fields[k] !== undefined) {
         parts.push(`${k} = $${idx++}`);
-        const normalized = ['length', 'width', 'thickness'].includes(k)
+        const normalized = ['length', 'width', 'thickness', 'radius', 'angle'].includes(k)
           ? SpecificationPart._normalizeNullable(fields[k])
           : fields[k];
         values.push(normalized);

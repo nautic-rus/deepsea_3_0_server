@@ -2444,12 +2444,14 @@ CREATE TABLE public.specification_parts (
     length numeric,
     width numeric,
     thickness numeric,
+    radius numeric,
+    angle numeric,
     symmetry text,
     unit text,
     descriptions text,
     sfi_code_id integer,
     qty numeric(15,3),
-    CONSTRAINT specification_parts_source_check CHECK (((source)::text = ANY (ARRAY[('import'::character varying)::text, ('manual'::character varying)::text, ('foran'::character varying)::text, ('astructure'::character varying)::text])))
+    CONSTRAINT specification_parts_source_check CHECK (((source)::text = ANY (ARRAY[('import'::character varying)::text, ('manual'::character varying)::text, ('foran'::character varying)::text, ('astructure'::character varying)::text, ('systems'::character varying)::text])))
 );
 
 

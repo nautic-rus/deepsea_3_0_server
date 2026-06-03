@@ -80,7 +80,6 @@ class SpecificationPartsImportService {
       const dataConnector = connectorRow.data_connector;
       const oid = dataConnector ? dataConnector.oid : null;
       const importStrategy = SpecificationPartsService._resolveConnectorImportStrategy(connectorRow);
-      const sourceValue = 'foran';
       const requestUrl = importStrategy.key === 'astructure'
         ? SpecificationPartsService._buildAstructureRequestUrl(
           sourceConnector.url,
@@ -89,19 +88,27 @@ class SpecificationPartsImportService {
           options.requestBaseUrl || null,
           foranSettings.url
         )
-        : SpecificationPartsService._buildForanRequestUrl(
-          sourceConnector.url,
-          projectConnector.project_code,
-          oid,
-          sourceConnector.code,
-          options.requestBaseUrl || null,
-          foranSettings.url
-        );
+        : importStrategy.key === 'systems'
+          ? SpecificationPartsService._buildSystemsRequestUrl(
+            sourceConnector.url,
+            projectConnector.project_code,
+            oid,
+            options.requestBaseUrl || null,
+            foranSettings.url
+          )
+          : SpecificationPartsService._buildForanRequestUrl(
+            sourceConnector.url,
+            projectConnector.project_code,
+            oid,
+            sourceConnector.code,
+            options.requestBaseUrl || null,
+            foranSettings.url
+          );
       return {
         requestUrl,
         project_code: projectConnector.project_code,
         oid,
-        sourceValue,
+        sourceValue: importStrategy.sourceValue,
         importBranch: importStrategy.key,
         sourceConnector,
         projectConnector,
@@ -109,7 +116,7 @@ class SpecificationPartsImportService {
       };
     });
 
-    // Keep BLOCKS and ASTRUCTURE separated so their URLs, row shapes, and quantity rules never mix.
+    // Keep BLOCKS, ASTRUCTURE, and SYSTEMS separated so their URLs, row shapes, and quantity rules never mix.
     const connectorGroups = new Map();
     for (const connector of connectorSources) {
       if (!connectorGroups.has(connector.importBranch)) {
@@ -125,7 +132,7 @@ class SpecificationPartsImportService {
 
     for (const [strategyKey, connectors] of connectorGroups.entries()) {
       // Persist the unified source label for every imported row.
-      const sourceValue = 'foran';
+      const sourceValue = connectors[0] && connectors[0].sourceValue ? connectors[0].sourceValue : strategyKey;
       let groupHasRows = false;
 
       if (shouldUseDirectPayload) {
@@ -241,9 +248,11 @@ class SpecificationPartsImportService {
           });
           continue;
         }
-        // ASTRUCTURE uses a dedicated quantity resolver; BLOCKS keeps the legacy behavior.
+        // ASTRUCTURE and SYSTEMS use dedicated quantity resolvers; BLOCKS keeps the legacy behavior.
         const quantityResolution = row.importBranch === 'astructure'
           ? SpecificationPartsService._resolveAstructureQuantityDetails(row, material)
+          : row.importBranch === 'systems'
+            ? SpecificationPartsService._resolveSystemsQuantityDetails(row, material)
           : SpecificationPartsService._resolveQuantityDetails(row, material);
         const resolvedQuantity = quantityResolution.quantity;
         if (!quantityResolution.calculated) {
@@ -259,7 +268,7 @@ class SpecificationPartsImportService {
           });
           continue;
         }
-        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
         values.push(
           versionId,
           row.part_code,
@@ -272,6 +281,8 @@ class SpecificationPartsImportService {
           row.length,
           row.width,
           row.thickness,
+          row.radius,
+          row.angle,
           row.symmetry,
           row.unit,
           row.part_type,
@@ -301,7 +312,7 @@ class SpecificationPartsImportService {
 
       const insertRes = await client.query(
         `INSERT INTO specification_parts
-          (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
+          (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, radius, angle, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
          VALUES ${placeholders.join(', ')}
          RETURNING id`,
         values

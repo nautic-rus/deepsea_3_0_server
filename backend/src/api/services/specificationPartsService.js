@@ -301,29 +301,45 @@ class SpecificationPartsService {
 
   static _normalizeExternalRow(row, sourceKey = 'blocks') {
     // Normalize a single external row into the internal specification_parts shape.
-    // The mapping varies slightly between BLOCKS and ASTRUCTURE.
+    // The mapping varies slightly between BLOCKS, ASTRUCTURE, and SYSTEMS.
     if (!row || typeof row !== 'object') return null;
-    const sourceMode = SpecificationPartsService._normalizeLowerText(sourceKey) === 'astructure'
+    const sourceModeRaw = SpecificationPartsService._normalizeLowerText(sourceKey);
+    const sourceMode = sourceModeRaw === 'astructure'
       ? 'astructure'
-      : 'blocks';
+      : (sourceModeRaw === 'systems' ? 'systems' : 'blocks');
     const partCodeKeys = sourceMode === 'astructure'
       ? ['CODEID', 'codeid']
+      : sourceMode === 'systems'
+        ? ['SPOOLID', 'spoolid', 'CODEID', 'codeid', 'PART_CODE', 'part_code', 'code', 'CODE']
       : ['PART_CODE', 'part_code', 'code', 'CODE'];
     const partOidKeys = sourceMode === 'astructure'
       ? ['MOD_OID', 'mod_oid', 'AS_OID', 'as_oid', 'PART_OID', 'part_oid', 'oid', 'OID']
+      : sourceMode === 'systems'
+        ? ['SPOOLID', 'spoolid', 'SYSTEM_OID', 'system_oid', 'MOD_OID', 'mod_oid', 'AS_OID', 'as_oid', 'PART_OID', 'part_oid', 'oid', 'OID']
       : ['PART_OID', 'part_oid', 'oid', 'OID'];
     const totalWeightKeys = sourceMode === 'astructure'
       ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
+      : sourceMode === 'systems'
+        ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
       : ['TOTAL_WEIGHT', 'total_weight', 'weight'];
     const zoneKeys = sourceMode === 'astructure'
       ? ['ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
+      : sourceMode === 'systems'
+        ? ['ZONENAME', 'zonename', 'ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
       : ['BLOCK_CODE', 'block_code', 'zone', 'ZONE', 'STRGROUP', 'strgroup'];
     const stockCodeKeys = sourceMode === 'astructure'
       ? ['STOCK', 'stock', 'STOCK_CODE', 'stock_code']
+      : sourceMode === 'systems'
+        ? ['STOCKCODE', 'stockcode', 'STOCK', 'stock', 'STOCK_CODE', 'stock_code']
       : ['STOCK_CODE', 'stock_code'];
     const descriptionsKeys = sourceMode === 'astructure'
       ? ['MATERIAL_DESCRIPTION', 'material_description', 'NORM_DESCR', 'norm_descr', 'DESCRIPTION', 'description', 'PART_DESC', 'part_desc']
+      : sourceMode === 'systems'
+        ? ['SYSTEMNAME', 'systemname', 'ZONENAME', 'zonename', 'MATERIAL_DESCRIPTION', 'material_description', 'NORM_DESCR', 'norm_descr', 'DESCRIPTION', 'description', 'PART_DESC', 'part_desc']
       : ['PART_DESC', 'part_desc', 'description', 'DESCRIPTION'];
+    const partType = sourceMode === 'systems'
+      ? String(SpecificationPartsService._pickExternalValue(row, ['TYPECODE', 'typecode']) || '').trim() || null
+      : null;
     const partCodeRaw = SpecificationPartsService._pickExternalValue(row, partCodeKeys);
     const partOidRaw = SpecificationPartsService._pickExternalValue(row, partOidKeys);
     const partCode = partCodeRaw != null && String(partCodeRaw).trim() !== ''
@@ -337,6 +353,8 @@ class SpecificationPartsService {
     const lengthRaw = SpecificationPartsService._pickExternalValue(row, ['LENGTH', 'length']);
     const widthRaw = SpecificationPartsService._pickExternalValue(row, ['WIDTH', 'width']);
     const thicknessRaw = SpecificationPartsService._pickExternalValue(row, ['THICKNESS', 'thickness']);
+    const radiusRaw = SpecificationPartsService._pickExternalValue(row, ['RADIUS', 'radius']);
+    const angleRaw = SpecificationPartsService._pickExternalValue(row, ['ANGLE', 'angle']);
     const length = lengthRaw !== undefined && lengthRaw !== null && lengthRaw !== ''
       ? Number(lengthRaw)
       : null;
@@ -345,6 +363,12 @@ class SpecificationPartsService {
       : null;
     const thickness = thicknessRaw !== undefined && thicknessRaw !== null && thicknessRaw !== ''
       ? Number(thicknessRaw)
+      : null;
+    const radius = radiusRaw !== undefined && radiusRaw !== null && radiusRaw !== ''
+      ? Number(radiusRaw)
+      : null;
+    const angle = angleRaw !== undefined && angleRaw !== null && angleRaw !== ''
+      ? Number(angleRaw)
       : null;
     const cogXRaw = SpecificationPartsService._pickExternalValue(row, ['COG_X', 'cog_x', 'cogX']);
     const cogYRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Y', 'cog_y', 'cogY']);
@@ -374,15 +398,17 @@ class SpecificationPartsService {
       stock_code: SpecificationPartsService._pickExternalValue(row, stockCodeKeys) != null
         ? String(SpecificationPartsService._pickExternalValue(row, stockCodeKeys)).trim()
         : null,
-      // ASTRUCTURE returns LENGTH in millimeters; the internal model stores meters.
-      length: Number.isNaN(length) ? null : (sourceMode === 'astructure' && length !== null ? length / 1000 : length),
+      // ASTRUCTURE and SYSTEMS return LENGTH in millimeters; the internal model stores meters.
+      length: Number.isNaN(length) ? null : ((sourceMode === 'astructure' || sourceMode === 'systems') && length !== null ? length / 1000 : length),
       width: Number.isNaN(width) ? null : width,
       thickness: Number.isNaN(thickness) ? null : thickness,
+      radius: Number.isNaN(radius) ? null : radius,
+      angle: Number.isNaN(angle) ? null : angle,
       cog_x: Number.isNaN(cogX) ? null : cogX,
       cog_y: Number.isNaN(cogY) ? null : cogY,
       cog_z: Number.isNaN(cogZ) ? null : cogZ,
       // These fields are intentionally left empty during import.
-      part_type: null,
+      part_type: partType,
       symmetry: null,
       unit: null,
       sfi_code_id: SpecificationPartsService._toNumberOrNull(
@@ -454,6 +480,10 @@ class SpecificationPartsService {
     return SpecificationPartsService._resolveAstructureQuantityDetails(row, material);
   }
 
+  static _resolveSystemsQuantity(row, material) {
+    return SpecificationPartsService._resolveSystemsQuantityDetails(row, material);
+  }
+
   static _resolveAstructureQuantityDetails(row, material) {
     // ASTRUCTURE quantity logic follows its own unit semantics.
     // We keep this separate so BLOCKS behavior cannot accidentally regress.
@@ -502,6 +532,25 @@ class SpecificationPartsService {
     }
 
     return { quantity: 1, calculated: false, reason: 'WEIGHT or material weight is missing, fell back to 1' };
+  }
+
+  static _resolveSystemsQuantityDetails(row, material) {
+    // SYSTEMS has its own contract: LENGTH is the only numeric field that can
+    // drive quantity, while everything else falls back to a single item.
+    const unitId = material && material.unit_id !== null && material.unit_id !== undefined && !Number.isNaN(Number(material.unit_id))
+      ? Number(material.unit_id)
+      : null;
+    const length = row.length !== null && row.length !== undefined && !Number.isNaN(Number(row.length))
+      ? Number(row.length)
+      : null;
+
+    if (unitId === 3) {
+      return length !== null
+        ? { quantity: length, calculated: true, reason: null }
+        : { quantity: 1, calculated: false, reason: 'LENGTH is missing, fell back to 1' };
+    }
+
+    return { quantity: 1, calculated: true, reason: null };
   }
 
   static _resolveForanBaseUrl(requestBaseUrl = null, runtimeUrl = null) {
@@ -554,6 +603,19 @@ class SpecificationPartsService {
     return url.toString();
   }
 
+  static _buildSystemsRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+    // SYSTEMS uses schemaName and a dedicated system_oid query parameter shape.
+    let relativePath = String(template || '')
+      .replaceAll('{schemaName}', encodeURIComponent(String(schemaName || '').trim()))
+      .replaceAll('{oid}', encodeURIComponent(String(oid || '')));
+
+    const url = new URL(relativePath, SpecificationPartsService._resolveForanBaseUrl(requestBaseUrl, runtimeUrl));
+    if (!url.searchParams.has('system_oid') && oid !== undefined && oid !== null && String(oid).trim() !== '' && /parts-by-system-oid/i.test(url.pathname)) {
+      url.searchParams.set('system_oid', String(oid));
+    }
+    return url.toString();
+  }
+
   static _resolveConnectorImportStrategy(connectorRow) {
     // Source connector metadata decides which import branch to use.
     const sourceConnector = connectorRow && connectorRow.source_connector ? connectorRow.source_connector : null;
@@ -562,13 +624,20 @@ class SpecificationPartsService {
     if (code === 'as_oid' || name === 'astructure') {
       return {
         key: 'astructure',
-        sourceValue: 'astructure'
+        sourceValue: 'foran'
+      };
+    }
+
+    if (code === 'system_oid' || name === 'systems') {
+      return {
+        key: 'systems',
+        sourceValue: 'systems'
       };
     }
 
     return {
       key: 'blocks',
-      sourceValue: 'blocks'
+      sourceValue: 'foran'
     };
   }
 
@@ -634,8 +703,10 @@ class SpecificationPartsService {
     const allowedSources = [
       'import',
       'manual',
+      'foran',
       'blocks',
       'astructure',
+      'systems',
       ...new Set((sourceValues || [])
         .map((value) => SpecificationPartsService._normalizeLowerText(value))
         .filter((value) => value !== ''))

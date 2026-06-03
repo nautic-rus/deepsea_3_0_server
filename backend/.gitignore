@@ -61,4 +61,6 @@ sql/*
 !sql/063_add_part_oid_to_specification_parts.sql
 !sql/066_add_project_id_to_equipment_material_kits.sql
 !sql/067_add_equipment_materials_project_kits.sql
+!sql/068_allow_systems_source_in_specification_parts.sql
+!sql/069_add_radius_angle_to_specification_parts.sql
 scripts/
