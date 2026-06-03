@@ -38,8 +38,8 @@ class StatementsPartsController {
   static async delete(req, res, next) {
     try {
       const actor = req.user || null;
-      const id = Number(req.params.id);
-      await StatementsPartsService.delete(id, actor);
+      const fields = Object.assign({}, req.query || {}, req.body || {});
+      await StatementsPartsService.delete(fields, actor);
       res.json({ message: 'Deleted' });
     } catch (err) { next(err); }
   }

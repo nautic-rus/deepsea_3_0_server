@@ -557,7 +557,7 @@ router.get('/statements_parts', authMiddleware, statementsPartsController.list);
 router.get('/statements_parts/:id', authMiddleware, statementsPartsController.get);
 router.post('/statements_parts', authMiddleware, statementsPartsController.create);
 router.put('/statements_parts/:id', authMiddleware, statementsPartsController.update);
-router.delete('/statements_parts/:id', authMiddleware, statementsPartsController.delete);
+router.delete('/statements_parts', authMiddleware, statementsPartsController.delete);
 
 // ===== Permissions routes =====
 // GET /api/permissions

@@ -16290,7 +16290,7 @@ paths:
           description: Forbidden
         '404':
           description: One or more specifications not found
-  "/api/statements_parts":
+  "/api/statements_parts/{id}":
     get:
       tags:
       - statements
@@ -16557,20 +16557,29 @@ paths:
                     "$ref": "#/components/schemas/StatementsPart"
         '423':
           description: Statements version is locked
+  "/api/statements_parts":
     delete:
       tags:
       - statements
-      summary: Delete statement part
+      summary: Delete statement parts
       security:
       - bearerAuth: []
       x-permissions:
-      - statements.update
-      parameters:
-      - name: id
-        in: path
-        required: true
-        schema:
-          type: integer
+      - statements.delete
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - statements_version_id
+              - material_id
+              properties:
+                statements_version_id:
+                  type: integer
+                material_id:
+                  type: integer
+        description: Delete all rows matching the provided statements version and material.
       responses:
         '200':
           description: Deleted
@@ -16583,8 +16592,8 @@ paths:
                     type: string
               example:
                 message: Deleted
-          '423':
-            description: Statements version is locked
+        '423':
+          description: Statements version is locked
   "/api/specification_versions/{id}/pdf":
     get:
       tags:

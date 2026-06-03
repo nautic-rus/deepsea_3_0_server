@@ -254,14 +254,34 @@ class StatementsPartsService {
     };
   }
 
-  static async delete(id, actor) {
+  static async delete(fields = {}, actor) {
     const allowed = await hasPermission(actor, 'statements.delete');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
-    const existing = await StatementsPart.findById(id);
-    if (!existing) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
-    await StatementsPartsService._assertVersionUnlocked(Number(existing.statements_version_id));
-    const ok = await StatementsPart.softDelete(id);
-    if (!ok) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
+
+    const hasVersionFilter = fields.statements_version_id !== undefined && fields.statements_version_id !== null && fields.statements_version_id !== '';
+    const hasMaterialFilter = fields.material_id !== undefined && fields.material_id !== null && fields.material_id !== '';
+
+    if (!hasVersionFilter || !hasMaterialFilter) {
+      const err = new Error('Missing fields');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const statementsVersionId = Number(fields.statements_version_id);
+    const materialId = Number(fields.material_id);
+    if (!statementsVersionId || Number.isNaN(statementsVersionId) || !materialId || Number.isNaN(materialId)) {
+      const err = new Error('Invalid statements_version_id or material_id');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    await StatementsPartsService._assertVersionUnlocked(statementsVersionId);
+    const deletedCount = await StatementsPart.deleteByVersionAndMaterial(statementsVersionId, materialId);
+    if (deletedCount === 0) {
+      const err = new Error('Not found');
+      err.statusCode = 404;
+      throw err;
+    }
     return { success: true };
   }
 

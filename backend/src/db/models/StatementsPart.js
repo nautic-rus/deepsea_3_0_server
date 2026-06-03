@@ -131,6 +131,12 @@ class StatementsPart {
     const res2 = await pool.query(q2, [id]);
     return res2.rowCount > 0;
   }
+
+  static async deleteByVersionAndMaterial(statementsVersionId, materialId) {
+    const q = `DELETE FROM statements_parts WHERE statements_version_id = $1 AND material_id = $2`;
+    const res = await pool.query(q, [statementsVersionId, materialId]);
+    return res.rowCount || 0;
+  }
 }
 
 module.exports = StatementsPart;

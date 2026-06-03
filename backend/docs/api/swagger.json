@@ -25055,7 +25055,7 @@
         }
       }
     },
-    "/api/statements_parts/{id}": {
+    "/api/statements_parts": {
       "get": {
         "tags": [
           "statements"
@@ -25224,25 +25224,37 @@
         "tags": [
           "statements"
         ],
-        "summary": "Delete statement part",
+        "summary": "Delete statement parts",
         "security": [
           {
             "bearerAuth": []
           }
         ],
         "x-permissions": [
-          "statements.update"
+          "statements.delete"
         ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer"
+        "requestBody": {
+          "description": "Delete all rows matching the provided statements version and material.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "statements_version_id",
+                  "material_id"
+                ],
+                "properties": {
+                  "statements_version_id": {
+                    "type": "integer"
+                  },
+                  "material_id": {
+                    "type": "integer"
+                  }
+                }
+              }
             }
           }
-        ],
+        },
         "responses": {
           "200": {
             "description": "Deleted",
@@ -25257,7 +25269,8 @@
                   }
                 },
                 "example": {
-                "message": "Deleted"
+                  "message": "Deleted"
+                }
               }
             }
           },
@@ -27339,4 +27352,3 @@
       }
     }
   }
-}
