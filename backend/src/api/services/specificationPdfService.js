@@ -668,6 +668,27 @@ class SpecificationPdfService {
     return output;
   }
 
+  static _assignSequentialDisplayNumbers(rows, fieldName = 'display_number') {
+    const items = Array.isArray(rows) ? rows : [];
+    const output = [];
+    let counter = 1;
+
+    for (const row of items) {
+      if (SpecificationPdfService._isPdfSeparatorRow(row)) {
+        output.push(row);
+        continue;
+      }
+
+      output.push({
+        ...row,
+        [fieldName]: counter,
+      });
+      counter += 1;
+    }
+
+    return output;
+  }
+
   static _preparePdfRows(rows, groupByPartCode = false, insertBlankRowBetweenGroups = false) {
     const sortedRows = SpecificationPdfService._sortRowsWithParentsForPdf(rows);
     const partRowsBase = groupByPartCode
@@ -676,14 +697,17 @@ class SpecificationPdfService {
     const summaryRowsBase = groupByPartCode
       ? SpecificationPdfService._sortRowsByTitleForPdf(SpecificationPdfService._groupRowsForPdf(sortedRows, true))
       : SpecificationPdfService._sortRowsByTitleForPdf(SpecificationPdfService._buildSummaryEntries(sortedRows));
+    const summaryRowsWithNumbers = SpecificationPdfService._assignSequentialDisplayNumbers(
+      insertBlankRowBetweenGroups
+        ? SpecificationPdfService._insertPdfGroupSeparators(summaryRowsBase)
+        : summaryRowsBase
+    );
 
     return {
       partRows: insertBlankRowBetweenGroups
         ? SpecificationPdfService._insertPdfGroupSeparators(partRowsBase)
         : partRowsBase,
-      summaryRows: insertBlankRowBetweenGroups
-        ? SpecificationPdfService._insertPdfGroupSeparators(summaryRowsBase)
-        : summaryRowsBase,
+      summaryRows: summaryRowsWithNumbers,
     };
   }
 
@@ -991,7 +1015,7 @@ class SpecificationPdfService {
       label += 1;
       return `
       <tr>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || currentLabel)}</td>
+        <td>${SpecificationPdfService._escapeHtml(currentLabel)}</td>
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
@@ -1033,7 +1057,7 @@ class SpecificationPdfService {
       label += 1;
       return `
       <tr>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || currentLabel)}</td>
+        <td>${SpecificationPdfService._escapeHtml(part.display_number ?? currentLabel)}</td>
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
