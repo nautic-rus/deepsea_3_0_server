@@ -1015,7 +1015,7 @@ class SpecificationPdfService {
       label += 1;
       return `
       <tr>
-        <td>${SpecificationPdfService._escapeHtml(currentLabel)}</td>
+        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || currentLabel)}</td>
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
