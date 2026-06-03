@@ -304,7 +304,7 @@ class SpecificationPartsImportService {
           row.symmetry,
           row.unit,
           row.part_type,
-          row.descriptions,
+          null,
           row.cog_x,
           row.cog_y,
           row.cog_z,
