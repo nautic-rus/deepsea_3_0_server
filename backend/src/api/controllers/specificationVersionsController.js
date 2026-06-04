@@ -75,6 +75,58 @@ class SpecificationVersionsController {
     }
   }
 
+  static async update(req, res, next) {
+    try {
+      const actor = req.user || null;
+      if (!actor || !actor.id) {
+        const err = new Error('Authentication required');
+        err.statusCode = 401;
+        throw err;
+      }
+
+      const allowed = await hasPermission(actor, 'specifications.update');
+      if (!allowed) {
+        const err = new Error('Forbidden: missing permission specifications.update');
+        err.statusCode = 403;
+        throw err;
+      }
+
+      const id = Number(req.params.id);
+      if (!id || Number.isNaN(id)) {
+        const err = new Error('Invalid id');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const version = req.body?.version === undefined || req.body?.version === null
+        ? undefined
+        : String(req.body.version).trim() || null;
+      const notes = req.body?.notes === undefined || req.body?.notes === null
+        ? undefined
+        : String(req.body.notes).trim() || null;
+      const lock = req.body?.lock === undefined
+        ? undefined
+        : (req.body?.lock === true || req.body?.lock === 'true' || req.body?.lock === 1 || req.body?.lock === '1');
+
+      const updated = await SpecificationVersion.update(id, {
+        version,
+        notes,
+        lock,
+        updated_by: actor.id
+      });
+      if (!updated) {
+        const err = new Error('Specification version not found');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      const row = await SpecificationVersion.findById(id);
+      res.json({ data: row || updated });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async get(req, res, next) {
     try {
       const actor = req.user || null;

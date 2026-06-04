@@ -503,6 +503,7 @@ router.delete('/specifications/:id', authMiddleware, specificationsController.de
 // ===== Specification versions / parts routes =====
 router.get('/specification_versions', authMiddleware, specificationVersionsController.list);
 router.post('/specification_versions', authMiddleware, specificationVersionsController.create);
+router.put('/specification_versions/:id', authMiddleware, specificationVersionsController.update);
 router.get('/specification_versions/:id/pdf', authMiddleware, specificationVersionsController.downloadPdf);
 router.get('/specification_versions/:id/center_of_mass', authMiddleware, specificationVersionsController.centerOfMass);
 router.get('/specification_versions/:id', authMiddleware, specificationVersionsController.get);

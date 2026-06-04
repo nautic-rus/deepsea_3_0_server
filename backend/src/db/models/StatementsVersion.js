@@ -62,6 +62,13 @@ class StatementsVersion {
   }
 
   static async softDelete(id) {
+    const existing = await StatementsVersion.findById(id);
+    if (!existing) return false;
+    if (existing.lock) {
+      const err = new Error('Statements version is locked');
+      err.statusCode = 423;
+      throw err;
+    }
     try {
       const q = `UPDATE statements_version SET is_active = false WHERE id = $1`;
       const res = await pool.query(q, [id]);

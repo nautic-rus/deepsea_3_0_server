@@ -3361,6 +3361,9 @@ components:
           type: string
           format: date-time
           nullable: true
+        lock:
+          type: boolean
+          description: Whether the version is locked
         updated_by:
           type: integer
           nullable: true
@@ -3394,6 +3397,25 @@ components:
           type: string
           nullable: true
           description: Optional notes
+        lock:
+          type: boolean
+          description: Whether the version is locked
+          default: false
+    SpecificationVersionUpdate:
+      type: object
+      description: Request body for updating a specification version
+      properties:
+        version:
+          type: string
+          nullable: true
+          description: Version label
+        notes:
+          type: string
+          nullable: true
+          description: Optional notes
+        lock:
+          type: boolean
+          description: Whether the version is locked
     ProjectCharacteristics:
       type: object
       properties:
@@ -16976,10 +16998,15 @@ paths:
         schema:
           type: integer
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              type: object
+              "$ref": "#/components/schemas/SpecificationVersionUpdate"
+            example:
+              version: v1.1
+              notes: Updated notes
+              lock: false
       responses:
         '200':
           description: Updated

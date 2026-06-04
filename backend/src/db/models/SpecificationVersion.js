@@ -74,6 +74,13 @@ class SpecificationVersion {
   }
 
   static async delete(id) {
+    const existing = await SpecificationVersion.findById(id);
+    if (!existing) return false;
+    if (existing.lock) {
+      const err = new Error('Specification version is locked');
+      err.statusCode = 423;
+      throw err;
+    }
     const q = `DELETE FROM specification_version WHERE id = $1`;
     const res = await pool.query(q, [id]);
     return res.rowCount > 0;
