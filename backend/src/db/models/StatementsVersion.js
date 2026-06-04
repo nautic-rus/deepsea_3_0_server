@@ -34,6 +34,16 @@ class StatementsVersion {
     return res.rows[0];
   }
 
+  static async touch(id, updatedBy, executor = pool) {
+    const q = `UPDATE statements_version
+      SET updated_by = $2,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING id, statement_id, version, notes, created_by, updated_by, "lock", created_at, updated_at`;
+    const res = await executor.query(q, [id, updatedBy ?? null]);
+    return res.rows[0] || null;
+  }
+
   static async update(id, fields) {
     const parts = [];
     const values = [];

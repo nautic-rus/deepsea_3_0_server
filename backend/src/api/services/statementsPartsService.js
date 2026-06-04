@@ -245,8 +245,22 @@ class StatementsPartsService {
     const existing = await StatementsPart.findById(id);
     if (!existing) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
     await StatementsPartsService._assertVersionUnlocked(Number(existing.statements_version_id));
+    if (fields.statements_version_id !== undefined && fields.statements_version_id !== null) {
+      const targetVersionId = Number(fields.statements_version_id);
+      if (!Number.isNaN(targetVersionId) && targetVersionId > 0 && targetVersionId !== Number(existing.statements_version_id)) {
+        await StatementsPartsService._assertVersionUnlocked(targetVersionId);
+      }
+    }
     const updated = await StatementsPart.update(id, fields);
     if (!updated) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
+    const existingVersionId = Number(existing.statements_version_id);
+    const updatedVersionId = Number(updated.statements_version_id);
+    if (!Number.isNaN(existingVersionId) && existingVersionId > 0) {
+      await StatementsVersion.touch(existingVersionId, actor.id);
+    }
+    if (!Number.isNaN(updatedVersionId) && updatedVersionId > 0 && updatedVersionId !== existingVersionId) {
+      await StatementsVersion.touch(updatedVersionId, actor.id);
+    }
     const meta = await StatementsPartsService._resolveVersionMeta({ statements_version_id: updated.statements_version_id }, [updated]);
     return {
       ...meta,
@@ -282,6 +296,7 @@ class StatementsPartsService {
       err.statusCode = 404;
       throw err;
     }
+    await StatementsVersion.touch(statementsVersionId, actor.id);
     return { success: true };
   }
 
@@ -383,13 +398,7 @@ class StatementsPartsService {
         }
       }
 
-      await client.query(
-        `UPDATE statements_version
-            SET updated_by = $2,
-                updated_at = CURRENT_TIMESTAMP
-          WHERE id = $1`,
-        [versionId, actor.id]
-      );
+      await StatementsVersion.touch(versionId, actor.id, client);
 
       await client.query('COMMIT');
 
