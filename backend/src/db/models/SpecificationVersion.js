@@ -44,6 +44,16 @@ class SpecificationVersion {
     return res.rows[0];
   }
 
+  static async touch(id, updatedBy, executor = pool) {
+    const q = `UPDATE specification_version
+      SET updated_by = $2,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING id, specification_id, version, notes, created_by, updated_by, created_at, updated_at`;
+    const res = await executor.query(q, [id, updatedBy ?? null]);
+    return res.rows[0] || null;
+  }
+
   static async delete(id) {
     const q = `DELETE FROM specification_version WHERE id = $1`;
     const res = await pool.query(q, [id]);

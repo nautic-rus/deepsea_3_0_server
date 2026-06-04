@@ -226,6 +226,7 @@ class SpecificationPartsImportService {
           AND source = ANY($2::text[])`,
         [versionId, sourceValues]
       );
+      await SpecificationVersion.touch(versionId, actor.id, client);
 
       const values = [];
       const placeholders = [];
@@ -338,6 +339,7 @@ class SpecificationPartsImportService {
       const insertedIds = (insertRes.rows || [])
         .map((row) => row && row.id)
         .filter((id) => id !== null && id !== undefined);
+      await SpecificationVersion.touch(versionId, actor.id, client);
 
       await client.query('COMMIT');
 

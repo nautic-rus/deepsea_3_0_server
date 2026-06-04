@@ -770,6 +770,7 @@ class SpecificationPartsService {
     fields.created_by = actor.id;
     const created = await SpecificationPart.create(fields);
     if (!created) return null;
+    await SpecificationVersion.touch(created.specification_version_id, actor.id);
     const meta = await SpecificationPartsService._resolveVersionMeta({ specification_version_id: created.specification_version_id }, [created]);
     return {
       ...meta,
@@ -787,6 +788,7 @@ class SpecificationPartsService {
 
     const updated = await SpecificationPart.update(id, fields);
     if (!updated) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
+    await SpecificationVersion.touch(updated.specification_version_id, actor.id);
     const meta = await SpecificationPartsService._resolveVersionMeta({ specification_version_id: updated.specification_version_id }, [updated]);
     return {
       ...meta,
@@ -839,12 +841,21 @@ class SpecificationPartsService {
       throw err;
     }
 
+    const existing = await SpecificationPart.findById(partId);
+    if (!existing) {
+      const err = new Error('Not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
     const ok = await SpecificationPart.softDelete(partId);
     if (!ok) {
       const err = new Error('Not found');
       err.statusCode = 404;
       throw err;
     }
+
+    await SpecificationVersion.touch(existing.specification_version_id, actor.id);
 
     return { success: true };
   }
