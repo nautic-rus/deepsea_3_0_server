@@ -1441,7 +1441,7 @@ ${pages.join('\n')}
           };
         });
 
-        const availableTableAreaPx = SpecificationPdfService._mmToPx(300);
+        const availableTableAreaPx = SpecificationPdfService._mmToPx(270);
         const partMaxBodyHeightPx = Math.max(0, availableTableAreaPx - Number(layout.partHeaderHeight || 0));
         const summaryMaxBodyHeightPx = Math.max(0, availableTableAreaPx - Number(layout.summaryHeaderHeight || 0));
         const partChunks = SpecificationPdfService._paginateRowsByHeights(
