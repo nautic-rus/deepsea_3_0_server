@@ -1,4 +1,5 @@
 const pool = require('../connection');
+const MaterialKit = require('./MaterialKit');
 
 class Material {
   static _formatUserDisplay(lastName, firstName, middleName) {
@@ -45,7 +46,28 @@ class Material {
     };
   }
 
-  static async _attachStatementUsage(materials) {
+  static _stripRelations(material) {
+    if (!material) return material;
+    const { statements, kits, ...rest } = material;
+    return rest;
+  }
+
+  static async _findBasicByIds(ids = []) {
+    const uniqueIds = [...new Set((ids || []).map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id > 0))];
+    if (uniqueIds.length === 0) return [];
+    const q = `SELECT m.id, m.stock_code, m.name, m.description, m.directory_id, d.name AS directory_name, m.unit_id, uo.name AS unit_name, uo.kei AS unit_kei, m.weight, m.type, m.status, m.created_by, cu.first_name AS created_by_first_name, cu.last_name AS created_by_last_name, cu.middle_name AS created_by_middle_name, cu.avatar_id AS created_by_avatar_id, m.created_at, m.updated_by, uu.first_name AS updated_by_first_name, uu.last_name AS updated_by_last_name, uu.middle_name AS updated_by_middle_name, uu.avatar_id AS updated_by_avatar_id, m.updated_at
+        FROM equipment_materials m
+      LEFT JOIN equipment_materials_directories d ON m.directory_id = d.id
+      LEFT JOIN units uo ON m.unit_id = uo.id
+      LEFT JOIN users cu ON m.created_by = cu.id
+      LEFT JOIN users uu ON m.updated_by = uu.id
+      WHERE m.id = ANY($1::int[])
+      ORDER BY m.id`;
+    const res = await pool.query(q, [uniqueIds]);
+    return res.rows.map((r) => Material._formatBaseRow(r));
+  }
+
+  static async _attachStatementUsage(materials, projectIds = []) {
     if (!Array.isArray(materials) || materials.length === 0) return materials;
 
     const materialIds = [...new Set(materials.map((m) => Number(m && m.id)).filter((n) => !Number.isNaN(n)))];
@@ -55,6 +77,13 @@ class Material {
       }
       return materials;
     }
+
+    const normalizedProjectIds = [...new Set(Material._toIntArray(projectIds))];
+    const projectFilterSql = normalizedProjectIds.length > 0
+      ? ' AND st.project_id = ANY($2::int[])'
+      : '';
+    const countParams = normalizedProjectIds.length > 0 ? [materialIds, normalizedProjectIds] : [materialIds];
+    const statementsParams = normalizedProjectIds.length > 0 ? [materialIds, normalizedProjectIds] : [materialIds];
 
     const countQ = `
       WITH linked_statements AS (
@@ -66,6 +95,7 @@ class Material {
         JOIN statements st ON st.id = emp.statement_id
         WHERE emp.equipment_material_id = ANY($1::int[])
           AND emp.statement_id IS NOT NULL
+          ${projectFilterSql}
       ),
       latest_versions AS (
         SELECT DISTINCT ON (ls.equipment_material_id, ls.statement_id, spec.id)
@@ -120,12 +150,13 @@ class Material {
       LEFT JOIN shipments sh ON p.shipments_id = sh.id
       LEFT JOIN suppliers sup ON sup.id = sh.supplier_id
       WHERE p.equipment_material_id = ANY($1::int[])
+      ${normalizedProjectIds.length > 0 ? 'AND s.project_id = ANY($2::int[])' : ''}
       ORDER BY p.equipment_material_id, p.id DESC
     `;
 
     const [countRes, statementsRes] = await Promise.all([
-      pool.query(countQ, [materialIds]),
-      pool.query(statementsQ, [materialIds]),
+      pool.query(countQ, countParams),
+      pool.query(statementsQ, statementsParams),
     ]);
 
     const countMap = new Map();
@@ -168,7 +199,147 @@ class Material {
     return materials;
   }
 
-  static async _attachStatements(materials) {
+  static async _attachProjectKits(materials, projectIds = []) {
+    if (!Array.isArray(materials) || materials.length === 0) return materials;
+
+    const normalizedProjectIds = [...new Set(Material._toIntArray(projectIds))];
+    if (normalizedProjectIds.length === 0) {
+      for (const material of materials) {
+        material.kits = [];
+      }
+      return materials;
+    }
+
+    const materialIds = [...new Set(materials.map((m) => Number(m && m.id)).filter((n) => !Number.isNaN(n)))];
+    if (materialIds.length === 0) {
+      for (const material of materials) {
+        material.kits = [];
+      }
+      return materials;
+    }
+
+    const projectMaterialQuery = `
+      SELECT
+        emp.id AS material_project_id,
+        emp.equipment_material_id,
+        s.project_id
+      FROM equipment_materials_projects emp
+      JOIN statements s ON s.id = emp.statement_id
+      WHERE emp.equipment_material_id = ANY($1::int[])
+        AND s.project_id = ANY($2::int[])
+    `;
+    const projectMaterialRes = await pool.query(projectMaterialQuery, [materialIds, normalizedProjectIds]);
+    const projectMaterialRows = projectMaterialRes.rows || [];
+    if (projectMaterialRows.length === 0) {
+      for (const material of materials) {
+        material.kits = [];
+      }
+      return materials;
+    }
+
+    const materialProjectIds = [...new Set(projectMaterialRows.map((row) => Number(row.material_project_id)).filter((id) => !Number.isNaN(id) && id > 0))];
+    if (materialProjectIds.length === 0) {
+      for (const material of materials) {
+        material.kits = [];
+      }
+      return materials;
+    }
+
+    const kitLinksRes = await pool.query(
+      `
+        SELECT material_project_id, material_kit_id
+        FROM equipment_materials_project_kits
+        WHERE material_project_id = ANY($1::int[])
+        ORDER BY material_project_id, id
+      `,
+      [materialProjectIds]
+    );
+    const kitLinkRows = kitLinksRes.rows || [];
+    if (kitLinkRows.length === 0) {
+      for (const material of materials) {
+        material.kits = [];
+      }
+      return materials;
+    }
+
+    const kitIds = [...new Set(kitLinkRows.map((row) => Number(row.material_kit_id)).filter((id) => !Number.isNaN(id) && id > 0))];
+    if (kitIds.length === 0) {
+      for (const material of materials) {
+        material.kits = [];
+      }
+      return materials;
+    }
+
+    const [kits, kitItemsRes] = await Promise.all([
+      MaterialKit.findByIds(kitIds),
+      pool.query(
+        `
+          SELECT id, kit_id, part_code, material_id, quantity, notes, created_at
+          FROM equipment_material_kit_items
+          WHERE kit_id = ANY($1::int[])
+          ORDER BY kit_id, id
+        `,
+        [kitIds]
+      ),
+    ]);
+
+    const kitMap = new Map((kits || []).map((kit) => [Number(kit.id), kit]));
+    const kitItemRows = kitItemsRes.rows || [];
+    const kitMaterialIds = [...new Set(kitItemRows.map((row) => Number(row.material_id)).filter((id) => !Number.isNaN(id) && id > 0))];
+    const kitMaterials = kitMaterialIds.length > 0 ? await Material._findBasicByIds(kitMaterialIds) : [];
+    const kitMaterialMap = new Map(kitMaterials.map((material) => [Number(material.id), material]));
+
+    const kitItemsByKitId = new Map();
+    for (const row of kitItemRows) {
+      const kitId = Number(row.kit_id);
+      if (Number.isNaN(kitId) || kitId <= 0) continue;
+      if (!kitItemsByKitId.has(kitId)) kitItemsByKitId.set(kitId, []);
+      kitItemsByKitId.get(kitId).push({
+        id: row.id,
+        kit_id: kitId,
+        part_code: row.part_code || null,
+        quantity: row.quantity,
+        notes: row.notes || null,
+        created_at: row.created_at,
+        material: row.material_id ? Material._stripRelations(kitMaterialMap.get(Number(row.material_id)) || null) : null,
+      });
+    }
+
+    const materialProjectIdToMaterialId = new Map(
+      projectMaterialRows.map((row) => [Number(row.material_project_id), Number(row.equipment_material_id)])
+    );
+    const kitsByMaterialId = new Map();
+
+    for (const link of kitLinkRows) {
+      const materialProjectId = Number(link.material_project_id);
+      const kitId = Number(link.material_kit_id);
+      if (Number.isNaN(materialProjectId) || materialProjectId <= 0 || Number.isNaN(kitId) || kitId <= 0) continue;
+      const materialId = materialProjectIdToMaterialId.get(materialProjectId);
+      if (!materialId) continue;
+      const kit = kitMap.get(kitId);
+      if (!kit) continue;
+      if (!kitsByMaterialId.has(materialId)) kitsByMaterialId.set(materialId, new Map());
+      const materialKits = kitsByMaterialId.get(materialId);
+      if (materialKits.has(kitId)) continue;
+      materialKits.set(kitId, {
+        ...kit,
+        materials: (kitItemsByKitId.get(kitId) || []).map((item) => ({
+          ...item,
+          material: item.material ? { ...item.material } : null,
+        })),
+      });
+    }
+
+    for (const material of materials) {
+      const materialId = Number(material.id);
+      const materialKits = kitsByMaterialId.get(materialId);
+      material.kits = materialKits ? Array.from(materialKits.values()) : [];
+    }
+
+    return materials;
+  }
+
+  static async _attachStatements(materials, projectIds = []) {
     if (!Array.isArray(materials) || materials.length === 0) return materials;
 
     const materialIds = [...new Set(materials.map((m) => Number(m && m.id)).filter((n) => !Number.isNaN(n)))];
@@ -179,6 +350,8 @@ class Material {
       return materials;
     }
 
+    const normalizedProjectIds = [...new Set(Material._toIntArray(projectIds))];
+    const statementsParams = normalizedProjectIds.length > 0 ? [materialIds, normalizedProjectIds] : [materialIds];
     const statementsQ = `
       SELECT
         p.equipment_material_id,
@@ -195,10 +368,11 @@ class Material {
       LEFT JOIN shipments sh ON p.shipments_id = sh.id
       LEFT JOIN suppliers sup ON sup.id = sh.supplier_id
       WHERE p.equipment_material_id = ANY($1::int[])
+      ${normalizedProjectIds.length > 0 ? 'AND s.project_id = ANY($2::int[])' : ''}
       ORDER BY p.equipment_material_id, p.id DESC
     `;
 
-    const statementsRes = await pool.query(statementsQ, [materialIds]);
+    const statementsRes = await pool.query(statementsQ, statementsParams);
 
     const statementsByMaterial = new Map();
     for (const row of (statementsRes.rows || [])) {
@@ -295,8 +469,16 @@ class Material {
     }
     const res = await pool.query(q, values);
     const rows = res.rows.map((r) => Material._formatBaseRow(r));
+    const projectIdsForKits = project_id !== undefined && project_id !== null
+      ? (Array.isArray(project_id)
+        ? project_id.map((p) => Number(p)).filter((n) => !Number.isNaN(n))
+        : [Number(project_id)].filter((n) => !Number.isNaN(n)))
+      : [];
     if (Material._toBoolean(load_statements)) {
-      await Material._attachStatements(rows);
+      await Material._attachStatements(rows, project_id);
+    }
+    if (projectIdsForKits.length > 0) {
+      await Material._attachProjectKits(rows, projectIdsForKits);
     }
     return rows;
   }

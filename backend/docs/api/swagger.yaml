@@ -1614,6 +1614,52 @@ components:
                       name:
                         type: string
                         nullable: true
+        kits:
+          type: array
+          nullable: true
+          description: Linked material kits resolved from equipment_materials_project_kits when project_id is used
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              project_id:
+                type: integer
+                nullable: true
+              code:
+                type: string
+                nullable: true
+              name:
+                type: string
+                nullable: true
+              description:
+                type: string
+                nullable: true
+              materials:
+                type: array
+                description: Kit materials from equipment_material_kit_items
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    kit_id:
+                      type: integer
+                    part_code:
+                      type: string
+                      nullable: true
+                    quantity:
+                      type: number
+                    notes:
+                      type: string
+                      nullable: true
+                    created_at:
+                      type: string
+                      format: date-time
+                      nullable: true
+                    material:
+                      type: object
+                      nullable: true
     MaterialProjectLink:
       type: object
       description: Link between a material and a project via statement and shipment
@@ -4315,7 +4361,7 @@ paths:
       tags:
       - materials
       summary: List of materials
-      description: Returns a list of equipment_materials records filtered by directory, unit, shipment, project, type, status, and text search. Pagination via page/limit.
+        description: Returns a list of equipment_materials records filtered by directory, unit, shipment, project, type, status, and text search. When project_id is used, each returned material also includes linked kits with their materials. Pagination via page/limit.
       security:
       - bearerAuth: []
       x-permissions:
