@@ -4129,6 +4129,10 @@
           "kit_id": {
             "type": "integer"
           },
+          "part_code": {
+            "type": "string",
+            "nullable": true
+          },
           "material_id": {
             "type": "integer",
             "nullable": true
@@ -4153,6 +4157,10 @@
         "type": "object",
         "description": "Request body for creating a material kit item",
         "properties": {
+          "part_code": {
+            "type": "string",
+            "nullable": true
+          },
           "material_id": {
             "type": "integer",
             "nullable": true
@@ -4171,6 +4179,10 @@
         "type": "object",
         "description": "Request body for updating a material kit item",
         "properties": {
+          "part_code": {
+            "type": "string",
+            "nullable": true
+          },
           "material_id": {
             "type": "integer",
             "nullable": true
@@ -17125,6 +17137,7 @@
                 "$ref": "#/components/schemas/MaterialKitItemCreate"
               },
               "example": {
+                "part_code": "P-001",
                 "material_id": 45,
                 "quantity": 10,
                 "notes": "Main pipe bundle"
@@ -17146,11 +17159,12 @@
                   }
                 },
                 "example": {
-                  "data": {
-                    "id": 1,
-                    "kit_id": 1,
-                    "material_id": 45,
-                    "material": {
+                "data": {
+                  "id": 1,
+                  "kit_id": 1,
+                  "part_code": "P-001",
+                  "material_id": 45,
+                  "material": {
                       "id": 45,
                       "stock_code": "NR00000000000045",
                       "name": "Steel pipe DN50",
@@ -17226,12 +17240,13 @@
                   }
                 },
                 "example": {
-                  "data": [
-                    {
-                      "id": 1,
-                      "kit_id": 1,
-                      "material_id": 45,
-                      "material": {
+                "data": [
+                  {
+                    "id": 1,
+                    "kit_id": 1,
+                    "part_code": "P-001",
+                    "material_id": 45,
+                    "material": {
                         "id": 45,
                         "stock_code": "NR00000000000045",
                         "name": "Steel pipe DN50",
@@ -17301,6 +17316,7 @@
                 "$ref": "#/components/schemas/MaterialKitItemUpdate"
               },
               "example": {
+                "part_code": "P-001",
                 "material_id": 45,
                 "quantity": 20,
                 "notes": "Updated pipe bundle"
@@ -17322,11 +17338,12 @@
                   }
                 },
                 "example": {
-                  "data": {
-                    "id": 1,
-                    "kit_id": 1,
-                    "material_id": 45,
-                    "material": {
+                "data": {
+                  "id": 1,
+                  "kit_id": 1,
+                  "part_code": "P-001",
+                  "material_id": 45,
+                  "material": {
                       "id": 45,
                       "stock_code": "NR00000000000045",
                       "name": "Steel pipe DN50",

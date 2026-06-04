@@ -31,7 +31,7 @@ class MaterialKitItem {
     let idx = 1;
     if (kit_id) { where.push(`kit_id = $${idx++}`); values.push(kit_id); }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT id, kit_id, material_id, quantity, notes, created_at FROM equipment_material_kit_items ${whereSql} ORDER BY id`;
+    let q = `SELECT id, kit_id, part_code, material_id, quantity, notes, created_at FROM equipment_material_kit_items ${whereSql} ORDER BY id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -44,7 +44,7 @@ class MaterialKitItem {
   }
 
   static async findById(id) {
-    const q = `SELECT id, kit_id, material_id, quantity, notes, created_at FROM equipment_material_kit_items WHERE id = $1 LIMIT 1`;
+    const q = `SELECT id, kit_id, part_code, material_id, quantity, notes, created_at FROM equipment_material_kit_items WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     const row = res.rows[0] || null;
     if (!row) return null;
@@ -53,8 +53,8 @@ class MaterialKitItem {
   }
 
   static async create(fields) {
-    const q = `INSERT INTO equipment_material_kit_items (kit_id, material_id, quantity, notes) VALUES ($1,$2,$3,$4) RETURNING id, kit_id, material_id, quantity, notes, created_at`;
-    const vals = [fields.kit_id, fields.material_id || null, fields.quantity || 1, fields.notes || null];
+    const q = `INSERT INTO equipment_material_kit_items (kit_id, part_code, material_id, quantity, notes) VALUES ($1,$2,$3,$4,$5) RETURNING id, kit_id, part_code, material_id, quantity, notes, created_at`;
+    const vals = [fields.kit_id, fields.part_code || null, fields.material_id || null, fields.quantity || 1, fields.notes || null];
     const res = await pool.query(q, vals);
     const row = res.rows[0] || null;
     if (!row) return null;
@@ -66,11 +66,11 @@ class MaterialKitItem {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['material_id','quantity','notes'].forEach((k) => {
+    ['part_code','material_id','quantity','notes'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await MaterialKitItem.findById(id);
-    const q = `UPDATE equipment_material_kit_items SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, kit_id, material_id, quantity, notes, created_at`;
+    const q = `UPDATE equipment_material_kit_items SET ${parts.join(', ')} WHERE id = $${idx} RETURNING id, kit_id, part_code, material_id, quantity, notes, created_at`;
     values.push(id);
     const res = await pool.query(q, values);
     const row = res.rows[0] || null;

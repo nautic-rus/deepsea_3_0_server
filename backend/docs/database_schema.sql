@@ -1617,6 +1617,7 @@ ALTER SEQUENCE public.job_title_id_seq OWNED BY public.job_title.id;
 CREATE TABLE public.equipment_material_kit_items (
     id integer NOT NULL,
     kit_id integer NOT NULL,
+    part_code character varying(100),
     material_id integer,
     quantity numeric(15,3) DEFAULT 1,
     notes text,
