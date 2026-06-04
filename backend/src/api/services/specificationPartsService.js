@@ -330,7 +330,7 @@ class SpecificationPartsService {
     const partOidKeys = sourceMode === 'astructure'
       ? ['MOD_OID', 'mod_oid', 'AS_OID', 'as_oid', 'PART_OID', 'part_oid', 'oid', 'OID']
       : sourceMode === 'systems'
-        ? ['SPOOLID', 'spoolid', 'SYSTEM_OID', 'system_oid', 'MOD_OID', 'mod_oid', 'AS_OID', 'as_oid', 'PART_OID', 'part_oid', 'oid', 'OID']
+        ? ['SQINSYSTEM', 'sqinsystem']
       : ['PART_OID', 'part_oid', 'oid', 'OID'];
     const totalWeightKeys = sourceMode === 'astructure'
       ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
