@@ -97,6 +97,9 @@ class SpecificationPartsImportService {
       const dataConnector = connectorRow.data_connector;
       const oid = dataConnector ? dataConnector.oid : null;
       const importStrategy = SpecificationPartsService._resolveConnectorImportStrategy(connectorRow);
+      const sourceValue = projectConnector && projectConnector.source !== undefined && projectConnector.source !== null
+        ? String(projectConnector.source).trim() || null
+        : null;
       const requestUrl = importStrategy.key === 'astructure'
         ? SpecificationPartsService._buildAstructureRequestUrl(
           sourceConnector.url,
@@ -125,7 +128,7 @@ class SpecificationPartsImportService {
         requestUrl,
         project_code: projectConnector.project_code,
         oid,
-        sourceValue: importStrategy.sourceValue,
+        sourceValue,
         importBranch: importStrategy.key,
         sourceConnector,
         projectConnector,
@@ -149,7 +152,7 @@ class SpecificationPartsImportService {
 
     for (const [strategyKey, connectors] of connectorGroups.entries()) {
       // Persist the unified source label for every imported row.
-      const sourceValue = connectors[0] && connectors[0].sourceValue ? connectors[0].sourceValue : strategyKey;
+      const sourceValue = connectors[0] ? connectors[0].sourceValue : null;
       let groupHasRows = false;
 
       if (shouldUseDirectPayload) {
