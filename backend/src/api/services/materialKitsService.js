@@ -21,6 +21,44 @@ class MaterialKitsService {
     return Number.isNaN(n) ? null : n;
   }
 
+  static _normalizeCogXYZ(value) {
+    if (value === undefined) {
+      return { cog_x: undefined, cog_y: undefined, cog_z: undefined };
+    }
+    if (value === null || value === '') {
+      return { cog_x: null, cog_y: null, cog_z: null };
+    }
+
+    if (Array.isArray(value)) {
+      const [cog_x, cog_y, cog_z] = value;
+      return {
+        cog_x: cog_x ?? null,
+        cog_y: cog_y ?? null,
+        cog_z: cog_z ?? null
+      };
+    }
+
+    if (typeof value === 'object') {
+      const cog_x = value.cog_x !== undefined ? value.cog_x : value.x;
+      const cog_y = value.cog_y !== undefined ? value.cog_y : value.y;
+      const cog_z = value.cog_z !== undefined ? value.cog_z : value.z;
+      return {
+        cog_x: cog_x ?? null,
+        cog_y: cog_y ?? null,
+        cog_z: cog_z ?? null
+      };
+    }
+
+    const err = new Error('Invalid cog_xyz');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  static _isCogXYZEmpty(cogXYZ) {
+    if (!cogXYZ) return true;
+    return ['cog_x', 'cog_y', 'cog_z'].every((key) => cogXYZ[key] === undefined || cogXYZ[key] === null || cogXYZ[key] === '');
+  }
+
   static _normalizeProjectFilter(query = {}) {
     const normalized = Object.assign({}, query || {});
     if (normalized.project_id === undefined && normalized.projectId !== undefined) {
@@ -190,10 +228,15 @@ class MaterialKitsService {
   }
 
   // Apply kit to specification version: expand kit items into specification_parts
-  static async applyKitToSpecification(specification_version_id, kit_id, actor) {
+  static async applyKitToSpecification(specification_version_id, kit_id, actor, options = {}) {
     const requiredPermission = 'material_kits.apply';
     if (!specification_version_id || Number.isNaN(Number(specification_version_id))) { const err = new Error('Invalid specification_version_id'); err.statusCode = 400; throw err; }
     if (!kit_id || Number.isNaN(Number(kit_id))) { const err = new Error('Invalid kit id'); err.statusCode = 400; throw err; }
+    const parentId = options.parent_id === undefined ? null : MaterialKitsService._toInt(options.parent_id);
+    if (options.parent_id !== undefined && options.parent_id !== null && options.parent_id !== '' && parentId === null) {
+      const err = new Error('Invalid parent_id'); err.statusCode = 400; throw err;
+    }
+    const cogXYZ = MaterialKitsService._normalizeCogXYZ(options.cog_xyz);
     const kit = await MaterialKit.findById(Number(kit_id));
     if (!kit) { const err = new Error('Kit not found'); err.statusCode = 404; throw err; }
     const version = await SpecificationVersion.findById(Number(specification_version_id));
@@ -206,6 +249,21 @@ class MaterialKitsService {
     }
     await MaterialKitsService._ensurePermission(actor, requiredPermission, specification.project_id);
 
+    let resolvedCogXYZ = cogXYZ;
+    if (parentId !== null && MaterialKitsService._isCogXYZEmpty(cogXYZ)) {
+      const parentPart = await SpecificationPart.findById(parentId);
+      if (!parentPart) {
+        const err = new Error('Parent specification part not found');
+        err.statusCode = 404;
+        throw err;
+      }
+      resolvedCogXYZ = {
+        cog_x: parentPart.cog_x ?? null,
+        cog_y: parentPart.cog_y ?? null,
+        cog_z: parentPart.cog_z ?? null
+      };
+    }
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -214,8 +272,19 @@ class MaterialKitsService {
       const insertedIds = [];
       for (const it of items) {
         const material_id = it.material_id || null;
-        const q = `INSERT INTO specification_parts (specification_version_id, part_code, material_id, quantity, created_by, source) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, specification_version_id, part_code, material_id, quantity, source, created_at`;
-        const vals = [Number(specification_version_id), it.part_code || null, material_id, it.quantity || 1, actor.id, 'import'];
+        const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, material_id, quantity, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, specification_version_id, parent_id, part_code, material_id, quantity, cog_x, cog_y, cog_z, source, created_at`;
+        const vals = [
+          Number(specification_version_id),
+          parentId,
+          it.part_code || null,
+          material_id,
+          it.quantity || 1,
+          resolvedCogXYZ.cog_x,
+          resolvedCogXYZ.cog_y,
+          resolvedCogXYZ.cog_z,
+          actor.id,
+          'manual'
+        ];
         const r = await client.query(q, vals);
         if (r.rows && r.rows[0] && r.rows[0].id) insertedIds.push(r.rows[0].id);
       }

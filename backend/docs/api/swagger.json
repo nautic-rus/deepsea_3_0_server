@@ -4270,6 +4270,28 @@
         "properties": {
           "specification_version_id": {
             "type": "integer"
+          },
+          "parent_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "cog_xyz": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "x": {
+                "type": "number",
+                "nullable": true
+              },
+              "y": {
+                "type": "number",
+                "nullable": true
+              },
+              "z": {
+                "type": "number",
+                "nullable": true
+              }
+            }
           }
         }
       },
@@ -17129,7 +17151,13 @@
                 "$ref": "#/components/schemas/MaterialKitApplyRequest"
               },
               "example": {
-                "specification_version_id": 123
+                "specification_version_id": 123,
+                "parent_id": 456,
+                "cog_xyz": {
+                  "x": 10,
+                  "y": 20,
+                  "z": 30
+                }
               }
             }
           }
@@ -17158,7 +17186,7 @@
                       "part_code": "P-001",
                       "material_id": 45,
                       "quantity": 10,
-                      "source": "import",
+                      "source": "manual",
                       "created_at": "2026-05-31T12:00:00.000Z"
                     }
                   ]
