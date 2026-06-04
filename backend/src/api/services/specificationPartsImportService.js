@@ -36,6 +36,18 @@ class SpecificationPartsImportService {
       err.statusCode = 404;
       throw err;
     }
+    const specification = await Specification.findById(Number(version.specification_id));
+    if (!specification) {
+      const err = new Error('Specification not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    const projectId = Number(specification.project_id);
+    if (!projectId || Number.isNaN(projectId)) {
+      const err = new Error('Specification project not found');
+      err.statusCode = 404;
+      throw err;
+    }
     if (version.lock) {
       const err = new Error('Specification version is locked');
       err.statusCode = 423;
@@ -215,7 +227,8 @@ class SpecificationPartsImportService {
     }
 
     // We need material weights and unit ids before we can resolve quantity.
-    const materialMap = await SpecificationPartsService._resolveMaterialMap(normalizedRows);
+    const materialMap = await SpecificationPartsService._resolveMaterialMap(normalizedRows, projectId);
+    const globalMaterialMap = await SpecificationPartsService._resolveGlobalMaterialMap(normalizedRows);
     const report = [];
     const client = await pool.connect();
     try {
@@ -261,11 +274,14 @@ class SpecificationPartsImportService {
         // Stock code is the lookup key that links external rows to internal materials.
         const materialKey = row.stock_code ? String(row.stock_code).trim().toUpperCase() : null;
         const material = materialKey ? (materialMap.get(materialKey) || null) : null;
+        const globalMaterial = materialKey ? (globalMaterialMap.get(materialKey) || null) : null;
         const materialId = material ? material.id : null;
         if (!materialId) {
           report.push(buildReportRow(row, rowIndex, null, {
             reason: materialKey
-              ? `Material not found for stock_code ${materialKey}`
+              ? globalMaterial
+                ? `Material ${materialKey} is not linked to project ${projectId}`
+                : `Material not found for stock_code ${materialKey}`
               : 'stock_code is missing, material_id could not be resolved'
           }));
           continue;

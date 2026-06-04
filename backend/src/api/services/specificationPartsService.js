@@ -688,8 +688,40 @@ class SpecificationPartsService {
     return await response.json();
   }
 
-  static async _resolveMaterialMap(rows = []) {
+  static async _resolveMaterialMap(rows = [], projectId = null) {
     // Materials are keyed by stock_code because import rows only know the external stock identifier.
+    const stockCodes = [...new Set(
+      (rows || [])
+        .map((row) => row && row.stock_code)
+        .filter((value) => value !== null && value !== undefined && String(value).trim() !== '')
+        .map((value) => String(value).trim().toUpperCase())
+    )];
+
+    if (stockCodes.length === 0) return new Map();
+    const numericProjectId = Number(projectId);
+    if (!numericProjectId || Number.isNaN(numericProjectId)) return new Map();
+
+    const res = await pool.query(
+      `SELECT DISTINCT ON (UPPER(m.stock_code))
+        m.id, m.stock_code, m.weight, m.unit_id
+       FROM equipment_materials m
+       JOIN equipment_materials_projects emp
+         ON emp.equipment_material_id = m.id
+       LEFT JOIN statements s
+         ON s.id = emp.statement_id
+       WHERE UPPER(m.stock_code) = ANY($1::text[])
+         AND s.project_id = $2
+       ORDER BY UPPER(m.stock_code), emp.id DESC, m.id DESC`,
+      [stockCodes, numericProjectId]
+    );
+    return new Map((res.rows || []).map((row) => [String(row.stock_code).trim().toUpperCase(), {
+      id: row.id,
+      weight: row.weight,
+      unit_id: row.unit_id
+      }]));
+  }
+
+  static async _resolveGlobalMaterialMap(rows = []) {
     const stockCodes = [...new Set(
       (rows || [])
         .map((row) => row && row.stock_code)
