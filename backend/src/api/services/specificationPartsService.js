@@ -285,6 +285,21 @@ class SpecificationPartsService {
     return await SpecificationPartsService._versionMetaFromVersion(version);
   }
 
+  static async _assertVersionUnlocked(versionId) {
+    const version = await SpecificationVersion.findById(versionId);
+    if (!version) {
+      const err = new Error('Specification version not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    if (version.lock) {
+      const err = new Error('Specification version is locked');
+      err.statusCode = 423;
+      throw err;
+    }
+    return version;
+  }
+
   static _normalizePayloadRows(payload) {
     // Accept a few common payload envelopes so both APIs and direct JSON payloads work.
     if (!payload) return [];
@@ -746,6 +761,7 @@ class SpecificationPartsService {
     const allowed = await hasPermission(actor, 'specifications.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
     if (!fields.specification_version_id) { const err = new Error('Missing fields'); err.statusCode = 400; throw err; }
+    await SpecificationPartsService._assertVersionUnlocked(Number(fields.specification_version_id));
 
     if (SpecificationPartsService._toBoolean(fields.cog_from_parent)) {
       const parentId = Number(fields.parent_id);
@@ -786,6 +802,16 @@ class SpecificationPartsService {
     const id = Number(fields && fields.id);
     if (!id || Number.isNaN(id)) { const err = new Error('Missing fields'); err.statusCode = 400; throw err; }
 
+    const existing = await SpecificationPart.findById(id);
+    if (!existing) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
+    await SpecificationPartsService._assertVersionUnlocked(Number(existing.specification_version_id));
+    if (fields.specification_version_id !== undefined && fields.specification_version_id !== null) {
+      const targetVersionId = Number(fields.specification_version_id);
+      if (!Number.isNaN(targetVersionId) && targetVersionId > 0 && targetVersionId !== Number(existing.specification_version_id)) {
+        await SpecificationPartsService._assertVersionUnlocked(targetVersionId);
+      }
+    }
+
     const updated = await SpecificationPart.update(id, fields);
     if (!updated) { const err = new Error('Not found'); err.statusCode = 404; throw err; }
     await SpecificationVersion.touch(updated.specification_version_id, actor.id);
@@ -818,6 +844,14 @@ class SpecificationPartsService {
       throw err;
     }
 
+    const existing = await SpecificationPart.findById(normalizedId);
+    if (!existing) {
+      const err = new Error('Not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    await SpecificationPartsService._assertVersionUnlocked(Number(existing.specification_version_id));
+
     const updated = await SpecificationPart.updateDrawingAddressById(normalizedId, normalizedDrawingAddress);
     if (!updated) {
       const err = new Error('Not found');
@@ -847,6 +881,7 @@ class SpecificationPartsService {
       err.statusCode = 404;
       throw err;
     }
+    await SpecificationPartsService._assertVersionUnlocked(Number(existing.specification_version_id));
 
     const ok = await SpecificationPart.softDelete(partId);
     if (!ok) {

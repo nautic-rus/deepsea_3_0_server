@@ -58,13 +58,15 @@ class SpecificationVersionsController {
       const notes = req.body?.notes === undefined || req.body?.notes === null
         ? null
         : String(req.body.notes).trim() || null;
+      const lock = req.body?.lock === true || req.body?.lock === 'true' || req.body?.lock === 1 || req.body?.lock === '1';
 
       const created = await SpecificationVersion.create({
         specification_id: specificationId,
         version,
         notes,
         created_by: actor.id,
-        updated_by: actor.id
+        updated_by: actor.id,
+        lock
       });
       const row = created?.id ? await SpecificationVersion.findById(created.id) : created;
       res.status(201).json({ data: row });

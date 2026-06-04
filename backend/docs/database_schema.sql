@@ -2487,6 +2487,7 @@ CREATE TABLE public.specification_version (
     created_by integer NOT NULL,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     updated_by integer,
+    "lock" boolean DEFAULT false,
     updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 

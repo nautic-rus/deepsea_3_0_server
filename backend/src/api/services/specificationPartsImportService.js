@@ -36,6 +36,11 @@ class SpecificationPartsImportService {
       err.statusCode = 404;
       throw err;
     }
+    if (version.lock) {
+      const err = new Error('Specification version is locked');
+      err.statusCode = 423;
+      throw err;
+    }
 
     // External services may use runtime config overrides from the database or env.
     const foranSettings = await SpecificationPartsService._loadForanRuntimeSettings();

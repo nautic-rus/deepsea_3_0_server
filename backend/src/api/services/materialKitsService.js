@@ -198,6 +198,7 @@ class MaterialKitsService {
     if (!kit) { const err = new Error('Kit not found'); err.statusCode = 404; throw err; }
     const version = await SpecificationVersion.findById(Number(specification_version_id));
     if (!version) { const err = new Error('Specification version not found'); err.statusCode = 404; throw err; }
+    if (version.lock) { const err = new Error('Specification version is locked'); err.statusCode = 423; throw err; }
     const specification = await Specification.findById(Number(version.specification_id));
     if (!specification) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
     if (kit.project_id !== null && kit.project_id !== undefined && Number(kit.project_id) !== Number(specification.project_id)) {
