@@ -328,10 +328,10 @@ class SpecificationPartsService {
         ? ['SPOOLID', 'spoolid', 'CODEID', 'codeid', 'PART_CODE', 'part_code', 'code', 'CODE']
       : ['PART_CODE', 'part_code', 'code', 'CODE'];
     const partOidKeys = sourceMode === 'astructure'
-      ? ['MOD_OID', 'mod_oid', 'AS_OID', 'as_oid', 'PART_OID', 'part_oid', 'oid', 'OID']
+      ? ['MOD_OID', 'mod_oid']
       : sourceMode === 'systems'
-        ? ['SQINSYSTEM', 'sqinsystem']
-      : ['PART_OID', 'part_oid', 'oid', 'OID'];
+      ? ['SQINSYSTEM', 'sqinsystem']
+      : ['PART_OID', 'part_oid'];
     const totalWeightKeys = sourceMode === 'astructure'
       ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
       : sourceMode === 'systems'
