@@ -89,6 +89,14 @@ class SpecificationPartsImportService {
     )
       ? payload
       : null;
+    const updateCurrentByPartOid = options.updateCurrentByPartOid !== undefined
+      ? Boolean(options.updateCurrentByPartOid)
+      : Boolean(
+        payload &&
+        typeof payload === 'object' &&
+        !Array.isArray(payload) &&
+        SpecificationPartsService._toBoolean(payload.update_current_by_part_oid)
+      );
 
     // Convert connector records into request descriptors and decide which import branch applies.
     const connectorSources = validConnectorRows.map((connectorRow) => {
@@ -219,6 +227,11 @@ class SpecificationPartsImportService {
       }
       return {
         imported_count: 0,
+        report_summary: {
+          new_count: 0,
+          updated_count: 0,
+          deleted_count: 0
+        },
         report: [],
         data: [],
         source: {
@@ -234,24 +247,71 @@ class SpecificationPartsImportService {
     const globalMaterialMap = await SpecificationPartsService._resolveGlobalMaterialMap(normalizedRows);
     const report = [];
     const client = await pool.connect();
+    const sourceValues = [...importSourceValues];
     try {
       // Keep the allowed source values in sync with the persisted source values before writing.
-      await SpecificationPartsService._ensureForanSourceAllowed(client, [...importSourceValues]);
+      await SpecificationPartsService._ensureForanSourceAllowed(client, sourceValues);
       await client.query('BEGIN');
 
-      // Replace prior imported rows for this version.
-      const sourceValues = [...importSourceValues];
-      await client.query(
-        `DELETE FROM specification_parts
-         WHERE specification_version_id = $1
-          AND source = ANY($2::text[])`,
-        [versionId, sourceValues]
-      );
-      await SpecificationVersion.touch(versionId, actor.id, client);
-
+      const existingRowsByPartOid = new Map();
+      if (updateCurrentByPartOid) {
+        const existingRowsRes = await client.query(
+          `SELECT id, part_oid
+           FROM specification_parts
+           WHERE specification_version_id = $1
+             AND source = ANY($2::text[])
+             AND part_oid IS NOT NULL`,
+          [versionId, sourceValues]
+        );
+        for (const existingRow of existingRowsRes.rows || []) {
+          if (!existingRow || existingRow.part_oid === null || existingRow.part_oid === undefined) continue;
+          const partOidKey = String(existingRow.part_oid);
+          if (!existingRowsByPartOid.has(partOidKey)) {
+            existingRowsByPartOid.set(partOidKey, existingRow.id);
+          }
+        }
+      } else {
+        // Replace prior imported rows for this version.
+        const sourceValues = [...importSourceValues];
+        await client.query(
+          `DELETE FROM specification_parts
+           WHERE specification_version_id = $1
+            AND source = ANY($2::text[])`,
+          [versionId, sourceValues]
+        );
+      }
       const values = [];
       const placeholders = [];
+      const persistedIds = [];
+      const incomingPartOidKeys = new Set();
+      let newCount = 0;
+      let updatedCount = 0;
+      let deletedCount = 0;
       let idx = 1;
+      const updateSql = `UPDATE specification_parts
+         SET part_code = $1,
+             part_oid = $2,
+             material_id = $3,
+             sfi_code_id = $4,
+             quantity = $5,
+             qty = $6,
+             zone = $7,
+             length = $8,
+             width = $9,
+             thickness = $10,
+             radius = $11,
+             angle = $12,
+             symmetry = $13,
+             unit = $14,
+             part_type = $15,
+             descriptions = $16,
+             cog_x = $17,
+             cog_y = $18,
+             cog_z = $19,
+             created_by = $20,
+             source = $21
+         WHERE id = $22
+         RETURNING id`;
       const buildReportRow = (row, rowIndex, material, extra = {}) => ({
         row_index: rowIndex + 1,
         part_code: row.part_code ?? null,
@@ -311,9 +371,7 @@ class SpecificationPartsImportService {
           }));
           continue;
         }
-        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
-        values.push(
-          versionId,
+        const persistenceValues = [
           row.part_code,
           row.part_oid,
           materialId,
@@ -329,22 +387,85 @@ class SpecificationPartsImportService {
           row.symmetry,
           row.unit,
           row.part_type,
-          null,
+          row.descriptions ?? null,
           row.cog_x,
           row.cog_y,
           row.cog_z,
           actor.id,
           row.sourceValue
+        ];
+        const partOidKey = row.part_oid !== null && row.part_oid !== undefined ? String(row.part_oid) : null;
+        const existingId = updateCurrentByPartOid && partOidKey ? existingRowsByPartOid.get(partOidKey) || null : null;
+        if (existingId) {
+          const updateRes = await client.query(updateSql, [...persistenceValues, existingId]);
+          const updatedId = updateRes.rows && updateRes.rows[0] ? updateRes.rows[0].id : null;
+          if (updatedId !== null && updatedId !== undefined) {
+            persistedIds.push(updatedId);
+            updatedCount += 1;
+          }
+          continue;
+        }
+        if (partOidKey) {
+          incomingPartOidKeys.add(partOidKey);
+        }
+        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+        values.push(
+          versionId,
+          ...persistenceValues
         );
+        newCount += 1;
+      }
+
+      if (updateCurrentByPartOid && incomingPartOidKeys.size > 0) {
+        const incomingPartOids = [...incomingPartOidKeys]
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value));
+        if (incomingPartOids.length > 0) {
+          const deleteRes = await client.query(
+            `DELETE FROM specification_parts
+             WHERE specification_version_id = $1
+               AND source = ANY($2::text[])
+               AND part_oid IS NOT NULL
+               AND part_oid <> ALL($3::bigint[])`,
+            [versionId, sourceValues, incomingPartOids]
+          );
+          deletedCount = deleteRes.rowCount || 0;
+        }
       }
 
       // If every row was rejected, commit the empty batch and return the report.
       if (placeholders.length === 0) {
+        if (persistedIds.length === 0) {
+          await client.query('COMMIT');
+          return {
+            imported_count: 0,
+            report_summary: {
+              new_count: newCount,
+              updated_count: updatedCount,
+              deleted_count: deletedCount
+            },
+            report,
+            data: [],
+            source: {
+              url: connectorSources[0].requestUrl,
+              project_code: connectorSources[0].project_code,
+              oid: connectorSources[0].oid
+            }
+          };
+        }
+
+        await SpecificationVersion.touch(versionId, actor.id, client);
         await client.query('COMMIT');
+        const data = await SpecificationPart.findByIds(persistedIds);
         return {
-          imported_count: 0,
+          imported_count: data.length,
+          report_summary: {
+            new_count: newCount,
+            updated_count: updatedCount,
+            deleted_count: deletedCount
+          },
           report,
-          data: [],
+          data,
           source: {
             url: connectorSources[0].requestUrl,
             project_code: connectorSources[0].project_code,
@@ -363,14 +484,20 @@ class SpecificationPartsImportService {
       const insertedIds = (insertRes.rows || [])
         .map((row) => row && row.id)
         .filter((id) => id !== null && id !== undefined);
+      const affectedIds = [...persistedIds, ...insertedIds];
       await SpecificationVersion.touch(versionId, actor.id, client);
 
       await client.query('COMMIT');
 
       // Re-read the inserted rows so the response matches the persisted database shape.
-      const data = await SpecificationPart.findByIds(insertedIds);
+      const data = await SpecificationPart.findByIds(affectedIds);
       return {
         imported_count: data.length,
+        report_summary: {
+          new_count: newCount,
+          updated_count: updatedCount,
+          deleted_count: deletedCount
+        },
         report,
         data,
         source: {

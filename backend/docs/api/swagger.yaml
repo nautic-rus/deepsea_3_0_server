@@ -2117,6 +2117,15 @@ components:
       properties:
         imported_count:
           type: integer
+        report_summary:
+          type: object
+          properties:
+            new_count:
+              type: integer
+            updated_count:
+              type: integer
+            deleted_count:
+              type: integer
         report:
           type: array
           items:
@@ -17147,7 +17156,11 @@ paths:
           application/json:
             schema:
               type: object
-              description: Optional FORAN API response payload with a rows array
+              description: Optional FORAN API response payload with a rows array. Set update_current_by_part_oid to true to update existing specification rows by part_oid instead of inserting new ones.
+              properties:
+                update_current_by_part_oid:
+                  type: boolean
+                  description: When true, matching rows are updated by part_oid.
       responses:
         '200':
           description: Imported parts

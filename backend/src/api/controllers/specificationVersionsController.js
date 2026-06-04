@@ -159,8 +159,10 @@ class SpecificationVersionsController {
       const actor = req.user || null;
       const id = Number(req.params.id);
       const requestBaseUrl = `${req.protocol}://${req.get('host')}`;
+      const updateCurrentByPartOid = SpecificationPartsService._toBoolean(req.body && req.body.update_current_by_part_oid);
       const result = await SpecificationPartsImportService.importFromBlocks(id, req.body || null, actor, {
-        requestBaseUrl
+        requestBaseUrl,
+        updateCurrentByPartOid
       });
       res.json({ data: result });
     } catch (err) {
