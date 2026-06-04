@@ -1,5 +1,7 @@
 const Specification = require('../../db/models/Specification');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
+const SpecificationPart = require('../../db/models/SpecificationPart');
+const pool = require('../../db/connection');
 const { hasPermission } = require('../services/permissionChecker');
 const SpecificationPartsService = require('../services/specificationPartsService');
 const SpecificationPartsImportService = require('../services/specificationPartsImportService');
@@ -59,17 +61,41 @@ class SpecificationVersionsController {
         ? null
         : String(req.body.notes).trim() || null;
       const lock = req.body?.lock === true || req.body?.lock === 'true' || req.body?.lock === 1 || req.body?.lock === '1';
+      const migrateManualParts = SpecificationPartsService._toBoolean(req.body?.migrate_manual_parts);
 
-      const created = await SpecificationVersion.create({
-        specification_id: specificationId,
-        version,
-        notes,
-        created_by: actor.id,
-        updated_by: actor.id,
-        lock
-      });
-      const row = created?.id ? await SpecificationVersion.findById(created.id) : created;
-      res.status(201).json({ data: row });
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+
+        const latestVersion = migrateManualParts
+          ? await SpecificationVersion.findLatestBySpecificationId(specificationId, client)
+          : null;
+
+        const created = await SpecificationVersion.create({
+          specification_id: specificationId,
+          version,
+          notes,
+          created_by: actor.id,
+          updated_by: actor.id,
+          lock
+        }, client);
+
+        if (migrateManualParts && latestVersion && latestVersion.id) {
+          await SpecificationPart.cloneToSpecificationVersion(latestVersion.id, created.id, actor.id, client);
+        }
+
+        await client.query('COMMIT');
+
+        const row = created?.id ? await SpecificationVersion.findById(created.id) : created;
+        res.status(201).json({ data: row });
+      } catch (txErr) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (rollbackErr) {}
+        throw txErr;
+      } finally {
+        client.release();
+      }
     } catch (err) {
       next(err);
     }

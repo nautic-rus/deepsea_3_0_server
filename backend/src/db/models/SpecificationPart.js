@@ -77,6 +77,96 @@ class SpecificationPart {
     return res.rows;
   }
 
+  static async findBySpecificationVersionId(specificationVersionId, executor = pool) {
+    const q = `SELECT ${SpecificationPart._selectColumns('sp')},
+      jsonb_set(
+        to_jsonb(m),
+        '{unit}',
+        CASE
+          WHEN uo.id IS NULL THEN 'null'::jsonb
+          ELSE jsonb_build_object('id', uo.id, 'name', uo.name, 'symbol', uo.symbol, 'kei', uo.kei)
+        END,
+        true
+      ) AS material,
+      CASE
+        WHEN sc.id IS NULL THEN NULL
+        ELSE jsonb_build_object('id', sc.id, 'code', sc.code, 'name_ru', sc.name_ru, 'name_en', sc.name_en)
+      END AS sfi_code,
+      json_build_object('id', cu.id, 'username', cu.username, 'first_name', cu.first_name, 'last_name', cu.last_name, 'middle_name', cu.middle_name, 'full_name', concat_ws(' ', cu.last_name, cu.first_name, cu.middle_name), 'email', cu.email, 'avatar_id', cu.avatar_id) AS created_by,
+      row_to_json(sv.*) AS specification_version
+      FROM specification_parts sp
+      LEFT JOIN equipment_materials m ON m.id = sp.material_id
+      LEFT JOIN units uo ON uo.id = m.unit_id
+      LEFT JOIN sfi_codes sc ON sc.id = sp.sfi_code_id
+      LEFT JOIN users cu ON cu.id = sp.created_by
+      LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
+      WHERE sp.specification_version_id = $1
+      ORDER BY sp.id`;
+    const res = await executor.query(q, [specificationVersionId]);
+    return res.rows;
+  }
+
+  static async cloneToSpecificationVersion(sourceVersionId, targetVersionId, createdBy, executor = pool) {
+    const sourceParts = await SpecificationPart.findBySpecificationVersionId(sourceVersionId, executor);
+    if (!sourceParts || sourceParts.length === 0) return [];
+
+    const insertSql = `INSERT INTO specification_parts
+      (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, radius, angle, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+      RETURNING id`;
+
+    const insertedIds = [];
+    const idMap = new Map();
+
+    for (const part of sourceParts) {
+      const vals = [
+        targetVersionId,
+        null,
+        part.part_code || null,
+        part.part_oid ?? null,
+        part.drawing_address || null,
+        part.material_id || null,
+        part.sfi_code_id || null,
+        part.quantity ?? 1,
+        part.qty ?? null,
+        part.zone || null,
+        SpecificationPart._normalizeNullable(part.length),
+        SpecificationPart._normalizeNullable(part.width),
+        SpecificationPart._normalizeNullable(part.thickness),
+        SpecificationPart._normalizeNullable(part.radius),
+        SpecificationPart._normalizeNullable(part.angle),
+        part.symmetry || null,
+        part.unit || null,
+        part.part_type || null,
+        part.descriptions || null,
+        part.cog_x ?? null,
+        part.cog_y ?? null,
+        part.cog_z ?? null,
+        createdBy,
+        part.source || 'manual'
+      ];
+      const res = await executor.query(insertSql, vals);
+      const insertedId = res.rows[0] && res.rows[0].id ? Number(res.rows[0].id) : null;
+      if (insertedId) {
+        insertedIds.push(insertedId);
+        idMap.set(Number(part.id), insertedId);
+      }
+    }
+
+    for (const part of sourceParts) {
+      if (part.parent_id === null || part.parent_id === undefined) continue;
+      const newId = idMap.get(Number(part.id));
+      if (!newId) continue;
+      const newParentId = idMap.get(Number(part.parent_id)) || null;
+      await executor.query(
+        `UPDATE specification_parts SET parent_id = $2 WHERE id = $1`,
+        [newId, newParentId]
+      );
+    }
+
+    return insertedIds;
+  }
+
   static async findById(id) {
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
       jsonb_set(

@@ -3481,6 +3481,10 @@ components:
           type: boolean
           description: Whether the version is locked
           default: false
+        migrate_manual_parts:
+          type: boolean
+          description: Copy all parts from the latest version of the same specification into the new version
+          default: false
     SpecificationVersionUpdate:
       type: object
       description: Request body for updating a specification version
