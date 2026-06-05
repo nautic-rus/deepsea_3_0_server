@@ -99,6 +99,19 @@ class SpecificationVersion {
     const res = await pool.query(q, [id]);
     return res.rowCount > 0;
   }
+
+  static async hasAnyPartsBySpecificationId(specificationId, executor = pool) {
+    const q = `
+      SELECT EXISTS(
+        SELECT 1
+        FROM specification_version sv
+        JOIN specification_parts sp ON sp.specification_version_id = sv.id
+        WHERE sv.specification_id = $1
+      ) AS has_parts
+    `;
+    const res = await executor.query(q, [specificationId]);
+    return Boolean(res.rows[0] && res.rows[0].has_parts);
+  }
 }
 
 module.exports = SpecificationVersion;

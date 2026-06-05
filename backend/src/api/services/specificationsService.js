@@ -305,6 +305,14 @@ class SpecificationsService {
     const allowed = await hasPermission(actor, requiredPermission);
     if (!allowed) { const err = new Error('Forbidden: missing permission specifications.delete'); err.statusCode = 403; throw err; }
     if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+
+    const hasLinkedParts = await SpecificationVersion.hasAnyPartsBySpecificationId(Number(id));
+    if (hasLinkedParts) {
+      const err = new Error('Cannot delete specification: linked version contains parts');
+      err.statusCode = 409;
+      throw err;
+    }
+
     const ok = await Specification.softDelete(Number(id));
     if (!ok) { const err = new Error('Specification not found'); err.statusCode = 404; throw err; }
     return { success: true };
