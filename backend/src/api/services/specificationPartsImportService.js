@@ -348,24 +348,21 @@ class SpecificationPartsImportService {
         cog_z: row.cog_z ?? null,
         ...extra
       });
-      const getMissingEquipmentCogFields = (row) => {
+      const getMissingCogFields = (row) => {
         const missing = [];
-        if (row.cog_x === null || row.cog_x === undefined || Number.isNaN(Number(row.cog_x))) missing.push('ELEMENT_COG_X');
-        if (row.cog_y === null || row.cog_y === undefined || Number.isNaN(Number(row.cog_y))) missing.push('ELEMENT_COG_Y');
-        if (row.cog_z === null || row.cog_z === undefined || Number.isNaN(Number(row.cog_z))) missing.push('ELEMENT_COG_Z');
+        if (row.cog_x === null || row.cog_x === undefined || Number.isNaN(Number(row.cog_x))) missing.push('COG_X');
+        if (row.cog_y === null || row.cog_y === undefined || Number.isNaN(Number(row.cog_y))) missing.push('COG_Y');
+        if (row.cog_z === null || row.cog_z === undefined || Number.isNaN(Number(row.cog_z))) missing.push('COG_Z');
         return missing;
       };
       for (let rowIndex = 0; rowIndex < normalizedRows.length; rowIndex += 1) {
         const row = normalizedRows[rowIndex];
-        const isEquipmentImport = row.importBranch === 'equip_by_system_oid' || row.importBranch === 'equip_by_zone_oid';
-        if (isEquipmentImport) {
-          const missingCogFields = getMissingEquipmentCogFields(row);
-          if (missingCogFields.length > 0) {
-            report.push(buildReportRow(row, rowIndex, null, {
-              reason: `Missing required COG fields for equipment import: ${missingCogFields.join(', ')}`
-            }));
-            continue;
-          }
+        const missingCogFields = getMissingCogFields(row);
+        if (missingCogFields.length > 0) {
+          report.push(buildReportRow(row, rowIndex, null, {
+            reason: `Missing required COG fields: ${missingCogFields.join(', ')}`
+          }));
+          continue;
         }
         // Stock code is the lookup key that links external rows to internal materials.
         const materialKey = row.stock_code ? String(row.stock_code).trim().toUpperCase() : null;
