@@ -1,6 +1,17 @@
 const pool = require('../connection');
 
 class SpecificationPart {
+  static async _ensureSchema() {
+    if (!this._schemaEnsurePromise) {
+      this._schemaEnsurePromise = (async () => {
+        await pool.query(`ALTER TABLE IF EXISTS public.specification_parts ADD COLUMN IF NOT EXISTS nest_id bigint`);
+        await pool.query(`ALTER TABLE IF EXISTS public.specification_parts ADD COLUMN IF NOT EXISTS strgroup text`);
+        await pool.query(`ALTER TABLE IF EXISTS public.specification_parts ADD COLUMN IF NOT EXISTS profile_dem text`);
+      })();
+    }
+    return this._schemaEnsurePromise;
+  }
+
   static _selectColumns(alias = null) {
     const prefix = alias ? `${alias}.` : '';
     return [
@@ -15,6 +26,8 @@ class SpecificationPart {
       `${prefix}quantity`,
       `${prefix}qty`,
       `${prefix}zone`,
+      `${prefix}profile_dem`,
+      `${prefix}nest_id`,
       `${prefix}part_type`,
       `${prefix}length`,
       `${prefix}width`,
@@ -22,6 +35,7 @@ class SpecificationPart {
       `${prefix}radius`,
       `${prefix}angle`,
       `${prefix}symmetry`,
+      `${prefix}strgroup`,
       `${prefix}descriptions`,
       `${prefix}cog_x`,
       `${prefix}cog_y`,
@@ -36,6 +50,7 @@ class SpecificationPart {
   }
 
   static async list(filters = {}) {
+    await SpecificationPart._ensureSchema();
     const { specification_version_id, page = 1, limit } = filters;
     const offset = limit ? (page - 1) * limit : 0;
     const where = [];
@@ -78,6 +93,7 @@ class SpecificationPart {
   }
 
   static async findBySpecificationVersionId(specificationVersionId, executor = pool) {
+    await SpecificationPart._ensureSchema();
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
       jsonb_set(
         to_jsonb(m),
@@ -111,8 +127,8 @@ class SpecificationPart {
     if (!sourceParts || sourceParts.length === 0) return [];
 
     const insertSql = `INSERT INTO specification_parts
-      (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, radius, angle, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24)
+      (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, profile_dem, nest_id, length, width, thickness, radius, angle, symmetry, strgroup, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
       RETURNING id`;
 
     const insertedIds = [];
@@ -130,12 +146,15 @@ class SpecificationPart {
         part.quantity ?? 1,
         part.qty ?? null,
         part.zone || null,
+        part.profile_dem || null,
+        SpecificationPart._normalizeNullable(part.nest_id),
         SpecificationPart._normalizeNullable(part.length),
         SpecificationPart._normalizeNullable(part.width),
         SpecificationPart._normalizeNullable(part.thickness),
         SpecificationPart._normalizeNullable(part.radius),
         SpecificationPart._normalizeNullable(part.angle),
         part.symmetry || null,
+        part.strgroup || null,
         part.unit || null,
         part.part_type || null,
         part.descriptions || null,
@@ -168,6 +187,7 @@ class SpecificationPart {
   }
 
   static async findById(id) {
+    await SpecificationPart._ensureSchema();
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
       jsonb_set(
         to_jsonb(m),
@@ -196,6 +216,7 @@ class SpecificationPart {
   }
 
   static async findByIds(ids = []) {
+    await SpecificationPart._ensureSchema();
     const uniqueIds = [...new Set((ids || []).map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id > 0))];
     if (uniqueIds.length === 0) return [];
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
@@ -227,7 +248,8 @@ class SpecificationPart {
   }
 
   static async create(fields) {
-    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, radius, angle, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id`;
+    await SpecificationPart._ensureSchema();
+    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, profile_dem, nest_id, length, width, thickness, radius, angle, symmetry, strgroup, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING id`;
     const vals = [
       fields.specification_version_id,
       fields.parent_id || null,
@@ -239,12 +261,15 @@ class SpecificationPart {
       fields.quantity || 1,
       fields.qty ?? null,
       fields.zone || null,
+      fields.profile_dem || null,
+      SpecificationPart._normalizeNullable(fields.nest_id),
       SpecificationPart._normalizeNullable(fields.length),
       SpecificationPart._normalizeNullable(fields.width),
       SpecificationPart._normalizeNullable(fields.thickness),
       SpecificationPart._normalizeNullable(fields.radius),
       SpecificationPart._normalizeNullable(fields.angle),
       fields.symmetry || null,
+      fields.strgroup || null,
       fields.unit || null,
       fields.part_type || null,
       fields.descriptions || null,
@@ -261,13 +286,14 @@ class SpecificationPart {
   }
 
   static async update(id, fields) {
+    await SpecificationPart._ensureSchema();
     const parts = [];
     const values = [];
     let idx = 1;
-    ['parent_id','part_code','part_oid','drawing_address','material_id','sfi_code_id','quantity','qty','zone','length','width','thickness','radius','angle','symmetry','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
+    ['parent_id','part_code','part_oid','drawing_address','material_id','sfi_code_id','quantity','qty','zone','profile_dem','nest_id','length','width','thickness','radius','angle','symmetry','strgroup','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
       if (fields[k] !== undefined) {
         parts.push(`${k} = $${idx++}`);
-        const normalized = ['length', 'width', 'thickness', 'radius', 'angle'].includes(k)
+        const normalized = ['nest_id', 'length', 'width', 'thickness', 'radius', 'angle'].includes(k)
           ? SpecificationPart._normalizeNullable(fields[k])
           : fields[k];
         values.push(normalized);
@@ -283,6 +309,7 @@ class SpecificationPart {
   }
 
   static async updateDrawingAddressById(id, drawingAddress) {
+    await SpecificationPart._ensureSchema();
     const q = `UPDATE specification_parts sp
     SET drawing_address = $2
     WHERE sp.id = $1
@@ -292,6 +319,7 @@ class SpecificationPart {
   }
 
   static async softDelete(id) {
+    await SpecificationPart._ensureSchema();
     try {
       const q = `UPDATE specification_parts SET is_active = false WHERE id = $1`;
       const res = await pool.query(q, [id]);

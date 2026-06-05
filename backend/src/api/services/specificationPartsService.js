@@ -368,6 +368,8 @@ class SpecificationPartsService {
       : ['PART_DESC', 'part_desc', 'description', 'DESCRIPTION'];
     const partType = sourceMode === 'systems'
       ? String(SpecificationPartsService._pickExternalValue(row, ['TYPECODE', 'typecode']) || '').trim() || null
+      : sourceMode === 'blocks'
+        ? String(SpecificationPartsService._pickExternalValue(row, ['ELEM_TYPE', 'elem_type']) || '').trim() || null
       : null;
     const partCodeRaw = SpecificationPartsService._pickExternalValue(row, partCodeKeys);
     const partOidRaw = SpecificationPartsService._pickExternalValue(row, partOidKeys);
@@ -400,6 +402,17 @@ class SpecificationPartsService {
       : null;
     const angle = angleRaw !== undefined && angleRaw !== null && angleRaw !== ''
       ? Number(angleRaw)
+      : null;
+    const profileDem = sourceMode === 'blocks'
+      ? [row.WH, row.WT, row.FH, row.FT].every((value) => value !== undefined && value !== null && String(value).trim() !== '')
+        ? [row.WH, row.WT, row.FH, row.FT].map((value) => String(value).trim()).join('/')
+        : null
+      : null;
+    const nestIdRaw = sourceMode === 'blocks'
+      ? SpecificationPartsService._pickExternalValue(row, ['NEST_ID', 'nest_id'])
+      : null;
+    const strgroupRaw = sourceMode === 'blocks'
+      ? SpecificationPartsService._pickExternalValue(row, ['STRGROUP', 'strgroup'])
       : null;
     const cogXRaw = SpecificationPartsService._pickExternalValue(row, ['COG_X', 'cog_x', 'cogX', 'ELEMENT_COG_X', 'element_cog_x']);
     const cogYRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Y', 'cog_y', 'cogY', 'ELEMENT_COG_Y', 'element_cog_y']);
@@ -435,6 +448,10 @@ class SpecificationPartsService {
       thickness: Number.isNaN(thickness) ? null : thickness,
       radius: Number.isNaN(radius) ? null : radius,
       angle: Number.isNaN(angle) ? null : angle,
+      profile_dem: profileDem,
+      nest_id: nestIdRaw !== null && nestIdRaw !== undefined && String(nestIdRaw).trim() !== ''
+        ? SpecificationPartsService._toNumberOrNull(nestIdRaw)
+        : null,
       cog_x: Number.isNaN(cogX) ? null : cogX,
       cog_y: Number.isNaN(cogY) ? null : cogY,
       cog_z: Number.isNaN(cogZ) ? null : cogZ,
@@ -445,6 +462,9 @@ class SpecificationPartsService {
       sfi_code_id: SpecificationPartsService._toNumberOrNull(
         SpecificationPartsService._pickExternalValue(row, ['SFI_CODE_ID', 'sfi_code_id'])
       ),
+      strgroup: strgroupRaw !== null && strgroupRaw !== undefined
+        ? String(strgroupRaw).trim() || null
+        : null,
       descriptions: sourceMode === 'equipment'
         ? null
         : SpecificationPartsService._pickExternalValue(row, descriptionsKeys) != null

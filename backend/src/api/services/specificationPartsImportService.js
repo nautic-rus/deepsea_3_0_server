@@ -54,6 +54,8 @@ class SpecificationPartsImportService {
       throw err;
     }
 
+    await SpecificationPart._ensureSchema();
+
     // External services may use runtime config overrides from the database or env.
     const foranSettings = await SpecificationPartsService._loadForanRuntimeSettings();
     // Resolve the specification's connector set once and filter out incomplete rows.
@@ -312,21 +314,24 @@ class SpecificationPartsImportService {
              quantity = $5,
              qty = $6,
              zone = $7,
-             length = $8,
-             width = $9,
-             thickness = $10,
-             radius = $11,
-             angle = $12,
-             symmetry = $13,
-             unit = $14,
-             part_type = $15,
-             descriptions = $16,
-             cog_x = $17,
-             cog_y = $18,
-             cog_z = $19,
-             created_by = $20,
-             source = $21
-         WHERE id = $22
+             profile_dem = $8,
+             length = $9,
+             width = $10,
+             thickness = $11,
+             radius = $12,
+             angle = $13,
+             nest_id = $14,
+             symmetry = $15,
+             unit = $16,
+             part_type = $17,
+             descriptions = $18,
+             cog_x = $19,
+             cog_y = $20,
+             cog_z = $21,
+             strgroup = $22,
+             created_by = $23,
+             source = $24
+         WHERE id = $25
          RETURNING id`;
       const buildReportRow = (row, rowIndex, material, extra = {}) => ({
         row_index: rowIndex + 1,
@@ -337,6 +342,7 @@ class SpecificationPartsImportService {
         unit_id: material && material.unit_id !== undefined && material.unit_id !== null ? material.unit_id : null,
         quantity: row.quantity ?? null,
         zone: row.zone ?? null,
+        profile_dem: row.profile_dem ?? null,
         part_type: row.part_type ?? null,
         length: row.length ?? null,
         width: row.width ?? null,
@@ -346,6 +352,8 @@ class SpecificationPartsImportService {
         cog_x: row.cog_x ?? null,
         cog_y: row.cog_y ?? null,
         cog_z: row.cog_z ?? null,
+        nest_id: row.nest_id ?? null,
+        strgroup: row.strgroup ?? null,
         ...extra
       });
       const getMissingCogFields = (row) => {
@@ -411,11 +419,13 @@ class SpecificationPartsImportService {
           resolvedQuantity,
           row.num_eq_part,
           row.zone,
+          row.profile_dem ?? null,
           row.length,
           row.width,
           row.thickness,
           row.radius,
           row.angle,
+          row.nest_id,
           row.symmetry,
           row.unit,
           row.part_type,
@@ -423,6 +433,7 @@ class SpecificationPartsImportService {
           row.cog_x,
           row.cog_y,
           row.cog_z,
+          row.strgroup,
           actor.id,
           row.sourceValue
         ];
@@ -440,7 +451,7 @@ class SpecificationPartsImportService {
         if (partOidKey) {
           incomingPartOidKeys.add(partOidKey);
         }
-        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
+        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
         values.push(
           versionId,
           ...persistenceValues
@@ -508,7 +519,7 @@ class SpecificationPartsImportService {
 
       const insertRes = await client.query(
         `INSERT INTO specification_parts
-          (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, length, width, thickness, radius, angle, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
+          (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, profile_dem, length, width, thickness, radius, angle, nest_id, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, strgroup, created_by, source)
          VALUES ${placeholders.join(', ')}
          RETURNING id`,
         values
