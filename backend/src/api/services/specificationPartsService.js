@@ -316,21 +316,29 @@ class SpecificationPartsService {
 
   static _normalizeExternalRow(row, sourceKey = 'blocks') {
     // Normalize a single external row into the internal specification_parts shape.
-    // The mapping varies slightly between BLOCKS, ASTRUCTURE, and SYSTEMS.
+    // The mapping varies slightly between BLOCKS, ASTRUCTURE, SYSTEMS, and EQUIPMENT rows.
     if (!row || typeof row !== 'object') return null;
     const sourceModeRaw = SpecificationPartsService._normalizeLowerText(sourceKey);
     const sourceMode = sourceModeRaw === 'astructure'
       ? 'astructure'
-      : (sourceModeRaw === 'systems' ? 'systems' : 'blocks');
+      : (sourceModeRaw === 'systems'
+        ? 'systems'
+        : (sourceModeRaw === 'equip_by_system_oid' || sourceModeRaw === 'equip_by_zone_oid'
+          ? 'equipment'
+          : 'blocks'));
     const partCodeKeys = sourceMode === 'astructure'
       ? ['CODEID', 'codeid']
       : sourceMode === 'systems'
         ? ['SPOOLID', 'spoolid', 'CODEID', 'codeid', 'PART_CODE', 'part_code', 'code', 'CODE']
+      : sourceMode === 'equipment'
+        ? ['ELEMENT_USERID', 'element_userid', 'ELEMENT_NAME', 'element_name']
       : ['PART_CODE', 'part_code', 'code', 'CODE'];
     const partOidKeys = sourceMode === 'astructure'
       ? ['MOD_OID', 'mod_oid']
       : sourceMode === 'systems'
       ? ['SQINSYSTEM', 'sqinsystem']
+      : sourceMode === 'equipment'
+        ? ['ELEMENT_OID', 'element_oid']
       : ['PART_OID', 'part_oid'];
     const totalWeightKeys = sourceMode === 'astructure'
       ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
@@ -341,16 +349,22 @@ class SpecificationPartsService {
       ? ['ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
       : sourceMode === 'systems'
         ? ['ZONENAME', 'zonename', 'ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
+      : sourceMode === 'equipment'
+        ? ['ZONE_NAME', 'zone_name', 'ZONE_USERID', 'zone_userid']
       : ['BLOCK_CODE', 'block_code', 'zone', 'ZONE', 'STRGROUP', 'strgroup'];
     const stockCodeKeys = sourceMode === 'astructure'
       ? ['STOCK', 'stock', 'STOCK_CODE', 'stock_code']
       : sourceMode === 'systems'
         ? ['STOCKCODE', 'stockcode', 'STOCK', 'stock', 'STOCK_CODE', 'stock_code']
+      : sourceMode === 'equipment'
+        ? ['COMPONENT_STOCK_CODE', 'component_stock_code']
       : ['STOCK_CODE', 'stock_code'];
     const descriptionsKeys = sourceMode === 'astructure'
       ? ['MATERIAL_DESCRIPTION', 'material_description', 'NORM_DESCR', 'norm_descr', 'DESCRIPTION', 'description', 'PART_DESC', 'part_desc']
       : sourceMode === 'systems'
         ? ['SYSTEMNAME', 'systemname', 'ZONENAME', 'zonename', 'MATERIAL_DESCRIPTION', 'material_description', 'NORM_DESCR', 'norm_descr', 'DESCRIPTION', 'description', 'PART_DESC', 'part_desc']
+      : sourceMode === 'equipment'
+        ? []
       : ['PART_DESC', 'part_desc', 'description', 'DESCRIPTION'];
     const partType = sourceMode === 'systems'
       ? String(SpecificationPartsService._pickExternalValue(row, ['TYPECODE', 'typecode']) || '').trim() || null
@@ -362,7 +376,9 @@ class SpecificationPartsService {
       : null;
     const partOid = SpecificationPartsService._toNumberOrNull(partOidRaw);
     const quantityRaw = SpecificationPartsService._pickExternalValue(row, ['QTY', 'qty', 'quantity', 'QUANTITY']);
-    const quantity = quantityRaw !== null && quantityRaw !== undefined && quantityRaw !== ''
+    const quantity = sourceMode === 'equipment'
+      ? 1
+      : quantityRaw !== null && quantityRaw !== undefined && quantityRaw !== ''
       ? Number(quantityRaw)
       : 1;
     const lengthRaw = SpecificationPartsService._pickExternalValue(row, ['LENGTH', 'length']);
@@ -385,9 +401,9 @@ class SpecificationPartsService {
     const angle = angleRaw !== undefined && angleRaw !== null && angleRaw !== ''
       ? Number(angleRaw)
       : null;
-    const cogXRaw = SpecificationPartsService._pickExternalValue(row, ['COG_X', 'cog_x', 'cogX']);
-    const cogYRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Y', 'cog_y', 'cogY']);
-    const cogZRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Z', 'cog_z', 'cogZ']);
+    const cogXRaw = SpecificationPartsService._pickExternalValue(row, ['COG_X', 'cog_x', 'cogX', 'ELEMENT_COG_X', 'element_cog_x']);
+    const cogYRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Y', 'cog_y', 'cogY', 'ELEMENT_COG_Y', 'element_cog_y']);
+    const cogZRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Z', 'cog_z', 'cogZ', 'ELEMENT_COG_Z', 'element_cog_z']);
     const cogX = cogXRaw !== undefined && cogXRaw !== null && cogXRaw !== ''
       ? Number(cogXRaw)
       : null;
@@ -429,7 +445,9 @@ class SpecificationPartsService {
       sfi_code_id: SpecificationPartsService._toNumberOrNull(
         SpecificationPartsService._pickExternalValue(row, ['SFI_CODE_ID', 'sfi_code_id'])
       ),
-      descriptions: SpecificationPartsService._pickExternalValue(row, descriptionsKeys) != null
+      descriptions: sourceMode === 'equipment'
+        ? null
+        : SpecificationPartsService._pickExternalValue(row, descriptionsKeys) != null
         ? String(SpecificationPartsService._pickExternalValue(row, descriptionsKeys)).trim()
         : null
     };
@@ -497,6 +515,10 @@ class SpecificationPartsService {
 
   static _resolveSystemsQuantity(row, material) {
     return SpecificationPartsService._resolveSystemsQuantityDetails(row, material);
+  }
+
+  static _resolveEquipmentQuantity(row, material) {
+    return SpecificationPartsService._resolveEquipmentQuantityDetails(row, material);
   }
 
   static _resolveAstructureQuantityDetails(row, material) {
@@ -568,6 +590,11 @@ class SpecificationPartsService {
     return { quantity: 1, calculated: true, reason: null };
   }
 
+  static _resolveEquipmentQuantityDetails(row, material) {
+    // EQUIPMENT rows always represent a single equipment item.
+    return { quantity: 1, calculated: true, reason: null };
+  }
+
   static _resolveForanBaseUrl(requestBaseUrl = null, runtimeUrl = null) {
     // Resolve the base URL for external import services with sane fallbacks.
     const configured = String(runtimeUrl || '').trim();
@@ -604,29 +631,60 @@ class SpecificationPartsService {
 
   static _buildAstructureRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
     // ASTRUCTURE uses schemaName and a dedicated oid query parameter shape.
-    let relativePath = String(template || '')
-      .replaceAll('{schemaName}', encodeURIComponent(String(schemaName || '').trim()))
-      .replaceAll('{oid}', encodeURIComponent(String(oid || '')));
-    if (relativePath.includes('/parts-by-as-oid=')) {
-      relativePath = relativePath.replace('/parts-by-as-oid=', '/parts-by-as-oid?oid=');
-    }
-
-    const url = new URL(relativePath, SpecificationPartsService._resolveForanBaseUrl(requestBaseUrl, runtimeUrl));
-    if (!url.searchParams.has('oid') && oid !== undefined && oid !== null && String(oid).trim() !== '' && /parts-by-as-oid/i.test(url.pathname)) {
-      url.searchParams.set('oid', String(oid));
-    }
-    return url.toString();
+    return SpecificationPartsService._buildSchemaOidRequestUrl(
+      template,
+      schemaName,
+      oid,
+      'oid',
+      requestBaseUrl,
+      runtimeUrl
+    );
   }
 
   static _buildSystemsRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
     // SYSTEMS uses schemaName and a dedicated system_oid query parameter shape.
+    return SpecificationPartsService._buildSchemaOidRequestUrl(
+      template,
+      schemaName,
+      oid,
+      'system_oid',
+      requestBaseUrl,
+      runtimeUrl
+    );
+  }
+
+  static _buildEquipmentBySystemRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+    // EQUIPMENT BY SYSTEM follows the same schemaName pattern as SYSTEMS, but with a different path and query key.
+    return SpecificationPartsService._buildSchemaOidRequestUrl(
+      template,
+      schemaName,
+      oid,
+      'system_oid',
+      requestBaseUrl,
+      runtimeUrl
+    );
+  }
+
+  static _buildEquipmentByZoneRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+    // EQUIPMENT BY ZONE follows the same schemaName pattern as SYSTEMS, but with a zone_oid query key.
+    return SpecificationPartsService._buildSchemaOidRequestUrl(
+      template,
+      schemaName,
+      oid,
+      'zone_oid',
+      requestBaseUrl,
+      runtimeUrl
+    );
+  }
+
+  static _buildSchemaOidRequestUrl(template, schemaName, oid, queryParamName, requestBaseUrl = null, runtimeUrl = null) {
     let relativePath = String(template || '')
       .replaceAll('{schemaName}', encodeURIComponent(String(schemaName || '').trim()))
       .replaceAll('{oid}', encodeURIComponent(String(oid || '')));
 
     const url = new URL(relativePath, SpecificationPartsService._resolveForanBaseUrl(requestBaseUrl, runtimeUrl));
-    if (!url.searchParams.has('system_oid') && oid !== undefined && oid !== null && String(oid).trim() !== '' && /parts-by-system-oid/i.test(url.pathname)) {
-      url.searchParams.set('system_oid', String(oid));
+    if (!url.searchParams.has(queryParamName) && oid !== undefined && oid !== null && String(oid).trim() !== '') {
+      url.searchParams.set(queryParamName, String(oid));
     }
     return url.toString();
   }
@@ -647,6 +705,20 @@ class SpecificationPartsService {
       return {
         key: 'systems',
         sourceValue: 'systems'
+      };
+    }
+
+    if (code === 'equip_by_system_oid' || name.startsWith('equipment by system')) {
+      return {
+        key: 'equip_by_system_oid',
+        sourceValue: 'foran'
+      };
+    }
+
+    if (code === 'equip_by_zone_oid' || name.startsWith('equipment by zone')) {
+      return {
+        key: 'equip_by_zone_oid',
+        sourceValue: 'foran'
       };
     }
 

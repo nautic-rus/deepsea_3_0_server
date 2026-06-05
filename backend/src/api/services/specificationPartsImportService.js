@@ -124,6 +124,22 @@ class SpecificationPartsImportService {
             options.requestBaseUrl || null,
             foranSettings.url
           )
+        : importStrategy.key === 'equip_by_system_oid'
+          ? SpecificationPartsService._buildEquipmentBySystemRequestUrl(
+            sourceConnector.url,
+            projectConnector.project_code,
+            oid,
+            options.requestBaseUrl || null,
+            foranSettings.url
+          )
+          : importStrategy.key === 'equip_by_zone_oid'
+            ? SpecificationPartsService._buildEquipmentByZoneRequestUrl(
+              sourceConnector.url,
+              projectConnector.project_code,
+              oid,
+              options.requestBaseUrl || null,
+              foranSettings.url
+            )
           : SpecificationPartsService._buildForanRequestUrl(
             sourceConnector.url,
             projectConnector.project_code,
@@ -144,7 +160,7 @@ class SpecificationPartsImportService {
       };
     });
 
-    // Keep BLOCKS, ASTRUCTURE, and SYSTEMS separated so their URLs, row shapes, and quantity rules never mix.
+    // Keep BLOCKS, ASTRUCTURE, SYSTEMS, and EQUIPMENT separated so their URLs, row shapes, and quantity rules never mix.
     const connectorGroups = new Map();
     for (const connector of connectorSources) {
       if (!connectorGroups.has(connector.importBranch)) {
@@ -332,8 +348,25 @@ class SpecificationPartsImportService {
         cog_z: row.cog_z ?? null,
         ...extra
       });
+      const getMissingEquipmentCogFields = (row) => {
+        const missing = [];
+        if (row.cog_x === null || row.cog_x === undefined || Number.isNaN(Number(row.cog_x))) missing.push('ELEMENT_COG_X');
+        if (row.cog_y === null || row.cog_y === undefined || Number.isNaN(Number(row.cog_y))) missing.push('ELEMENT_COG_Y');
+        if (row.cog_z === null || row.cog_z === undefined || Number.isNaN(Number(row.cog_z))) missing.push('ELEMENT_COG_Z');
+        return missing;
+      };
       for (let rowIndex = 0; rowIndex < normalizedRows.length; rowIndex += 1) {
         const row = normalizedRows[rowIndex];
+        const isEquipmentImport = row.importBranch === 'equip_by_system_oid' || row.importBranch === 'equip_by_zone_oid';
+        if (isEquipmentImport) {
+          const missingCogFields = getMissingEquipmentCogFields(row);
+          if (missingCogFields.length > 0) {
+            report.push(buildReportRow(row, rowIndex, null, {
+              reason: `Missing required COG fields for equipment import: ${missingCogFields.join(', ')}`
+            }));
+            continue;
+          }
+        }
         // Stock code is the lookup key that links external rows to internal materials.
         const materialKey = row.stock_code ? String(row.stock_code).trim().toUpperCase() : null;
         const material = materialKey ? (materialMap.get(materialKey) || null) : null;
@@ -354,6 +387,8 @@ class SpecificationPartsImportService {
           ? SpecificationPartsService._resolveAstructureQuantityDetails(row, material)
           : row.importBranch === 'systems'
             ? SpecificationPartsService._resolveSystemsQuantityDetails(row, material)
+            : row.importBranch === 'equip_by_system_oid' || row.importBranch === 'equip_by_zone_oid'
+              ? SpecificationPartsService._resolveEquipmentQuantityDetails(row, material)
             : SpecificationPartsService._resolveQuantityDetails(row, material);
         const resolvedQuantity = quantityResolution.quantity;
         const numericQuantity = SpecificationPartsService._toNumberOrNull(resolvedQuantity);
