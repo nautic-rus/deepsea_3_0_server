@@ -25606,9 +25606,10 @@
                                 "type": "string",
                                 "nullable": true
                               },
-                              "stock_code": {
-                                "type": "string",
-                                "nullable": true
+                              "material": {
+                                "type": "object",
+                                "nullable": true,
+                                "description": "Related material object"
                               },
                               "before_quantity": {
                                 "type": "number"
@@ -25641,9 +25642,10 @@
                                 "type": "string",
                                 "nullable": true
                               },
-                              "stock_code": {
-                                "type": "string",
-                                "nullable": true
+                              "material": {
+                                "type": "object",
+                                "nullable": true,
+                                "description": "Related material object"
                               },
                               "quantity": {
                                 "type": "number"
@@ -25670,9 +25672,10 @@
                                 "type": "string",
                                 "nullable": true
                               },
-                              "stock_code": {
-                                "type": "string",
-                                "nullable": true
+                              "material": {
+                                "type": "object",
+                                "nullable": true,
+                                "description": "Related material object"
                               },
                               "quantity": {
                                 "type": "number"

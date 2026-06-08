@@ -77,6 +77,7 @@ class SpecificationVersion {
         part_oid: identity.part_oid,
         part_code: identity.part_code,
         stock_code: identity.stock_code,
+        material: part && part.material ? part.material : null,
         quantity,
         count: 1,
         order: index
@@ -94,6 +95,7 @@ class SpecificationVersion {
       part_oid: entry.part_oid,
       part_code: entry.part_code,
       stock_code: entry.stock_code,
+      material: entry.material,
       quantity: entry.quantity,
       ...extra
     };
@@ -174,7 +176,7 @@ class SpecificationVersion {
             source: rest.source,
             part_oid: rest.part_oid,
             part_code: rest.part_code,
-            stock_code: rest.stock_code,
+            material: rest.material,
             before_quantity: rest.before_quantity,
             after_quantity: rest.after_quantity,
             quantity_delta: rest.quantity_delta
@@ -185,7 +187,7 @@ class SpecificationVersion {
           source: rest.source,
           part_oid: rest.part_oid,
           part_code: rest.part_code,
-          stock_code: rest.stock_code,
+          material: rest.material,
           quantity: rest.quantity
         };
       });

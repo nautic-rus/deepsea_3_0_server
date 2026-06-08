@@ -16825,9 +16825,10 @@ paths:
                             part_code:
                               type: string
                               nullable: true
-                            stock_code:
-                              type: string
+                            material:
+                              type: object
                               nullable: true
+                              description: Related material object
                             before_quantity:
                               type: number
                             after_quantity:
@@ -16849,9 +16850,10 @@ paths:
                             part_code:
                               type: string
                               nullable: true
-                            stock_code:
-                              type: string
+                            material:
+                              type: object
                               nullable: true
+                              description: Related material object
                             quantity:
                               type: number
                       deleted:
@@ -16869,9 +16871,10 @@ paths:
                             part_code:
                               type: string
                               nullable: true
-                            stock_code:
-                              type: string
+                            material:
+                              type: object
                               nullable: true
+                              description: Related material object
                             quantity:
                               type: number
         '400':
