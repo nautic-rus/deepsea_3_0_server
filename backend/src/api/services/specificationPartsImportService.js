@@ -318,7 +318,13 @@ class SpecificationPartsImportService {
         const affectedRows = await SpecificationPart.findByIds(uniqueAffectedIds, client);
         const linkedKitIds = [];
         for (const row of (affectedRows || [])) {
-          const rowLinkedKitIds = await SpecificationPartsService._syncLinkedKitPartsForParent(row, projectId, actor.id, client);
+          const rowLinkedKitIds = await SpecificationPartsService._syncLinkedKitPartsForParent(
+            row,
+            projectId,
+            actor.id,
+            client,
+            { replaceExisting: true }
+          );
           if (rowLinkedKitIds && rowLinkedKitIds.length > 0) {
             linkedKitIds.push(...rowLinkedKitIds);
           }

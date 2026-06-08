@@ -264,57 +264,42 @@ class SpecificationPartsService {
     return rowsByMaterialId;
   }
 
-  static async _syncLinkedKitPartsForParent(parentPart, projectId, actorId, executor = pool) {
+  static async _syncLinkedKitPartsForParent(parentPart, projectId, actorId, executor = pool, options = {}) {
     if (!parentPart || !Number.isFinite(Number(parentPart.id)) || !Number.isFinite(Number(parentPart.material_id))) {
       return [];
     }
 
+    const replaceExisting = Boolean(options.replaceExisting);
     const kitRowsByMaterialId = await SpecificationPartsService._loadLinkedKitItemsByMaterialIds(
       projectId,
       [Number(parentPart.material_id)],
       executor
     );
     const kitRows = kitRowsByMaterialId.get(Number(parentPart.material_id)) || [];
-    if (kitRows.length === 0) {
-      await executor.query(
-        `
-        DELETE FROM specification_parts
-        WHERE parent_id = $1
-          AND source = ANY($2::text[])
-        `,
-        [Number(parentPart.id), ['kit', parentSource]]
-      );
-      return [];
-    }
-
-    const parentQuantity = SpecificationPartsService._toNumberOrNull(parentPart.quantity) ?? 1;
-    const parentSource = parentPart.source || 'manual';
     const kitSource = 'kit';
+    const parentQuantity = SpecificationPartsService._toNumberOrNull(parentPart.quantity) ?? 1;
     const parentCogX = parentPart.cog_x ?? null;
     const parentCogY = parentPart.cog_y ?? null;
     const parentCogZ = parentPart.cog_z ?? null;
 
-    const existingRes = await executor.query(
-      `
-      SELECT id, part_code, material_id
-      FROM specification_parts
-      WHERE parent_id = $1
-        AND source = ANY($2::text[])
-      ORDER BY id
-      `,
-      [Number(parentPart.id), [kitSource, parentSource]]
-    );
+    if (replaceExisting) {
+      await executor.query(
+        `
+        DELETE FROM specification_parts
+        WHERE parent_id = $1
+          AND source = $2
+        `,
+        [Number(parentPart.id), kitSource]
+      );
+    } else if (kitRows.length === 0) {
+      return [];
+    }
 
-    const existingRows = existingRes.rows || [];
-    const existingByKey = new Map();
-    for (const row of existingRows) {
-      const key = SpecificationPartsService._buildKitChildKey(row.part_code, row.material_id);
-      if (!existingByKey.has(key)) existingByKey.set(key, []);
-      existingByKey.get(key).push(row);
+    if (kitRows.length === 0) {
+      return [];
     }
 
     const touchedIds = [];
-    const matchedExistingIds = new Set();
     for (const kitRow of kitRows) {
       const quantity = (parentQuantity ?? 1) * (SpecificationPartsService._toNumberOrNull(kitRow.quantity) ?? 1);
       const childFields = {
@@ -347,35 +332,10 @@ class SpecificationPartsService {
         source: kitSource
       };
 
-      const key = SpecificationPartsService._buildKitChildKey(childFields.part_code, childFields.material_id);
-      const existingQueue = existingByKey.get(key) || [];
-      const existingRow = existingQueue.shift() || null;
-      if (existingQueue.length === 0) {
-        existingByKey.delete(key);
-      } else {
-        existingByKey.set(key, existingQueue);
+      const created = await SpecificationPart.create(childFields, executor);
+      if (created && created.id !== undefined && created.id !== null) {
+        touchedIds.push(Number(created.id));
       }
-
-      if (existingRow) {
-        matchedExistingIds.add(Number(existingRow.id));
-        const updated = await SpecificationPart.update(Number(existingRow.id), childFields, executor);
-        if (updated && updated.id !== undefined && updated.id !== null) {
-          touchedIds.push(Number(updated.id));
-        }
-      } else {
-        const created = await SpecificationPart.create(childFields, executor);
-        if (created && created.id !== undefined && created.id !== null) {
-          touchedIds.push(Number(created.id));
-        }
-      }
-    }
-
-    for (const row of existingRows) {
-      if (matchedExistingIds.has(Number(row.id))) continue;
-      await executor.query(
-        `DELETE FROM specification_parts WHERE id = $1`,
-        [Number(row.id)]
-      );
     }
 
     return touchedIds;
@@ -1170,6 +1130,7 @@ class SpecificationPartsService {
         throw err;
       }
 
+      await SpecificationPartsService._syncLinkedKitPartsForParent(created, specification.project_id, actor.id, client);
       await SpecificationVersion.touch(created.specification_version_id, actor.id, client);
 
       await client.query('COMMIT');
