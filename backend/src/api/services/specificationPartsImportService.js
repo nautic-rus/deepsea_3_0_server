@@ -305,6 +305,7 @@ class SpecificationPartsImportService {
       let newCount = 0;
       let updatedCount = 0;
       let deletedCount = 0;
+      let kitCount = 0;
       let idx = 1;
       const syncLinkedKitPartsForAffectedRows = async (affectedIds) => {
         const uniqueAffectedIds = [...new Set((affectedIds || [])
@@ -327,6 +328,7 @@ class SpecificationPartsImportService {
           );
           if (rowLinkedKitIds && rowLinkedKitIds.length > 0) {
             linkedKitIds.push(...rowLinkedKitIds);
+            kitCount += rowLinkedKitIds.length;
           }
         }
 
@@ -511,7 +513,8 @@ class SpecificationPartsImportService {
             report_summary: {
               new_count: newCount,
               updated_count: updatedCount,
-              deleted_count: deletedCount
+              deleted_count: deletedCount,
+              kit_count: kitCount
             },
             report,
             data: [],
@@ -533,7 +536,8 @@ class SpecificationPartsImportService {
           report_summary: {
             new_count: newCount,
             updated_count: updatedCount,
-            deleted_count: deletedCount
+            deleted_count: deletedCount,
+            kit_count: kitCount
           },
           report,
           data,
@@ -569,7 +573,8 @@ class SpecificationPartsImportService {
         report_summary: {
           new_count: newCount,
           updated_count: updatedCount,
-          deleted_count: deletedCount
+          deleted_count: deletedCount,
+          kit_count: kitCount
         },
         report,
         data,
