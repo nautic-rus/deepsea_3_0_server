@@ -36,6 +36,21 @@ class SpecificationVersion {
       };
     }
 
+    if (source === 'kit') {
+      const partCode = part && part.part_code !== undefined && part.part_code !== null && String(part.part_code).trim() !== ''
+        ? String(part.part_code).trim()
+        : null;
+      return {
+        source,
+        key: `kit|${partCode || ''}|${stockCode || ''}`,
+        part_oid: null,
+        part_code: partCode,
+        stock_code: part && part.material && part.material.stock_code !== undefined && part.material.stock_code !== null
+          ? String(part.material.stock_code).trim() || null
+          : null
+      };
+    }
+
     const partCode = part && part.part_code !== undefined && part.part_code !== null && String(part.part_code).trim() !== ''
       ? String(part.part_code).trim()
       : null;
