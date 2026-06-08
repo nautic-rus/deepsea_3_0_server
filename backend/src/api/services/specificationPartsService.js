@@ -1,5 +1,6 @@
 const SpecificationPart = require('../../db/models/SpecificationPart');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
+const Specification = require('../../db/models/Specification');
 const EnvironmentSetting = require('../../db/models/EnvironmentSetting');
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
@@ -143,6 +144,241 @@ class SpecificationPartsService {
       err.details = details;
     }
     return err;
+  }
+
+  static _buildKitChildKey(partCode, materialId) {
+    return `${partCode === null || partCode === undefined ? '' : String(partCode).trim()}|${materialId === null || materialId === undefined ? '' : String(materialId).trim()}`;
+  }
+
+  static async _loadLinkedKitItemsByMaterialIds(projectId, materialIds = [], executor = pool) {
+    const uniqueMaterialIds = [...new Set((materialIds || [])
+      .map((id) => Number(id))
+      .filter((id) => !Number.isNaN(id) && id > 0))];
+
+    if (!projectId || Number.isNaN(Number(projectId)) || uniqueMaterialIds.length === 0) {
+      return new Map();
+    }
+
+    const materialProjectRes = await executor.query(
+      `
+      SELECT DISTINCT
+        emp.id AS material_project_id,
+        emp.equipment_material_id
+      FROM equipment_materials_projects emp
+      JOIN statements st ON st.id = emp.statement_id
+      WHERE st.project_id = $1
+        AND emp.equipment_material_id = ANY($2::int[])
+      `,
+      [Number(projectId), uniqueMaterialIds]
+    );
+
+    const materialProjectRows = materialProjectRes.rows || [];
+    const materialProjectIds = [...new Set(materialProjectRows
+      .map((row) => Number(row.material_project_id))
+      .filter((id) => !Number.isNaN(id) && id > 0))];
+
+    if (materialProjectIds.length === 0) {
+      return new Map();
+    }
+
+    const kitLinksRes = await executor.query(
+      `
+      SELECT material_project_id, material_kit_id
+      FROM equipment_materials_project_kits
+      WHERE material_project_id = ANY($1::int[])
+      ORDER BY material_project_id, id
+      `,
+      [materialProjectIds]
+    );
+
+    const kitLinkRows = kitLinksRes.rows || [];
+    if (kitLinkRows.length === 0) {
+      return new Map();
+    }
+
+    const kitIds = [...new Set(kitLinkRows
+      .map((row) => Number(row.material_kit_id))
+      .filter((id) => !Number.isNaN(id) && id > 0))];
+
+    if (kitIds.length === 0) {
+      return new Map();
+    }
+
+    const kitItemsRes = await executor.query(
+      `
+      SELECT id, kit_id, part_code, material_id, quantity
+      FROM equipment_material_kit_items
+      WHERE kit_id = ANY($1::int[])
+      ORDER BY kit_id, id
+      `,
+      [kitIds]
+    );
+
+    const kitItemsByKitId = new Map();
+    for (const row of (kitItemsRes.rows || [])) {
+      const kitId = Number(row.kit_id);
+      if (!Number.isFinite(kitId) || kitId <= 0) continue;
+      if (!kitItemsByKitId.has(kitId)) kitItemsByKitId.set(kitId, []);
+      kitItemsByKitId.get(kitId).push({
+        id: row.id,
+        kit_id: kitId,
+        part_code: row.part_code || null,
+        material_id: row.material_id === null || row.material_id === undefined ? null : Number(row.material_id),
+        quantity: SpecificationPartsService._toNumberOrNull(row.quantity) ?? 1,
+      });
+    }
+
+    const materialProjectIdToMaterialId = new Map(
+      materialProjectRows.map((row) => [Number(row.material_project_id), Number(row.equipment_material_id)])
+    );
+    const kitIdsByMaterialId = new Map();
+
+    for (const link of kitLinkRows) {
+      const materialProjectId = Number(link.material_project_id);
+      const kitId = Number(link.material_kit_id);
+      if (!Number.isFinite(materialProjectId) || materialProjectId <= 0 || !Number.isFinite(kitId) || kitId <= 0) continue;
+      const materialId = materialProjectIdToMaterialId.get(materialProjectId);
+      if (!materialId) continue;
+      if (!kitIdsByMaterialId.has(materialId)) kitIdsByMaterialId.set(materialId, new Set());
+      kitIdsByMaterialId.get(materialId).add(kitId);
+    }
+
+    const rowsByMaterialId = new Map();
+    for (const [materialId, kitIdSet] of kitIdsByMaterialId.entries()) {
+      const kitRows = [];
+      for (const kitId of kitIdSet.values()) {
+        const kitItems = kitItemsByKitId.get(Number(kitId)) || [];
+        for (const item of kitItems) {
+          kitRows.push({
+            kit_id: Number(kitId),
+            kit_item_id: item.id,
+            part_code: item.part_code || null,
+            material_id: item.material_id,
+            quantity: item.quantity ?? 1,
+          });
+        }
+      }
+      rowsByMaterialId.set(Number(materialId), kitRows);
+    }
+
+    return rowsByMaterialId;
+  }
+
+  static async _syncLinkedKitPartsForParent(parentPart, projectId, actorId, executor = pool) {
+    if (!parentPart || !Number.isFinite(Number(parentPart.id)) || !Number.isFinite(Number(parentPart.material_id))) {
+      return [];
+    }
+
+    const kitRowsByMaterialId = await SpecificationPartsService._loadLinkedKitItemsByMaterialIds(
+      projectId,
+      [Number(parentPart.material_id)],
+      executor
+    );
+    const kitRows = kitRowsByMaterialId.get(Number(parentPart.material_id)) || [];
+    if (kitRows.length === 0) {
+      await executor.query(
+        `
+        DELETE FROM specification_parts
+        WHERE parent_id = $1
+          AND source = ANY($2::text[])
+        `,
+        [Number(parentPart.id), ['kit', parentSource]]
+      );
+      return [];
+    }
+
+    const parentQuantity = SpecificationPartsService._toNumberOrNull(parentPart.quantity) ?? 1;
+    const parentSource = parentPart.source || 'manual';
+    const kitSource = 'kit';
+    const parentCogX = parentPart.cog_x ?? null;
+    const parentCogY = parentPart.cog_y ?? null;
+    const parentCogZ = parentPart.cog_z ?? null;
+
+    const existingRes = await executor.query(
+      `
+      SELECT id, part_code, material_id
+      FROM specification_parts
+      WHERE parent_id = $1
+        AND source = ANY($2::text[])
+      ORDER BY id
+      `,
+      [Number(parentPart.id), [kitSource, parentSource]]
+    );
+
+    const existingRows = existingRes.rows || [];
+    const existingByKey = new Map();
+    for (const row of existingRows) {
+      const key = SpecificationPartsService._buildKitChildKey(row.part_code, row.material_id);
+      if (!existingByKey.has(key)) existingByKey.set(key, []);
+      existingByKey.get(key).push(row);
+    }
+
+    const touchedIds = [];
+    const matchedExistingIds = new Set();
+    for (const kitRow of kitRows) {
+      const quantity = (parentQuantity ?? 1) * (SpecificationPartsService._toNumberOrNull(kitRow.quantity) ?? 1);
+      const childFields = {
+        specification_version_id: parentPart.specification_version_id,
+        parent_id: Number(parentPart.id),
+        part_code: kitRow.part_code || null,
+        part_oid: null,
+        drawing_address: null,
+        material_id: kitRow.material_id === null || kitRow.material_id === undefined ? null : Number(kitRow.material_id),
+        sfi_code_id: null,
+        quantity,
+        qty: quantity,
+        zone: null,
+        profile_dem: null,
+        nest_id: null,
+        length: null,
+        width: null,
+        thickness: null,
+        radius: null,
+        angle: null,
+        symmetry: null,
+        strgroup: null,
+        unit: null,
+        part_type: null,
+        descriptions: null,
+        cog_x: parentCogX,
+        cog_y: parentCogY,
+        cog_z: parentCogZ,
+        created_by: actorId,
+        source: kitSource
+      };
+
+      const key = SpecificationPartsService._buildKitChildKey(childFields.part_code, childFields.material_id);
+      const existingQueue = existingByKey.get(key) || [];
+      const existingRow = existingQueue.shift() || null;
+      if (existingQueue.length === 0) {
+        existingByKey.delete(key);
+      } else {
+        existingByKey.set(key, existingQueue);
+      }
+
+      if (existingRow) {
+        matchedExistingIds.add(Number(existingRow.id));
+        const updated = await SpecificationPart.update(Number(existingRow.id), childFields, executor);
+        if (updated && updated.id !== undefined && updated.id !== null) {
+          touchedIds.push(Number(updated.id));
+        }
+      } else {
+        const created = await SpecificationPart.create(childFields, executor);
+        if (created && created.id !== undefined && created.id !== null) {
+          touchedIds.push(Number(created.id));
+        }
+      }
+    }
+
+    for (const row of existingRows) {
+      if (matchedExistingIds.has(Number(row.id))) continue;
+      await executor.query(
+        `DELETE FROM specification_parts WHERE id = $1`,
+        [Number(row.id)]
+      );
+    }
+
+    return touchedIds;
   }
 
   static _calculateCenterOfMass(rows = []) {
@@ -846,6 +1082,7 @@ class SpecificationPartsService {
       'blocks',
       'astructure',
       'systems',
+      'kit',
       ...new Set((sourceValues || [])
         .map((value) => SpecificationPartsService._normalizeLowerText(value))
         .filter((value) => value !== ''))
@@ -885,7 +1122,20 @@ class SpecificationPartsService {
     const allowed = await hasPermission(actor, 'specifications.update');
     if (!allowed) { const err = new Error('Forbidden'); err.statusCode = 403; throw err; }
     if (!fields.specification_version_id) { const err = new Error('Missing fields'); err.statusCode = 400; throw err; }
-    await SpecificationPartsService._assertVersionUnlocked(Number(fields.specification_version_id));
+    const versionId = Number(fields.specification_version_id);
+    await SpecificationPartsService._assertVersionUnlocked(versionId);
+    const version = await SpecificationVersion.findById(versionId);
+    if (!version) {
+      const err = new Error('Specification version not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    const specification = await Specification.findById(Number(version.specification_id));
+    if (!specification) {
+      const err = new Error('Specification not found');
+      err.statusCode = 404;
+      throw err;
+    }
 
     if (SpecificationPartsService._toBoolean(fields.cog_from_parent)) {
       const parentId = Number(fields.parent_id);
@@ -908,14 +1158,35 @@ class SpecificationPartsService {
     }
 
     fields.created_by = actor.id;
-    const created = await SpecificationPart.create(fields);
-    if (!created) return null;
-    await SpecificationVersion.touch(created.specification_version_id, actor.id);
-    const meta = await SpecificationPartsService._resolveVersionMeta({ specification_version_id: created.specification_version_id }, [created]);
-    return {
-      ...meta,
-      data: SpecificationPartsService._stripVersionMeta(SpecificationPartsService._withComputedTotalWeight(created))
-    };
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await SpecificationPartsService._ensureForanSourceAllowed(client, ['kit']);
+
+      const created = await SpecificationPart.create(fields, client);
+      if (!created) {
+        const err = new Error('Not found');
+        err.statusCode = 404;
+        throw err;
+      }
+
+      await SpecificationVersion.touch(created.specification_version_id, actor.id, client);
+
+      await client.query('COMMIT');
+
+      const meta = await SpecificationPartsService._resolveVersionMeta({ specification_version_id: created.specification_version_id }, [created]);
+      return {
+        ...meta,
+        data: SpecificationPartsService._stripVersionMeta(SpecificationPartsService._withComputedTotalWeight(created))
+      };
+    } catch (err) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {}
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   static async update(fields, actor) {

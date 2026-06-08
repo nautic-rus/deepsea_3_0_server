@@ -25515,6 +25515,193 @@
         }
       }
     },
+    "/api/specification_versions/{id}/compare": {
+      "get": {
+        "tags": [
+          "specifications"
+        ],
+        "summary": "Compare specification versions",
+        "description": "Compares the version in the path with another specification version and returns only quantity differences grouped into changed, new, and deleted rows.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "specifications.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Base specification version ID"
+          },
+          {
+            "name": "compare_to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Specification version ID to compare against"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comparison result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "specification_id": {
+                          "type": "integer"
+                        },
+                        "base_version": {
+                          "$ref": "#/components/schemas/SpecificationVersion"
+                        },
+                        "compare_to_version": {
+                          "$ref": "#/components/schemas/SpecificationVersion"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "changed": {
+                              "type": "integer"
+                            },
+                            "new": {
+                              "type": "integer"
+                            },
+                            "deleted": {
+                              "type": "integer"
+                            },
+                            "unchanged": {
+                              "type": "integer"
+                            }
+                          }
+                        },
+                        "changed": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": "string"
+                              },
+                              "part_oid": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "part_code": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "stock_code": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "before_quantity": {
+                                "type": "number"
+                              },
+                              "after_quantity": {
+                                "type": "number"
+                              },
+                              "quantity_delta": {
+                                "type": "number"
+                              }
+                            }
+                          }
+                        },
+                        "new": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": "string"
+                              },
+                              "part_oid": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "part_code": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "stock_code": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "quantity": {
+                                "type": "number"
+                              }
+                            }
+                          }
+                        },
+                        "deleted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": "string"
+                              },
+                              "part_oid": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "part_code": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "stock_code": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "quantity": {
+                                "type": "number"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or versions belong to different specifications"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Specification version not found"
+          }
+        }
+      }
+    },
     "/api/specification_versions/{id}/center_of_mass": {
       "get": {
         "tags": [

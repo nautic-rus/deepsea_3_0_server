@@ -49,7 +49,7 @@ class SpecificationPart {
     return value === '' ? null : value;
   }
 
-  static async list(filters = {}) {
+  static async list(filters = {}, executor = pool) {
     await SpecificationPart._ensureSchema();
     const { specification_version_id, page = 1, limit } = filters;
     const offset = limit ? (page - 1) * limit : 0;
@@ -88,7 +88,7 @@ class SpecificationPart {
       q += ` OFFSET $${idx}`;
       values.push(offset);
     }
-    const res = await pool.query(q, values);
+    const res = await executor.query(q, values);
     return res.rows;
   }
 
@@ -186,7 +186,7 @@ class SpecificationPart {
     return insertedIds;
   }
 
-  static async findById(id) {
+  static async findById(id, executor = pool) {
     await SpecificationPart._ensureSchema();
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
       jsonb_set(
@@ -211,11 +211,11 @@ class SpecificationPart {
       LEFT JOIN users cu ON cu.id = sp.created_by
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       WHERE sp.id = $1 LIMIT 1`;
-    const res = await pool.query(q, [id]);
+    const res = await executor.query(q, [id]);
     return res.rows[0] || null;
   }
 
-  static async findByIds(ids = []) {
+  static async findByIds(ids = [], executor = pool) {
     await SpecificationPart._ensureSchema();
     const uniqueIds = [...new Set((ids || []).map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id > 0))];
     if (uniqueIds.length === 0) return [];
@@ -243,11 +243,11 @@ class SpecificationPart {
       LEFT JOIN specification_version sv ON sv.id = sp.specification_version_id
       WHERE sp.id = ANY($1::int[])
       ORDER BY sp.id`;
-    const res = await pool.query(q, [uniqueIds]);
+    const res = await executor.query(q, [uniqueIds]);
     return res.rows;
   }
 
-  static async create(fields) {
+  static async create(fields, executor = pool) {
     await SpecificationPart._ensureSchema();
     const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, profile_dem, nest_id, length, width, thickness, radius, angle, symmetry, strgroup, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING id`;
     const vals = [
@@ -279,13 +279,13 @@ class SpecificationPart {
       fields.created_by,
       fields.source || 'manual'
     ];
-    const res = await pool.query(q, vals);
+    const res = await executor.query(q, vals);
     const inserted = res.rows[0];
     if (!inserted) return null;
-    return await SpecificationPart.findById(inserted.id);
+    return await SpecificationPart.findById(inserted.id, executor);
   }
 
-  static async update(id, fields) {
+  static async update(id, fields, executor = pool) {
     await SpecificationPart._ensureSchema();
     const parts = [];
     const values = [];
@@ -299,22 +299,22 @@ class SpecificationPart {
         values.push(normalized);
       }
     });
-    if (parts.length === 0) return await SpecificationPart.findById(id);
+    if (parts.length === 0) return await SpecificationPart.findById(id, executor);
     const q = `UPDATE specification_parts SET ${parts.join(', ')} WHERE id = $${idx} RETURNING ${SpecificationPart._selectColumns()}`;
     values.push(id);
-    const res = await pool.query(q, values);
+    const res = await executor.query(q, values);
     const updated = res.rows[0] || null;
     if (!updated) return null;
-    return await SpecificationPart.findById(updated.id);
+    return await SpecificationPart.findById(updated.id, executor);
   }
 
-  static async updateDrawingAddressById(id, drawingAddress) {
+  static async updateDrawingAddressById(id, drawingAddress, executor = pool) {
     await SpecificationPart._ensureSchema();
     const q = `UPDATE specification_parts sp
     SET drawing_address = $2
     WHERE sp.id = $1
     RETURNING ${SpecificationPart._selectColumns('sp')}`;
-    const res = await pool.query(q, [id, drawingAddress]);
+    const res = await executor.query(q, [id, drawingAddress]);
     return res.rows[0] || null;
   }
 

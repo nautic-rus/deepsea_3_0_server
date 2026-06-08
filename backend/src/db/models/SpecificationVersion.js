@@ -1,6 +1,215 @@
 const pool = require('../connection');
+const SpecificationPart = require('./SpecificationPart');
 
 class SpecificationVersion {
+  static _normalizeComparisonSource(value) {
+    const source = value === null || value === undefined ? '' : String(value).trim().toLowerCase();
+    return source || 'manual';
+  }
+
+  static _normalizeComparisonText(value) {
+    if (value === null || value === undefined) return null;
+    const text = String(value).trim();
+    return text ? text.toUpperCase() : null;
+  }
+
+  static _partComparisonIdentity(part) {
+    const source = SpecificationVersion._normalizeComparisonSource(part && part.source);
+    const stockCode = SpecificationVersion._normalizeComparisonText(
+      part && part.material && part.material.stock_code !== undefined
+        ? part.material.stock_code
+        : null
+    );
+
+    if (source === 'foran') {
+      const partOid = part && part.part_oid !== undefined && part.part_oid !== null && String(part.part_oid).trim() !== ''
+        ? String(part.part_oid).trim()
+        : null;
+      return {
+        source,
+        key: `foran|${partOid || ''}|${stockCode || ''}`,
+        part_oid: partOid,
+        part_code: null,
+        stock_code: part && part.material && part.material.stock_code !== undefined && part.material.stock_code !== null
+          ? String(part.material.stock_code).trim() || null
+          : null
+      };
+    }
+
+    const partCode = part && part.part_code !== undefined && part.part_code !== null && String(part.part_code).trim() !== ''
+      ? String(part.part_code).trim()
+      : null;
+    return {
+      source,
+      key: `manual|${partCode || ''}|${stockCode || ''}`,
+      part_oid: null,
+      part_code: partCode,
+      stock_code: part && part.material && part.material.stock_code !== undefined && part.material.stock_code !== null
+        ? String(part.material.stock_code).trim() || null
+        : null
+    };
+  }
+
+  static _quantityForComparison(part) {
+    const quantity = part && part.quantity !== undefined && part.quantity !== null
+      ? Number(part.quantity)
+      : 1;
+    return Number.isFinite(quantity) ? quantity : 0;
+  }
+
+  static _aggregatePartsForComparison(parts = []) {
+    const map = new Map();
+
+    (parts || []).forEach((part, index) => {
+      const identity = SpecificationVersion._partComparisonIdentity(part);
+      const quantity = SpecificationVersion._quantityForComparison(part);
+      const existing = map.get(identity.key);
+
+      if (existing) {
+        existing.quantity += quantity;
+        existing.count += 1;
+        return;
+      }
+
+      map.set(identity.key, {
+        key: identity.key,
+        source: identity.source,
+        part_oid: identity.part_oid,
+        part_code: identity.part_code,
+        stock_code: identity.stock_code,
+        quantity,
+        count: 1,
+        order: index
+      });
+    });
+
+    return map;
+  }
+
+  static _comparisonItem(entry, extra = {}) {
+    return {
+      order: entry.order,
+      key: entry.key,
+      source: entry.source,
+      part_oid: entry.part_oid,
+      part_code: entry.part_code,
+      stock_code: entry.stock_code,
+      quantity: entry.quantity,
+      ...extra
+    };
+  }
+
+  static async compareVersions(baseVersionId, compareToVersionId, executor = pool) {
+    const [baseVersion, compareVersion] = await Promise.all([
+      SpecificationVersion.findById(baseVersionId),
+      SpecificationVersion.findById(compareToVersionId)
+    ]);
+
+    if (!baseVersion) {
+      const err = new Error('Specification version not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (!compareVersion) {
+      const err = new Error('Specification version to compare not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (Number(baseVersion.specification_id) !== Number(compareVersion.specification_id)) {
+      const err = new Error('Specification versions must belong to the same specification');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const [baseParts, compareParts] = await Promise.all([
+      SpecificationPart.findBySpecificationVersionId(Number(baseVersionId), executor),
+      SpecificationPart.findBySpecificationVersionId(Number(compareToVersionId), executor)
+    ]);
+
+    const baseMap = SpecificationVersion._aggregatePartsForComparison(baseParts);
+    const compareMap = SpecificationVersion._aggregatePartsForComparison(compareParts);
+    const changed = [];
+    const created = [];
+    const deleted = [];
+
+    for (const entry of baseMap.values()) {
+      const compareEntry = compareMap.get(entry.key);
+      if (!compareEntry) {
+        deleted.push(SpecificationVersion._comparisonItem(entry));
+        continue;
+      }
+
+      if (Number(entry.quantity) !== Number(compareEntry.quantity)) {
+        changed.push(
+          SpecificationVersion._comparisonItem(entry, {
+            before_quantity: entry.quantity,
+            after_quantity: compareEntry.quantity,
+            quantity_delta: compareEntry.quantity - entry.quantity
+          })
+        );
+      }
+    }
+
+    for (const entry of compareMap.values()) {
+      if (baseMap.has(entry.key)) continue;
+      created.push(SpecificationVersion._comparisonItem(entry));
+    }
+
+    const sortByOrder = (a, b) => {
+      const orderA = Number.isFinite(a.order) ? a.order : 0;
+      const orderB = Number.isFinite(b.order) ? b.order : 0;
+      if (orderA !== orderB) return orderA - orderB;
+      return String(a.key).localeCompare(String(b.key));
+    };
+
+    const normalizeOutput = (items, type) => items
+      .sort(sortByOrder)
+      .map((item) => {
+        const { order, count, ...rest } = item;
+        if (type === 'changed') {
+          return {
+            key: rest.key,
+            source: rest.source,
+            part_oid: rest.part_oid,
+            part_code: rest.part_code,
+            stock_code: rest.stock_code,
+            before_quantity: rest.before_quantity,
+            after_quantity: rest.after_quantity,
+            quantity_delta: rest.quantity_delta
+          };
+        }
+        return {
+          key: rest.key,
+          source: rest.source,
+          part_oid: rest.part_oid,
+          part_code: rest.part_code,
+          stock_code: rest.stock_code,
+          quantity: rest.quantity
+        };
+      });
+
+    const changedItems = normalizeOutput(changed, 'changed');
+    const createdItems = normalizeOutput(created, 'created');
+    const deletedItems = normalizeOutput(deleted, 'deleted');
+
+    return {
+      specification_id: Number(baseVersion.specification_id),
+      base_version: baseVersion,
+      compare_to_version: compareVersion,
+      summary: {
+        changed: changedItems.length,
+        new: createdItems.length,
+        deleted: deletedItems.length,
+        unchanged: Math.max(baseMap.size - changedItems.length - deletedItems.length, 0)
+      },
+      changed: changedItems,
+      new: createdItems,
+      deleted: deletedItems
+    };
+  }
+
   static async list(filters = {}) {
     const { specification_id, page = 1, limit } = filters;
     const offset = limit ? (page - 1) * limit : 0;

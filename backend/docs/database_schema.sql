@@ -2452,7 +2452,7 @@ CREATE TABLE public.specification_parts (
     descriptions text,
     sfi_code_id integer,
     qty numeric(15,3),
-    CONSTRAINT specification_parts_source_check CHECK (((source)::text = ANY (ARRAY[('import'::character varying)::text, ('manual'::character varying)::text, ('foran'::character varying)::text, ('astructure'::character varying)::text, ('systems'::character varying)::text])))
+    CONSTRAINT specification_parts_source_check CHECK (((source)::text = ANY (ARRAY[('import'::character varying)::text, ('manual'::character varying)::text, ('foran'::character varying)::text, ('astructure'::character varying)::text, ('systems'::character varying)::text, ('kit'::character varying)::text])))
 );
 
 

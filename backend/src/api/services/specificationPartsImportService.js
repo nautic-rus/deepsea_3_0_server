@@ -306,6 +306,26 @@ class SpecificationPartsImportService {
       let updatedCount = 0;
       let deletedCount = 0;
       let idx = 1;
+      const syncLinkedKitPartsForAffectedRows = async (affectedIds) => {
+        const uniqueAffectedIds = [...new Set((affectedIds || [])
+          .map((id) => Number(id))
+          .filter((id) => !Number.isNaN(id) && id > 0))];
+
+        if (uniqueAffectedIds.length === 0) {
+          return [];
+        }
+
+        const affectedRows = await SpecificationPart.findByIds(uniqueAffectedIds, client);
+        const linkedKitIds = [];
+        for (const row of (affectedRows || [])) {
+          const rowLinkedKitIds = await SpecificationPartsService._syncLinkedKitPartsForParent(row, projectId, actor.id, client);
+          if (rowLinkedKitIds && rowLinkedKitIds.length > 0) {
+            linkedKitIds.push(...rowLinkedKitIds);
+          }
+        }
+
+        return [...new Set(linkedKitIds)];
+      };
       const updateSql = `UPDATE specification_parts
          SET part_code = $1,
              part_oid = $2,
@@ -497,9 +517,11 @@ class SpecificationPartsImportService {
           };
         }
 
+        const linkedKitIds = await syncLinkedKitPartsForAffectedRows(persistedIds);
+        const allAffectedIds = [...new Set([...persistedIds, ...linkedKitIds])];
         await SpecificationVersion.touch(versionId, actor.id, client);
         await client.query('COMMIT');
-        const data = await SpecificationPart.findByIds(persistedIds);
+        const data = await SpecificationPart.findByIds(allAffectedIds);
         return {
           imported_count: data.length,
           report_summary: {
@@ -528,12 +550,14 @@ class SpecificationPartsImportService {
         .map((row) => row && row.id)
         .filter((id) => id !== null && id !== undefined);
       const affectedIds = [...persistedIds, ...insertedIds];
+      const linkedKitIds = await syncLinkedKitPartsForAffectedRows(affectedIds);
+      const allAffectedIds = [...new Set([...affectedIds, ...linkedKitIds])];
       await SpecificationVersion.touch(versionId, actor.id, client);
 
       await client.query('COMMIT');
 
       // Re-read the inserted rows so the response matches the persisted database shape.
-      const data = await SpecificationPart.findByIds(affectedIds);
+      const data = await SpecificationPart.findByIds(allAffectedIds);
       return {
         imported_count: data.length,
         report_summary: {

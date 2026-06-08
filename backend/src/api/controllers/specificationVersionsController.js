@@ -180,6 +180,38 @@ class SpecificationVersionsController {
     }
   }
 
+  static async compare(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const allowed = await hasPermission(actor, 'specifications.view');
+      if (!allowed) {
+        const err = new Error('Forbidden: missing permission specifications.view');
+        err.statusCode = 403;
+        throw err;
+      }
+
+      const id = Number(req.params.id);
+      if (!id || Number.isNaN(id)) {
+        const err = new Error('Invalid id');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const compareToRaw = req.query?.compare_to ?? req.query?.compareTo ?? req.query?.compare_version_id ?? req.query?.version_id;
+      const compareToId = Number(compareToRaw);
+      if (!compareToRaw || Number.isNaN(compareToId)) {
+        const err = new Error('Invalid compare_to');
+        err.statusCode = 400;
+        throw err;
+      }
+
+      const result = await SpecificationVersion.compareVersions(id, compareToId);
+      res.json({ data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async importParts(req, res, next) {
     try {
       const actor = req.user || null;
