@@ -124,7 +124,19 @@ class Statement {
     return await Statement.findById(id);
   }
 
+  static async hasVersions(id) {
+    const q = `SELECT 1 FROM statements_version WHERE statement_id = $1 LIMIT 1`;
+    const res = await pool.query(q, [id]);
+    return res.rowCount > 0;
+  }
+
   static async softDelete(id) {
+    if (await Statement.hasVersions(id)) {
+      const err = new Error('Statement has versions and cannot be deleted');
+      err.statusCode = 409;
+      throw err;
+    }
+
     try {
       const q = `UPDATE statements SET is_active = false WHERE id = $1`;
       const res = await pool.query(q, [id]);
