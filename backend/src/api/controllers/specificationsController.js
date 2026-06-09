@@ -49,7 +49,16 @@ class SpecificationsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const row = await SpecificationsService.upsertSpecificationConnectors(id, req.body || {}, actor);
+      const body = req.body || {};
+      const payload = {
+        specifications_source_connector_id: body.specifications_source_connector_id ?? body.source_connector_id,
+        specifications_project_connector_id: body.specifications_project_connector_id ?? body.project_connector_id,
+        oid: body.oid,
+        oid_name: body.oid_name,
+        eq_type: body.eq_type,
+        eq_mech: body.eq_mech
+      };
+      const row = await SpecificationsService.upsertSpecificationConnectors(id, payload, actor);
       res.status(201).json({ data: row });
     } catch (err) { next(err); }
   }
@@ -61,7 +70,27 @@ class SpecificationsController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const row = await SpecificationsService.updateSpecificationConnectors(id, req.body || {}, actor);
+      const body = req.body || {};
+      const payload = {};
+      if (Object.prototype.hasOwnProperty.call(body, 'specifications_source_connector_id') || Object.prototype.hasOwnProperty.call(body, 'source_connector_id')) {
+        payload.specifications_source_connector_id = body.specifications_source_connector_id ?? body.source_connector_id;
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'specifications_project_connector_id') || Object.prototype.hasOwnProperty.call(body, 'project_connector_id')) {
+        payload.specifications_project_connector_id = body.specifications_project_connector_id ?? body.project_connector_id;
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'oid')) {
+        payload.oid = body.oid;
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'oid_name')) {
+        payload.oid_name = body.oid_name;
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'eq_type')) {
+        payload.eq_type = body.eq_type;
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'eq_mech')) {
+        payload.eq_mech = body.eq_mech;
+      }
+      const row = await SpecificationsService.updateSpecificationConnectors(id, payload, actor);
       res.json({ data: row });
     } catch (err) { next(err); }
   }

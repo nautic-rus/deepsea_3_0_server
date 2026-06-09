@@ -3333,6 +3333,14 @@ components:
         oid_name:
           type: string
           nullable: true
+        eq_type:
+          type: string
+          nullable: true
+          description: Equipment type filter passed to oracle equipment endpoints. Empty values are ignored.
+        eq_mech:
+          type: string
+          nullable: true
+          description: Equipment mechanical filter passed to oracle equipment endpoints. Empty values are ignored.
     SpecificationProjectConnectorUpdate:
       type: object
       description: Request body for creating or updating a specification project connector
