@@ -131,6 +131,7 @@ class SpecificationPartsImportService {
             sourceConnector.url,
             projectConnector.project_code,
             oid,
+            dataConnector,
             options.requestBaseUrl || null,
             foranSettings.url
           )
@@ -139,6 +140,7 @@ class SpecificationPartsImportService {
               sourceConnector.url,
               projectConnector.project_code,
               oid,
+              dataConnector,
               options.requestBaseUrl || null,
               foranSettings.url
             )

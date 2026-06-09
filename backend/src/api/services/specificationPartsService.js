@@ -852,6 +852,7 @@ class SpecificationPartsService {
       schemaName,
       oid,
       'oid',
+      null,
       requestBaseUrl,
       runtimeUrl
     );
@@ -864,43 +865,78 @@ class SpecificationPartsService {
       schemaName,
       oid,
       'system_oid',
+      null,
       requestBaseUrl,
       runtimeUrl
     );
   }
 
-  static _buildEquipmentBySystemRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+  static _buildEquipmentBySystemRequestUrl(template, schemaName, oid, dataConnector = null, requestBaseUrl = null, runtimeUrl = null) {
     // EQUIPMENT BY SYSTEM follows the same schemaName pattern as SYSTEMS, but with a different path and query key.
+    const preparedTemplate = SpecificationPartsService._applyEquipmentTemplateParams(template, dataConnector);
     return SpecificationPartsService._buildSchemaOidRequestUrl(
-      template,
+      preparedTemplate,
       schemaName,
       oid,
       'system_oid',
+      SpecificationPartsService._buildEquipmentQueryParams(dataConnector),
       requestBaseUrl,
       runtimeUrl
     );
   }
 
-  static _buildEquipmentByZoneRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+  static _buildEquipmentByZoneRequestUrl(template, schemaName, oid, dataConnector = null, requestBaseUrl = null, runtimeUrl = null) {
     // EQUIPMENT BY ZONE follows the same schemaName pattern as SYSTEMS, but with a zone_oid query key.
+    const preparedTemplate = SpecificationPartsService._applyEquipmentTemplateParams(template, dataConnector);
     return SpecificationPartsService._buildSchemaOidRequestUrl(
-      template,
+      preparedTemplate,
       schemaName,
       oid,
       'zone_oid',
+      SpecificationPartsService._buildEquipmentQueryParams(dataConnector),
       requestBaseUrl,
       runtimeUrl
     );
   }
 
-  static _buildSchemaOidRequestUrl(template, schemaName, oid, queryParamName, requestBaseUrl = null, runtimeUrl = null) {
+  static _applyEquipmentTemplateParams(template, dataConnector = null) {
+    // Equipment source templates may still carry eq_type/eq_mech placeholders in the path string.
+    const eqType = SpecificationPartsService._normalizeText(dataConnector && dataConnector.eq_type);
+    const eqMech = SpecificationPartsService._normalizeText(dataConnector && dataConnector.eq_mech);
+    return String(template || '')
+      .replaceAll('{eq_type}', encodeURIComponent(eqType))
+      .replaceAll('{eq_mech}', encodeURIComponent(eqMech));
+  }
+
+  static _buildEquipmentQueryParams(dataConnector = null) {
+    // Equipment endpoints need extra query params stored alongside the data connector.
+    return {
+      filter: SpecificationPartsService._normalizeText(dataConnector && dataConnector.eq_type),
+      mechanical: SpecificationPartsService._normalizeText(dataConnector && dataConnector.eq_mech)
+    };
+  }
+
+  static _buildSchemaOidRequestUrl(template, schemaName, oid, queryParamName, extraQueryParams = null, requestBaseUrl = null, runtimeUrl = null) {
     let relativePath = String(template || '')
       .replaceAll('{schemaName}', encodeURIComponent(String(schemaName || '').trim()))
       .replaceAll('{oid}', encodeURIComponent(String(oid || '')));
+    for (const [key, value] of Object.entries(extraQueryParams || {})) {
+      const normalizedValue = value === null || value === undefined ? '' : String(value);
+      relativePath = relativePath.replaceAll(`{${key}}`, encodeURIComponent(normalizedValue));
+    }
 
     const url = new URL(relativePath, SpecificationPartsService._resolveForanBaseUrl(requestBaseUrl, runtimeUrl));
     if (!url.searchParams.has(queryParamName) && oid !== undefined && oid !== null && String(oid).trim() !== '') {
       url.searchParams.set(queryParamName, String(oid));
+    }
+    for (const [key, value] of Object.entries(extraQueryParams || {})) {
+      const normalizedValue = value === null || value === undefined ? '' : String(value);
+      if (normalizedValue.trim() === '') {
+        url.searchParams.delete(key);
+        continue;
+      }
+      if (url.searchParams.has(key)) continue;
+      url.searchParams.set(key, normalizedValue);
     }
     return url.toString();
   }

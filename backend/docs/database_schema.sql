@@ -2525,7 +2525,9 @@ CREATE TABLE public.specifications_data_connector (
     specifications_source_connector_id integer,
     specifications_project_connector_id integer,
     oid text,
-    oid_name text
+    oid_name text,
+    eq_type text,
+    eq_mech text
 );
 
 

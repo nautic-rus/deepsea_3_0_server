@@ -29,6 +29,11 @@ class SpecificationsService {
     return text ? text : null;
   }
 
+  static _toTextOrEmpty(value) {
+    if (value === null || value === undefined) return null;
+    return String(value).trim();
+  }
+
   static _toNullableInteger(value) {
     if (value === null || value === undefined || value === '') return null;
     const n = Number(value);
@@ -100,7 +105,9 @@ class SpecificationsService {
       specifications_source_connector_id: SpecificationsService._toIntOrNull(fields.specifications_source_connector_id ?? fields.source_connector_id ?? null),
       specifications_project_connector_id: SpecificationsService._toIntOrNull(fields.specifications_project_connector_id ?? fields.project_connector_id ?? null),
       oid: SpecificationsService._toTextOrNull(fields.oid ?? null),
-      oid_name: SpecificationsService._toTextOrNull(fields.oid_name ?? null)
+      oid_name: SpecificationsService._toTextOrNull(fields.oid_name ?? null),
+      eq_type: SpecificationsService._toTextOrEmpty(fields.eq_type ?? null),
+      eq_mech: SpecificationsService._toTextOrEmpty(fields.eq_mech ?? null)
     };
 
     const hasAnyField = Object.values(payload).some((value) => value !== null && value !== undefined && String(value).trim() !== '');
@@ -141,6 +148,12 @@ class SpecificationsService {
     }
     if (Object.prototype.hasOwnProperty.call(fields, 'oid_name')) {
       payload.oid_name = SpecificationsService._toTextOrNull(fields.oid_name ?? null);
+    }
+    if (Object.prototype.hasOwnProperty.call(fields, 'eq_type')) {
+      payload.eq_type = SpecificationsService._toTextOrEmpty(fields.eq_type ?? null);
+    }
+    if (Object.prototype.hasOwnProperty.call(fields, 'eq_mech')) {
+      payload.eq_mech = SpecificationsService._toTextOrEmpty(fields.eq_mech ?? null);
     }
 
     const row = await SpecificationDataConnector.updateBySpecificationId(Number(id), payload);
