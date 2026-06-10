@@ -1677,6 +1677,9 @@ components:
         shipments_id:
           type: integer
           nullable: true
+        part_code_def:
+          type: string
+          nullable: true
         kits:
           type: array
           description: Linked material kits
@@ -4607,6 +4610,9 @@ paths:
                 shipments_id:
                   type: integer
                   nullable: true
+                part_code_def:
+                  type: string
+                  nullable: true
                 kit_ids:
                   type: array
                   items:
@@ -4615,6 +4621,7 @@ paths:
                 equipment_material_id: 45
                 statement_id: 13
                 shipments_id: 
+                part_code_def: PIPE-100
                 kit_ids:
                 - 1
                 - 2
@@ -4635,6 +4642,7 @@ paths:
                     project_id: 48
                     statement_id: 13
                     shipments_id: 
+                    part_code_def: PIPE-100
                     material:
                       id: 45
                       stock_code: NR00000000000045

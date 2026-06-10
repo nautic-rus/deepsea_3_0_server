@@ -1135,7 +1135,8 @@ class SpecificationPartsService {
     return new Map((res.rows || []).map((row) => [String(row.stock_code).trim().toUpperCase(), {
       id: row.id,
       weight: row.weight,
-      unit_id: row.unit_id
+      unit_id: row.unit_id,
+      part_code_def: row.part_code_def ?? null
       }]));
   }
 
@@ -1158,7 +1159,8 @@ class SpecificationPartsService {
     return new Map((res.rows || []).map((row) => [String(row.stock_code).trim().toUpperCase(), {
       id: row.id,
       weight: row.weight,
-      unit_id: row.unit_id
+      unit_id: row.unit_id,
+      part_code_def: row.part_code_def ?? null
     }]));
   }
 

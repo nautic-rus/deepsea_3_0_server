@@ -223,6 +223,7 @@ class MaterialsProjectsService {
     const materialId = MaterialsProjectsService._toInt(payload.equipment_material_id);
     const statementId = MaterialsProjectsService._toInt(payload.statement_id);
     const shipmentsId = MaterialsProjectsService._toInt(payload.shipments_id);
+    const partCodeDef = Object.prototype.hasOwnProperty.call(payload, 'part_code_def') ? payload.part_code_def : undefined;
     const kitIds = MaterialsProjectsService._extractKitIds(payload);
 
     if (!materialId || !statementId) {
@@ -268,7 +269,8 @@ class MaterialsProjectsService {
     const created = await MaterialProject.create({
       equipment_material_id: materialId,
       statement_id: statementId,
-      shipments_id: shipmentsId !== undefined ? shipmentsId : null
+      shipments_id: shipmentsId !== undefined ? shipmentsId : null,
+      part_code_def: partCodeDef !== undefined ? partCodeDef : null
     });
     if (kitIds !== undefined) {
       await MaterialsProjectsService._syncKits(created.id, kitIds, resolvedProjectId);
@@ -289,6 +291,7 @@ class MaterialsProjectsService {
     const materialProvided = Object.prototype.hasOwnProperty.call(payload, 'equipment_material_id');
     const statementProvided = Object.prototype.hasOwnProperty.call(payload, 'statement_id');
     const shipmentsProvided = Object.prototype.hasOwnProperty.call(payload, 'shipments_id');
+    const partCodeDefProvided = Object.prototype.hasOwnProperty.call(payload, 'part_code_def');
     const kitsProvided = Object.prototype.hasOwnProperty.call(payload, 'kit_ids');
 
     const nextMaterialId = materialProvided ? MaterialsProjectsService._toInt(payload.equipment_material_id) : existing.equipment_material_id;
@@ -296,6 +299,7 @@ class MaterialsProjectsService {
     const nextShipmentsId = shipmentsProvided
       ? (payload.shipments_id === null ? null : MaterialsProjectsService._toInt(payload.shipments_id))
       : existing.shipments_id;
+    const nextPartCodeDef = partCodeDefProvided ? payload.part_code_def : existing.part_code_def;
     const nextKitIds = kitsProvided ? MaterialsProjectsService._extractKitIds(payload) : undefined;
     const existingKits = Array.isArray(existing.kits) ? existing.kits : [];
 
@@ -370,7 +374,8 @@ class MaterialsProjectsService {
     const updated = await MaterialProject.update(Number(id), {
       equipment_material_id: nextMaterialId,
       statement_id: nextStatementId,
-      shipments_id: nextShipmentsId
+      shipments_id: nextShipmentsId,
+      part_code_def: nextPartCodeDef
     });
     if (kitsProvided) {
       await MaterialsProjectsService._syncKits(Number(id), nextKitIds || [], resolvedProjectId);

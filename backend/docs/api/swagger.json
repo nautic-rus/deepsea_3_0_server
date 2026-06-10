@@ -2330,6 +2330,10 @@
             "type": "integer",
             "nullable": true
           },
+          "part_code_def": {
+            "type": "string",
+            "nullable": true
+          },
           "kits": {
             "type": "array",
             "description": "Linked material kits",
@@ -6346,6 +6350,10 @@
                     "type": "integer",
                     "nullable": true
                   },
+                  "part_code_def": {
+                    "type": "string",
+                    "nullable": true
+                  },
                   "kit_ids": {
                     "type": "array",
                     "items": {
@@ -6357,6 +6365,7 @@
                   "equipment_material_id": 45,
                   "statement_id": 13,
                   "shipments_id": null,
+                  "part_code_def": "PIPE-100",
                   "kit_ids": [
                     1,
                     2
@@ -6385,6 +6394,7 @@
                       "project_id": 48,
                       "statement_id": 13,
                       "shipments_id": null,
+                      "part_code_def": "PIPE-100",
                       "material": {
                         "id": 45,
                         "stock_code": "NR00000000000045",

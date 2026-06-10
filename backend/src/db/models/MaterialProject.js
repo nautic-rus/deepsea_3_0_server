@@ -23,6 +23,7 @@ class MaterialProject {
       project_id: r.project_id === null ? null : Number(r.project_id),
       statement_id: r.statement_id === null ? null : Number(r.statement_id),
       shipments_id: r.shipments_id === null ? null : Number(r.shipments_id),
+      part_code_def: r.part_code_def || null,
       created_at: r.created_at,
       material: r.material_id === null ? null : {
         id: Number(r.material_id),
@@ -91,6 +92,7 @@ class MaterialProject {
         emp.equipment_material_id,
         emp.statement_id,
         emp.shipments_id,
+        emp.part_code_def,
         emp.created_at,
         m.id AS material_id,
         m.stock_code AS material_stock_code,
@@ -183,8 +185,13 @@ class MaterialProject {
   }
 
   static async create(fields) {
-    const q = `INSERT INTO equipment_materials_projects (equipment_material_id, statement_id, shipments_id) VALUES ($1,$2,$3) RETURNING id`;
-    const vals = [fields.equipment_material_id, fields.statement_id, fields.shipments_id || null];
+    const q = `INSERT INTO equipment_materials_projects (equipment_material_id, statement_id, shipments_id, part_code_def) VALUES ($1,$2,$3,$4) RETURNING id`;
+    const vals = [
+      fields.equipment_material_id,
+      fields.statement_id,
+      fields.shipments_id || null,
+      Object.prototype.hasOwnProperty.call(fields, 'part_code_def') ? fields.part_code_def : null
+    ];
     const res = await pool.query(q, vals);
     if (!res.rows[0]) return null;
     return await MaterialProject.findById(res.rows[0].id);
@@ -194,7 +201,7 @@ class MaterialProject {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['equipment_material_id', 'statement_id', 'shipments_id'].forEach((k) => {
+    ['equipment_material_id', 'statement_id', 'shipments_id', 'part_code_def'].forEach((k) => {
       if (fields[k] !== undefined) { parts.push(`${k} = $${idx++}`); values.push(fields[k]); }
     });
     if (parts.length === 0) return await MaterialProject.findById(id);

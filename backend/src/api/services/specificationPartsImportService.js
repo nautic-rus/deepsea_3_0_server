@@ -423,6 +423,10 @@ class SpecificationPartsImportService {
         const material = materialKey ? (materialMap.get(materialKey) || null) : null;
         const globalMaterial = materialKey ? (globalMaterialMap.get(materialKey) || null) : null;
         const materialId = material ? material.id : null;
+        const materialPartCodeDef = material && material.part_code_def !== null && material.part_code_def !== undefined && String(material.part_code_def).trim() !== ''
+          ? String(material.part_code_def).trim()
+          : null;
+        const partCode = materialPartCodeDef || row.part_code || null;
         if (!materialId) {
           report.push(buildReportRow(row, rowIndex, null, {
             reason: materialKey
@@ -460,7 +464,7 @@ class SpecificationPartsImportService {
           continue;
         }
         const persistenceValues = [
-          row.part_code,
+          partCode,
           row.part_oid,
           materialId,
           row.sfi_code_id ?? null,

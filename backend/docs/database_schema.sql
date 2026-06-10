@@ -1129,7 +1129,8 @@ CREATE TABLE public.equipment_materials_projects (
     equipment_material_id integer NOT NULL,
     statement_id integer,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    shipments_id integer
+    shipments_id integer,
+    part_code_def text
 );
 
 
