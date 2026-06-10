@@ -1121,7 +1121,7 @@ class SpecificationPartsService {
 
     const res = await pool.query(
       `SELECT DISTINCT ON (UPPER(m.stock_code))
-        m.id, m.stock_code, m.weight, m.unit_id
+        m.id, m.stock_code, m.weight, m.unit_id, emp.part_code_def
        FROM equipment_materials m
        JOIN equipment_materials_projects emp
          ON emp.equipment_material_id = m.id
