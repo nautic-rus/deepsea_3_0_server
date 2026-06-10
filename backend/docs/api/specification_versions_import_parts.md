@@ -70,8 +70,12 @@
 | `system_oid` | `systems` | `/api/oracle/{schemaName}/parts-by-system-oid?system_oid={oid}` |
 | `equip_by_system_oid` | `equip_by_system_oid` | `/api/oracle/{schemaName}/equipment-by-system-oid?system_oid={oid}&filter={eq_type}&mechanical={eq_mech}` |
 | `equip_by_zone_oid` | `equip_by_zone_oid` | `/api/oracle/{schemaName}/equipment-by-zone-oid?zone_oid={oid}&filter={eq_type}&mechanical={eq_mech}` |
+| `tray_by_system_oid` | `tray_by_system_oid` | `/api/oracle/{schemaName}/tray-by-system-oid?system_oid={oid}` |
+| `tray_by_zone_oid` | `tray_by_zone_oid` | `/api/oracle/{schemaName}/tray-by-zone-oid?zone_oid={oid}` |
 
 Для `equip_by_system_oid` и `equip_by_zone_oid` параметры `filter` и `mechanical` берутся из `specifications_data_connector.eq_type` и `specifications_data_connector.eq_mech`.
+
+Для `tray_by_system_oid` и `tray_by_zone_oid` эти параметры не используются.
 
 Если `eq_type` или `eq_mech` пустые, соответствующий query-параметр в запрос не добавляется.
 
@@ -192,6 +196,14 @@
    - наличие COG
    - корректная нормализация строки
 
+### 5. `tray_by_system_oid` и `tray_by_zone_oid`
+
+Для tray-веток:
+
+1. `part_type` всегда записывается как `TRAY`.
+2. Если `unit_id = 3`, `quantity` берется из `LENGTH`.
+3. Во всех остальных случаях `quantity` рассчитывается из `WEIGHT` и веса материала.
+
 ## Что ещё важно знать
 
 ### `part_oid` и режим обновления
@@ -245,6 +257,7 @@ Content-Type: application/json
 
 1. Метод импортирует части в версию спецификации.
 2. Источник определяется по `specifications_source_connector.code`.
-3. Для equipment-веток в URL добавляются `filter` и `mechanical` из `specifications_data_connector.eq_type` и `eq_mech`.
-4. `quantity` считается по ветке импорта и `unit_id`.
-5. Если quantity не удалось корректно вычислить, строка не сохраняется.
+3. Для `equip_by_*` в URL добавляются `filter` и `mechanical` из `specifications_data_connector.eq_type` и `eq_mech`.
+4. Для `tray_by_*` используются только `system_oid` или `zone_oid`.
+5. `quantity` считается по ветке импорта и `unit_id`.
+6. Если quantity не удалось корректно вычислить, строка не сохраняется.

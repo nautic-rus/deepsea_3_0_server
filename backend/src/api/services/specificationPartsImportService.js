@@ -144,6 +144,22 @@ class SpecificationPartsImportService {
               options.requestBaseUrl || null,
               foranSettings.url
             )
+            : importStrategy.key === 'tray_by_system_oid'
+              ? SpecificationPartsService._buildTrayBySystemRequestUrl(
+                sourceConnector.url,
+                projectConnector.project_code,
+                oid,
+                options.requestBaseUrl || null,
+                foranSettings.url
+              )
+              : importStrategy.key === 'tray_by_zone_oid'
+                ? SpecificationPartsService._buildTrayByZoneRequestUrl(
+                  sourceConnector.url,
+                  projectConnector.project_code,
+                  oid,
+                  options.requestBaseUrl || null,
+                  foranSettings.url
+                )
           : SpecificationPartsService._buildForanRequestUrl(
             sourceConnector.url,
             projectConnector.project_code,
@@ -164,7 +180,7 @@ class SpecificationPartsImportService {
       };
     });
 
-    // Keep BLOCKS, ASTRUCTURE, SYSTEMS, and EQUIPMENT separated so their URLs, row shapes, and quantity rules never mix.
+    // Keep BLOCKS, ASTRUCTURE, SYSTEMS, and EQUIPMENT/TRAY separated so their URLs, row shapes, and quantity rules never mix.
     const connectorGroups = new Map();
     for (const connector of connectorSources) {
       if (!connectorGroups.has(connector.importBranch)) {
@@ -422,7 +438,9 @@ class SpecificationPartsImportService {
           ? SpecificationPartsService._resolveAstructureQuantityDetails(row, material)
           : row.importBranch === 'systems'
             ? SpecificationPartsService._resolveSystemsQuantityDetails(row, material)
-            : row.importBranch === 'equip_by_system_oid' || row.importBranch === 'equip_by_zone_oid'
+            : row.importBranch === 'tray_by_system_oid' || row.importBranch === 'tray_by_zone_oid'
+              ? SpecificationPartsService._resolveTrayQuantityDetails(row, material)
+              : row.importBranch === 'equip_by_system_oid' || row.importBranch === 'equip_by_zone_oid'
               ? SpecificationPartsService._resolveEquipmentQuantityDetails(row, material)
             : SpecificationPartsService._resolveQuantityDetails(row, material);
         const resolvedQuantity = quantityResolution.quantity;

@@ -512,22 +512,27 @@ class SpecificationPartsService {
 
   static _normalizeExternalRow(row, sourceKey = 'blocks') {
     // Normalize a single external row into the internal specification_parts shape.
-    // The mapping varies slightly between BLOCKS, ASTRUCTURE, SYSTEMS, and EQUIPMENT rows.
+    // The mapping varies slightly between BLOCKS, ASTRUCTURE, SYSTEMS, and EQUIPMENT/TRAY rows.
     if (!row || typeof row !== 'object') return null;
     const sourceModeRaw = SpecificationPartsService._normalizeLowerText(sourceKey);
-    const sourceMode = sourceModeRaw === 'astructure'
-      ? 'astructure'
-      : (sourceModeRaw === 'systems'
-        ? 'systems'
-        : (sourceModeRaw === 'equip_by_system_oid' || sourceModeRaw === 'equip_by_zone_oid'
-          ? 'equipment'
-          : 'blocks'));
+    let sourceMode = 'blocks';
+    if (sourceModeRaw === 'astructure') {
+      sourceMode = 'astructure';
+    } else if (sourceModeRaw === 'systems') {
+      sourceMode = 'systems';
+    } else if (sourceModeRaw === 'equip_by_system_oid' || sourceModeRaw === 'equip_by_zone_oid') {
+      sourceMode = 'equipment';
+    } else if (sourceModeRaw === 'tray_by_system_oid' || sourceModeRaw === 'tray_by_zone_oid') {
+      sourceMode = 'tray';
+    }
     const partCodeKeys = sourceMode === 'astructure'
       ? ['CODEID', 'codeid']
       : sourceMode === 'systems'
         ? ['SPOOLID', 'spoolid', 'CODEID', 'codeid', 'PART_CODE', 'part_code', 'code', 'CODE']
       : sourceMode === 'equipment'
         ? ['ELEMENT_USERID', 'element_userid', 'ELEMENT_NAME', 'element_name']
+      : sourceMode === 'tray'
+        ? ['USERID', 'userid', 'TRAY_FITTING', 'tray_fitting']
       : ['PART_CODE', 'part_code', 'code', 'CODE'];
     const partOidKeys = sourceMode === 'astructure'
       ? ['MOD_OID', 'mod_oid']
@@ -535,11 +540,15 @@ class SpecificationPartsService {
       ? ['SQINSYSTEM', 'sqinsystem']
       : sourceMode === 'equipment'
         ? ['ELEMENT_OID', 'element_oid']
+      : sourceMode === 'tray'
+        ? ['IDSQ', 'idsq', 'ELEM', 'elem']
       : ['PART_OID', 'part_oid'];
     const totalWeightKeys = sourceMode === 'astructure'
       ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
       : sourceMode === 'systems'
         ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
+      : sourceMode === 'tray'
+        ? ['WEIGHT', 'weight']
       : ['TOTAL_WEIGHT', 'total_weight', 'weight'];
     const zoneKeys = sourceMode === 'astructure'
       ? ['ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
@@ -547,6 +556,8 @@ class SpecificationPartsService {
         ? ['ZONENAME', 'zonename', 'ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
       : sourceMode === 'equipment'
         ? ['ZONE_NAME', 'zone_name', 'ZONE_USERID', 'zone_userid']
+      : sourceMode === 'tray'
+        ? ['ZONE_NAME', 'zone_name', 'ZONE', 'zone']
       : ['BLOCK_CODE', 'block_code', 'zone', 'ZONE', 'STRGROUP', 'strgroup'];
     const stockCodeKeys = sourceMode === 'astructure'
       ? ['STOCK', 'stock', 'STOCK_CODE', 'stock_code']
@@ -554,6 +565,8 @@ class SpecificationPartsService {
         ? ['STOCKCODE', 'stockcode', 'STOCK', 'stock', 'STOCK_CODE', 'stock_code']
       : sourceMode === 'equipment'
         ? ['COMPONENT_STOCK_CODE', 'component_stock_code']
+      : sourceMode === 'tray'
+        ? ['STOCK_CODE', 'stock_code', 'COMP_STOCK', 'comp_stock']
       : ['STOCK_CODE', 'stock_code'];
     const descriptionsKeys = sourceMode === 'astructure'
       ? ['MATERIAL_DESCRIPTION', 'material_description', 'NORM_DESCR', 'norm_descr', 'DESCRIPTION', 'description', 'PART_DESC', 'part_desc']
@@ -561,11 +574,15 @@ class SpecificationPartsService {
         ? ['SYSTEMNAME', 'systemname', 'ZONENAME', 'zonename', 'MATERIAL_DESCRIPTION', 'material_description', 'NORM_DESCR', 'norm_descr', 'DESCRIPTION', 'description', 'PART_DESC', 'part_desc']
       : sourceMode === 'equipment'
         ? []
+      : sourceMode === 'tray'
+        ? ['TRAY_FITTING', 'tray_fitting', 'TYPE', 'type', 'LINE', 'line', 'CTYPE', 'ctype']
       : ['PART_DESC', 'part_desc', 'description', 'DESCRIPTION'];
     const partType = sourceMode === 'systems'
       ? String(SpecificationPartsService._pickExternalValue(row, ['TYPECODE', 'typecode']) || '').trim() || null
       : sourceMode === 'blocks'
         ? String(SpecificationPartsService._pickExternalValue(row, ['ELEM_TYPE', 'elem_type']) || '').trim() || null
+      : sourceMode === 'tray'
+        ? 'TRAY'
       : null;
     const partCodeRaw = SpecificationPartsService._pickExternalValue(row, partCodeKeys);
     const partOidRaw = SpecificationPartsService._pickExternalValue(row, partOidKeys);
@@ -574,7 +591,7 @@ class SpecificationPartsService {
       : null;
     const partOid = SpecificationPartsService._toNumberOrNull(partOidRaw);
     const quantityRaw = SpecificationPartsService._pickExternalValue(row, ['QTY', 'qty', 'quantity', 'QUANTITY']);
-    const quantity = sourceMode === 'equipment'
+    const quantity = sourceMode === 'equipment' || sourceMode === 'tray'
       ? 1
       : quantityRaw !== null && quantityRaw !== undefined && quantityRaw !== ''
       ? Number(quantityRaw)
@@ -610,9 +627,9 @@ class SpecificationPartsService {
     const strgroupRaw = sourceMode === 'blocks'
       ? SpecificationPartsService._pickExternalValue(row, ['STRGROUP', 'strgroup'])
       : null;
-    const cogXRaw = SpecificationPartsService._pickExternalValue(row, ['COG_X', 'cog_x', 'cogX', 'ELEMENT_COG_X', 'element_cog_x']);
-    const cogYRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Y', 'cog_y', 'cogY', 'ELEMENT_COG_Y', 'element_cog_y']);
-    const cogZRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Z', 'cog_z', 'cogZ', 'ELEMENT_COG_Z', 'element_cog_z']);
+    const cogXRaw = SpecificationPartsService._pickExternalValue(row, ['COG_X', 'cog_x', 'cogX', 'ELEMENT_COG_X', 'element_cog_x', 'X_COG', 'x_cog']);
+    const cogYRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Y', 'cog_y', 'cogY', 'ELEMENT_COG_Y', 'element_cog_y', 'Y_COG', 'y_cog']);
+    const cogZRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Z', 'cog_z', 'cogZ', 'ELEMENT_COG_Z', 'element_cog_z', 'Z_COG', 'z_cog']);
     const cogX = cogXRaw !== undefined && cogXRaw !== null && cogXRaw !== ''
       ? Number(cogXRaw)
       : null;
@@ -651,7 +668,8 @@ class SpecificationPartsService {
       cog_x: Number.isNaN(cogX) ? null : cogX,
       cog_y: Number.isNaN(cogY) ? null : cogY,
       cog_z: Number.isNaN(cogZ) ? null : cogZ,
-      // These fields are intentionally left empty during import.
+      // These fields are intentionally left empty during import,
+      // except tray rows where part_type is fixed to TRAY.
       part_type: partType,
       symmetry: null,
       unit: null,
@@ -661,7 +679,7 @@ class SpecificationPartsService {
       strgroup: strgroupRaw !== null && strgroupRaw !== undefined
         ? String(strgroupRaw).trim() || null
         : null,
-      descriptions: sourceMode === 'equipment'
+      descriptions: sourceMode === 'equipment' || sourceMode === 'tray'
         ? null
         : SpecificationPartsService._pickExternalValue(row, descriptionsKeys) != null
         ? String(SpecificationPartsService._pickExternalValue(row, descriptionsKeys)).trim()
@@ -737,6 +755,10 @@ class SpecificationPartsService {
     return SpecificationPartsService._resolveEquipmentQuantityDetails(row, material);
   }
 
+  static _resolveTrayQuantity(row, material) {
+    return SpecificationPartsService._resolveTrayQuantityDetails(row, material);
+  }
+
   static _resolveAstructureQuantityDetails(row, material) {
     // ASTRUCTURE quantity logic follows its own unit semantics.
     // We keep this separate so BLOCKS behavior cannot accidentally regress.
@@ -809,6 +831,38 @@ class SpecificationPartsService {
   static _resolveEquipmentQuantityDetails(row, material) {
     // EQUIPMENT rows always represent a single equipment item.
     return { quantity: 1, calculated: true, reason: null };
+  }
+
+  static _resolveTrayQuantityDetails(row, material) {
+    // TRAY rows use LENGTH for unit 3 and otherwise derive quantity from WEIGHT.
+    const unitId = material && material.unit_id !== null && material.unit_id !== undefined && !Number.isNaN(Number(material.unit_id))
+      ? Number(material.unit_id)
+      : null;
+    const length = row.length !== null && row.length !== undefined && !Number.isNaN(Number(row.length))
+      ? Number(row.length)
+      : null;
+    const totalWeight = row.total_weight !== null && row.total_weight !== undefined && !Number.isNaN(Number(row.total_weight))
+      ? Number(row.total_weight)
+      : null;
+    const materialWeight = material && material.weight !== null && material.weight !== undefined && !Number.isNaN(Number(material.weight))
+      ? Number(material.weight)
+      : null;
+
+    if (unitId === 3) {
+      return length !== null
+        ? { quantity: length, calculated: true, reason: null }
+        : { quantity: 1, calculated: false, reason: 'LENGTH is missing, fell back to 1' };
+    }
+
+    if (totalWeight !== null && materialWeight !== null && materialWeight > 0) {
+      return { quantity: totalWeight / materialWeight, calculated: true, reason: null };
+    }
+
+    if (totalWeight !== null) {
+      return { quantity: totalWeight, calculated: false, reason: 'Material weight is missing or invalid, fell back to WEIGHT' };
+    }
+
+    return { quantity: 1, calculated: false, reason: 'WEIGHT and material weight are missing, fell back to 1' };
   }
 
   static _resolveForanBaseUrl(requestBaseUrl = null, runtimeUrl = null) {
@@ -899,6 +953,32 @@ class SpecificationPartsService {
     );
   }
 
+  static _buildTrayBySystemRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+    // TRAY BY SYSTEM uses the schemaName pattern without the equipment-specific filter/mechanical query params.
+    return SpecificationPartsService._buildSchemaOidRequestUrl(
+      template,
+      schemaName,
+      oid,
+      'system_oid',
+      null,
+      requestBaseUrl,
+      runtimeUrl
+    );
+  }
+
+  static _buildTrayByZoneRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+    // TRAY BY ZONE uses the schemaName pattern without the equipment-specific filter/mechanical query params.
+    return SpecificationPartsService._buildSchemaOidRequestUrl(
+      template,
+      schemaName,
+      oid,
+      'zone_oid',
+      null,
+      requestBaseUrl,
+      runtimeUrl
+    );
+  }
+
   static _applyEquipmentTemplateParams(template, dataConnector = null) {
     // Equipment source templates may still carry eq_type/eq_mech placeholders in the path string.
     const eqType = SpecificationPartsService._normalizeText(dataConnector && dataConnector.eq_type);
@@ -970,6 +1050,20 @@ class SpecificationPartsService {
     if (code === 'equip_by_zone_oid' || name.startsWith('equipment by zone')) {
       return {
         key: 'equip_by_zone_oid',
+        sourceValue: 'foran'
+      };
+    }
+
+    if (code === 'tray_by_system_oid' || name.startsWith('tray by system')) {
+      return {
+        key: 'tray_by_system_oid',
+        sourceValue: 'foran'
+      };
+    }
+
+    if (code === 'tray_by_zone_oid' || name.startsWith('tray by zone')) {
+      return {
+        key: 'tray_by_zone_oid',
         sourceValue: 'foran'
       };
     }
