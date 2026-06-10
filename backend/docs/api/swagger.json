@@ -2080,6 +2080,11 @@
             "nullable": true,
             "description": "Record status"
           },
+          "part_code_def": {
+            "type": "string",
+            "nullable": true,
+            "description": "Part code definition from equipment_materials_projects for the requested project"
+          },
           "created_by": {
             "type": "object",
             "nullable": true,
@@ -6039,7 +6044,7 @@
           "materials"
         ],
         "summary": "List of materials",
-        "description": "Returns a list of equipment_materials records filtered by directory, unit, shipment, project, type, status, and text search. When project_id is used, each returned material also includes linked kits with their materials. Pagination via page/limit.",
+        "description": "Returns a list of equipment_materials records filtered by directory, unit, shipment, project, type, status, and text search. When project_id is used, each returned material also includes linked kits with their materials and part_code_def from the matching project link. Pagination via page/limit.",
         "security": [
           {
             "bearerAuth": []
@@ -6163,15 +6168,16 @@
                         "id": 5,
                         "name": "Pipes"
                       },
-                    "unit": {
-                      "id": 2,
-                      "name": "pcs",
-                      "kei": 796
-                    },
-                    "weight": 12.5,
-                    "type": "material",
-                    "status": "active",
-                    "created_by": {
+                      "part_code_def": "PIPE-100",
+                      "unit": {
+                        "id": 2,
+                        "name": "pcs",
+                        "kei": 796
+                      },
+                      "weight": 12.5,
+                      "type": "material",
+                      "status": "active",
+                      "created_by": {
                         "id": 1,
                         "name": "Ivan Petrov",
                         "avatar_id": 12

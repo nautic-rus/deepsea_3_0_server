@@ -39,6 +39,7 @@ class Material {
       weight: r.weight,
       type: r.type,
       status: r.status,
+      part_code_def: r.part_code_def || null,
       created_by: r.created_by ? { id: r.created_by, name: Material._formatUserDisplay(r.created_by_last_name, r.created_by_first_name, r.created_by_middle_name), avatar_id: r.created_by_avatar_id || null } : null,
       created_at: r.created_at,
       updated_by: r.updated_by ? { id: r.updated_by, name: Material._formatUserDisplay(r.updated_by_last_name, r.updated_by_first_name, r.updated_by_middle_name), avatar_id: r.updated_by_avatar_id || null } : null,
@@ -339,6 +340,37 @@ class Material {
     return materials;
   }
 
+  static async _attachProjectPartCodeDefs(materials, projectIds = []) {
+    if (!Array.isArray(materials) || materials.length === 0) return materials;
+
+    const normalizedProjectIds = [...new Set(Material._toIntArray(projectIds))];
+    if (normalizedProjectIds.length === 0) {
+      return materials;
+    }
+
+    const materialIds = [...new Set(materials.map((m) => Number(m && m.id)).filter((n) => !Number.isNaN(n) && n > 0))];
+    if (materialIds.length === 0) return materials;
+
+    const q = `
+      SELECT DISTINCT ON (emp.equipment_material_id)
+        emp.equipment_material_id,
+        emp.part_code_def
+      FROM equipment_materials_projects emp
+      JOIN statements s ON s.id = emp.statement_id
+      WHERE emp.equipment_material_id = ANY($1::int[])
+        AND s.project_id = ANY($2::int[])
+      ORDER BY emp.equipment_material_id, emp.id DESC
+    `;
+    const res = await pool.query(q, [materialIds, normalizedProjectIds]);
+    const byMaterialId = new Map((res.rows || []).map((row) => [Number(row.equipment_material_id), row.part_code_def || null]));
+
+    for (const material of materials) {
+      material.part_code_def = byMaterialId.has(Number(material.id)) ? byMaterialId.get(Number(material.id)) : null;
+    }
+
+    return materials;
+  }
+
   static async _attachStatements(materials, projectIds = []) {
     if (!Array.isArray(materials) || materials.length === 0) return materials;
 
@@ -474,6 +506,9 @@ class Material {
         ? project_id.map((p) => Number(p)).filter((n) => !Number.isNaN(n))
         : [Number(project_id)].filter((n) => !Number.isNaN(n)))
       : [];
+    if (projectIdsForKits.length > 0) {
+      await Material._attachProjectPartCodeDefs(rows, projectIdsForKits);
+    }
     if (Material._toBoolean(load_statements)) {
       await Material._attachStatements(rows, project_id);
     }
