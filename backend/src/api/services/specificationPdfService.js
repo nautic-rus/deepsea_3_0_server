@@ -1015,9 +1015,9 @@ class SpecificationPdfService {
       label += 1;
       return `
       <tr>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || currentLabel)}</td>
+        <td class="wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || currentLabel)}</td>
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
+        <td class="wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._formatPartQuantity(part.quantity, grouped))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialWeight(part))}</td>
@@ -1059,7 +1059,7 @@ class SpecificationPdfService {
       <tr>
         <td>${SpecificationPdfService._escapeHtml(part.display_number ?? currentLabel)}</td>
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
-        <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
+        <td class="wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(grouped ? SpecificationPdfService._formatPartQuantity(part.quantity, true) : SpecificationPdfService._formatSummaryQuantity(part.quantity ?? 1))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveTotalWeight(part))}</td>
