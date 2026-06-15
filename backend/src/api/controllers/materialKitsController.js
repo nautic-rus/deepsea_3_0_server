@@ -122,12 +122,12 @@ class MaterialKitsController {
     try {
       const actor = req.user || null;
       const kitId = parseInt(req.params.id, 10);
-      const { specification_version_id, parent_id = null, cog_xyz = null } = req.body || {};
+      const { specification_version_id, parent_id = null, cog_xyz = null, quantity = 1 } = req.body || {};
       const inserted = await MaterialKitsService.applyKitToSpecification(
         specification_version_id,
         kitId,
         actor,
-        { parent_id, cog_xyz }
+        { parent_id, cog_xyz, quantity }
       );
       res.json({ data: inserted });
     } catch (err) { next(err); }

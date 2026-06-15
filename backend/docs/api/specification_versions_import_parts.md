@@ -105,7 +105,7 @@
 Исходные значения:
 
 - `row.quantity`
-- `row.total_weight`
+- `row.total_weight`, заполняется из `WEIGHT_UNIT`
 - `row.num_eq_part`
 - `row.length`
 - `material.unit_id`

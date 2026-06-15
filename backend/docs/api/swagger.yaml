@@ -3112,6 +3112,10 @@ components:
         parent_id:
           type: integer
           nullable: true
+        quantity:
+          type: number
+          nullable: true
+          default: 1
         cog_xyz:
           type: object
           nullable: true
@@ -11524,6 +11528,7 @@ paths:
             example:
               specification_version_id: 123
               parent_id: 456
+              quantity: 2
               cog_xyz:
                 x: 10
                 y: 20

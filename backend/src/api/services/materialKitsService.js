@@ -59,6 +59,13 @@ class MaterialKitsService {
     return ['cog_x', 'cog_y', 'cog_z'].every((key) => cogXYZ[key] === undefined || cogXYZ[key] === null || cogXYZ[key] === '');
   }
 
+  static _normalizeApplyQuantity(value) {
+    if (value === undefined || value === null || value === '') return 1;
+    const quantity = Number(value);
+    if (!Number.isFinite(quantity) || quantity <= 0) return null;
+    return quantity;
+  }
+
   static _normalizeProjectFilter(query = {}) {
     const normalized = Object.assign({}, query || {});
     if (normalized.project_id === undefined && normalized.projectId !== undefined) {
@@ -237,6 +244,12 @@ class MaterialKitsService {
       const err = new Error('Invalid parent_id'); err.statusCode = 400; throw err;
     }
     const cogXYZ = MaterialKitsService._normalizeCogXYZ(options.cog_xyz);
+    const applyQuantity = MaterialKitsService._normalizeApplyQuantity(options.quantity);
+    if (applyQuantity === null) {
+      const err = new Error('Invalid quantity');
+      err.statusCode = 400;
+      throw err;
+    }
     const kit = await MaterialKit.findById(Number(kit_id));
     if (!kit) { const err = new Error('Kit not found'); err.statusCode = 404; throw err; }
     const version = await SpecificationVersion.findById(Number(specification_version_id));
@@ -250,18 +263,23 @@ class MaterialKitsService {
     await MaterialKitsService._ensurePermission(actor, requiredPermission, specification.project_id);
 
     let resolvedCogXYZ = cogXYZ;
-    if (parentId !== null && MaterialKitsService._isCogXYZEmpty(cogXYZ)) {
+    let resolvedZone = null;
+    if (parentId !== null) {
       const parentPart = await SpecificationPart.findById(parentId);
       if (!parentPart) {
         const err = new Error('Parent specification part not found');
         err.statusCode = 404;
         throw err;
       }
-      resolvedCogXYZ = {
-        cog_x: parentPart.cog_x ?? null,
-        cog_y: parentPart.cog_y ?? null,
-        cog_z: parentPart.cog_z ?? null
-      };
+
+      resolvedZone = parentPart.zone || null;
+      if (MaterialKitsService._isCogXYZEmpty(cogXYZ)) {
+        resolvedCogXYZ = {
+          cog_x: parentPart.cog_x ?? null,
+          cog_y: parentPart.cog_y ?? null,
+          cog_z: parentPart.cog_z ?? null
+        };
+      }
     }
 
     const client = await pool.connect();
@@ -272,13 +290,16 @@ class MaterialKitsService {
       const insertedIds = [];
       for (const it of items) {
         const material_id = it.material_id || null;
-        const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, material_id, quantity, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, specification_version_id, parent_id, part_code, material_id, quantity, cog_x, cog_y, cog_z, source, created_at`;
+        const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, material_id, quantity, zone, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id, specification_version_id, parent_id, part_code, material_id, quantity, zone, cog_x, cog_y, cog_z, source, created_at`;
+        const baseQuantity = Number(it.quantity ?? 1);
+        const resolvedQuantity = Number.isFinite(baseQuantity) ? baseQuantity * applyQuantity : applyQuantity;
         const vals = [
           Number(specification_version_id),
           parentId,
           it.part_code || null,
           material_id,
-          it.quantity || 1,
+          resolvedQuantity,
+          resolvedZone,
           resolvedCogXYZ.cog_x,
           resolvedCogXYZ.cog_y,
           resolvedCogXYZ.cog_z,

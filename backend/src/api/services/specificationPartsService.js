@@ -549,7 +549,7 @@ class SpecificationPartsService {
         ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
       : sourceMode === 'tray'
         ? ['WEIGHT', 'weight']
-      : ['TOTAL_WEIGHT', 'total_weight', 'weight'];
+      : ['WEIGHT_UNIT', 'weight_unit'];
     const zoneKeys = sourceMode === 'astructure'
       ? ['ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
       : sourceMode === 'systems'
