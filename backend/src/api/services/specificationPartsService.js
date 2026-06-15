@@ -546,7 +546,7 @@ class SpecificationPartsService {
     const totalWeightKeys = sourceMode === 'astructure'
       ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
       : sourceMode === 'systems'
-        ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
+        ? ['WEIGHT', 'weight', 'WIEGHT', 'wieght', 'TOTAL_WEIGHT', 'total_weight']
       : sourceMode === 'tray'
         ? ['WEIGHT', 'weight']
       : ['WEIGHT_UNIT', 'weight_unit'];
@@ -810,14 +810,33 @@ class SpecificationPartsService {
   }
 
   static _resolveSystemsQuantityDetails(row, material) {
-    // SYSTEMS has its own contract: LENGTH is the only numeric field that can
-    // drive quantity, while everything else falls back to a single item.
+    // SYSTEMS quantity follows unit semantics:
+    // - unit 1 is a single item,
+    // - unit 2 stores incoming WEIGHT directly,
+    // - unit 3 stores incoming LENGTH,
+    // - other units are derived from incoming WEIGHT and material unit weight.
     const unitId = material && material.unit_id !== null && material.unit_id !== undefined && !Number.isNaN(Number(material.unit_id))
       ? Number(material.unit_id)
       : null;
     const length = row.length !== null && row.length !== undefined && !Number.isNaN(Number(row.length))
       ? Number(row.length)
       : null;
+    const totalWeight = row.total_weight !== null && row.total_weight !== undefined && !Number.isNaN(Number(row.total_weight))
+      ? Number(row.total_weight)
+      : null;
+    const materialWeight = material && material.weight !== null && material.weight !== undefined && !Number.isNaN(Number(material.weight))
+      ? Number(material.weight)
+      : null;
+
+    if (unitId === 1) {
+      return { quantity: 1, calculated: true, reason: null };
+    }
+
+    if (unitId === 2) {
+      return totalWeight !== null
+        ? { quantity: totalWeight, calculated: true, reason: null }
+        : { quantity: 1, calculated: false, reason: 'WEIGHT is missing, fell back to 1' };
+    }
 
     if (unitId === 3) {
       return length !== null
@@ -825,7 +844,15 @@ class SpecificationPartsService {
         : { quantity: 1, calculated: false, reason: 'LENGTH is missing, fell back to 1' };
     }
 
-    return { quantity: 1, calculated: true, reason: null };
+    if (totalWeight !== null && materialWeight !== null && materialWeight > 0) {
+      return { quantity: totalWeight / materialWeight, calculated: true, reason: null };
+    }
+
+    if (totalWeight !== null) {
+      return { quantity: totalWeight, calculated: false, reason: 'Material weight is missing or invalid, fell back to WEIGHT' };
+    }
+
+    return { quantity: 1, calculated: false, reason: 'WEIGHT and material weight are missing, fell back to 1' };
   }
 
   static _resolveEquipmentQuantityDetails(row, material) {
