@@ -193,15 +193,24 @@ class SpecificationPartsImportService {
     const normalizedRows = [];
     const connectorFailures = [];
     const importSourceValues = new Set();
+    const successfulImportSourceValues = new Set();
+    const sourceExternalRowCounts = new Map();
+    const addSourceExternalRowCount = (sourceValue, count) => {
+      const sourceKey = String(sourceValue || '').trim();
+      sourceExternalRowCounts.set(sourceKey, (sourceExternalRowCounts.get(sourceKey) || 0) + count);
+    };
 
     for (const [strategyKey, connectors] of connectorGroups.entries()) {
-      // Persist the unified source label for every imported row.
-      const sourceValue = connectors[0] ? connectors[0].sourceValue : null;
       let groupHasRows = false;
 
       if (shouldUseDirectPayload) {
+        // Direct payloads are already fetched; when there are several connectors
+        // in the same branch the payload cannot be attributed more precisely.
+        const sourceValue = connectors[0] ? connectors[0].sourceValue : null;
         // Direct payloads are already fetched; we only need to normalize them.
         const directRows = SpecificationPartsService._normalizePayloadRows(directPayload);
+        successfulImportSourceValues.add(sourceValue);
+        addSourceExternalRowCount(sourceValue, directRows.length);
         for (const row of directRows) {
           const normalizedRow = SpecificationPartsService._normalizeExternalRow(row, strategyKey);
           if (normalizedRow) {
@@ -216,6 +225,7 @@ class SpecificationPartsImportService {
       }
 
       for (const connector of connectors) {
+        const sourceValue = connector.sourceValue;
         try {
           // Fetch the external payload, then normalize each row into the internal shape.
           const externalPayload = await SpecificationPartsService._fetchForanParts({
@@ -224,6 +234,8 @@ class SpecificationPartsImportService {
             oid: connector.oid
           }, foranSettings.token, strategyKey.toUpperCase());
           const externalRows = SpecificationPartsService._normalizePayloadRows(externalPayload);
+          successfulImportSourceValues.add(sourceValue);
+          addSourceExternalRowCount(sourceValue, externalRows.length);
           if (externalRows.length === 0) {
             continue;
           }
@@ -232,6 +244,7 @@ class SpecificationPartsImportService {
             if (normalizedRow) {
               normalizedRows.push({ ...normalizedRow, sourceValue, importBranch: strategyKey });
               groupHasRows = true;
+              importSourceValues.add(sourceValue);
             }
           }
         } catch (err) {
@@ -244,14 +257,10 @@ class SpecificationPartsImportService {
           continue;
         }
       }
-
-      if (groupHasRows) {
-        importSourceValues.add(sourceValue);
-      }
     }
 
     // If nothing normalized successfully, either return a clean no-op or fail with the first connector error.
-    if (normalizedRows.length === 0) {
+    if (normalizedRows.length === 0 && (!updateCurrentByPartOid || successfulImportSourceValues.size === 0)) {
       if (connectorFailures.length > 0) {
         const firstFailure = connectorFailures[0];
         const err = new Error(
@@ -283,16 +292,28 @@ class SpecificationPartsImportService {
     const globalMaterialMap = await SpecificationPartsService._resolveGlobalMaterialMap(normalizedRows);
     const report = [];
     const client = await pool.connect();
-    const sourceValues = [...importSourceValues];
+    const sourceValues = [...(updateCurrentByPartOid ? successfulImportSourceValues : importSourceValues)];
+    const incomingPartOidKeysBySource = new Map();
+    if (updateCurrentByPartOid) {
+      for (const row of normalizedRows) {
+        if (!row || row.part_oid === null || row.part_oid === undefined) continue;
+        const sourceKey = String(row.sourceValue || '').trim();
+        if (!incomingPartOidKeysBySource.has(sourceKey)) {
+          incomingPartOidKeysBySource.set(sourceKey, new Set());
+        }
+        incomingPartOidKeysBySource.get(sourceKey).add(String(row.part_oid));
+      }
+    }
     try {
       // Keep the allowed source values in sync with the persisted source values before writing.
       await SpecificationPartsService._ensureForanSourceAllowed(client, sourceValues);
       await client.query('BEGIN');
 
-      const existingRowsByPartOid = new Map();
+      const buildSourcePartOidKey = (sourceValue, partOid) => `${String(sourceValue || '').trim()}|${String(partOid)}`;
+      const existingRowsBySourcePartOid = new Map();
       if (updateCurrentByPartOid) {
         const existingRowsRes = await client.query(
-          `SELECT id, part_oid
+          `SELECT id, part_oid, source
            FROM specification_parts
            WHERE specification_version_id = $1
              AND source = ANY($2::text[])
@@ -301,9 +322,9 @@ class SpecificationPartsImportService {
         );
         for (const existingRow of existingRowsRes.rows || []) {
           if (!existingRow || existingRow.part_oid === null || existingRow.part_oid === undefined) continue;
-          const partOidKey = String(existingRow.part_oid);
-          if (!existingRowsByPartOid.has(partOidKey)) {
-            existingRowsByPartOid.set(partOidKey, existingRow.id);
+          const rowKey = buildSourcePartOidKey(existingRow.source, existingRow.part_oid);
+          if (!existingRowsBySourcePartOid.has(rowKey)) {
+            existingRowsBySourcePartOid.set(rowKey, existingRow.id);
           }
         }
       } else {
@@ -319,7 +340,6 @@ class SpecificationPartsImportService {
       const values = [];
       const placeholders = [];
       const persistedIds = [];
-      const incomingPartOidKeys = new Set();
       let newCount = 0;
       let updatedCount = 0;
       let deletedCount = 0;
@@ -490,7 +510,9 @@ class SpecificationPartsImportService {
           row.sourceValue
         ];
         const partOidKey = row.part_oid !== null && row.part_oid !== undefined ? String(row.part_oid) : null;
-        const existingId = updateCurrentByPartOid && partOidKey ? existingRowsByPartOid.get(partOidKey) || null : null;
+        const existingId = updateCurrentByPartOid && partOidKey
+          ? existingRowsBySourcePartOid.get(buildSourcePartOidKey(row.sourceValue, partOidKey)) || null
+          : null;
         if (existingId) {
           const updateRes = await client.query(updateSql, [...persistenceValues, existingId]);
           const updatedId = updateRes.rows && updateRes.rows[0] ? updateRes.rows[0].id : null;
@@ -500,9 +522,6 @@ class SpecificationPartsImportService {
           }
           continue;
         }
-        if (partOidKey) {
-          incomingPartOidKeys.add(partOidKey);
-        }
         placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
         values.push(
           versionId,
@@ -511,20 +530,34 @@ class SpecificationPartsImportService {
         newCount += 1;
       }
 
-      if (updateCurrentByPartOid && incomingPartOidKeys.size > 0) {
-        const incomingPartOids = [...incomingPartOidKeys]
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value));
-        if (incomingPartOids.length > 0) {
+      if (updateCurrentByPartOid && sourceValues.length > 0) {
+        for (const sourceValue of sourceValues) {
+          const sourceKey = String(sourceValue || '').trim();
+          const incomingPartOidKeys = incomingPartOidKeysBySource.get(sourceKey) || new Set();
+          const incomingPartOids = [...incomingPartOidKeys]
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value));
+          if (incomingPartOids.length === 0) {
+            if ((sourceExternalRowCounts.get(sourceKey) || 0) > 0) continue;
+            const deleteRes = await client.query(
+              `DELETE FROM specification_parts
+               WHERE specification_version_id = $1
+                 AND source = $2
+                 AND part_oid IS NOT NULL`,
+              [versionId, sourceValue]
+            );
+            deletedCount += deleteRes.rowCount || 0;
+            continue;
+          }
           const deleteRes = await client.query(
             `DELETE FROM specification_parts
              WHERE specification_version_id = $1
-               AND source = ANY($2::text[])
+               AND source = $2
                AND part_oid IS NOT NULL
                AND part_oid <> ALL($3::bigint[])`,
-            [versionId, sourceValues, incomingPartOids]
+            [versionId, sourceValue, incomingPartOids]
           );
-          deletedCount = deleteRes.rowCount || 0;
+          deletedCount += deleteRes.rowCount || 0;
         }
       }
 
