@@ -234,9 +234,13 @@ class SpecificationVersionsController {
       const id = Number(req.params.id);
       const groupByPartCode = String(req.query?.group_by_part_code || '').toLowerCase();
       const insertEmptyRowBetweenGroups = String(req.query?.insert_empty_row_between_groups || '').toLowerCase();
+      const insertEmptyRowBetweenSameCodes = String(req.query?.insert_empty_row_between_same_codes || '').toLowerCase();
+      const excludeWithoutPartCode = String(req.query?.exclude_without_part_code || '').toLowerCase();
       const result = await SpecificationPdfService.generateBySpecificationVersionId(id, actor, {
         groupByPartCode: groupByPartCode === 'true' || groupByPartCode === '1',
-        insertBlankRowBetweenGroups: insertEmptyRowBetweenGroups === 'true' || insertEmptyRowBetweenGroups === '1'
+        insertBlankRowBetweenGroups: insertEmptyRowBetweenGroups === 'true' || insertEmptyRowBetweenGroups === '1',
+        insertBlankRowBetweenSameCodes: insertEmptyRowBetweenSameCodes === 'true' || insertEmptyRowBetweenSameCodes === '1',
+        excludeWithoutPartCode: excludeWithoutPartCode === 'true' || excludeWithoutPartCode === '1'
       });
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Length', String(result.buffer.length));

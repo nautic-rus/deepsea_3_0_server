@@ -459,6 +459,17 @@ class SpecificationPdfService {
     return '';
   }
 
+  static _filterRowsWithoutPartCode(rows, excludeWithoutPartCode = false) {
+    if (!excludeWithoutPartCode) {
+      return [...(rows || [])];
+    }
+
+    return (rows || []).filter((row) => {
+      const label = String(SpecificationPdfService._resolveLabel(row) ?? '').trim();
+      return label !== '';
+    });
+  }
+
   static _buildPdfSortKey(row) {
     const label = String(SpecificationPdfService._resolveLabel(row) ?? '').trim();
     return label;
@@ -614,6 +625,44 @@ class SpecificationPdfService {
     return !!(row && row.__pdfGroupSeparator === true);
   }
 
+  static _insertPdfSeparatorsByKey(rows, keyResolver) {
+    const items = Array.isArray(rows) ? rows : [];
+    if (items.length <= 1) {
+      return [...items];
+    }
+
+    const output = [];
+    let previousKey = null;
+    let hasPreviousRow = false;
+
+    for (const row of items) {
+      if (SpecificationPdfService._isPdfSeparatorRow(row)) {
+        output.push(row);
+        previousKey = null;
+        hasPreviousRow = false;
+        continue;
+      }
+
+      const currentKey = String(typeof keyResolver === 'function' ? keyResolver(row) : '').trim();
+      if (
+        hasPreviousRow &&
+        currentKey &&
+        previousKey &&
+        currentKey !== previousKey
+      ) {
+        output.push({ __pdfGroupSeparator: true });
+      } else if (hasPreviousRow && currentKey && !previousKey) {
+        output.push({ __pdfGroupSeparator: true });
+      }
+
+      output.push(row);
+      previousKey = currentKey || null;
+      hasPreviousRow = true;
+    }
+
+    return output;
+  }
+
   static _resolvePdfGroupRootId(row, rowsById, seen = new Set()) {
     const rowId = SpecificationPdfService._toNumberOrNull(row && row.id);
     if (rowId === null || !rowsById || !rowsById.has(rowId) || seen.has(rowId)) {
@@ -631,41 +680,22 @@ class SpecificationPdfService {
   }
 
   static _insertPdfGroupSeparators(rows) {
-    const items = Array.isArray(rows) ? rows : [];
-    if (items.length <= 1) {
-      return [...items];
-    }
-
     const rowsById = new Map();
-    for (const row of items) {
+    for (const row of rows || []) {
       const id = SpecificationPdfService._toNumberOrNull(row && row.id);
       if (id !== null && !rowsById.has(id)) {
         rowsById.set(id, row);
       }
     }
 
-    const output = [];
-    let previousGroupRootId = null;
-    let hasPreviousGroup = false;
-
-    for (const row of items) {
-      if (SpecificationPdfService._isPdfSeparatorRow(row)) {
-        continue;
-      }
-
+    return SpecificationPdfService._insertPdfSeparatorsByKey(rows, (row) => {
       const groupRootId = SpecificationPdfService._resolvePdfGroupRootId(row, rowsById);
-      if (hasPreviousGroup && groupRootId !== null && previousGroupRootId !== null && groupRootId !== previousGroupRootId) {
-        output.push({ __pdfGroupSeparator: true });
-      } else if (hasPreviousGroup && groupRootId !== null && previousGroupRootId === null) {
-        output.push({ __pdfGroupSeparator: true });
-      }
+      return groupRootId === null ? '' : `group:${groupRootId}`;
+    });
+  }
 
-      output.push(row);
-      previousGroupRootId = groupRootId;
-      hasPreviousGroup = true;
-    }
-
-    return output;
+  static _insertPdfCodeSeparators(rows) {
+    return SpecificationPdfService._insertPdfSeparatorsByKey(rows, (row) => SpecificationPdfService._resolveLabel(row));
   }
 
   static _assignSequentialDisplayNumbers(rows, fieldName = 'display_number') {
@@ -689,8 +719,15 @@ class SpecificationPdfService {
     return output;
   }
 
-  static _preparePdfRows(rows, groupByPartCode = false, insertBlankRowBetweenGroups = false) {
-    const sortedRows = SpecificationPdfService._sortRowsWithParentsForPdf(rows);
+  static _preparePdfRows(
+    rows,
+    groupByPartCode = false,
+    insertBlankRowBetweenGroups = false,
+    excludeWithoutPartCode = false,
+    insertBlankRowBetweenSameCodes = false
+  ) {
+    const filteredRows = SpecificationPdfService._filterRowsWithoutPartCode(rows, excludeWithoutPartCode);
+    const sortedRows = SpecificationPdfService._sortRowsWithParentsForPdf(filteredRows);
     const partRowsBase = groupByPartCode
       ? SpecificationPdfService._sortRowsForPdf(SpecificationPdfService._groupRowsForPdf(sortedRows, true))
       : sortedRows;
@@ -702,16 +739,23 @@ class SpecificationPdfService {
         ? SpecificationPdfService._insertPdfGroupSeparators(summaryRowsBase)
         : summaryRowsBase
     );
+    const partRowsWithCodeSeparators = insertBlankRowBetweenSameCodes
+      ? SpecificationPdfService._insertPdfCodeSeparators(insertBlankRowBetweenGroups
+        ? SpecificationPdfService._insertPdfGroupSeparators(partRowsBase)
+        : partRowsBase)
+      : null;
 
     return {
-      partRows: insertBlankRowBetweenGroups
-        ? SpecificationPdfService._insertPdfGroupSeparators(partRowsBase)
-        : partRowsBase,
+      partRows: insertBlankRowBetweenSameCodes
+        ? partRowsWithCodeSeparators
+        : (insertBlankRowBetweenGroups
+          ? SpecificationPdfService._insertPdfGroupSeparators(partRowsBase)
+          : partRowsBase),
       summaryRows: summaryRowsWithNumbers,
     };
   }
 
-  static _paginateRowsByHeights(rows, heights, maxHeightPx) {
+  static _paginateRowsByHeightsGreedy(rows, heights, maxHeightPx) {
     const items = Array.isArray(rows) ? rows : [];
     const chunks = [];
     let current = [];
@@ -750,6 +794,103 @@ class SpecificationPdfService {
     return chunks;
   }
 
+  static _paginateRowsByHeightsBalanced(rows, heights, maxHeightPx, pageCount) {
+    const items = Array.isArray(rows) ? rows : [];
+    const limit = Number(maxHeightPx);
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? limit : Infinity;
+    const safePageCount = Math.max(1, Number(pageCount) || 1);
+
+    if (items.length === 0 || safePageCount <= 1 || !Number.isFinite(safeLimit)) {
+      return items.length ? [items] : [];
+    }
+
+    const rowHeights = items.map((row, index) => {
+      const rowHeight = Number(heights && heights[index]);
+      return Number.isFinite(rowHeight) && rowHeight > 0 ? rowHeight : 0;
+    });
+    const prefixHeights = [0];
+    for (const rowHeight of rowHeights) {
+      prefixHeights.push(prefixHeights[prefixHeights.length - 1] + rowHeight);
+    }
+
+    const totalHeight = prefixHeights[prefixHeights.length - 1];
+    const totalRows = items.length;
+    const targetHeight = totalHeight / safePageCount;
+    const targetCount = totalRows / safePageCount;
+    const countWeight = 100;
+    const heightWeight = 20;
+
+    const dp = Array.from({ length: safePageCount + 1 }, () => Array(totalRows + 1).fill(Infinity));
+    const prev = Array.from({ length: safePageCount + 1 }, () => Array(totalRows + 1).fill(-1));
+    dp[0][0] = 0;
+
+    for (let page = 1; page <= safePageCount; page += 1) {
+      for (let end = page; end <= totalRows; end += 1) {
+        for (let start = page - 1; start < end; start += 1) {
+          if (!Number.isFinite(dp[page - 1][start])) {
+            continue;
+          }
+
+          if (SpecificationPdfService._isPdfSeparatorRow(items[start])) {
+            continue;
+          }
+
+          const chunkHeight = prefixHeights[end] - prefixHeights[start];
+          if (chunkHeight > safeLimit) {
+            continue;
+          }
+
+          const chunkCount = end - start;
+          const heightPenalty = Math.pow((chunkHeight - targetHeight) / safeLimit, 2) * heightWeight;
+          const countPenalty = Math.pow(chunkCount - targetCount, 2) * countWeight;
+          const candidate = dp[page - 1][start] + heightPenalty + countPenalty;
+
+          if (candidate < dp[page][end]) {
+            dp[page][end] = candidate;
+            prev[page][end] = start;
+          }
+        }
+      }
+    }
+
+    if (!Number.isFinite(dp[safePageCount][totalRows])) {
+      return null;
+    }
+
+    const chunks = [];
+    let end = totalRows;
+    for (let page = safePageCount; page >= 1; page -= 1) {
+      const start = prev[page][end];
+      if (start < 0) {
+        return null;
+      }
+      chunks.unshift(items.slice(start, end));
+      end = start;
+    }
+
+    if (end !== 0) {
+      return null;
+    }
+
+    return chunks.filter((chunk) => chunk.length > 0);
+  }
+
+  static _paginateRowsByHeights(rows, heights, maxHeightPx) {
+    const greedyChunks = SpecificationPdfService._paginateRowsByHeightsGreedy(rows, heights, maxHeightPx);
+    if (greedyChunks.length <= 1) {
+      return greedyChunks;
+    }
+
+    const balancedChunks = SpecificationPdfService._paginateRowsByHeightsBalanced(
+      rows,
+      heights,
+      maxHeightPx,
+      greedyChunks.length
+    );
+
+    return balancedChunks || greedyChunks;
+  }
+
   static _buildMeasurementHtml({ styles, partRows, summaryRows, grouped = false }) {
     const extraStyles = SpecificationPdfService._buildPdfExtraStyles();
     return `<!doctype html>
@@ -781,7 +922,7 @@ class SpecificationPdfService {
         </tr>
       </thead>
       <tbody>
-        ${SpecificationPdfService._buildPartRows(partRows, 1, grouped)}
+        ${SpecificationPdfService._buildPartRows(partRows, grouped)}
       </tbody>
     </table>
     <table class="pdf-measure-table measure-summary">
@@ -985,11 +1126,11 @@ class SpecificationPdfService {
     return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
   }
 
-  static _buildPartRows(rows, startIndex = 1, grouped = false) {
+  static _buildPartRows(rows, grouped = false) {
     if (!rows.length) {
       return `
       <tr>
-        <td>${SpecificationPdfService._escapeHtml(startIndex)}</td>
+        <td></td>
         <td class="left wrap">-</td>
         <td>-</td>
         <td>-</td>
@@ -1002,7 +1143,6 @@ class SpecificationPdfService {
       </tr>`;
     }
 
-    let label = startIndex;
     return rows.map((part) => {
       if (SpecificationPdfService._isPdfSeparatorRow(part)) {
         return `
@@ -1011,11 +1151,9 @@ class SpecificationPdfService {
       </tr>`;
       }
 
-      const currentLabel = label;
-      label += 1;
       return `
       <tr>
-        <td class="wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || currentLabel)}</td>
+        <td class="wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || '')}</td>
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td class="wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
@@ -1033,7 +1171,7 @@ class SpecificationPdfService {
     if (!rows.length) {
       return `
       <tr>
-        <td>${SpecificationPdfService._escapeHtml(startIndex)}</td>
+        <td></td>
         <td class="left wrap">-</td>
         <td>-</td>
         <td>-</td>
@@ -1069,7 +1207,7 @@ class SpecificationPdfService {
     }).join('');
   }
 
-  static _buildPartPage({ pageNo, docName, docNumber, date, rev, logoUrl, rows, startIndex, grouped = false }) {
+  static _buildPartPage({ pageNo, docName, docNumber, date, rev, logoUrl, rows, grouped = false }) {
     const logoMarkup = logoUrl
       ? `<img class="stamp-logo" src="${SpecificationPdfService._escapeHtml(logoUrl)}" alt="logo">`
       : '';
@@ -1134,7 +1272,7 @@ class SpecificationPdfService {
       </tr>
       </thead>
       <tbody>
-      ${SpecificationPdfService._buildPartRows(rows, startIndex, grouped)}
+      ${SpecificationPdfService._buildPartRows(rows, grouped)}
       </tbody>
     </table>
   </section>`;
@@ -1239,7 +1377,6 @@ class SpecificationPdfService {
       logoUrl
     }));
 
-    let startIndex = 1;
     for (const chunk of partRows.length ? partRows : [[]]) {
       pageNo += 1;
       pages.push(SpecificationPdfService._buildPartPage({
@@ -1250,13 +1387,11 @@ class SpecificationPdfService {
         rev,
         logoUrl,
         rows: chunk,
-        startIndex,
         grouped: groupByPartCode
       }));
-      startIndex += chunk.length;
     }
 
-    startIndex = 1;
+    let startIndex = 1;
     for (const chunk of summaryRows.length ? summaryRows : [[]]) {
       pageNo += 1;
       pages.push(SpecificationPdfService._buildSummaryPage({
@@ -1324,6 +1459,8 @@ ${pages.join('\n')}
 
     const groupByPartCode = options && options.groupByPartCode === true;
     const insertBlankRowBetweenGroups = options && options.insertBlankRowBetweenGroups === true;
+    const excludeWithoutPartCode = options && options.excludeWithoutPartCode === true;
+    const insertBlankRowBetweenSameCodes = options && options.insertBlankRowBetweenSameCodes === true;
 
     const version = await SpecificationVersion.findById(parsedVersionId);
     if (!version) {
@@ -1339,7 +1476,7 @@ ${pages.join('\n')}
       throw err;
     }
 
-    const inFlightKey = `${parsedVersionId}:${groupByPartCode ? 'group' : 'default'}:${insertBlankRowBetweenGroups ? 'blank' : 'noblank'}`;
+    const inFlightKey = `${parsedVersionId}:${groupByPartCode ? 'group' : 'default'}:${insertBlankRowBetweenGroups ? 'blank' : 'noblank'}:${insertBlankRowBetweenSameCodes ? 'codeblank' : 'nocodeblank'}:${excludeWithoutPartCode ? 'filtered' : 'all'}`;
     const existingPromise = SpecificationPdfService._inFlightGenerations.get(inFlightKey);
     if (existingPromise) {
       return existingPromise;
@@ -1347,11 +1484,12 @@ ${pages.join('\n')}
 
     const generationPromise = (async () => {
       const rows = await SpecificationPart.list({ specification_version_id: parsedVersionId });
-      const materialIds = [...new Set((rows || [])
+      const filteredRows = SpecificationPdfService._filterRowsWithoutPartCode(rows, excludeWithoutPartCode);
+      const materialIds = [...new Set(filteredRows
         .map((row) => Number(row && row.material_id))
         .filter((value) => !Number.isNaN(value) && value > 0))];
       const statementMap = await SpecificationPdfService._loadStatementCodesByMaterialIds(materialIds);
-      const enrichedRows = (rows || []).map((row) => ({
+      const enrichedRows = filteredRows.map((row) => ({
         ...row,
         statement_code: statementMap.get(Number(row.material_id)) || '',
       }));
@@ -1370,7 +1508,9 @@ ${pages.join('\n')}
         rows: enrichedRows,
         logoUrl,
         groupByPartCode,
-        insertBlankRowBetweenGroups
+        insertBlankRowBetweenGroups,
+        insertBlankRowBetweenSameCodes,
+        excludeWithoutPartCode
       });
     })();
 
@@ -1386,7 +1526,17 @@ ${pages.join('\n')}
     }
   }
 
-  static async _renderPdf({ executablePath, spec, version, rows, logoUrl, groupByPartCode = false, insertBlankRowBetweenGroups = false }) {
+  static async _renderPdf({
+    executablePath,
+    spec,
+    version,
+    rows,
+    logoUrl,
+    groupByPartCode = false,
+    insertBlankRowBetweenGroups = false,
+    insertBlankRowBetweenSameCodes = false,
+    excludeWithoutPartCode = false
+  }) {
     await SpecificationPdfService._acquireSlot();
 
     try {
@@ -1399,7 +1549,13 @@ ${pages.join('\n')}
         page.setDefaultNavigationTimeout(PDF_PAGE_TIMEOUT_MS);
 
         const styles = SpecificationPdfService._readTemplateStyles();
-        const preparedRows = SpecificationPdfService._preparePdfRows(rows, groupByPartCode, insertBlankRowBetweenGroups);
+        const preparedRows = SpecificationPdfService._preparePdfRows(
+          rows,
+          groupByPartCode,
+          insertBlankRowBetweenGroups,
+          excludeWithoutPartCode,
+          insertBlankRowBetweenSameCodes
+        );
         const measurementHtml = SpecificationPdfService._buildMeasurementHtml({
           styles,
           partRows: preparedRows.partRows,

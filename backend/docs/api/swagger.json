@@ -25515,6 +25515,26 @@
               "default": false
             },
             "description": "When true, inserts an empty row between top-level position groups in the generated PDF."
+          },
+          {
+            "name": "insert_empty_row_between_same_codes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "When true, inserts an empty row between consecutive rows with different part_code values."
+          },
+          {
+            "name": "exclude_without_part_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            },
+            "description": "When true, excludes positions without part_code from PART LIST and BILLING OF MATERIALS."
           }
         ],
         "responses": {
