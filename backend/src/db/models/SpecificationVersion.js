@@ -313,12 +313,45 @@ class SpecificationVersion {
     return res.rows[0] || null;
   }
 
+  static async findUsageInStatementsParts(id, executor = pool) {
+    const q = `
+      SELECT DISTINCT
+        s.id AS statement_id,
+        s.code AS statement_code,
+        sv.id AS statements_version_id,
+        sv.version AS statements_version_version
+      FROM statements_parts sp
+      JOIN statements_version sv ON sv.id = sp.statements_version_id
+      JOIN statements s ON s.id = sv.statement_id
+      WHERE sp.specification_version_id = $1
+      ORDER BY s.id, sv.id
+    `;
+    const res = await executor.query(q, [id]);
+    return res.rows || [];
+  }
+
   static async delete(id) {
     const existing = await SpecificationVersion.findById(id);
     if (!existing) return false;
     if (existing.lock) {
       const err = new Error('Specification version is locked');
       err.statusCode = 423;
+      throw err;
+    }
+    const usage = await SpecificationVersion.findUsageInStatementsParts(id);
+    if (usage.length > 0) {
+      const err = new Error('Specification version is used in statements_parts and cannot be deleted');
+      err.statusCode = 409;
+      err.details = usage.map((row) => ({
+        statements: {
+          id: row.statement_id,
+          code: row.statement_code
+        },
+        statements_version: {
+          id: row.statements_version_id,
+          version: row.statements_version_version
+        }
+      }));
       throw err;
     }
     const q = `DELETE FROM specification_version WHERE id = $1`;

@@ -15,6 +15,10 @@ function errorHandler(err, req, res, next) {
     error: message
   };
 
+  if (err.details !== undefined) {
+    response.details = err.details;
+  }
+
   // В режиме разработки добавляем стек трейс
   if (process.env.NODE_ENV === 'development') {
     response.stack = err.stack;
@@ -24,7 +28,6 @@ function errorHandler(err, req, res, next) {
 }
 
 module.exports = errorHandler;
-
 
 
 
