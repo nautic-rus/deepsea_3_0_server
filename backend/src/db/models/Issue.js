@@ -71,7 +71,16 @@ class Issue {
     }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-  let q = `SELECT id, project_id, title, description, comment, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues ${whereSql} ORDER BY id`;
+  let q = `SELECT id, project_id, title, description, comment, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at,
+    (
+      SELECT MAX(h.created_at)
+      FROM issue_history h
+      JOIN issue_status s ON s.id = NULLIF(h.new_value, '')::int
+      WHERE h.issue_id = issues.id
+        AND h.field_name IN ('status_id', 'status')
+        AND s.is_final = true
+    ) AS close_date
+    FROM issues ${whereSql} ORDER BY id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -90,7 +99,16 @@ class Issue {
    * @returns {Promise<Object|null>} Issue object or null if not found
    */
   static async findById(id) {
-  const q = `SELECT id, project_id, title, description, comment, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at FROM issues WHERE id = $1 LIMIT 1`;
+  const q = `SELECT id, project_id, title, description, comment, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at,
+    (
+      SELECT MAX(h.created_at)
+      FROM issue_history h
+      JOIN issue_status s ON s.id = NULLIF(h.new_value, '')::int
+      WHERE h.issue_id = issues.id
+        AND h.field_name IN ('status_id', 'status')
+        AND s.is_final = true
+    ) AS close_date
+    FROM issues WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }

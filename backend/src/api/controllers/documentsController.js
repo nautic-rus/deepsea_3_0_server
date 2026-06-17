@@ -15,6 +15,17 @@ class DocumentsController {
     if (/^[0-9]+$/.test(s)) return Number(s);
     return s;
   }
+  static _parseIntList(v) {
+    if (v === undefined || v === null) return undefined;
+    const raw = Array.isArray(v)
+      ? v
+      : String(v).includes(',')
+        ? String(v).split(',')
+        : [v];
+    const vals = raw.map(x => Number(x)).filter(x => !Number.isNaN(x));
+    if (vals.length === 0) return [];
+    return vals.length === 1 ? vals[0] : vals;
+  }
   /**
    * List documents with optional query filters.
    */
@@ -22,6 +33,9 @@ class DocumentsController {
     try {
       const actor = req.user || null;
       const query = Object.assign({}, req.query || {});
+      query.stage_id = DocumentsController._parseIntList(query.stage_id);
+      query.specialization_id = DocumentsController._parseIntList(query.specialization_id);
+      query.status_id = DocumentsController._parseIntList(query.status_id);
       if (query.is_active !== undefined) {
         query.is_active = (query.is_active === 'true' || query.is_active === '1' || query.is_active === true);
       }

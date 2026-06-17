@@ -306,6 +306,7 @@
           "due_date": { "type": "string", "format": "date", "nullable": true },
           "created_at": { "type": "string", "format": "date-time" },
           "updated_at": { "type": "string", "format": "date-time" },
+          "close_date": { "type": "string", "format": "date-time", "nullable": true },
           "project": { "$ref": "#/components/schemas/Project", "nullable": true },
           "type": { "$ref": "#/components/schemas/CustomerQuestionType", "nullable": true },
           "specialization_id": { "type": "integer", "nullable": true },
@@ -445,6 +446,11 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "close_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         }
       },
@@ -987,6 +993,11 @@
             "nullable": true
           },
           "closed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "close_date": {
             "type": "string",
             "format": "date-time",
             "nullable": true

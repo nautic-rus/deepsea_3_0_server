@@ -282,8 +282,8 @@ class DocumentsService {
     const statusIds = [...new Set(docs.filter(d => d.status_id).map(d => d.status_id))];
   const typeIds = [...new Set(docs.filter(d => d.type_id).map(d => d.type_id))];
   const specIds = [...new Set(docs.filter(d => d.specialization_id).map(d => d.specialization_id))];
-  const creatorIds = [...new Set(docs.filter(d => d.created_by).map(d => d.created_by))];
-  const assigneeIds = [...new Set(docs.filter(d => d.assigne_to).map(d => d.assigne_to))];
+      const creatorIds = [...new Set(docs.filter(d => d.created_by).map(d => d.created_by))];
+      const assigneeIds = [...new Set(docs.filter(d => d.assigne_to).map(d => d.assigne_to))];
 
   const qProjects = projectIds.length ? pool.query(`SELECT id, name, code FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
       const qStages = stageIds.length ? pool.query(`SELECT id, name, end_date FROM stages WHERE id = ANY($1::int[])`, [stageIds]) : Promise.resolve({ rows: [] });

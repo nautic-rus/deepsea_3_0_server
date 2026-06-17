@@ -306,6 +306,7 @@ class CustomerQuestionsService {
       // If work flow table/columns are missing or error occurs, return question without available_statuses
       q.available_statuses = [];
     }
+
     return q;
   }
 

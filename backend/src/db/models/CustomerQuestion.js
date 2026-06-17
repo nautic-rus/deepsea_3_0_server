@@ -101,7 +101,15 @@ class CustomerQuestion {
            cq.status_id, cs.name AS status_name, cs.code AS status_code, cs.description AS status_description,
            cq.type_id, ct.name AS type_name,
            cq.specialization_id, sp.name AS specialization_name,
-           p.code AS project_code, p.name AS project_name
+           p.code AS project_code, p.name AS project_name,
+           (
+             SELECT MAX(h.created_at)
+             FROM customer_question_history h
+             JOIN customer_question_status s ON s.id = NULLIF(h.new_value, '')::int
+             WHERE h.question_id = cq.id
+               AND h.field_name IN ('status_id', 'status')
+               AND s.is_final = true
+           ) AS close_date
           FROM customer_questions cq
             LEFT JOIN customer_question_status cs ON cq.status_id = cs.id
             LEFT JOIN customer_question_type ct ON cq.type_id = ct.id
@@ -131,6 +139,7 @@ class CustomerQuestion {
       due_date: r.due_date,
       created_at: r.created_at,
       updated_at: r.updated_at,
+      close_date: r.close_date || null,
       project: r.project_id ? { id: r.project_id, code: r.project_code, name: r.project_name } : null,
       type: r.type_id ? { id: r.type_id, name: r.type_name } : null,
       specialization: r.specialization_id ? { id: r.specialization_id, name: r.specialization_name } : null,
@@ -151,10 +160,18 @@ class CustomerQuestion {
                TRIM(COALESCE(ub.last_name,'') || ' ' || COALESCE(ub.first_name,'')) AS answered_by_full_name,
                ub.avatar_id AS answered_by_avatar_id,
                   cq.due_date, cq.created_at, cq.updated_at,
-                       cq.status_id, cs.name AS status_name, cs.code AS status_code, cs.description AS status_description,
+                  cq.status_id, cs.name AS status_name, cs.code AS status_code, cs.description AS status_description,
                        cq.type_id, ct.name AS type_name,
                        cq.specialization_id, sp.name AS specialization_name,
-                       p.code AS project_code, p.name AS project_name
+                       p.code AS project_code, p.name AS project_name,
+                       (
+                         SELECT MAX(h.created_at)
+                         FROM customer_question_history h
+                         JOIN customer_question_status s ON s.id = NULLIF(h.new_value, '')::int
+                         WHERE h.question_id = cq.id
+                           AND h.field_name IN ('status_id', 'status')
+                           AND s.is_final = true
+                       ) AS close_date
                    FROM customer_questions cq
                  LEFT JOIN customer_question_status cs ON cq.status_id = cs.id
                  LEFT JOIN customer_question_type ct ON cq.type_id = ct.id
@@ -177,6 +194,7 @@ class CustomerQuestion {
       due_date: r.due_date,
       created_at: r.created_at,
       updated_at: r.updated_at,
+      close_date: r.close_date || null,
       project: r.project_id ? { id: r.project_id, code: r.project_code, name: r.project_name } : null,
       type: r.type_id ? { id: r.type_id, name: r.type_name } : null,
       specialization: r.specialization_id ? { id: r.specialization_id, name: r.specialization_name } : null,

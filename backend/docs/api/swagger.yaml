@@ -110,6 +110,10 @@ components:
         updated_at:
           type: string
           format: date-time
+        close_date:
+          type: string
+          format: date-time
+          nullable: true
     CustomerQuestionType:
       type: object
       properties:
@@ -330,6 +334,10 @@ components:
         created_at:
           type: string
           format: date-time
+        close_date:
+          type: string
+          format: date-time
+          nullable: true
     DocumentDirectory:
       type: object
       properties:
@@ -745,6 +753,10 @@ components:
         created_at:
           type: string
           format: date-time
+        close_date:
+          type: string
+          format: date-time
+          nullable: true
     IssueMessage:
       type: object
       properties:
@@ -8745,16 +8757,28 @@ paths:
         example: 12
       - name: stage_id
         in: query
-        description: Stage ID
+        description: Stage ID or comma-separated list of IDs
         schema:
-          type: integer
-        example: 3
+          type: array
+          items:
+            type: integer
+        example:
+        - 3
+        - 4
+        style: form
+        explode: false
       - name: specialization_id
         in: query
-        description: Specialization ID
+        description: Specialization ID or comma-separated list of IDs
         schema:
-          type: integer
-        example: 2
+          type: array
+          items:
+            type: integer
+        example:
+        - 2
+        - 5
+        style: form
+        explode: false
       - name: directory_id
         in: query
         description: Folder/directory ID
@@ -8763,10 +8787,16 @@ paths:
         example: 7
       - name: status_id
         in: query
-        description: Document status ID
+        description: Document status ID or comma-separated list of IDs
         schema:
-          type: integer
-        example: 1
+          type: array
+          items:
+            type: integer
+        example:
+        - 1
+        - 29
+        style: form
+        explode: false
       - name: created_by
         in: query
         description: ID of the user who created the document
@@ -8825,12 +8855,13 @@ paths:
         example: 20
       x-example-request: |
         # Example request
-        GET /api/documents?project_id=12&search=pipe&page=1&limit=20 HTTP/1.1
+        GET /api/documents?project_id=12&stage_id=3,4&specialization_id=2,5&status_id=1,29&search=pipe&page=1&limit=20 HTTP/1.1
         Host: {{baseUrl}}
         Authorization: Bearer <your-jwt-token>
 
         # Query parameter descriptions:
         # - project_id: project ID
+        # - stage_id, specialization_id, status_id: comma-separated lists or repeated params
         # - search: search by title/description
         # - page, limit: pagination
       responses:

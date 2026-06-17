@@ -1,6 +1,20 @@
 const pool = require('../connection');
 
 class Document {
+  static _normalizeIntFilter(value) {
+    if (value === undefined || value === null) return undefined;
+    const values = Array.isArray(value)
+      ? value
+      : String(value).includes(',')
+        ? String(value).split(',')
+        : [value];
+    const normalized = values
+      .map(v => Number(v))
+      .filter(v => !Number.isNaN(v));
+    if (normalized.length === 0) return [];
+    return normalized.length === 1 ? normalized[0] : normalized;
+  }
+
   static async list(filters = {}, allowedProjectIds = null) {
     // filters: support common document attributes and pagination
     const {
@@ -50,8 +64,28 @@ class Document {
         values.push(project_id);
       }
     }
-    if (stage_id !== undefined) { where.push(`stage_id = $${idx++}`); values.push(stage_id); }
-    if (specialization_id !== undefined) { where.push(`specialization_id = $${idx++}`); values.push(specialization_id); }
+    if (stage_id !== undefined && stage_id !== null) {
+      const stageIds = Document._normalizeIntFilter(stage_id);
+      if (Array.isArray(stageIds)) {
+        if (stageIds.length === 0) return [];
+        where.push(`stage_id = ANY($${idx++}::int[])`);
+        values.push(stageIds);
+      } else {
+        where.push(`stage_id = $${idx++}`);
+        values.push(stageIds);
+      }
+    }
+    if (specialization_id !== undefined && specialization_id !== null) {
+      const specializationIds = Document._normalizeIntFilter(specialization_id);
+      if (Array.isArray(specializationIds)) {
+        if (specializationIds.length === 0) return [];
+        where.push(`specialization_id = ANY($${idx++}::int[])`);
+        values.push(specializationIds);
+      } else {
+        where.push(`specialization_id = $${idx++}`);
+        values.push(specializationIds);
+      }
+    }
     if (directory_id !== undefined) {
       // If a directory_id filter is provided, include documents in that directory
       // and in all its descendant directories (recursive). Use a recursive CTE
@@ -71,7 +105,17 @@ class Document {
         values.push(directory_id);
       }
     }
-    if (status_id !== undefined) { where.push(`status_id = $${idx++}`); values.push(status_id); }
+    if (status_id !== undefined && status_id !== null) {
+      const statusIds = Document._normalizeIntFilter(status_id);
+      if (Array.isArray(statusIds)) {
+        if (statusIds.length === 0) return [];
+        where.push(`status_id = ANY($${idx++}::int[])`);
+        values.push(statusIds);
+      } else {
+        where.push(`status_id = $${idx++}`);
+        values.push(statusIds);
+      }
+    }
     // priority: accept single value, comma-separated list or repeated params (array)
     if (priority !== undefined && priority !== null) {
       if (Array.isArray(priority)) {
@@ -125,7 +169,16 @@ class Document {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  let q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, public, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id FROM documents ${whereSql} ORDER BY id`;
+  let q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, public, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id,
+    (
+      SELECT MAX(h.created_at)
+      FROM documents_history h
+      JOIN document_status s ON s.id = NULLIF(h.new_value, '')::int
+      WHERE h.document_id = documents.id
+        AND h.field_name IN ('status_id', 'status')
+        AND s.is_final = true
+    ) AS close_date
+    FROM documents ${whereSql} ORDER BY id`;
     if (limit != null) {
       q += ` LIMIT $${idx++} OFFSET $${idx}`;
       values.push(limit, offset);
@@ -138,7 +191,16 @@ class Document {
   }
 
   static async findById(id) {
-  const q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, public, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id FROM documents WHERE id = $1 LIMIT 1`;
+  const q = `SELECT id, title, description, comment, project_id, stage_id, status_id, type_id, specialization_id, directory_id, assigne_to, created_by, is_active, public, created_at, updated_at, code, priority, due_date, estimated_hours, sfi_code_id,
+    (
+      SELECT MAX(h.created_at)
+      FROM documents_history h
+      JOIN document_status s ON s.id = NULLIF(h.new_value, '')::int
+      WHERE h.document_id = documents.id
+        AND h.field_name IN ('status_id', 'status')
+        AND s.is_final = true
+    ) AS close_date
+    FROM documents WHERE id = $1 LIMIT 1`;
     const res = await pool.query(q, [id]);
     return res.rows[0] || null;
   }
