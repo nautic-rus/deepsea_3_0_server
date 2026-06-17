@@ -528,7 +528,7 @@ class SpecificationPartsService {
     const partCodeKeys = sourceMode === 'astructure'
       ? ['CODEID', 'codeid']
       : sourceMode === 'systems'
-        ? ['SPOOLID', 'spoolid', 'CODEID', 'codeid', 'PART_CODE', 'part_code', 'code', 'CODE']
+        ? ['SPOOLID', 'spoolid']
       : sourceMode === 'equipment'
         ? ['ELEMENT_USERID', 'element_userid', 'ELEMENT_NAME', 'element_name']
       : sourceMode === 'tray'

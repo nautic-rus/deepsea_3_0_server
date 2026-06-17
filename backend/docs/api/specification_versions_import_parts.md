@@ -170,6 +170,8 @@
 
 Используется только `row.length` и `material.unit_id`.
 
+Для `part_code` в этой ветке используется только `SPOOLID` из payload.
+
 Правила:
 
 1. Если `unit_id = 3`
