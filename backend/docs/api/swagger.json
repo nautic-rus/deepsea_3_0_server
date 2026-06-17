@@ -12837,20 +12837,30 @@
           {
             "name": "stage_id",
             "in": "query",
-            "description": "Stage ID",
+            "description": "Stage ID or comma-separated list of IDs",
             "schema": {
-              "type": "integer"
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
             },
-            "example": 3
+            "example": [3, 4],
+            "style": "form",
+            "explode": false
           },
           {
             "name": "specialization_id",
             "in": "query",
-            "description": "Specialization ID",
+            "description": "Specialization ID or comma-separated list of IDs",
             "schema": {
-              "type": "integer"
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
             },
-            "example": 2
+            "example": [2, 5],
+            "style": "form",
+            "explode": false
           },
           {
             "name": "directory_id",
@@ -12864,11 +12874,16 @@
           {
             "name": "status_id",
             "in": "query",
-            "description": "Document status ID",
+            "description": "Document status ID or comma-separated list of IDs",
             "schema": {
-              "type": "integer"
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
             },
-            "example": 1
+            "example": [1, 29],
+            "style": "form",
+            "explode": false
           },
           {
             "name": "created_by",
@@ -12954,7 +12969,7 @@
             "example": 20
           }
         ],
-        "x-example-request": "# Example request\nGET /api/documents?project_id=12&search=pipe&page=1&limit=20 HTTP/1.1\nHost: {{baseUrl}}\nAuthorization: Bearer <your-jwt-token>\n\n# Query parameter descriptions:\n# - project_id: project ID\n# - search: search by title/description\n# - page, limit: pagination\n",
+        "x-example-request": "# Example request\nGET /api/documents?project_id=12&stage_id=3,4&specialization_id=2,5&status_id=1,29&search=pipe&page=1&limit=20 HTTP/1.1\nHost: {{baseUrl}}\nAuthorization: Bearer <your-jwt-token>\n\n# Query parameter descriptions:\n# - project_id: project ID\n# - stage_id, specialization_id, status_id: comma-separated lists or repeated params\n# - search: search by title/description\n# - page, limit: pagination\n",
         "responses": {
           "200": {
             "description": "List",
