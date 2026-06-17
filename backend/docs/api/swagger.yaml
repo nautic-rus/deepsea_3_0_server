@@ -16801,7 +16801,7 @@ paths:
         schema:
           type: boolean
           default: false
-        description: When true, groups PDF rows by material_id and part_code before rendering.
+        description: When true, groups PART LIST rows by material_id and part_code before rendering; BILLING OF MATERIALS remains grouped by stock_code.
       - name: insert_empty_row_between_groups
         in: query
         required: false

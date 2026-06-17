@@ -560,6 +560,56 @@ class SpecificationPdfService {
     });
   }
 
+  static _buildPdfStockCodeSortKey(row) {
+    const material = row && row.material ? row.material : null;
+    return String(material && material.stock_code !== undefined && material.stock_code !== null
+      ? material.stock_code
+      : '').trim();
+  }
+
+  static _comparePdfStockCodeRows(a, b) {
+    const aCode = SpecificationPdfService._buildPdfStockCodeSortKey(a);
+    const bCode = SpecificationPdfService._buildPdfStockCodeSortKey(b);
+    const aBlank = aCode === '';
+    const bBlank = bCode === '';
+
+    if (aBlank && bBlank) {
+      return 0;
+    }
+
+    if (aBlank) {
+      return 1;
+    }
+
+    if (bBlank) {
+      return -1;
+    }
+
+    const byCode = aCode.localeCompare(bCode, 'ru', { numeric: true, sensitivity: 'base' });
+    if (byCode !== 0) {
+      return byCode;
+    }
+
+    return SpecificationPdfService._comparePdfSortRows(a, b);
+  }
+
+  static _sortRowsByStockCodeForPdf(rows) {
+    return [...(rows || [])].sort((a, b) => {
+      const byCode = SpecificationPdfService._comparePdfStockCodeRows(a, b);
+      if (byCode !== 0) {
+        return byCode;
+      }
+
+      const aId = SpecificationPdfService._toNumberOrNull(a && a.id);
+      const bId = SpecificationPdfService._toNumberOrNull(b && b.id);
+      if (aId !== null && bId !== null && aId !== bId) {
+        return aId - bId;
+      }
+
+      return 0;
+    });
+  }
+
   static _sortRowsWithParentsForPdf(rows) {
     const items = Array.isArray(rows) ? rows : [];
     if (items.length <= 1) {
@@ -731,9 +781,9 @@ class SpecificationPdfService {
     const partRowsBase = groupByPartCode
       ? SpecificationPdfService._sortRowsForPdf(SpecificationPdfService._groupRowsForPdf(sortedRows, true))
       : sortedRows;
-    const summaryRowsBase = groupByPartCode
-      ? SpecificationPdfService._sortRowsByTitleForPdf(SpecificationPdfService._groupRowsForPdf(sortedRows, true))
-      : SpecificationPdfService._sortRowsByTitleForPdf(SpecificationPdfService._buildSummaryEntries(sortedRows));
+    const summaryRowsBase = SpecificationPdfService._sortRowsByStockCodeForPdf(
+      SpecificationPdfService._buildSummaryEntries(sortedRows)
+    );
     const summaryRowsWithNumbers = SpecificationPdfService._assignSequentialDisplayNumbers(
       insertBlankRowBetweenGroups
         ? SpecificationPdfService._insertPdfGroupSeparators(summaryRowsBase)
@@ -1090,8 +1140,7 @@ class SpecificationPdfService {
     const grouped = new Map();
 
     for (const row of rows || []) {
-      const materialId = SpecificationPdfService._toNumberOrNull(row && row.material_id);
-      const key = materialId && materialId > 0 ? `material:${materialId}` : `row:${row && row.id ? row.id : grouped.size}`;
+      const key = `stock_code:${SpecificationPdfService._buildPdfStockCodeSortKey(row)}`;
       const existing = grouped.get(key);
       const quantity = SpecificationPdfService._toNumberOrNull(row && row.quantity) ?? 1;
 
