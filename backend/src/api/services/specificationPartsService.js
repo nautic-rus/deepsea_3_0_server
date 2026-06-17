@@ -627,6 +627,9 @@ class SpecificationPartsService {
     const strgroupRaw = sourceMode === 'blocks'
       ? SpecificationPartsService._pickExternalValue(row, ['STRGROUP', 'strgroup'])
       : null;
+    const symmetryRaw = sourceMode === 'blocks'
+      ? SpecificationPartsService._pickExternalValue(row, ['SYMMETRY', 'symmetry'])
+      : null;
     const cogXRaw = SpecificationPartsService._pickExternalValue(row, ['COG_X', 'cog_x', 'cogX', 'ELEMENT_COG_X', 'element_cog_x', 'X_COG', 'x_cog']);
     const cogYRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Y', 'cog_y', 'cogY', 'ELEMENT_COG_Y', 'element_cog_y', 'Y_COG', 'y_cog']);
     const cogZRaw = SpecificationPartsService._pickExternalValue(row, ['COG_Z', 'cog_z', 'cogZ', 'ELEMENT_COG_Z', 'element_cog_z', 'Z_COG', 'z_cog']);
@@ -671,7 +674,9 @@ class SpecificationPartsService {
       // These fields are intentionally left empty during import,
       // except tray rows where part_type is fixed to TRAY.
       part_type: partType,
-      symmetry: null,
+      symmetry: symmetryRaw !== null && symmetryRaw !== undefined
+        ? String(symmetryRaw).trim() || null
+        : null,
       unit: null,
       sfi_code_id: SpecificationPartsService._toNumberOrNull(
         SpecificationPartsService._pickExternalValue(row, ['SFI_CODE_ID', 'sfi_code_id'])

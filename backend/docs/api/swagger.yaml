@@ -8803,6 +8803,16 @@ paths:
         schema:
           type: integer
         example: 5
+      - name: my_doc
+        in: query
+        description: If true, return documents where the authenticated user is creator or assignee
+        schema:
+          type: boolean
+      - name: is_closed
+        in: query
+        description: Filter by closed status (maps to document_status.is_final)
+        schema:
+          type: boolean
       - name: is_active
         in: query
         description: Filter by active status
@@ -8855,13 +8865,14 @@ paths:
         example: 20
       x-example-request: |
         # Example request
-        GET /api/documents?project_id=12&stage_id=3,4&specialization_id=2,5&status_id=1,29&search=pipe&page=1&limit=20 HTTP/1.1
+        GET /api/documents?project_id=12&stage_id=3,4&specialization_id=2,5&status_id=1,29&my_doc=true&is_closed=false&search=pipe&page=1&limit=20 HTTP/1.1
         Host: {{baseUrl}}
         Authorization: Bearer <your-jwt-token>
 
         # Query parameter descriptions:
         # - project_id: project ID
         # - stage_id, specialization_id, status_id: comma-separated lists or repeated params
+        # - my_doc, is_closed: boolean filters
         # - search: search by title/description
         # - page, limit: pagination
       responses:

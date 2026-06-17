@@ -15,6 +15,16 @@ class DocumentsController {
     if (/^[0-9]+$/.test(s)) return Number(s);
     return s;
   }
+  static _parseBool(v) {
+    if (v === null) return null;
+    if (typeof v === 'undefined') return undefined;
+    if (v === true || v === false) return v;
+    const s = String(v).trim().toLowerCase();
+    if (s === '') return undefined;
+    if (s === 'true' || s === '1') return true;
+    if (s === 'false' || s === '0') return false;
+    return undefined;
+  }
   static _parseIntList(v) {
     if (v === undefined || v === null) return undefined;
     const raw = Array.isArray(v)
@@ -36,8 +46,18 @@ class DocumentsController {
       query.stage_id = DocumentsController._parseIntList(query.stage_id);
       query.specialization_id = DocumentsController._parseIntList(query.specialization_id);
       query.status_id = DocumentsController._parseIntList(query.status_id);
+      if (query.is_closed !== undefined && query.is_closed !== null) {
+        query.is_closed = DocumentsController._parseBool(query.is_closed);
+      }
       if (query.is_active !== undefined) {
         query.is_active = (query.is_active === 'true' || query.is_active === '1' || query.is_active === true);
+      }
+      if (query.my_doc !== undefined && query.my_doc !== null) {
+        const val = query.my_doc === true || query.my_doc === 'true' || query.my_doc === '1';
+        if (val && actor && actor.id) {
+          query.my_doc_user_id = actor.id;
+        }
+        delete query.my_doc;
       }
       const rows = await DocumentsService.listDocuments(query || {}, actor);
       res.json({ data: rows });

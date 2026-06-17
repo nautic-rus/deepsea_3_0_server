@@ -28,6 +28,8 @@ class Document {
       status_id,
       assigne_to,
       created_by,
+      my_doc_user_id,
+      is_closed,
       is_active,
       created_before,
       created_after,
@@ -116,6 +118,11 @@ class Document {
         values.push(statusIds);
       }
     }
+    // is_closed: map to document_status.is_final boolean flag
+    if (is_closed !== undefined && is_closed !== null) {
+      where.push(`status_id IN (SELECT id FROM document_status WHERE is_final = $${idx++})`);
+      values.push(is_closed);
+    }
     // priority: accept single value, comma-separated list or repeated params (array)
     if (priority !== undefined && priority !== null) {
       if (Array.isArray(priority)) {
@@ -128,6 +135,12 @@ class Document {
     }
   if (created_by !== undefined) { where.push(`created_by = $${idx++}`); values.push(created_by); }
   if (assigne_to !== undefined) { where.push(`assigne_to = $${idx++}`); values.push(assigne_to); }
+    // my_doc_user_id: return documents where user is creator OR assignee
+    if (my_doc_user_id !== undefined && my_doc_user_id !== null) {
+      where.push(`(created_by = $${idx} OR assigne_to = $${idx})`);
+      values.push(my_doc_user_id);
+      idx++;
+    }
     // By default only return active documents unless caller explicitly passes is_active
     if (typeof is_active === 'undefined') {
       where.push(`is_active = true`);
