@@ -14955,6 +14955,47 @@ paths:
           description: Authentication required
         '403':
           description: Forbidden - missing permission storage.view
+  "/api/storage/convert/dwg-to-dxf":
+    post:
+      tags:
+      - storage
+      summary: Convert DWG file to DXF
+      description: Accepts a DWG file in multipart/form-data and returns the converted DXF file as a download.
+      security:
+      - bearerAuth: []
+      x-permissions:
+      - storage.create
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                filename:
+                  type: string
+                  description: Optional output filename
+              required:
+              - file
+      responses:
+        '200':
+          description: Converted DXF file
+          content:
+            application/dxf:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Missing file or invalid DWG input
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission storage.create
+        '502':
+          description: Converter failed or did not produce output
   "/api/storage/local":
     post:
       tags:

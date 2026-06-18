@@ -5,7 +5,64 @@ const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 const { normalizeUploadedFilename } = require('../../utils/textEncoding');
-// ...existing code...
+
+let libredwgPromise = null;
+
+function isDwgFile(file) {
+  if (!file) return false;
+  const originalName = String(file.originalname || file.original_name || '');
+  const mimeType = String(file.mimetype || file.mime_type || '').toLowerCase();
+  return /\.dwg$/i.test(originalName) || mimeType.includes('dwg') || mimeType === 'application/acad' || mimeType === 'application/x-acad';
+}
+
+function getLibRedwg() {
+  if (!libredwgPromise) {
+    libredwgPromise = import('@mlightcad/libredwg-web').then((mod) => mod.LibreDwg || mod.default?.LibreDwg || mod.default || mod);
+  }
+  return libredwgPromise;
+}
+
+function ensureDxfFilename(filename, fallbackBaseName) {
+  const raw = filename ? String(filename).trim() : '';
+  const base = raw || `${fallbackBaseName}.dxf`;
+  return /\.dxf$/i.test(base) ? base : `${base.replace(/\.dwg$/i, '')}.dxf`;
+}
+
+function normalizeDxfResult(dxf) {
+  if (!dxf) return null;
+  const buffer = Buffer.isBuffer(dxf)
+    ? dxf
+    : Buffer.from(dxf instanceof ArrayBuffer ? new Uint8Array(dxf) : dxf);
+  const text = buffer.toString('utf8');
+  return { buffer, text };
+}
+
+async function convertDwgToDxfViaLibrary(file, opts = {}) {
+  const normalizedOriginalName = normalizeUploadedFilename(file.originalname);
+  const baseName = path.basename(normalizedOriginalName, path.extname(normalizedOriginalName));
+
+  const LibreDwg = await getLibRedwg();
+  const libredwg = await LibreDwg.create('./node_modules/@mlightcad/libredwg-web/wasm/');
+  const dxf = libredwg.dwg_write_dxf(file.buffer);
+  const normalized = normalizeDxfResult(dxf);
+  if (!normalized || !normalized.buffer.length) {
+    const err = new Error('Failed to convert DWG to DXF. The file may be unsupported, damaged, or use a format not handled by the library.');
+    err.statusCode = 502;
+    throw err;
+  }
+  if (normalized.buffer.length < 64) {
+    const err = new Error('DWG to DXF conversion produced an unexpectedly small result.');
+    err.statusCode = 502;
+    throw err;
+  }
+
+  return {
+    buffer: normalized.buffer,
+    text: normalized.text,
+    filename: ensureDxfFilename(opts.filename, baseName),
+    mime: 'application/dxf'
+  };
+}
 
 /**
  * StorageService
@@ -179,6 +236,18 @@ class StorageService {
     const createFields = { bucket_name: uploaded.bucket, object_key: uploaded.key, storage_type: 's3', file_name: originalName, file_size: uploaded.size, mime_type: uploaded.content_type, uploaded_by: actor.id };
     const created = await Storage.create(createFields);
     return Object.assign({}, created, { url: uploaded.url, size: uploaded.size, content_type: uploaded.content_type });
+  }
+
+  /**
+   * Convert an uploaded DWG file to DXF using the libredwg WebAssembly library.
+   */
+  static async convertDwgToDxf(file, actor, opts = {}) {
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, 'storage.create');
+    if (!allowed) { const err = new Error('Forbidden: missing permission storage.create'); err.statusCode = 403; throw err; }
+    if (!file || !file.buffer || !file.originalname) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
+    if (!isDwgFile(file)) { const err = new Error('Only DWG files are supported'); err.statusCode = 400; throw err; }
+    return await convertDwgToDxfViaLibrary(file, opts);
   }
 
   /**

@@ -1,5 +1,18 @@
 const StorageService = require('../services/storageService');
 
+function ensureDxfFilename(filename, fallbackBaseName = 'converted') {
+  const raw = filename ? String(filename).trim() : '';
+  const base = raw || `${fallbackBaseName}.dxf`;
+  return /\.dxf$/i.test(base) ? base : `${base.replace(/\.dwg$/i, '')}.dxf`;
+}
+
+function toAsciiFallbackFilename(filename) {
+  return String(filename || 'converted.dxf')
+    .normalize('NFKD')
+    .replace(/[^\x20-\x7E]+/g, '_')
+    .replace(/\s+/g, '_');
+}
+
 /**
  * StorageController
  *
@@ -83,6 +96,44 @@ class StorageController {
       // Keep backward compatibility: return single object when one file uploaded
       if (results.length === 1) return res.status(201).json({ data: results[0] });
       return res.status(201).json({ data: results });
+    } catch (err) { next(err); }
+  }
+
+  /**
+   * Convert an uploaded DWG file to DXF and stream the converted file back.
+   * Endpoint: POST /api/storage/convert/dwg-to-dxf
+   */
+  static async convertDwgToDxf(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const file = req.file;
+      if (!file) { const err = new Error('Missing file'); err.statusCode = 400; throw err; }
+
+      const result = await StorageService.convertDwgToDxf(file, actor, {
+        filename: ensureDxfFilename(
+          req.body && req.body.filename ? req.body.filename : undefined,
+          file.originalname ? String(file.originalname).replace(/\.dwg$/i, '') : 'converted'
+        )
+      });
+
+      res.setHeader('Content-Type', result.mime || 'application/dxf');
+      if (result.buffer && typeof result.buffer.length === 'number') {
+        res.setHeader('Content-Length', String(result.buffer.length));
+      }
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${toAsciiFallbackFilename(result.filename)}"; filename*=UTF-8''${encodeURIComponent(result.filename)}`
+      );
+      if (result.buffer) {
+        res.status(200).end(result.buffer);
+        if (result.cleanup) {
+          try { await result.cleanup(); } catch (e) {}
+        }
+        return;
+      }
+      const err = new Error('Converted file is empty');
+      err.statusCode = 502;
+      throw err;
     } catch (err) { next(err); }
   }
 

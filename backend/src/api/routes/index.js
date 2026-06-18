@@ -527,6 +527,8 @@ router.delete('/stages/:id', authMiddleware, stagesController.delete);
 
 // ===== Storage routes =====
 router.get('/storage', authMiddleware, storageController.list);
+// POST /api/storage/convert/dwg-to-dxf - convert uploaded DWG file and return DXF
+router.post('/storage/convert/dwg-to-dxf', authMiddleware, _upload.single('file'), storageController.convertDwgToDxf);
 router.get('/storage/:id', authMiddleware, storageController.get);
 // GET /api/storage/:id/download - download or stream the actual file
 router.get('/storage/:id/download', authMiddleware, storageController.download);
