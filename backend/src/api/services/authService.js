@@ -9,6 +9,14 @@ const { generateAccessToken, generateRefreshToken, getTokenExpiration } = requir
 const AuthError = require('../../errors/AuthError');
 
 class AuthService {
+  static _getMaxActiveSessionsPerUser() {
+    const rawValue = Number(process.env.MAX_ACTIVE_SESSIONS_PER_USER);
+    if (Number.isInteger(rawValue) && rawValue > 0) {
+      return rawValue;
+    }
+    return 2;
+  }
+
   /**
    * Вход в систему
    */
@@ -42,9 +50,6 @@ class AuthService {
       throw new AuthError('Invalid credentials', 401);
     }
 
-    // Обновить время последнего входа
-    await User.updateLastLogin(user.id);
-
     // Генерация токенов
     const tokenPayload = {
       id: user.id,
@@ -56,15 +61,22 @@ class AuthService {
     const refreshToken = generateRefreshToken();
     const expiresAt = getTokenExpiration();
 
-    // Создать сессию
-    await Session.create({
+    // Создать сессию с ограничением активных сессий на пользователя
+    await Session.createWithLimit({
       user_id: user.id,
       token: accessToken,
       refresh_token: refreshToken,
       ip_address: ipAddress,
       user_agent: userAgent,
       expires_at: expiresAt
-    });
+    }, this._getMaxActiveSessionsPerUser());
+
+    // Обновить время последнего входа только после успешного создания сессии
+    try {
+      await User.updateLastLogin(user.id);
+    } catch (error) {
+      console.error('Failed to update last_login after successful login', error && error.message ? error.message : error);
+    }
 
     // Подготовить данные пользователя для ответа
     const userData = {
@@ -91,61 +103,63 @@ class AuthService {
       throw new AuthError('Refresh token required', 400);
     }
 
-    // Найти активную сессию по refresh token
-    const session = await Session.findByRefreshToken(refreshToken);
-    if (!session) {
-      throw new AuthError('Invalid refresh token', 401);
-    }
+    return Session._runInTransaction(async (client) => {
+      // Найти активную сессию по refresh token
+      const session = await Session.findByRefreshToken(refreshToken, client, true);
+      if (!session) {
+        throw new AuthError('Invalid refresh token', 401);
+      }
 
-    // Найти пользователя
-    const user = await User.findById(session.user_id);
-    if (!user) {
-      throw new AuthError('User not found', 401);
-    }
-    if (!user.is_active) {
-      throw new AuthError('User account is deactivated', 403);
-    }
+      // Найти пользователя
+      const user = await User.findById(session.user_id);
+      if (!user) {
+        throw new AuthError('User not found', 401);
+      }
+      if (!user.is_active) {
+        throw new AuthError('User account is deactivated', 403);
+      }
 
-    // Генерация новых токенов
-    const tokenPayload = {
-      id: user.id,
-      username: user.username,
-      email: user.email
-    };
+      // Генерация новых токенов
+      const tokenPayload = {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      };
 
-    const accessToken = generateAccessToken(tokenPayload);
-    const newRefreshToken = generateRefreshToken();
-    const expiresAt = getTokenExpiration();
+      const accessToken = generateAccessToken(tokenPayload);
+      const newRefreshToken = generateRefreshToken();
+      const expiresAt = getTokenExpiration();
 
-    // Деактивируем старую сессию (по старому access token)
-    if (session.token) {
-      await Session.deactivate(session.token);
-    }
+      // Деактивируем старую сессию (по старому access token)
+      if (session.token) {
+        await Session.deactivate(session.token, client);
+      }
 
-    // Создаём новую сессию
-    await Session.create({
-      user_id: user.id,
-      token: accessToken,
-      refresh_token: newRefreshToken,
-      ip_address: ipAddress,
-      user_agent: userAgent,
-      expires_at: expiresAt
+      // Создаём новую сессию
+      await Session.create({
+        user_id: user.id,
+        token: accessToken,
+        refresh_token: newRefreshToken,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        expires_at: expiresAt
+      }, client);
+
+      const userData = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name
+      };
+
+      return {
+        token: accessToken,
+        refresh_token: newRefreshToken,
+        expires_at: expiresAt.toISOString(),
+        user: userData
+      };
     });
-
-    const userData = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name
-    };
-
-    return {
-      token: accessToken,
-      refresh_token: newRefreshToken,
-      expires_at: expiresAt.toISOString(),
-      user: userData
-    };
   }
 
   /**
@@ -162,7 +176,5 @@ class AuthService {
 }
 
 module.exports = AuthService;
-
-
 
 

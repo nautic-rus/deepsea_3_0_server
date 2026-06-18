@@ -8,6 +8,7 @@ const definitions = [
   { key: 'JWT_REFRESH_SECRET', valueType: 'string', description: 'Секрет подписи refresh JWT', isSecret: true, requiresRestart: false },
   { key: 'JWT_EXPIRES_IN', valueType: 'string', defaultValue: '24h', description: 'TTL access токена', isSecret: false, requiresRestart: false },
   { key: 'REFRESH_TOKEN_EXPIRES_IN', valueType: 'string', defaultValue: '7d', description: 'TTL refresh токена', isSecret: false, requiresRestart: false },
+  { key: 'MAX_ACTIVE_SESSIONS_PER_USER', valueType: 'number', defaultValue: 5, description: 'Максимум активных сессий на одного пользователя', isSecret: false, requiresRestart: false },
   { key: 'LOGIN_RATE_LIMIT_WINDOW_MS', valueType: 'number', defaultValue: 600000, description: 'Окно лимита попыток входа в миллисекундах', isSecret: false, requiresRestart: false },
   { key: 'LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP', valueType: 'number', defaultValue: 20, description: 'Максимум неудачных попыток входа с одного IP', isSecret: false, requiresRestart: false },
   { key: 'LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IDENTIFIER', valueType: 'number', defaultValue: 8, description: 'Максимум неудачных попыток на один логин или email', isSecret: false, requiresRestart: false },
