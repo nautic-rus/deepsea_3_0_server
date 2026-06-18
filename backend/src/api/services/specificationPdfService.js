@@ -1127,7 +1127,9 @@ class SpecificationPdfService {
     if (Array.isArray(part.place_values) && part.place_values.length > 0) {
       return part.place_values.join(', ');
     }
-    return '';
+    return String(part && part.drawing_address !== undefined && part.drawing_address !== null
+      ? part.drawing_address
+      : '').trim();
   }
 
   static _resolveMatCode(part) {
