@@ -33,8 +33,7 @@ function normalizeDxfResult(dxf) {
   const buffer = Buffer.isBuffer(dxf)
     ? dxf
     : Buffer.from(dxf instanceof ArrayBuffer ? new Uint8Array(dxf) : dxf);
-  const text = buffer.toString('utf8');
-  return { buffer, text };
+  return { buffer };
 }
 
 async function convertDwgToDxfViaLibrary(file, opts = {}) {
@@ -58,7 +57,6 @@ async function convertDwgToDxfViaLibrary(file, opts = {}) {
 
   return {
     buffer: normalized.buffer,
-    text: normalized.text,
     filename: ensureDxfFilename(opts.filename, baseName),
     mime: 'application/dxf'
   };
