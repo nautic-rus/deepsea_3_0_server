@@ -99,6 +99,16 @@ class SpecificationPartsImportService {
         !Array.isArray(payload) &&
         SpecificationPartsService._toBoolean(payload.update_current_by_part_oid)
       );
+    const useDefaultPartCode = options.useDefaultPartCode !== undefined
+      ? Boolean(options.useDefaultPartCode)
+      : (
+        payload &&
+        typeof payload === 'object' &&
+        !Array.isArray(payload) &&
+        payload.use_default_part_code !== undefined
+          ? SpecificationPartsService._toBoolean(payload.use_default_part_code)
+          : true
+      );
 
     // Convert connector records into request descriptors and decide which import branch applies.
     const connectorSources = validConnectorRows.map((connectorRow) => {
@@ -446,7 +456,9 @@ class SpecificationPartsImportService {
         const materialPartCodeDef = material && material.part_code_def !== null && material.part_code_def !== undefined && String(material.part_code_def).trim() !== ''
           ? String(material.part_code_def).trim()
           : null;
-        const partCode = materialPartCodeDef || row.part_code || null;
+        const partCode = useDefaultPartCode
+          ? (materialPartCodeDef || row.part_code || null)
+          : (row.part_code || null);
         if (!materialId) {
           report.push(buildReportRow(row, rowIndex, null, {
             reason: materialKey

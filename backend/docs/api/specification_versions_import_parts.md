@@ -34,6 +34,7 @@
 | Поле | Тип | Описание |
 | --- | --- | --- |
 | `update_current_by_part_oid` | boolean | Если `true`, импорт обновляет существующие строки по `part_oid`, а не только добавляет новые |
+| `use_default_part_code` | boolean | Если `true`, при отсутствии `row.part_code` используется `equipment_materials_projects.part_code_def` из привязки материала к проекту. Если `false`, значение из `part_code_def` игнорируется |
 
 Также сервис может принять уже готовый payload внешнего источника. Если в теле запроса переданы `rows`, `items`, `data.rows`, `data.items`, `result.rows` или `result.items`, то внешний fetch пропускается, и эти данные нормализуются напрямую.
 
@@ -57,7 +58,8 @@
 13. Рассчитывает `quantity`.
 14. Сохраняет строки в транзакции.
 15. Если включён `update_current_by_part_oid`, обновляет совпадающие строки по `part_oid`.
-16. После успешного импорта обновляет метаданные версии.
+16. Если `use_default_part_code = false`, не использует `equipment_materials_projects.part_code_def` как fallback для `part_code`.
+17. После успешного импорта обновляет метаданные версии.
 
 ## Ветвление по источнику
 
@@ -251,7 +253,8 @@ Content-Type: application/json
 
 ```json
 {
-  "update_current_by_part_oid": true
+  "update_current_by_part_oid": true,
+  "use_default_part_code": false
 }
 ```
 

@@ -26451,6 +26451,10 @@
                   "update_current_by_part_oid": {
                     "type": "boolean",
                     "description": "When true, matching rows are updated by part_oid."
+                  },
+                  "use_default_part_code": {
+                    "type": "boolean",
+                    "description": "When true, falls back to equipment_materials_projects.part_code_def when row.part_code is missing. When false, ignores the project default part code."
                   }
                 }
               }
