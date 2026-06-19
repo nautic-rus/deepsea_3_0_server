@@ -8,10 +8,23 @@ const cacheInvalidator = require('../utils/cacheInvalidator');
 
 const pool = new Pool(dbConfig);
 
+function logPoolError(prefix, err) {
+  console.error(prefix, err);
+}
+
 // Обработка ошибок подключения
 pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
-  process.exit(-1);
+  // Не завершаем процесс: пусть запросы отдают обычную ошибку через middleware.
+  logPoolError('Unexpected error on idle client', err);
+});
+
+pool.on('connect', (client) => {
+  if (!client || typeof client.on !== 'function') return;
+  client.on('error', (err) => {
+    // Ошибка активного/idle клиента должна быть видна в логах, но не должна
+    // убивать весь процесс. Сам запрос при этом всё равно завершится reject'ом.
+    logPoolError('Unexpected error on pooled client', err);
+  });
 });
 
 // Wrap pool.query to emit cache invalidation on write queries (INSERT/UPDATE/DELETE)
@@ -47,7 +60,5 @@ pool.query = async function (text, params, callback) {
 };
 
 module.exports = pool;
-
-
 
 
