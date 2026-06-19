@@ -5395,6 +5395,27 @@ CREATE INDEX idx_customer_questions_project_id ON public.customer_questions USIN
 
 
 --
+-- Name: idx_customer_questions_specialization_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_customer_questions_specialization_id ON public.customer_questions USING btree (specialization_id);
+
+
+--
+-- Name: idx_customer_questions_status_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_customer_questions_status_id ON public.customer_questions USING btree (status_id);
+
+
+--
+-- Name: idx_customer_questions_type_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_customer_questions_type_id ON public.customer_questions USING btree (type_id);
+
+
+--
 -- Name: idx_customer_questions_storage_customer_question_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5661,6 +5682,13 @@ CREATE INDEX idx_documents_project_id ON public.documents USING btree (project_i
 
 
 --
+-- Name: idx_documents_responsible_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_documents_responsible_id ON public.documents USING btree (responsible_id);
+
+
+--
 -- Name: idx_documents_specialization_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5700,6 +5728,20 @@ CREATE INDEX idx_documents_storage_archive_user_id ON public.documents_storage U
 --
 
 CREATE INDEX idx_documents_storage_document_id ON public.documents_storage USING btree (document_id);
+
+
+--
+-- Name: idx_documents_storage_reason_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_documents_storage_reason_id ON public.documents_storage USING btree (reason_id);
+
+
+--
+-- Name: idx_documents_storage_status_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_documents_storage_status_id ON public.documents_storage USING btree (status_id);
 
 
 --
@@ -5983,10 +6025,24 @@ CREATE INDEX idx_materials_directory_id ON public.equipment_materials USING btre
 
 
 --
+-- Name: idx_materials_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_materials_status ON public.equipment_materials USING btree (status);
+
+
+--
 -- Name: idx_materials_stock_code; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_materials_stock_code ON public.equipment_materials USING btree (stock_code);
+
+
+--
+-- Name: idx_materials_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_materials_type ON public.equipment_materials USING btree (type);
 
 
 --
@@ -6001,6 +6057,34 @@ CREATE INDEX idx_materials_unit_id ON public.equipment_materials USING btree (un
 --
 
 CREATE INDEX idx_materials_updated_by ON public.equipment_materials USING btree (updated_by);
+
+
+--
+-- Name: idx_equipment_materials_projects_shipments_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_equipment_materials_projects_shipments_id ON public.equipment_materials_projects USING btree (shipments_id);
+
+
+--
+-- Name: idx_equipment_materials_projects_statement_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_equipment_materials_projects_statement_id ON public.equipment_materials_projects USING btree (statement_id);
+
+
+--
+-- Name: idx_equipment_material_kit_items_kit_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_equipment_material_kit_items_kit_id ON public.equipment_material_kit_items USING btree (kit_id);
+
+
+--
+-- Name: idx_equipment_material_kit_items_material_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_equipment_material_kit_items_material_id ON public.equipment_material_kit_items USING btree (material_id);
 
 
 --
@@ -6151,10 +6235,52 @@ CREATE INDEX idx_specification_specialization_id ON public.specification USING b
 
 
 --
+-- Name: idx_specification_parts_created_by; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_specification_parts_created_by ON public.specification_parts USING btree (created_by);
+
+
+--
+-- Name: idx_specification_parts_material_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_specification_parts_material_id ON public.specification_parts USING btree (material_id);
+
+
+--
+-- Name: idx_specification_parts_parent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_specification_parts_parent_id ON public.specification_parts USING btree (parent_id);
+
+
+--
+-- Name: idx_specification_parts_sfi_code_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_specification_parts_sfi_code_id ON public.specification_parts USING btree (sfi_code_id);
+
+
+--
 -- Name: idx_specification_parts_source; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_specification_parts_source ON public.specification_parts USING btree (source);
+
+
+--
+-- Name: idx_specification_parts_specification_version_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_specification_parts_specification_version_id ON public.specification_parts USING btree (specification_version_id);
+
+
+--
+-- Name: idx_specification_version_specification_id_created_at_id_desc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_specification_version_specification_id_created_at_id_desc ON public.specification_version USING btree (specification_id, created_at DESC, id DESC);
 
 
 --
@@ -6221,10 +6347,31 @@ CREATE INDEX idx_statements_created_by ON public.statements USING btree (created
 
 
 --
+-- Name: idx_statements_parts_created_by; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_statements_parts_created_by ON public.statements_parts USING btree (created_by);
+
+
+--
 -- Name: idx_statements_parts_material_id; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_statements_parts_material_id ON public.statements_parts USING btree (material_id);
+
+
+--
+-- Name: idx_statements_parts_parent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_statements_parts_parent_id ON public.statements_parts USING btree (parent_id);
+
+
+--
+-- Name: idx_statements_parts_specification_version_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_statements_parts_specification_version_id ON public.statements_parts USING btree (specification_version_id);
 
 
 --
@@ -6246,6 +6393,13 @@ CREATE INDEX idx_statements_updated_by ON public.statements USING btree (updated
 --
 
 CREATE INDEX idx_statements_version_statement_id ON public.statements_version USING btree (statement_id);
+
+
+--
+-- Name: idx_statements_version_statement_id_id_desc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_statements_version_statement_id_id_desc ON public.statements_version USING btree (statement_id, id DESC);
 
 
 --

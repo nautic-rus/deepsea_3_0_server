@@ -1,17 +1,6 @@
 const pool = require('../connection');
 
 class SpecificationPart {
-  static async _ensureSchema() {
-    if (!this._schemaEnsurePromise) {
-      this._schemaEnsurePromise = (async () => {
-        await pool.query(`ALTER TABLE IF EXISTS public.specification_parts ADD COLUMN IF NOT EXISTS nest_id bigint`);
-        await pool.query(`ALTER TABLE IF EXISTS public.specification_parts ADD COLUMN IF NOT EXISTS strgroup text`);
-        await pool.query(`ALTER TABLE IF EXISTS public.specification_parts ADD COLUMN IF NOT EXISTS profile_dem text`);
-      })();
-    }
-    return this._schemaEnsurePromise;
-  }
-
   static _selectColumns(alias = null) {
     const prefix = alias ? `${alias}.` : '';
     return [
@@ -50,7 +39,6 @@ class SpecificationPart {
   }
 
   static async list(filters = {}, executor = pool) {
-    await SpecificationPart._ensureSchema();
     const { specification_version_id, page = 1, limit } = filters;
     const offset = limit ? (page - 1) * limit : 0;
     const where = [];
@@ -93,7 +81,6 @@ class SpecificationPart {
   }
 
   static async findBySpecificationVersionId(specificationVersionId, executor = pool) {
-    await SpecificationPart._ensureSchema();
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
       jsonb_set(
         to_jsonb(m),
@@ -187,7 +174,6 @@ class SpecificationPart {
   }
 
   static async findById(id, executor = pool) {
-    await SpecificationPart._ensureSchema();
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
       jsonb_set(
         to_jsonb(m),
@@ -216,7 +202,6 @@ class SpecificationPart {
   }
 
   static async findByIds(ids = [], executor = pool) {
-    await SpecificationPart._ensureSchema();
     const uniqueIds = [...new Set((ids || []).map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id > 0))];
     if (uniqueIds.length === 0) return [];
     const q = `SELECT ${SpecificationPart._selectColumns('sp')},
@@ -248,7 +233,6 @@ class SpecificationPart {
   }
 
   static async create(fields, executor = pool) {
-    await SpecificationPart._ensureSchema();
     const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, profile_dem, nest_id, length, width, thickness, radius, angle, symmetry, strgroup, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27) RETURNING id`;
     const vals = [
       fields.specification_version_id,
@@ -286,7 +270,6 @@ class SpecificationPart {
   }
 
   static async update(id, fields, executor = pool) {
-    await SpecificationPart._ensureSchema();
     const parts = [];
     const values = [];
     let idx = 1;
@@ -309,7 +292,6 @@ class SpecificationPart {
   }
 
   static async updateDrawingAddressById(id, drawingAddress, executor = pool) {
-    await SpecificationPart._ensureSchema();
     const q = `UPDATE specification_parts sp
     SET drawing_address = $2
     WHERE sp.id = $1
@@ -319,7 +301,6 @@ class SpecificationPart {
   }
 
   static async softDelete(id) {
-    await SpecificationPart._ensureSchema();
     try {
       const q = `UPDATE specification_parts SET is_active = false WHERE id = $1`;
       const res = await pool.query(q, [id]);
