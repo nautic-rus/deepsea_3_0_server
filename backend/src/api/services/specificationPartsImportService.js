@@ -54,8 +54,6 @@ class SpecificationPartsImportService {
       throw err;
     }
 
-    await SpecificationPart._ensureSchema();
-
     // External services may use runtime config overrides from the database or env.
     const foranSettings = await SpecificationPartsService._loadForanRuntimeSettings();
     // Resolve the specification's connector set once and filter out incomplete rows.
