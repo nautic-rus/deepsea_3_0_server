@@ -1025,6 +1025,7 @@ class SpecificationPdfService {
   static _mergeGroupedPdfRow(existing, row) {
     const quantity = SpecificationPdfService._toNumberOrNull(row && row.quantity) ?? 1;
     existing.quantity = (SpecificationPdfService._toNumberOrNull(existing.quantity) ?? 0) + quantity;
+    existing.merged_positions_count = (SpecificationPdfService._toNumberOrNull(existing.merged_positions_count) ?? 1) + 1;
     SpecificationPdfService._pushUniqueDisplayValue(existing.room_values, row && row.zone);
     SpecificationPdfService._pushUniqueDisplayValue(existing.place_values, row && row.drawing_address);
   }
@@ -1043,6 +1044,7 @@ class SpecificationPdfService {
         grouped.set(key, {
           ...row,
           quantity,
+          merged_positions_count: 1,
           room_values: roomValue ? [roomValue] : [],
           place_values: placeValue ? [placeValue] : [],
         });
@@ -1090,7 +1092,7 @@ class SpecificationPdfService {
   static _formatWeightValue(value) {
     const weight = SpecificationPdfService._toNumberOrNull(value);
     if (weight === null) return '-';
-    return weight.toFixed(2);
+    return weight.toFixed(3);
   }
 
   static _resolveMaterialWeight(part) {
@@ -1202,9 +1204,14 @@ class SpecificationPdfService {
       </tr>`;
       }
 
+      const baseNumber = SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || '');
+      const rowNumber = grouped && Number(part.merged_positions_count) > 1
+        ? `${baseNumber} (${SpecificationPdfService._escapeHtml(part.merged_positions_count)})`
+        : baseNumber;
+
       return `
       <tr>
-        <td class="wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveLabel(part) || '')}</td>
+        <td class="wrap">${rowNumber}</td>
         <td class="left wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialTitle(part))}</td>
         <td class="wrap">${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialDescr(part))}</td>
         <td>${SpecificationPdfService._escapeHtml(SpecificationPdfService._resolveMaterialUnit(part))}</td>
