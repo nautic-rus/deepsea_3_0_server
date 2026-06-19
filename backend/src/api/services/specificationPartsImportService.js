@@ -347,14 +347,48 @@ class SpecificationPartsImportService {
           [versionId, sourceValues]
         );
       }
-      const values = [];
-      const placeholders = [];
+      const pendingInsertRows = [];
       const persistedIds = [];
       let newCount = 0;
       let updatedCount = 0;
       let deletedCount = 0;
       let kitCount = 0;
-      let idx = 1;
+      const INSERT_BATCH_SIZE = 100;
+      const flushPendingInsertRows = async () => {
+        if (pendingInsertRows.length === 0) {
+          return [];
+        }
+
+        const insertedIds = [];
+
+        while (pendingInsertRows.length > 0) {
+          const batchRows = pendingInsertRows.splice(0, INSERT_BATCH_SIZE);
+          const batchValues = [];
+          const batchPlaceholders = [];
+          let paramIndex = 1;
+
+          for (const rowValues of batchRows) {
+            batchPlaceholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
+            batchValues.push(...rowValues);
+          }
+
+          const insertRes = await client.query(
+            `INSERT INTO specification_parts
+              (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, profile_dem, length, width, thickness, radius, angle, nest_id, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, strgroup, created_by, source)
+             VALUES ${batchPlaceholders.join(', ')}
+             RETURNING id`,
+            batchValues
+          );
+
+          insertedIds.push(
+            ...(insertRes.rows || [])
+              .map((row) => row && row.id)
+              .filter((id) => id !== null && id !== undefined)
+          );
+        }
+
+        return insertedIds;
+      };
       const syncLinkedKitPartsForAffectedRows = async (affectedIds) => {
         const uniqueAffectedIds = [...new Set((affectedIds || [])
           .map((id) => Number(id))
@@ -534,11 +568,10 @@ class SpecificationPartsImportService {
           }
           continue;
         }
-        placeholders.push(`($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`);
-        values.push(
+        pendingInsertRows.push([
           versionId,
           ...persistenceValues
-        );
+        ]);
         newCount += 1;
       }
 
@@ -573,35 +606,14 @@ class SpecificationPartsImportService {
         }
       }
 
-      // If every row was rejected, commit the empty batch and return the report.
-      if (placeholders.length === 0) {
-        if (persistedIds.length === 0) {
-          await client.query('COMMIT');
-          return {
-            imported_count: 0,
-            report_summary: {
-              new_count: newCount,
-              updated_count: updatedCount,
-              deleted_count: deletedCount,
-              kit_count: kitCount
-            },
-            report,
-            data: [],
-            source: {
-              url: connectorSources[0].requestUrl,
-              project_code: connectorSources[0].project_code,
-              oid: connectorSources[0].oid
-            }
-          };
-        }
+      const insertedIds = await flushPendingInsertRows();
+      persistedIds.push(...insertedIds);
 
-        const linkedKitIds = await syncLinkedKitPartsForAffectedRows(persistedIds);
-        const allAffectedIds = [...new Set([...persistedIds, ...linkedKitIds])];
-        await SpecificationVersion.touch(versionId, actor.id, client);
+      // If every row was rejected, commit the empty batch and return the report.
+      if (persistedIds.length === 0) {
         await client.query('COMMIT');
-        const data = await SpecificationPart.findByIds(allAffectedIds);
         return {
-          imported_count: data.length,
+          imported_count: 0,
           report_summary: {
             new_count: newCount,
             updated_count: updatedCount,
@@ -609,7 +621,7 @@ class SpecificationPartsImportService {
             kit_count: kitCount
           },
           report,
-          data,
+          data: [],
           source: {
             url: connectorSources[0].requestUrl,
             project_code: connectorSources[0].project_code,
@@ -618,21 +630,9 @@ class SpecificationPartsImportService {
         };
       }
 
-      const insertRes = await client.query(
-        `INSERT INTO specification_parts
-          (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, profile_dem, length, width, thickness, radius, angle, nest_id, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, strgroup, created_by, source)
-         VALUES ${placeholders.join(', ')}
-         RETURNING id`,
-        values
-      );
-      const insertedIds = (insertRes.rows || [])
-        .map((row) => row && row.id)
-        .filter((id) => id !== null && id !== undefined);
-      const affectedIds = [...persistedIds, ...insertedIds];
-      const linkedKitIds = await syncLinkedKitPartsForAffectedRows(affectedIds);
-      const allAffectedIds = [...new Set([...affectedIds, ...linkedKitIds])];
+      const linkedKitIds = await syncLinkedKitPartsForAffectedRows(persistedIds);
+      const allAffectedIds = [...new Set([...persistedIds, ...linkedKitIds])];
       await SpecificationVersion.touch(versionId, actor.id, client);
-
       await client.query('COMMIT');
 
       // Re-read the inserted rows so the response matches the persisted database shape.
