@@ -652,9 +652,11 @@ class SpecificationPartsService {
       num_eq_part: SpecificationPartsService._pickExternalValue(row, ['NUM_EQ_PART', 'num_eq_part', 'numEqPart']) !== null
         ? Number(SpecificationPartsService._pickExternalValue(row, ['NUM_EQ_PART', 'num_eq_part', 'numEqPart']))
         : null,
-      zone: SpecificationPartsService._pickExternalValue(row, zoneKeys) != null
-        ? String(SpecificationPartsService._pickExternalValue(row, zoneKeys)).trim()
-        : null,
+      zone: sourceMode === 'blocks'
+        ? null
+        : SpecificationPartsService._pickExternalValue(row, zoneKeys) != null
+          ? String(SpecificationPartsService._pickExternalValue(row, zoneKeys)).trim()
+          : null,
       stock_code: SpecificationPartsService._pickExternalValue(row, stockCodeKeys) != null
         ? String(SpecificationPartsService._pickExternalValue(row, stockCodeKeys)).trim()
         : null,
