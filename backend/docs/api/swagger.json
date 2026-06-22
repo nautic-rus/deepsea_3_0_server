@@ -2742,6 +2742,18 @@
             "type": "string",
             "nullable": true
           },
+          "route": {
+            "type": "string",
+            "nullable": true
+          },
+          "system": {
+            "type": "string",
+            "nullable": true
+          },
+          "index": {
+            "type": "string",
+            "nullable": true
+          },
           "unit": {
             "type": "object",
             "nullable": true,
@@ -2921,6 +2933,18 @@
             "nullable": true
           },
           "symmetry": {
+            "type": "string",
+            "nullable": true
+          },
+          "route": {
+            "type": "string",
+            "nullable": true
+          },
+          "system": {
+            "type": "string",
+            "nullable": true
+          },
+          "index": {
             "type": "string",
             "nullable": true
           },
