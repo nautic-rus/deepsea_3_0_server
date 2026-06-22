@@ -100,6 +100,11 @@ class Issue {
    */
   static async findById(id) {
   const q = `SELECT id, project_id, title, description, comment, status_id, type_id, priority, estimated_hours, start_date, due_date, assignee_id, author_id, is_active, created_at, updated_at,
+    COALESCE((
+      SELECT SUM(t.hours)
+      FROM time_logs t
+      WHERE t.issue_id = issues.id
+    ), 0) AS logged_hours,
     (
       SELECT MAX(h.created_at)
       FROM issue_history h
