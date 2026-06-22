@@ -5303,6 +5303,203 @@
             "nullable": true
           }
         }
+      },
+      "TimeLog": {
+        "type": "object",
+        "description": "Time log entry",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Time log ID",
+            "example": 101
+          },
+          "issue_id": {
+            "type": "integer",
+            "description": "Related issue ID",
+            "example": 42
+          },
+          "user_id": {
+            "type": "integer",
+            "description": "User who logged time",
+            "example": 7
+          },
+          "hours": {
+            "type": "number",
+            "format": "float",
+            "description": "Logged hours",
+            "example": 3.5
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Work date",
+            "example": "2026-06-20"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional work description",
+            "example": "Fixed issue filters and updated docs"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Creation timestamp",
+            "example": "2026-06-20T09:15:00.000Z"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Last update timestamp",
+            "example": "2026-06-20T09:15:00.000Z"
+          }
+        }
+      },
+      "TimeLogIntervalCreate": {
+        "type": "object",
+        "description": "Interval payload for bulk time log creation",
+        "required": [
+          "start_date",
+          "end_date",
+          "hours"
+        ],
+        "properties": {
+          "start_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Interval start date, inclusive",
+            "example": "2026-06-01"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Interval end date, inclusive",
+            "example": "2026-06-05"
+          },
+          "days": {
+            "type": "array",
+            "description": "Allowed weekdays. Accepts numbers `0..6` or short names like `mon`, `tue`.",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            },
+            "example": [
+              "mon",
+              "wed",
+              "fri"
+            ]
+          },
+          "hours": {
+            "type": "number",
+            "format": "float",
+            "description": "Hours to create for each matched day",
+            "example": 2
+          },
+          "issue_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Issue ID override for interval rows",
+            "example": 42
+          },
+          "user_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "User ID override for interval rows",
+            "example": 7
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Shared description for created rows",
+            "example": "Daily standup and follow-up"
+          }
+        }
+      },
+      "TimeLogCreate": {
+        "type": "object",
+        "description": "Request body for creating a time log. Supports single-entry creation and interval-based bulk creation.",
+        "properties": {
+          "issue_id": {
+            "type": "integer",
+            "description": "Related issue ID. Required for single create and may also be provided at top level for interval create.",
+            "example": 42
+          },
+          "user_id": {
+            "type": "integer",
+            "description": "User ID. Required for single create and may also be provided at top level for interval create.",
+            "example": 7
+          },
+          "hours": {
+            "type": "number",
+            "format": "float",
+            "description": "Logged hours for a single entry",
+            "example": 3.5
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Work date for a single entry",
+            "example": "2026-06-20"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional work description",
+            "example": "Fixed issue filters and updated docs"
+          },
+          "interval": {
+            "$ref": "#/components/schemas/TimeLogIntervalCreate"
+          }
+        },
+        "example": {
+          "issue_id": 42,
+          "user_id": 7,
+          "hours": 3.5,
+          "date": "2026-06-20",
+          "description": "Fixed issue filters and updated docs"
+        }
+      },
+      "TimeLogUpdate": {
+        "type": "object",
+        "description": "Request body for updating a time log. All fields are optional.",
+        "properties": {
+          "issue_id": {
+            "type": "integer",
+            "description": "Related issue ID",
+            "example": 42
+          },
+          "user_id": {
+            "type": "integer",
+            "description": "User ID",
+            "example": 7
+          },
+          "hours": {
+            "type": "number",
+            "format": "float",
+            "description": "Logged hours",
+            "example": 4
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Work date",
+            "example": "2026-06-21"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional work description",
+            "example": "Extended testing and cleanup"
+          }
+        }
       }
     }
   },
@@ -24422,7 +24619,7 @@
           "time_logs"
         ],
         "summary": "List time logs",
-        "description": "List time log entries. Requires appropriate permission.",
+        "description": "Returns time log entries with optional filters by id, issue, user, exact date, date range, and pagination. Requires `time_logs.view`.",
         "security": [
           {
             "bearerAuth": []
@@ -24437,24 +24634,89 @@
         "parameters": [
           {
             "in": "query",
+            "name": "id",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by time log ID. The backend also accepts comma-separated IDs.",
+            "example": 101
+          },
+          {
+            "in": "query",
             "name": "user_id",
             "schema": {
               "type": "integer"
-            }
+            },
+            "description": "Filter by user ID. The backend also accepts comma-separated IDs.",
+            "example": 7
           },
           {
             "in": "query",
             "name": "project_id",
             "schema": {
               "type": "integer"
-            }
+            },
+            "description": "Project ID filter",
+            "example": 12
           },
           {
             "in": "query",
             "name": "issue_id",
             "schema": {
               "type": "integer"
-            }
+            },
+            "description": "Filter by issue ID. The backend also accepts comma-separated IDs.",
+            "example": 42
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter by exact work date. The backend also accepts comma-separated dates.",
+            "example": "2026-06-20"
+          },
+          {
+            "in": "query",
+            "name": "start_date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias for `date_after`",
+            "example": "2026-06-01"
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Alias for `date_before`",
+            "example": "2026-06-30"
+          },
+          {
+            "in": "query",
+            "name": "date_after",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter from date, inclusive",
+            "example": "2026-06-01"
+          },
+          {
+            "in": "query",
+            "name": "date_before",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            },
+            "description": "Filter to date, inclusive",
+            "example": "2026-06-30"
           },
           {
             "in": "query",
@@ -24462,7 +24724,9 @@
             "schema": {
               "type": "integer",
               "default": 1
-            }
+            },
+            "description": "Page number",
+            "example": 1
           },
           {
             "in": "query",
@@ -24470,12 +24734,14 @@
             "schema": {
               "type": "integer",
               "default": 50
-            }
+            },
+            "description": "Page size",
+            "example": 20
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Time logs list",
             "content": {
               "application/json": {
                 "schema": {
@@ -24488,9 +24754,39 @@
                       }
                     }
                   }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 101,
+                      "issue_id": 42,
+                      "user_id": 7,
+                      "hours": 3.5,
+                      "date": "2026-06-20",
+                      "description": "Fixed issue filters and updated docs",
+                      "created_at": "2026-06-20T09:15:00.000Z",
+                      "updated_at": "2026-06-20T09:15:00.000Z"
+                    },
+                    {
+                      "id": 102,
+                      "issue_id": 42,
+                      "user_id": 7,
+                      "hours": 1.5,
+                      "date": "2026-06-21",
+                      "description": "Review after deployment",
+                      "created_at": "2026-06-21T10:00:00.000Z",
+                      "updated_at": "2026-06-21T10:30:00.000Z"
+                    }
+                  ]
                 }
               }
             }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission `time_logs.view`"
           }
         }
       },
@@ -24499,7 +24795,7 @@
           "time_logs"
         ],
         "summary": "Create time log",
-        "description": "Create a new time log entry.",
+        "description": "Creates either a single time log entry or multiple entries using `interval`.",
         "security": [
           {
             "bearerAuth": []
@@ -24517,20 +24813,106 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/TimeLogCreate"
+              },
+              "examples": {
+                "single": {
+                  "summary": "Single time log entry",
+                  "value": {
+                    "issue_id": 42,
+                    "user_id": 7,
+                    "hours": 3.5,
+                    "date": "2026-06-20",
+                    "description": "Fixed issue filters and updated docs"
+                  }
+                },
+                "interval": {
+                  "summary": "Interval-based bulk creation",
+                  "value": {
+                    "issue_id": 42,
+                    "user_id": 7,
+                    "interval": {
+                      "start_date": "2026-06-01",
+                      "end_date": "2026-06-05",
+                      "days": [
+                        "mon",
+                        "tue",
+                        "wed",
+                        "thu",
+                        "fri"
+                      ],
+                      "hours": 2,
+                      "description": "Daily support work"
+                    }
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "201": {
-            "description": "Created",
+            "description": "Time log created",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/TimeLog"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/TimeLog"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/TimeLog"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "examples": {
+                  "single": {
+                    "summary": "Single created entry",
+                    "value": {
+                      "data": {
+                        "id": 101,
+                        "issue_id": 42,
+                        "user_id": 7,
+                        "hours": 3.5,
+                        "date": "2026-06-20",
+                        "description": "Fixed issue filters and updated docs",
+                        "created_at": "2026-06-20T09:15:00.000Z",
+                        "updated_at": "2026-06-20T09:15:00.000Z"
+                      }
+                    }
+                  },
+                  "interval": {
+                    "summary": "Bulk created entries",
+                    "value": {
+                      "data": [
+                        {
+                          "id": 103,
+                          "issue_id": 42,
+                          "user_id": 7,
+                          "hours": 2,
+                          "date": "2026-06-01",
+                          "description": "Daily support work",
+                          "created_at": "2026-06-01T09:00:00.000Z",
+                          "updated_at": "2026-06-01T09:00:00.000Z"
+                        },
+                        {
+                          "id": 104,
+                          "issue_id": 42,
+                          "user_id": 7,
+                          "hours": 2,
+                          "date": "2026-06-02",
+                          "description": "Daily support work",
+                          "created_at": "2026-06-02T09:00:00.000Z",
+                          "updated_at": "2026-06-02T09:00:00.000Z"
+                        }
+                      ]
                     }
                   }
                 }
@@ -24538,13 +24920,13 @@
             }
           },
           "400": {
-            "description": "Validation error"
+            "description": "Validation error or invalid interval payload"
           },
           "401": {
             "description": "Authentication required"
           },
           "403": {
-            "description": "Forbidden"
+            "description": "Forbidden - missing permission `time_logs.create`"
           }
         }
       }
@@ -24555,7 +24937,7 @@
           "time_logs"
         ],
         "summary": "List current user's time logs",
-        "description": "Returns time logs for the authenticated user. No special permissions required.",
+        "description": "Returns time logs for the authenticated user. Authentication required, but no extra permission is needed.",
         "security": [
           {
             "bearerAuth": []
@@ -24570,14 +24952,18 @@
             "name": "project_id",
             "schema": {
               "type": "integer"
-            }
+            },
+            "description": "Filter by project ID through the related issue",
+            "example": 12
           },
           {
             "in": "query",
             "name": "issue_id",
             "schema": {
               "type": "integer"
-            }
+            },
+            "description": "Filter by issue ID",
+            "example": 42
           },
           {
             "in": "query",
@@ -24586,7 +24972,8 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Filter from date (inclusive)"
+            "description": "Filter from date (inclusive)",
+            "example": "2026-06-01"
           },
           {
             "in": "query",
@@ -24595,7 +24982,8 @@
               "type": "string",
               "format": "date"
             },
-            "description": "Filter to date (inclusive)"
+            "description": "Filter to date (inclusive)",
+            "example": "2026-06-30"
           },
           {
             "in": "query",
@@ -24603,7 +24991,9 @@
             "schema": {
               "type": "integer",
               "default": 1
-            }
+            },
+            "description": "Page number",
+            "example": 1
           },
           {
             "in": "query",
@@ -24611,12 +25001,14 @@
             "schema": {
               "type": "integer",
               "default": 50
-            }
+            },
+            "description": "Page size",
+            "example": 20
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Current user's time logs",
             "content": {
               "application/json": {
                 "schema": {
@@ -24629,6 +25021,20 @@
                       }
                     }
                   }
+                },
+                "example": {
+                  "data": [
+                    {
+                      "id": 101,
+                      "issue_id": 42,
+                      "user_id": 7,
+                      "hours": 3.5,
+                      "date": "2026-06-20",
+                      "description": "Fixed issue filters and updated docs",
+                      "created_at": "2026-06-20T09:15:00.000Z",
+                      "updated_at": "2026-06-20T09:15:00.000Z"
+                    }
+                  ]
                 }
               }
             }
@@ -24656,6 +25062,7 @@
         "x-permissions": [
           "time_logs.view"
         ],
+        "description": "Returns a single time log by ID. Requires `time_logs.view`.",
         "parameters": [
           {
             "in": "path",
@@ -24663,27 +25070,43 @@
             "required": true,
             "schema": {
               "type": "integer"
-            }
+            },
+            "description": "Time log ID",
+            "example": 101
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Time log found",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/TimeLog"
-                    }
-                  }
+                  "$ref": "#/components/schemas/TimeLog"
+                },
+                "example": {
+                  "id": 101,
+                  "issue_id": 42,
+                  "user_id": 7,
+                  "hours": 3.5,
+                  "date": "2026-06-20",
+                  "description": "Fixed issue filters and updated docs",
+                  "created_at": "2026-06-20T09:15:00.000Z",
+                  "updated_at": "2026-06-20T09:15:00.000Z"
                 }
               }
             }
           },
+          "400": {
+            "description": "Invalid ID"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission `time_logs.view`"
+          },
           "404": {
-            "description": "Not found"
+            "description": "Time log not found"
           }
         }
       },
@@ -24692,6 +25115,7 @@
           "time_logs"
         ],
         "summary": "Update time log",
+        "description": "Updates an existing time log. All fields in the request body are optional.",
         "security": [
           {
             "bearerAuth": []
@@ -24710,7 +25134,9 @@
             "required": true,
             "schema": {
               "type": "integer"
-            }
+            },
+            "description": "Time log ID",
+            "example": 101
           }
         ],
         "requestBody": {
@@ -24718,14 +25144,18 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TimeLogCreate"
+                "$ref": "#/components/schemas/TimeLogUpdate"
+              },
+              "example": {
+                "hours": 4,
+                "description": "Extended testing and cleanup"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Time log updated",
             "content": {
               "application/json": {
                 "schema": {
@@ -24735,15 +25165,33 @@
                       "$ref": "#/components/schemas/TimeLog"
                     }
                   }
+                },
+                "example": {
+                  "data": {
+                    "id": 101,
+                    "issue_id": 42,
+                    "user_id": 7,
+                    "hours": 4,
+                    "date": "2026-06-20",
+                    "description": "Extended testing and cleanup",
+                    "created_at": "2026-06-20T09:15:00.000Z",
+                    "updated_at": "2026-06-20T12:00:00.000Z"
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Validation error"
+            "description": "Validation error or invalid ID"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission `time_logs.update`"
           },
           "404": {
-            "description": "Not found"
+            "description": "Time log not found"
           }
         }
       },
@@ -24752,6 +25200,7 @@
           "time_logs"
         ],
         "summary": "Delete time log",
+        "description": "Deletes a time log by ID. Requires `time_logs.delete`.",
         "security": [
           {
             "bearerAuth": []
@@ -24770,15 +25219,41 @@
             "required": true,
             "schema": {
               "type": "integer"
-            }
+            },
+            "description": "Time log ID",
+            "example": 101
           }
         ],
         "responses": {
           "200": {
-            "description": "Deleted"
+            "description": "Time log deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Time log deleted"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission `time_logs.delete`"
           },
           "404": {
-            "description": "Not found"
+            "description": "Time log not found"
           }
         }
       }
