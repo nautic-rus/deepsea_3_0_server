@@ -27,7 +27,6 @@ class SpecificationPart {
       `${prefix}strgroup`,
       `${prefix}route`,
       `${prefix}system`,
-      `${prefix}index`,
       `${prefix}descriptions`,
       `${prefix}cog_x`,
       `${prefix}cog_y`,
@@ -117,8 +116,8 @@ class SpecificationPart {
     if (!sourceParts || sourceParts.length === 0) return [];
 
     const insertSql = `INSERT INTO specification_parts
-      (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, profile_dem, nest_id, length, width, thickness, radius, angle, symmetry, strgroup, route, system, index, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
+      (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, profile_dem, nest_id, length, width, thickness, radius, angle, symmetry, strgroup, route, system, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
       RETURNING id`;
 
     const insertedIds = [];
@@ -147,7 +146,6 @@ class SpecificationPart {
         part.strgroup || null,
         part.route || null,
         part.system || null,
-        part.index || null,
         part.unit || null,
         part.part_type || null,
         part.descriptions || null,
@@ -239,7 +237,7 @@ class SpecificationPart {
   }
 
   static async create(fields, executor = pool) {
-    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, profile_dem, nest_id, length, width, thickness, radius, angle, symmetry, strgroup, route, system, index, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30) RETURNING id`;
+    const q = `INSERT INTO specification_parts (specification_version_id, parent_id, part_code, part_oid, drawing_address, material_id, sfi_code_id, quantity, qty, zone, profile_dem, nest_id, length, width, thickness, radius, angle, symmetry, strgroup, route, system, unit, part_type, descriptions, cog_x, cog_y, cog_z, created_by, source) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29) RETURNING id`;
     const vals = [
       fields.specification_version_id,
       fields.parent_id || null,
@@ -262,7 +260,6 @@ class SpecificationPart {
       fields.strgroup || null,
       fields.route || null,
       fields.system || null,
-      fields.index || null,
       fields.unit || null,
       fields.part_type || null,
       fields.descriptions || null,
@@ -282,7 +279,7 @@ class SpecificationPart {
     const parts = [];
     const values = [];
     let idx = 1;
-    ['parent_id','part_code','part_oid','drawing_address','material_id','sfi_code_id','quantity','qty','zone','profile_dem','nest_id','length','width','thickness','radius','angle','symmetry','strgroup','route','system','index','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
+    ['parent_id','part_code','part_oid','drawing_address','material_id','sfi_code_id','quantity','qty','zone','profile_dem','nest_id','length','width','thickness','radius','angle','symmetry','strgroup','route','system','unit','part_type','descriptions','cog_x','cog_y','cog_z','source'].forEach((k) => {
       if (fields[k] !== undefined) {
         parts.push(`${k} = $${idx++}`);
         const normalized = ['nest_id', 'length', 'width', 'thickness', 'radius', 'angle'].includes(k)

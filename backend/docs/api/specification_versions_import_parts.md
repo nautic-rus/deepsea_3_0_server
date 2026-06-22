@@ -74,10 +74,14 @@
 | `equip_by_zone_oid` | `equip_by_zone_oid` | `/api/oracle/{schemaName}/equipment-by-zone-oid?zone_oid={oid}&filter={eq_type}&mechanical={eq_mech}` |
 | `tray_by_system_oid` | `tray_by_system_oid` | `/api/oracle/{schemaName}/tray-by-system-oid?system_oid={oid}` |
 | `tray_by_zone_oid` | `tray_by_zone_oid` | `/api/oracle/{schemaName}/tray-by-zone-oid?zone_oid={oid}` |
+| `cable_by_system_oid` | `cable_by_system_oid` | `/api/oracle/{schemaName}/cable-by-system-oid?system_oid={oid}` |
+| `cable_by_zone_oid` | `cable_by_zone_oid` | `/api/oracle/{schemaName}/cable-by-zone-oid?zone_oid={oid}` |
 
 Для `equip_by_system_oid` и `equip_by_zone_oid` параметры `filter` и `mechanical` берутся из `specifications_data_connector.eq_type` и `specifications_data_connector.eq_mech`.
 
 Для `tray_by_system_oid` и `tray_by_zone_oid` эти параметры не используются.
+
+Для `cable_by_system_oid` и `cable_by_zone_oid` дополнительные query-параметры тоже не используются.
 
 Если `eq_type` или `eq_mech` пустые, соответствующий query-параметр в запрос не добавляется.
 
@@ -209,6 +213,18 @@
 1. `part_type` всегда записывается как `TRAY`.
 2. Если `unit_id = 3`, `quantity` берется из `LENGTH`.
 3. Во всех остальных случаях `quantity` рассчитывается из `WEIGHT` и веса материала.
+
+### 6. `cable_by_system_oid` и `cable_by_zone_oid`
+
+Для cable-веток:
+
+1. `part_type` всегда записывается как `CABLE`.
+2. `part_code` берётся из `CODE`.
+3. `part_oid` берётся из `SEQID`.
+4. `stock_code` берётся из `STOCK_CODE`.
+5. Если `unit_id = 3`, `quantity` берётся из `LENGTH`.
+6. Если `unit_id = 1`, `quantity = 1`.
+7. Для остальных единиц строка попадает в `report`, потому что для кабельного payload нет данных для корректного пересчёта количества.
 
 ## Что ещё важно знать
 

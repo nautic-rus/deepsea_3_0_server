@@ -17,6 +17,8 @@ class SpecificationSourceConnector {
             WHEN 'equip_by_zone_oid' THEN '/api/oracle/{schemaName}/equipment-by-zone-oid?zone_oid={oid}&filter={eq_type}&mechanical={eq_mech}'
             WHEN 'tray_by_system_oid' THEN '/api/oracle/{schemaName}/tray-by-system-oid?system_oid={oid}'
             WHEN 'tray_by_zone_oid' THEN '/api/oracle/{schemaName}/tray-by-zone-oid?zone_oid={oid}'
+            WHEN 'cable_by_system_oid' THEN '/api/oracle/{schemaName}/cable-by-system-oid?system_oid={oid}'
+            WHEN 'cable_by_zone_oid' THEN '/api/oracle/{schemaName}/cable-by-zone-oid?zone_oid={oid}'
             ELSE NULL
           END
         ) AS url_source,

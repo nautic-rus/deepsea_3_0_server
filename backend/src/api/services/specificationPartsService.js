@@ -82,6 +82,47 @@ class SpecificationPartsService {
     return null;
   }
 
+  static _buildCableRoute(row) {
+    const fromUserId = SpecificationPartsService._normalizeText(
+      SpecificationPartsService._pickExternalValue(row, ['FROM_USERID', 'from_userid'])
+    );
+    const fromZoneUserId = SpecificationPartsService._normalizeText(
+      SpecificationPartsService._pickExternalValue(row, ['FROM_ZONE_USERID', 'from_zone_userid'])
+    );
+    const toUserId = SpecificationPartsService._normalizeText(
+      SpecificationPartsService._pickExternalValue(row, ['TO_USERID', 'to_userid'])
+    );
+    const toZoneUserId = SpecificationPartsService._normalizeText(
+      SpecificationPartsService._pickExternalValue(row, ['TO_ZONE_USERID', 'to_zone_userid'])
+    );
+
+    const fromPart = fromUserId
+      ? `${fromUserId}${fromZoneUserId ? `(${fromZoneUserId})` : ''}`
+      : '';
+    const toPart = toUserId
+      ? `${toUserId}${toZoneUserId ? `(${toZoneUserId})` : ''}`
+      : '';
+
+    if (!fromPart && !toPart) return null;
+    if (!fromPart) return toPart;
+    if (!toPart) return fromPart;
+    return `${fromPart} -> ${toPart}`;
+  }
+
+  static _buildCableZone(row) {
+    const fromZoneUserId = SpecificationPartsService._normalizeText(
+      SpecificationPartsService._pickExternalValue(row, ['FROM_ZONE_USERID', 'from_zone_userid'])
+    );
+    const toZoneUserId = SpecificationPartsService._normalizeText(
+      SpecificationPartsService._pickExternalValue(row, ['TO_ZONE_USERID', 'to_zone_userid'])
+    );
+
+    if (!fromZoneUserId && !toZoneUserId) return null;
+    if (!fromZoneUserId) return toZoneUserId;
+    if (!toZoneUserId) return fromZoneUserId;
+    return `${fromZoneUserId}/${toZoneUserId}`;
+  }
+
   // Enrich part rows with derived total weight when we already know the material.
   static _withComputedTotalWeight(row) {
     if (!row) return row;
@@ -512,7 +553,7 @@ class SpecificationPartsService {
 
   static _normalizeExternalRow(row, sourceKey = 'blocks') {
     // Normalize a single external row into the internal specification_parts shape.
-    // The mapping varies slightly between BLOCKS, ASTRUCTURE, SYSTEMS, and EQUIPMENT/TRAY rows.
+    // The mapping varies slightly between BLOCKS, ASTRUCTURE, SYSTEMS, EQUIPMENT, TRAY, and CABLE rows.
     if (!row || typeof row !== 'object') return null;
     const sourceModeRaw = SpecificationPartsService._normalizeLowerText(sourceKey);
     let sourceMode = 'blocks';
@@ -524,6 +565,8 @@ class SpecificationPartsService {
       sourceMode = 'equipment';
     } else if (sourceModeRaw === 'tray_by_system_oid' || sourceModeRaw === 'tray_by_zone_oid') {
       sourceMode = 'tray';
+    } else if (sourceModeRaw === 'cable_by_system_oid' || sourceModeRaw === 'cable_by_zone_oid') {
+      sourceMode = 'cable';
     }
     const partCodeKeys = sourceMode === 'astructure'
       ? ['CODEID', 'codeid']
@@ -533,6 +576,8 @@ class SpecificationPartsService {
         ? ['ELEMENT_USERID', 'element_userid', 'ELEMENT_NAME', 'element_name']
       : sourceMode === 'tray'
         ? ['USERID', 'userid', 'TRAY_FITTING', 'tray_fitting']
+      : sourceMode === 'cable'
+        ? ['CODE', 'code']
       : ['PART_CODE', 'part_code', 'code', 'CODE'];
     const partOidKeys = sourceMode === 'astructure'
       ? ['MOD_OID', 'mod_oid']
@@ -542,6 +587,8 @@ class SpecificationPartsService {
         ? ['ELEMENT_OID', 'element_oid']
       : sourceMode === 'tray'
         ? ['IDSQ', 'idsq', 'ELEM', 'elem']
+      : sourceMode === 'cable'
+        ? ['SEQID', 'seqid']
       : ['PART_OID', 'part_oid'];
     const totalWeightKeys = sourceMode === 'astructure'
       ? ['WEIGHT', 'weight', 'TOTAL_WEIGHT', 'total_weight']
@@ -549,6 +596,8 @@ class SpecificationPartsService {
         ? ['WEIGHT', 'weight', 'WIEGHT', 'wieght', 'TOTAL_WEIGHT', 'total_weight']
       : sourceMode === 'tray'
         ? ['WEIGHT', 'weight']
+      : sourceMode === 'cable'
+        ? []
       : ['WEIGHT_UNIT', 'weight_unit'];
     const zoneKeys = sourceMode === 'astructure'
       ? ['ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
@@ -558,6 +607,8 @@ class SpecificationPartsService {
         ? ['ZONE_NAME', 'zone_name', 'ZONE_USERID', 'zone_userid']
       : sourceMode === 'tray'
         ? ['ZONE_NAME', 'zone_name', 'ZONE', 'zone']
+      : sourceMode === 'cable'
+        ? ['FROM_ZONE_NAME', 'from_zone_name', 'TO_ZONE_NAME', 'to_zone_name']
       : ['BLOCK_CODE', 'block_code', 'zone', 'ZONE', 'STRGROUP', 'strgroup'];
     const stockCodeKeys = sourceMode === 'astructure'
       ? ['STOCK', 'stock', 'STOCK_CODE', 'stock_code']
@@ -567,6 +618,8 @@ class SpecificationPartsService {
         ? ['COMPONENT_STOCK_CODE', 'component_stock_code']
       : sourceMode === 'tray'
         ? ['STOCK_CODE', 'stock_code', 'COMP_STOCK', 'comp_stock']
+      : sourceMode === 'cable'
+        ? ['STOCK_CODE', 'stock_code']
       : ['STOCK_CODE', 'stock_code'];
     const descriptionsKeys = sourceMode === 'astructure'
       ? ['MATERIAL_DESCRIPTION', 'material_description', 'NORM_DESCR', 'norm_descr', 'DESCRIPTION', 'description', 'PART_DESC', 'part_desc']
@@ -576,6 +629,8 @@ class SpecificationPartsService {
         ? []
       : sourceMode === 'tray'
         ? ['TRAY_FITTING', 'tray_fitting', 'TYPE', 'type', 'LINE', 'line', 'CTYPE', 'ctype']
+      : sourceMode === 'cable'
+        ? ['CABLE_SYSTEM_NAME', 'cable_system_name', 'FROM_USERID', 'from_userid', 'TO_USERID', 'to_userid']
       : ['PART_DESC', 'part_desc', 'description', 'DESCRIPTION'];
     const partType = sourceMode === 'systems'
       ? String(SpecificationPartsService._pickExternalValue(row, ['TYPECODE', 'typecode']) || '').trim() || null
@@ -583,6 +638,8 @@ class SpecificationPartsService {
         ? String(SpecificationPartsService._pickExternalValue(row, ['ELEM_TYPE', 'elem_type']) || '').trim() || null
       : sourceMode === 'tray'
         ? 'TRAY'
+      : sourceMode === 'cable'
+        ? 'CABLE'
       : null;
     const partCodeRaw = SpecificationPartsService._pickExternalValue(row, partCodeKeys);
     const partOidRaw = SpecificationPartsService._pickExternalValue(row, partOidKeys);
@@ -591,7 +648,7 @@ class SpecificationPartsService {
       : null;
     const partOid = SpecificationPartsService._toNumberOrNull(partOidRaw);
     const quantityRaw = SpecificationPartsService._pickExternalValue(row, ['QTY', 'qty', 'quantity', 'QUANTITY']);
-    const quantity = sourceMode === 'equipment' || sourceMode === 'tray'
+    const quantity = sourceMode === 'equipment' || sourceMode === 'tray' || sourceMode === 'cable'
       ? 1
       : quantityRaw !== null && quantityRaw !== undefined && quantityRaw !== ''
       ? Number(quantityRaw)
@@ -642,6 +699,21 @@ class SpecificationPartsService {
     const cogZ = cogZRaw !== undefined && cogZRaw !== null && cogZRaw !== ''
       ? Number(cogZRaw)
       : null;
+    const zone = sourceMode === 'blocks'
+      ? null
+      : sourceMode === 'cable'
+        ? SpecificationPartsService._buildCableZone(row)
+        : SpecificationPartsService._pickExternalValue(row, zoneKeys) != null
+          ? String(SpecificationPartsService._pickExternalValue(row, zoneKeys)).trim()
+          : null;
+    const route = sourceMode === 'cable'
+      ? SpecificationPartsService._buildCableRoute(row)
+      : null;
+    const system = sourceMode === 'cable'
+      ? (SpecificationPartsService._pickExternalValue(row, ['CABLE_SYSTEM_NAME', 'cable_system_name']) != null
+        ? String(SpecificationPartsService._pickExternalValue(row, ['CABLE_SYSTEM_NAME', 'cable_system_name'])).trim()
+        : null)
+      : null;
     return {
       part_code: partCode,
       part_oid: partOid,
@@ -652,11 +724,7 @@ class SpecificationPartsService {
       num_eq_part: SpecificationPartsService._pickExternalValue(row, ['NUM_EQ_PART', 'num_eq_part', 'numEqPart']) !== null
         ? Number(SpecificationPartsService._pickExternalValue(row, ['NUM_EQ_PART', 'num_eq_part', 'numEqPart']))
         : null,
-      zone: sourceMode === 'blocks'
-        ? null
-        : SpecificationPartsService._pickExternalValue(row, zoneKeys) != null
-          ? String(SpecificationPartsService._pickExternalValue(row, zoneKeys)).trim()
-          : null,
+      zone,
       stock_code: SpecificationPartsService._pickExternalValue(row, stockCodeKeys) != null
         ? String(SpecificationPartsService._pickExternalValue(row, stockCodeKeys)).trim()
         : null,
@@ -674,11 +742,13 @@ class SpecificationPartsService {
       cog_y: Number.isNaN(cogY) ? null : cogY,
       cog_z: Number.isNaN(cogZ) ? null : cogZ,
       // These fields are intentionally left empty during import,
-      // except tray rows where part_type is fixed to TRAY.
+      // except tray/cable rows where part_type is fixed by branch.
       part_type: partType,
       symmetry: symmetryRaw !== null && symmetryRaw !== undefined
         ? String(symmetryRaw).trim() || null
         : null,
+      route,
+      system,
       unit: null,
       sfi_code_id: SpecificationPartsService._toNumberOrNull(
         SpecificationPartsService._pickExternalValue(row, ['SFI_CODE_ID', 'sfi_code_id'])
@@ -764,6 +834,10 @@ class SpecificationPartsService {
 
   static _resolveTrayQuantity(row, material) {
     return SpecificationPartsService._resolveTrayQuantityDetails(row, material);
+  }
+
+  static _resolveCableQuantity(row, material) {
+    return SpecificationPartsService._resolveCableQuantityDetails(row, material);
   }
 
   static _resolveAstructureQuantityDetails(row, material) {
@@ -899,6 +973,28 @@ class SpecificationPartsService {
     return { quantity: 1, calculated: false, reason: 'WEIGHT and material weight are missing, fell back to 1' };
   }
 
+  static _resolveCableQuantityDetails(row, material) {
+    // CABLE rows carry the usable routing length directly in LENGTH.
+    const unitId = material && material.unit_id !== null && material.unit_id !== undefined && !Number.isNaN(Number(material.unit_id))
+      ? Number(material.unit_id)
+      : null;
+    const length = row.length !== null && row.length !== undefined && !Number.isNaN(Number(row.length))
+      ? Number(row.length)
+      : null;
+
+    if (unitId === 3) {
+      return length !== null
+        ? { quantity: length, calculated: true, reason: null }
+        : { quantity: 1, calculated: false, reason: 'LENGTH is missing, fell back to 1' };
+    }
+
+    if (unitId === 1) {
+      return { quantity: 1, calculated: true, reason: null };
+    }
+
+    return { quantity: 1, calculated: false, reason: 'Unsupported unit for cable import, fell back to 1' };
+  }
+
   static _resolveForanBaseUrl(requestBaseUrl = null, runtimeUrl = null) {
     // Resolve the base URL for external import services with sane fallbacks.
     const configured = String(runtimeUrl || '').trim();
@@ -1013,6 +1109,32 @@ class SpecificationPartsService {
     );
   }
 
+  static _buildCableBySystemRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+    // CABLE BY SYSTEM uses the schemaName pattern with system_oid query param.
+    return SpecificationPartsService._buildSchemaOidRequestUrl(
+      template,
+      schemaName,
+      oid,
+      'system_oid',
+      null,
+      requestBaseUrl,
+      runtimeUrl
+    );
+  }
+
+  static _buildCableByZoneRequestUrl(template, schemaName, oid, requestBaseUrl = null, runtimeUrl = null) {
+    // CABLE BY ZONE uses the schemaName pattern with zone_oid query param.
+    return SpecificationPartsService._buildSchemaOidRequestUrl(
+      template,
+      schemaName,
+      oid,
+      'zone_oid',
+      null,
+      requestBaseUrl,
+      runtimeUrl
+    );
+  }
+
   static _applyEquipmentTemplateParams(template, dataConnector = null) {
     // Equipment source templates may still carry eq_type/eq_mech placeholders in the path string.
     const eqType = SpecificationPartsService._normalizeText(dataConnector && dataConnector.eq_type);
@@ -1028,6 +1150,37 @@ class SpecificationPartsService {
       filter: SpecificationPartsService._normalizeText(dataConnector && dataConnector.eq_type),
       mechanical: SpecificationPartsService._normalizeText(dataConnector && dataConnector.eq_mech)
     };
+  }
+
+  static _resolveSourceConnectorTemplate(sourceConnector = null) {
+    const explicitUrl = SpecificationPartsService._normalizeText(sourceConnector && sourceConnector.url);
+    if (explicitUrl) {
+      return explicitUrl;
+    }
+
+    const code = SpecificationPartsService._normalizeLowerText(sourceConnector && sourceConnector.code);
+    switch (code) {
+      case 'block_oid':
+        return '/api/oracle/{project_code}/blocks';
+      case 'as_oid':
+        return '/api/oracle/{project_code}/astructure';
+      case 'system_oid':
+        return '/api/oracle/{schemaName}/parts-by-system-oid?system_oid={oid}';
+      case 'equip_by_system_oid':
+        return '/api/oracle/{schemaName}/equipment-by-system-oid?system_oid={oid}&filter={eq_type}&mechanical={eq_mech}';
+      case 'equip_by_zone_oid':
+        return '/api/oracle/{schemaName}/equipment-by-zone-oid?zone_oid={oid}&filter={eq_type}&mechanical={eq_mech}';
+      case 'tray_by_system_oid':
+        return '/api/oracle/{schemaName}/tray-by-system-oid?system_oid={oid}';
+      case 'tray_by_zone_oid':
+        return '/api/oracle/{schemaName}/tray-by-zone-oid?zone_oid={oid}';
+      case 'cable_by_system_oid':
+        return '/api/oracle/{schemaName}/cable-by-system-oid?system_oid={oid}';
+      case 'cable_by_zone_oid':
+        return '/api/oracle/{schemaName}/cable-by-zone-oid?zone_oid={oid}';
+      default:
+        return '';
+    }
   }
 
   static _buildSchemaOidRequestUrl(template, schemaName, oid, queryParamName, extraQueryParams = null, requestBaseUrl = null, runtimeUrl = null) {
@@ -1098,6 +1251,20 @@ class SpecificationPartsService {
     if (code === 'tray_by_zone_oid' || name.startsWith('tray by zone')) {
       return {
         key: 'tray_by_zone_oid',
+        sourceValue: 'foran'
+      };
+    }
+
+    if (code === 'cable_by_system_oid' || name.startsWith('cable by system')) {
+      return {
+        key: 'cable_by_system_oid',
+        sourceValue: 'foran'
+      };
+    }
+
+    if (code === 'cable_by_zone_oid' || name.startsWith('cable by zone')) {
+      return {
+        key: 'cable_by_zone_oid',
         sourceValue: 'foran'
       };
     }

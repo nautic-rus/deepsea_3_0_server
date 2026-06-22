@@ -115,12 +115,13 @@ class SpecificationPartsImportService {
       const dataConnector = connectorRow.data_connector;
       const oid = dataConnector ? dataConnector.oid : null;
       const importStrategy = SpecificationPartsService._resolveConnectorImportStrategy(connectorRow);
+      const sourceTemplate = SpecificationPartsService._resolveSourceConnectorTemplate(sourceConnector);
       const sourceValue = projectConnector && projectConnector.source !== undefined && projectConnector.source !== null
         ? String(projectConnector.source).trim() || null
         : null;
       const requestUrl = importStrategy.key === 'astructure'
         ? SpecificationPartsService._buildAstructureRequestUrl(
-          sourceConnector.url,
+          sourceTemplate,
           projectConnector.project_code,
           oid,
           options.requestBaseUrl || null,
@@ -128,7 +129,7 @@ class SpecificationPartsImportService {
         )
         : importStrategy.key === 'systems'
           ? SpecificationPartsService._buildSystemsRequestUrl(
-            sourceConnector.url,
+            sourceTemplate,
             projectConnector.project_code,
             oid,
             options.requestBaseUrl || null,
@@ -136,7 +137,7 @@ class SpecificationPartsImportService {
           )
         : importStrategy.key === 'equip_by_system_oid'
           ? SpecificationPartsService._buildEquipmentBySystemRequestUrl(
-            sourceConnector.url,
+            sourceTemplate,
             projectConnector.project_code,
             oid,
             dataConnector,
@@ -145,7 +146,7 @@ class SpecificationPartsImportService {
           )
           : importStrategy.key === 'equip_by_zone_oid'
             ? SpecificationPartsService._buildEquipmentByZoneRequestUrl(
-              sourceConnector.url,
+              sourceTemplate,
               projectConnector.project_code,
               oid,
               dataConnector,
@@ -154,7 +155,7 @@ class SpecificationPartsImportService {
             )
             : importStrategy.key === 'tray_by_system_oid'
               ? SpecificationPartsService._buildTrayBySystemRequestUrl(
-                sourceConnector.url,
+                sourceTemplate,
                 projectConnector.project_code,
                 oid,
                 options.requestBaseUrl || null,
@@ -162,14 +163,30 @@ class SpecificationPartsImportService {
               )
               : importStrategy.key === 'tray_by_zone_oid'
                 ? SpecificationPartsService._buildTrayByZoneRequestUrl(
-                  sourceConnector.url,
+                  sourceTemplate,
                   projectConnector.project_code,
                   oid,
                   options.requestBaseUrl || null,
                   foranSettings.url
                 )
+                : importStrategy.key === 'cable_by_system_oid'
+                  ? SpecificationPartsService._buildCableBySystemRequestUrl(
+                    sourceTemplate,
+                    projectConnector.project_code,
+                    oid,
+                    options.requestBaseUrl || null,
+                    foranSettings.url
+                  )
+                  : importStrategy.key === 'cable_by_zone_oid'
+                    ? SpecificationPartsService._buildCableByZoneRequestUrl(
+                      sourceTemplate,
+                      projectConnector.project_code,
+                      oid,
+                      options.requestBaseUrl || null,
+                      foranSettings.url
+                    )
           : SpecificationPartsService._buildForanRequestUrl(
-            sourceConnector.url,
+            sourceTemplate,
             projectConnector.project_code,
             oid,
             sourceConnector.code,
@@ -366,13 +383,13 @@ class SpecificationPartsImportService {
           let paramIndex = 1;
 
           for (const rowValues of batchRows) {
-            batchPlaceholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
+            batchPlaceholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
             batchValues.push(...rowValues);
           }
 
           const insertRes = await client.query(
             `INSERT INTO specification_parts
-              (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, profile_dem, length, width, thickness, radius, angle, nest_id, symmetry, unit, part_type, descriptions, cog_x, cog_y, cog_z, strgroup, created_by, source)
+              (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, profile_dem, length, width, thickness, radius, angle, nest_id, symmetry, route, system, unit, part_type, descriptions, cog_x, cog_y, cog_z, strgroup, created_by, source)
              VALUES ${batchPlaceholders.join(', ')}
              RETURNING id`,
             batchValues
@@ -430,16 +447,18 @@ class SpecificationPartsImportService {
              angle = $13,
              nest_id = $14,
              symmetry = $15,
-             unit = $16,
-             part_type = $17,
-             descriptions = $18,
-             cog_x = $19,
-             cog_y = $20,
-             cog_z = $21,
-             strgroup = $22,
-             created_by = $23,
-             source = $24
-         WHERE id = $25
+             route = $16,
+             system = $17,
+             unit = $18,
+             part_type = $19,
+             descriptions = $20,
+             cog_x = $21,
+             cog_y = $22,
+             cog_z = $23,
+             strgroup = $24,
+             created_by = $25,
+             source = $26
+         WHERE id = $27
          RETURNING id`;
       const buildReportRow = (row, rowIndex, material, extra = {}) => ({
         row_index: rowIndex + 1,
@@ -456,6 +475,8 @@ class SpecificationPartsImportService {
         width: row.width ?? null,
         thickness: row.thickness ?? null,
         symmetry: row.symmetry ?? null,
+        route: row.route ?? null,
+        system: row.system ?? null,
         descriptions: row.descriptions ?? null,
         cog_x: row.cog_x ?? null,
         cog_y: row.cog_y ?? null,
@@ -488,9 +509,11 @@ class SpecificationPartsImportService {
         const materialPartCodeDef = material && material.part_code_def !== null && material.part_code_def !== undefined && String(material.part_code_def).trim() !== ''
           ? String(material.part_code_def).trim()
           : null;
-        const partCode = useDefaultPartCode
-          ? (materialPartCodeDef || row.part_code || null)
-          : (row.part_code || null);
+        const partCode = row.importBranch === 'cable_by_system_oid' || row.importBranch === 'cable_by_zone_oid'
+          ? (row.part_code || null)
+          : useDefaultPartCode
+            ? (materialPartCodeDef || row.part_code || null)
+            : (row.part_code || null);
         if (!materialId) {
           report.push(buildReportRow(row, rowIndex, null, {
             reason: materialKey
@@ -508,9 +531,11 @@ class SpecificationPartsImportService {
             ? SpecificationPartsService._resolveSystemsQuantityDetails(row, material)
             : row.importBranch === 'tray_by_system_oid' || row.importBranch === 'tray_by_zone_oid'
               ? SpecificationPartsService._resolveTrayQuantityDetails(row, material)
+              : row.importBranch === 'cable_by_system_oid' || row.importBranch === 'cable_by_zone_oid'
+                ? SpecificationPartsService._resolveCableQuantityDetails(row, material)
               : row.importBranch === 'equip_by_system_oid' || row.importBranch === 'equip_by_zone_oid'
-              ? SpecificationPartsService._resolveEquipmentQuantityDetails(row, material)
-            : SpecificationPartsService._resolveQuantityDetails(row, material);
+                ? SpecificationPartsService._resolveEquipmentQuantityDetails(row, material)
+                : SpecificationPartsService._resolveQuantityDetails(row, material);
         const resolvedQuantity = quantityResolution.quantity;
         const numericQuantity = SpecificationPartsService._toNumberOrNull(resolvedQuantity);
         if (numericQuantity === null || !Number.isFinite(numericQuantity) || numericQuantity <= 0) {
@@ -543,6 +568,8 @@ class SpecificationPartsImportService {
           row.angle,
           row.nest_id,
           row.symmetry,
+          row.route,
+          row.system,
           row.unit,
           row.part_type,
           null,
