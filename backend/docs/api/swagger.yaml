@@ -3881,10 +3881,8 @@ components:
           type: integer
           description: Related issue ID
           example: 42
-        user_id:
-          type: integer
-          description: User who logged time
-          example: 7
+        user:
+          "$ref": "#/components/schemas/TimeLogUser"
         hours:
           type: number
           format: float
@@ -3912,6 +3910,37 @@ components:
           nullable: true
           description: Last update timestamp
           example: '2026-06-20T09:15:00.000Z'
+    TimeLogUser:
+      type: object
+      description: Short user card for a time log entry
+      properties:
+        id:
+          type: integer
+          example: 341
+        username:
+          type: string
+          nullable: true
+          example: spiridovich
+        first_name:
+          type: string
+          nullable: true
+          example: Павел
+        last_name:
+          type: string
+          nullable: true
+          example: Спиридович
+        middle_name:
+          type: string
+          nullable: true
+          example: Вячеславович
+        full_name:
+          type: string
+          nullable: true
+          example: Спиридович Павел Вячеславович
+        avatar_id:
+          type: integer
+          nullable: true
+          example: 297
     TimeLogIntervalCreate:
       type: object
       description: Interval payload for bulk time log creation
@@ -16358,7 +16387,14 @@ paths:
                 data:
                 - id: 101
                   issue_id: 42
-                  user_id: 7
+                  user:
+                    id: 341
+                    username: spiridovich
+                    first_name: Павел
+                    last_name: Спиридович
+                    middle_name: Вячеславович
+                    full_name: Спиридович Павел Вячеславович
+                    avatar_id: 297
                   hours: 3.5
                   date: '2026-06-20'
                   description: Fixed issue filters and updated docs
@@ -16366,7 +16402,14 @@ paths:
                   updated_at: '2026-06-20T09:15:00.000Z'
                 - id: 102
                   issue_id: 42
-                  user_id: 7
+                  user:
+                    id: 342
+                    username: ivanov
+                    first_name: Иван
+                    last_name: Иванов
+                    middle_name: Сергеевич
+                    full_name: Иванов Иван Сергеевич
+                    avatar_id: 298
                   hours: 1.5
                   date: '2026-06-21'
                   description: Review after deployment
@@ -16380,7 +16423,7 @@ paths:
       tags:
       - time_logs
       summary: Create time log
-      description: Creates either a single time log entry or multiple entries using `interval`.
+      description: Creates either a single time log entry or multiple entries using `interval`. The total logged hours for the same user on the same day must not exceed `environment_settings.MAX_HOURS_PER_DAY`.
       security:
       - bearerAuth: []
       - cookieAuth: []
@@ -16438,7 +16481,14 @@ paths:
                     data:
                       id: 101
                       issue_id: 42
-                      user_id: 7
+                      user:
+                        id: 341
+                        username: spiridovich
+                        first_name: Павел
+                        last_name: Спиридович
+                        middle_name: Вячеславович
+                        full_name: Спиридович Павел Вячеславович
+                        avatar_id: 297
                       hours: 3.5
                       date: '2026-06-20'
                       description: Fixed issue filters and updated docs
@@ -16450,7 +16500,14 @@ paths:
                     data:
                     - id: 103
                       issue_id: 42
-                      user_id: 7
+                      user:
+                        id: 341
+                        username: spiridovich
+                        first_name: Павел
+                        last_name: Спиридович
+                        middle_name: Вячеславович
+                        full_name: Спиридович Павел Вячеславович
+                        avatar_id: 297
                       hours: 2
                       date: '2026-06-01'
                       description: Daily support work
@@ -16458,14 +16515,21 @@ paths:
                       updated_at: '2026-06-01T09:00:00.000Z'
                     - id: 104
                       issue_id: 42
-                      user_id: 7
+                      user:
+                        id: 341
+                        username: spiridovich
+                        first_name: Павел
+                        last_name: Спиридович
+                        middle_name: Вячеславович
+                        full_name: Спиридович Павел Вячеславович
+                        avatar_id: 297
                       hours: 2
                       date: '2026-06-02'
                       description: Daily support work
                       created_at: '2026-06-02T09:00:00.000Z'
                       updated_at: '2026-06-02T09:00:00.000Z'
         '400':
-          description: Validation error or invalid interval payload
+          description: Validation error, invalid interval payload, or daily hours limit exceeded
         '401':
           description: Authentication required
         '403':
@@ -16536,7 +16600,14 @@ paths:
                 data:
                 - id: 101
                   issue_id: 42
-                  user_id: 7
+                  user:
+                    id: 341
+                    username: spiridovich
+                    first_name: Павел
+                    last_name: Спиридович
+                    middle_name: Вячеславович
+                    full_name: Спиридович Павел Вячеславович
+                    avatar_id: 297
                   hours: 3.5
                   date: '2026-06-20'
                   description: Fixed issue filters and updated docs
@@ -16544,6 +16615,130 @@ paths:
                   updated_at: '2026-06-20T09:15:00.000Z'
         '401':
           description: Authentication required
+  "/api/time_logs/issue/{issue_id}":
+    get:
+      tags:
+      - time_logs
+      summary: List time logs by issue
+      description: Returns all hour write-offs for a specific task. Supports additional filters by user, exact date, date range, and pagination. Requires `time_logs.view`.
+      security:
+      - bearerAuth: []
+      - cookieAuth: []
+      x-permissions:
+      - time_logs.view
+      parameters:
+      - in: path
+        name: issue_id
+        required: true
+        schema:
+          type: integer
+        description: Issue ID
+        example: 42
+      - in: query
+        name: user_id
+        schema:
+          type: integer
+        description: Filter by user ID. The backend also accepts comma-separated IDs.
+        example: 7
+      - in: query
+        name: date
+        schema:
+          type: string
+          format: date
+        description: Filter by exact work date. The backend also accepts comma-separated dates.
+        example: '2026-06-20'
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+        description: Alias for `date_after`
+        example: '2026-06-01'
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+        description: Alias for `date_before`
+        example: '2026-06-30'
+      - in: query
+        name: date_after
+        schema:
+          type: string
+          format: date
+        description: Filter from date, inclusive
+        example: '2026-06-01'
+      - in: query
+        name: date_before
+        schema:
+          type: string
+          format: date
+        description: Filter to date, inclusive
+        example: '2026-06-30'
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+        description: Page number
+        example: 1
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 50
+        description: Page size
+        example: 20
+      responses:
+        '200':
+          description: Issue time logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/TimeLog"
+              example:
+                data:
+                - id: 101
+                  issue_id: 42
+                  user:
+                    id: 341
+                    username: spiridovich
+                    first_name: Павел
+                    last_name: Спиридович
+                    middle_name: Вячеславович
+                    full_name: Спиридович Павел Вячеславович
+                    avatar_id: 297
+                  hours: 3.5
+                  date: '2026-06-20'
+                  description: Fixed issue filters and updated docs
+                  created_at: '2026-06-20T09:15:00.000Z'
+                  updated_at: '2026-06-20T09:15:00.000Z'
+                - id: 102
+                  issue_id: 42
+                  user:
+                    id: 342
+                    username: ivanov
+                    first_name: Иван
+                    last_name: Иванов
+                    middle_name: Сергеевич
+                    full_name: Иванов Иван Сергеевич
+                    avatar_id: 298
+                  hours: 1
+                  date: '2026-06-21'
+                  description: QA verification
+                  created_at: '2026-06-21T10:00:00.000Z'
+                  updated_at: '2026-06-21T10:30:00.000Z'
+        '400':
+          description: Invalid issue ID
+        '401':
+          description: Authentication required
+        '403':
+          description: Forbidden - missing permission `time_logs.view`
   "/api/time_logs/{id}":
     get:
       tags:
@@ -16573,7 +16768,14 @@ paths:
               example:
                 id: 101
                 issue_id: 42
-                user_id: 7
+                user:
+                  id: 341
+                  username: spiridovich
+                  first_name: Павел
+                  last_name: Спиридович
+                  middle_name: Вячеславович
+                  full_name: Спиридович Павел Вячеславович
+                  avatar_id: 297
                 hours: 3.5
                 date: '2026-06-20'
                 description: Fixed issue filters and updated docs
@@ -16628,7 +16830,14 @@ paths:
                 data:
                   id: 101
                   issue_id: 42
-                  user_id: 7
+                  user:
+                    id: 341
+                    username: spiridovich
+                    first_name: Павел
+                    last_name: Спиридович
+                    middle_name: Вячеславович
+                    full_name: Спиридович Павел Вячеславович
+                    avatar_id: 297
                   hours: 4
                   date: '2026-06-20'
                   description: Extended testing and cleanup

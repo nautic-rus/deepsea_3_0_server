@@ -38,6 +38,30 @@ class TimeLogsController {
     } catch (err) { next(err); }
   }
 
+  static async listByIssue(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const issueId = parseInt(req.params.issue_id, 10);
+      const q = Object.assign({}, req.query || {});
+      if (q.start_date && !q.date_after) q.date_after = q.start_date;
+      if (q.end_date && !q.date_before) q.date_before = q.end_date;
+      if (q.page) q.page = Number(q.page) || 1;
+      if (q.limit) q.limit = Number(q.limit) || undefined;
+      if (q.user_id && typeof q.user_id === 'string' && q.user_id.includes(',')) {
+        q.user_id = q.user_id.split(',').map(s => s.trim()).filter(Boolean).map(v => Number(v));
+      } else if (q.user_id && typeof q.user_id === 'string') {
+        const userId = Number(q.user_id);
+        if (!Number.isNaN(userId)) q.user_id = userId;
+      }
+      if (q.date && typeof q.date === 'string' && q.date.includes(',')) {
+        q.date = q.date.split(',').map(s => s.trim()).filter(Boolean);
+      }
+
+      const rows = await TimeLogsService.listTimeLogsByIssue(issueId, q, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
   static async get(req, res, next) {
     try {
       const actor = req.user || null;

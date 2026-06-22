@@ -1,8 +1,48 @@
 const TimeLog = require('../../db/models/TimeLog');
 const { hasPermission } = require('./permissionChecker');
 const pool = require('../../db/connection');
+const { getEnvironmentSetting } = require('../../config/environmentSettings');
 
 class TimeLogsService {
+  static async getMaxHoursPerDay() {
+    const setting = await getEnvironmentSetting('MAX_HOURS_PER_DAY');
+    const value = Number(setting && setting.value);
+    if (!Number.isFinite(value) || value <= 0) {
+      const err = new Error('Invalid environment setting MAX_HOURS_PER_DAY');
+      err.statusCode = 500;
+      throw err;
+    }
+    return value;
+  }
+
+  static async assertDailyHoursLimit({ user_id, date, hours }) {
+    const userId = Number(user_id);
+    const loggedDate = String(date || '').trim();
+    const requestedHours = Number(hours);
+
+    if (!userId || !loggedDate || !Number.isFinite(requestedHours)) {
+      const err = new Error('Invalid time log payload for daily hours validation');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const maxHoursPerDay = await this.getMaxHoursPerDay();
+    const res = await pool.query(
+      `SELECT COALESCE(SUM(hours), 0) AS total_hours
+       FROM time_logs
+       WHERE user_id = $1 AND date = $2`,
+      [userId, loggedDate]
+    );
+    const existingHours = Number(res.rows[0] && res.rows[0].total_hours) || 0;
+    const nextTotal = existingHours + requestedHours;
+
+    if (nextTotal > maxHoursPerDay) {
+      const err = new Error(`Daily hours limit exceeded: ${nextTotal} > ${maxHoursPerDay} for user ${userId} on ${loggedDate}`);
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+
   static async listTimeLogs(query = {}, actor) {
     const requiredPermission = 'time_logs.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
@@ -20,6 +60,17 @@ class TimeLogsService {
     const r = await TimeLog.findById(Number(id));
     if (!r) { const err = new Error('Time log not found'); err.statusCode = 404; throw err; }
     return r;
+  }
+
+  static async listTimeLogsByIssue(issueId, query = {}, actor) {
+    const requiredPermission = 'time_logs.view';
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, requiredPermission);
+    if (!allowed) { const err = new Error('Forbidden: missing permission time_logs.view'); err.statusCode = 403; throw err; }
+    if (!issueId || Number.isNaN(Number(issueId))) { const err = new Error('Invalid issue_id'); err.statusCode = 400; throw err; }
+
+    const filters = Object.assign({}, query, { issue_id: Number(issueId) });
+    return await TimeLog.list(filters);
   }
 
   static async createTimeLog(fields, actor) {
@@ -70,6 +121,7 @@ class TimeLogsService {
             description: fields.description || interval.description || null
           };
           if (!row.issue_id || !row.user_id) { const err = new Error('Missing required fields: issue_id and user_id must be provided either at top-level or inside interval'); err.statusCode = 400; throw err; }
+          await TimeLogsService.assertDailyHoursLimit(row);
           const createdRow = await TimeLog.create(row);
           created.push(createdRow);
           count++;
@@ -83,6 +135,7 @@ class TimeLogsService {
 
     // Single time log
     if (!fields || !fields.issue_id || !fields.user_id || !fields.hours || !fields.date) { const err = new Error('Missing required fields'); err.statusCode = 400; throw err; }
+    await TimeLogsService.assertDailyHoursLimit(fields);
     return await TimeLog.create(fields);
   }
 
@@ -121,7 +174,19 @@ class TimeLogsService {
     if (filters.project_id) {
       const vals = [];
       let idx = 1;
-      let q = 'SELECT t.id, t.issue_id, t.user_id, t.hours, t.date, t.description, t.created_at, t.updated_at FROM time_logs t JOIN issues i ON t.issue_id = i.id WHERE t.user_id = $' + (idx++);
+      let q = `SELECT
+        t.id,
+        t.issue_id,
+        ${TimeLog.userJsonSql('u')} AS user,
+        t.hours,
+        t.date,
+        t.description,
+        t.created_at,
+        t.updated_at
+        FROM time_logs t
+        JOIN issues i ON t.issue_id = i.id
+        LEFT JOIN users u ON u.id = t.user_id
+        WHERE t.user_id = $` + (idx++);
       vals.push(actor.id);
       q += ' AND i.project_id = $' + (idx++);
       vals.push(filters.project_id);

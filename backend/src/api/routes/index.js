@@ -598,6 +598,8 @@ router.get('/audit_logs', authMiddleware, auditLogsController.list);
 router.get('/time_logs', authMiddleware, timeLogsController.list);
 // GET /api/time_logs/me - list current user's time logs (no extra permissions required)
 router.get('/time_logs/me', authMiddleware, timeLogsController.listMine);
+// GET /api/time_logs/issue/:issue_id - list time logs for a specific issue
+router.get('/time_logs/issue/:issue_id', authMiddleware, timeLogsController.listByIssue);
 router.get('/time_logs/:id', authMiddleware, timeLogsController.get);
 router.post('/time_logs', authMiddleware, timeLogsController.create);
 router.put('/time_logs/:id', authMiddleware, timeLogsController.update);
