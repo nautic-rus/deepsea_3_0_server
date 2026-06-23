@@ -287,7 +287,7 @@ class DocumentsService {
 
   const qProjects = projectIds.length ? pool.query(`SELECT id, name, code FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
       const qStages = stageIds.length ? pool.query(`SELECT id, name, end_date FROM stages WHERE id = ANY($1::int[])`, [stageIds]) : Promise.resolve({ rows: [] });
-  const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM document_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
+  const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code, color FROM document_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
   const qSpecs = specIds.length ? pool.query(`SELECT id, name FROM specializations WHERE id = ANY($1::int[])`, [specIds]) : Promise.resolve({ rows: [] });
   const qTypes = typeIds.length ? pool.query(`SELECT id, name, code FROM document_type WHERE id = ANY($1::int[])`, [typeIds]) : Promise.resolve({ rows: [] });
 
@@ -324,8 +324,16 @@ class DocumentsService {
         it.stage_date = st ? st.end_date : null;
 
   const stat = it.status_id ? statusMap.get(it.status_id) : null;
-  it.status_name = stat ? stat.name : null;
-  it.status_code = stat ? stat.code : null;
+  it.status = it.status_id ? {
+    status_id: it.status_id,
+    status_code: stat ? stat.code : null,
+    status_name: stat ? stat.name : null,
+    status_color: stat ? stat.color : null
+  } : null;
+  delete it.status_id;
+  delete it.status_name;
+  delete it.status_code;
+  delete it.status_color;
 
   const sp = it.specialization_id ? specMap.get(it.specialization_id) : null;
   it.specialization_name = sp ? sp.name : null;

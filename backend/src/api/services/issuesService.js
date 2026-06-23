@@ -86,7 +86,7 @@ class IssuesService {
 
   const qProjects = projectIds.length ? pool.query(`SELECT id, name, code FROM projects WHERE id = ANY($1::int[])`, [projectIds]) : Promise.resolve({ rows: [] });
   const qUsers = (assigneeIds.length || authorIds.length) ? pool.query(`SELECT id, username, first_name, last_name, middle_name, email, avatar_id FROM users WHERE id = ANY($1::int[])`, [[...new Set([...assigneeIds, ...authorIds])]]) : Promise.resolve({ rows: [] });
-      const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code FROM issue_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
+      const qStatuses = statusIds.length ? pool.query(`SELECT id, name, code, color FROM issue_status WHERE id = ANY($1::int[])`, [statusIds]) : Promise.resolve({ rows: [] });
       const qTypes = typeIds.length ? pool.query(`SELECT id, name, code FROM issue_type WHERE id = ANY($1::int[])`, [typeIds]) : Promise.resolve({ rows: [] });
 
       const [projectsRes, usersRes, statusesRes, typesRes] = await Promise.all([qProjects, qUsers, qStatuses, qTypes]);
@@ -118,8 +118,16 @@ class IssuesService {
   it.assignee_avatar_id = assignee && assignee.avatar_id ? assignee.avatar_id : null;
   it.author_avatar_id = author && author.avatar_id ? author.avatar_id : null;
         const st = it.status_id ? statusMap.get(it.status_id) : null;
-        it.status_name = st ? st.name : null;
-        it.status_code = st ? st.code : null;
+        it.status = it.status_id ? {
+          status_id: it.status_id,
+          status_code: st ? st.code : null,
+          status_name: st ? st.name : null,
+          status_color: st ? st.color : null
+        } : null;
+        delete it.status_id;
+        delete it.status_name;
+        delete it.status_code;
+        delete it.status_color;
         const tp = it.type_id ? typeMap.get(it.type_id) : null;
         it.type_name = tp ? tp.name : null;
         it.type_code = tp ? tp.code : null;
@@ -230,7 +238,7 @@ class IssuesService {
       if (i.author_id) lookups.push(User.findById(i.author_id)); else lookups.push(Promise.resolve(null));
 
       // status and type names from lookup tables
-      const qStatus = i.status_id ? pool.query('SELECT id, name, code FROM issue_status WHERE id = $1 LIMIT 1', [i.status_id]) : Promise.resolve({ rows: [] });
+      const qStatus = i.status_id ? pool.query('SELECT id, name, code, color FROM issue_status WHERE id = $1 LIMIT 1', [i.status_id]) : Promise.resolve({ rows: [] });
       const qType = i.type_id ? pool.query('SELECT id, name, code FROM issue_type WHERE id = $1 LIMIT 1', [i.type_id]) : Promise.resolve({ rows: [] });
 
       const [projectRow, assigneeRow, authorRow, statusRes, typeRes] = await Promise.all([...lookups, qStatus, qType]);
@@ -254,8 +262,17 @@ class IssuesService {
   i.assignee_avatar_id = assigneeRow && assigneeRow.avatar_id ? assigneeRow.avatar_id : null;
   i.author_avatar_id = authorRow && authorRow.avatar_id ? authorRow.avatar_id : null;
 
-      i.status_name = (statusRes && statusRes.rows && statusRes.rows[0]) ? statusRes.rows[0].name : null;
-      i.status_code = (statusRes && statusRes.rows && statusRes.rows[0]) ? statusRes.rows[0].code : null;
+      const statusRow = (statusRes && statusRes.rows && statusRes.rows[0]) ? statusRes.rows[0] : null;
+      i.status = i.status_id ? {
+        status_id: i.status_id,
+        status_code: statusRow ? statusRow.code : null,
+        status_name: statusRow ? statusRow.name : null,
+        status_color: statusRow ? statusRow.color : null
+      } : null;
+      delete i.status_id;
+      delete i.status_name;
+      delete i.status_code;
+      delete i.status_color;
 
       i.type_name = (typeRes && typeRes.rows && typeRes.rows[0]) ? typeRes.rows[0].name : null;
       i.type_code = (typeRes && typeRes.rows && typeRes.rows[0]) ? typeRes.rows[0].code : null;

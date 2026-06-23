@@ -231,7 +231,7 @@ class CustomerQuestionsService {
     if (!q) { const err = new Error('Customer question not found'); err.statusCode = 404; throw err; }
 
     // Extract ids from nested objects (model returns grouped objects, not flat fields)
-    const statusId = q.status ? q.status.id : null;
+    const statusId = q.status ? q.status.status_id : null;
     const typeId = q.type ? q.type.id : null;
     const projectId = q.project ? q.project.id : null;
 
@@ -249,7 +249,7 @@ class CustomerQuestionsService {
     // Fetch available statuses via work flow transitions from current status
     try {
       if (statusId) {
-        const wfSql = `SELECT cs.id, cs.name, cs.code, cs.description,
+        const wfSql = `SELECT cs.id, cs.name, cs.code, cs.color, cs.description, cs.is_final,
                        wf.id AS workflow_id, wf.name AS workflow_name, wf.description AS workflow_description
                        FROM customer_question_work_flow wf
                        JOIN customer_question_status cs ON wf.to_status_id = cs.id
