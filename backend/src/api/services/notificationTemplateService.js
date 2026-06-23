@@ -237,6 +237,11 @@ class NotificationTemplateService {
             return obj.full_name || obj.name || obj.title || obj.code || obj.username || obj.email || '';
           };
 
+          const mkStatusDisplay = (status) => {
+            if (!status || typeof status !== 'object') return '';
+            return status.status_name || status.name || status.status_code || status.code || '';
+          };
+
           const formatChangeValue = (value) => {
             if (value === undefined || value === null || value === '') return '-';
             return value;
@@ -323,7 +328,7 @@ class NotificationTemplateService {
                   if (p) return p.name || p.code || String(v);
                 }
                 if (key === 'status') {
-                  if (typeof v === 'object') return (v && (v.name || v.code)) || JSON.stringify(v);
+                  if (typeof v === 'object') return mkStatusDisplay(v) || JSON.stringify(v);
                   if (typeof v === 'string' && /<[^>]+>/.test(v)) return NotificationTemplateService._stripHtml(v);
                   return String(v === undefined || v === null ? '' : v);
                 }
