@@ -7,6 +7,7 @@ const NotificationDispatcher = require('./notificationDispatcher');
 const HistoryService = require('./historyService');
 const ProtectionService = require('./protectionService');
 const SearchService = require('./searchService');
+const UserNotification = require('../../db/models/UserNotification');
 
 
 
@@ -305,6 +306,12 @@ class CustomerQuestionsService {
     } catch (e) {
       // If work flow table/columns are missing or error occurs, return question without available_statuses
       q.available_statuses = [];
+    }
+
+    try {
+      await UserNotification.markEntityNotificationsAsRead(actor.id, 'customer_question', q.id);
+    } catch (e) {
+      console.error('Failed to mark customer question notifications as read', e && e.message ? e.message : e);
     }
 
     return q;

@@ -10,6 +10,7 @@ const Storage = require('../../db/models/Storage');
 const ProtectionService = require('./protectionService');
 const DocumentUploadNotificationService = require('./documentUploadNotificationService');
 const SearchService = require('./searchService');
+const UserNotification = require('../../db/models/UserNotification');
 
 /**
  * DocumentsService
@@ -487,6 +488,12 @@ class DocumentsService {
     } catch (e) {
       console.error('Failed to load document revision', e && e.message ? e.message : e);
       d.revision = null;
+    }
+
+    try {
+      await UserNotification.markEntityNotificationsAsRead(actor.id, 'document', d.id);
+    } catch (e) {
+      console.error('Failed to mark document notifications as read', e && e.message ? e.message : e);
     }
 
     return d;

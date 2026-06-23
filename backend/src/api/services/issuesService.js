@@ -8,6 +8,7 @@ const IssueMessage = require('../../db/models/IssueMessage');
 const IssueStorage = require('../../db/models/IssueStorage');
 const Storage = require('../../db/models/Storage');
 const SearchService = require('./searchService');
+const UserNotification = require('../../db/models/UserNotification');
 
 /**
  * Service layer for issue-related business logic.
@@ -289,6 +290,12 @@ class IssuesService {
     } catch (e) {
       console.error('Failed to resolve display fields for issue', e && e.message ? e.message : e);
       // keep original issue object even if lookups fail
+    }
+
+    try {
+      await UserNotification.markEntityNotificationsAsRead(actor.id, 'issue', i.id);
+    } catch (e) {
+      console.error('Failed to mark issue notifications as read', e && e.message ? e.message : e);
     }
 
     return i;

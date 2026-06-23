@@ -208,6 +208,32 @@ class UserNotification {
   }
 
   /**
+   * Пометить прочитанными все уведомления пользователя по конкретной сущности.
+   * entityCode examples: issue | document | customer_question
+   */
+  static async markEntityNotificationsAsRead(userId, entityCode, entityId) {
+    const normalizedUserId = Number(userId);
+    const normalizedEntityId = Number(entityId);
+    const normalizedEntityCode = entityCode ? String(entityCode).trim().toLowerCase() : null;
+
+    if (!normalizedUserId || !normalizedEntityCode || Number.isNaN(normalizedEntityId)) {
+      return 0;
+    }
+
+    const query = `
+      UPDATE public.user_notifications
+         SET is_read = true,
+             read_at = COALESCE(read_at, CURRENT_TIMESTAMP)
+       WHERE user_id = $1
+         AND is_read = false
+         AND data -> 'entity' ->> 'code' = $2
+         AND (data -> 'entity' ->> 'id')::int = $3
+    `;
+    const res = await pool.query(query, [normalizedUserId, normalizedEntityCode, normalizedEntityId]);
+    return res.rowCount || 0;
+  }
+
+  /**
    * Пометить уведомление как скрытое (is_hidden=true)
    */
   static async markAsHidden(id, userId) {
