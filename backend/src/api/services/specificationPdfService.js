@@ -14,6 +14,11 @@ const PDF_LAUNCH_TIMEOUT_MS = Number(process.env.PDF_PUPPETEER_LAUNCH_TIMEOUT_MS
 const PDF_PROTOCOL_TIMEOUT_MS = Number(process.env.PDF_PUPPETEER_PROTOCOL_TIMEOUT_MS || 180000);
 const PDF_PAGE_TIMEOUT_MS = Number(process.env.PDF_PUPPETEER_PAGE_TIMEOUT_MS || 120000);
 const PDF_MAX_CONCURRENCY = Math.max(1, Number(process.env.PDF_PUPPETEER_MAX_CONCURRENCY || 10));
+const PDF_PAGE_HEIGHT_MM = 210;
+const PDF_TABLE_TOP_MM = 13.2;
+const PDF_STAMP_BOTTOM_MM = 5;
+const PDF_STAMP_HEIGHT_MM = 21;
+const PDF_TABLE_BODY_SAFETY_GAP_MM = 1;
 
 class SpecificationPdfService {
   static _browserInstance = null;
@@ -124,7 +129,25 @@ class SpecificationPdfService {
       word-break: break-word;
       line-height: 1.05;
       overflow: visible;
-    }`;
+    }
+    .measure-part col:nth-child(1) { width: 8%; }
+    .measure-part col:nth-child(2) { width: 21%; }
+    .measure-part col:nth-child(3) { width: 15%; }
+    .measure-part col:nth-child(4) { width: 7%; }
+    .measure-part col:nth-child(5) { width: 7%; }
+    .measure-part col:nth-child(6) { width: 7%; }
+    .measure-part col:nth-child(7) { width: 7%; }
+    .measure-part col:nth-child(8) { width: 7%; }
+    .measure-part col:nth-child(9) { width: 9%; }
+    .measure-part col:nth-child(10) { width: 12%; }
+    .measure-summary col:nth-child(1) { width: 5%; }
+    .measure-summary col:nth-child(2) { width: 30%; }
+    .measure-summary col:nth-child(3) { width: 20%; }
+    .measure-summary col:nth-child(4) { width: 4.969%; }
+    .measure-summary col:nth-child(5) { width: 6.706%; }
+    .measure-summary col:nth-child(6) { width: 6.706%; }
+    .measure-summary col:nth-child(7) { width: 8.453%; }
+    .measure-summary col:nth-child(8) { width: 11.845%; }`;
   }
 
   static _resolveChromiumExecutablePath() {
@@ -1655,7 +1678,12 @@ ${pages.join('\n')}
           };
         });
 
-        const availableTableAreaPx = SpecificationPdfService._mmToPx(270);
+        const availableTableAreaMm = PDF_PAGE_HEIGHT_MM
+          - PDF_STAMP_BOTTOM_MM
+          - PDF_STAMP_HEIGHT_MM
+          - PDF_TABLE_TOP_MM
+          - PDF_TABLE_BODY_SAFETY_GAP_MM;
+        const availableTableAreaPx = SpecificationPdfService._mmToPx(availableTableAreaMm);
         const partMaxBodyHeightPx = Math.max(0, availableTableAreaPx - Number(layout.partHeaderHeight || 0));
         const summaryMaxBodyHeightPx = Math.max(0, availableTableAreaPx - Number(layout.summaryHeaderHeight || 0));
         const partChunks = SpecificationPdfService._paginateRowsByHeights(
