@@ -112,6 +112,16 @@ async function resolveFieldNames(entityCode, content) {
 }
 
 function buildNotificationData(actor, entity, content) {
+  const displayStatus = (value) => {
+    if (!value || typeof value !== 'object') return value;
+    return value.status_name || value.name || value.status_code || value.code || value.status_id || value.id || value;
+  };
+
+  const normalizeDiffValue = (key, value) => {
+    if (key === 'status') return displayStatus(value);
+    return value;
+  };
+
   const initiator = {
     id: (actor && actor.id) || null,
     full_name: actor ? `${actor.first_name || ''} ${actor.last_name || ''}`.trim() || null : null,
@@ -134,8 +144,8 @@ function buildNotificationData(actor, entity, content) {
       const a = before[key];
       const b = after[key];
       if (a !== b && JSON.stringify(a) !== JSON.stringify(b)) {
-        diffBefore[key] = a;
-        diffAfter[key] = b;
+        diffBefore[key] = normalizeDiffValue(key, a);
+        diffAfter[key] = normalizeDiffValue(key, b);
       }
     }
     cont = { before: diffBefore, after: diffAfter };
