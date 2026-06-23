@@ -26,6 +26,17 @@ class EntityLinksService {
     };
   }
 
+  static _buildStatusRef(status, fallbackStatusId = null) {
+    if (!status && !fallbackStatusId) return null;
+
+    return {
+      status_id: status && (status.status_id || status.id) ? (status.status_id || status.id) : fallbackStatusId,
+      status_code: status ? status.status_code || status.code || null : null,
+      status_name: status ? status.status_name || status.name || null : null,
+      status_color: status ? status.status_color || status.color || null : null
+    };
+  }
+
   /**
   * Create a new entity link.
   * fields: { active_type, active_id, passive_type, passive_id, relation_type }
@@ -163,7 +174,7 @@ class EntityLinksService {
           code: data.code || null,
           author_id: author,
           assigne_to: assignee,
-          status: status ? { name: status.name || null, code: status.code || null } : null,
+          status: EntityLinksService._buildStatusRef(status, data.status_id),
         };
       }
       if (type === 'document') {
@@ -191,7 +202,7 @@ class EntityLinksService {
           code: data.code || null,
           author_id: author,
           responsible_id: responsible,
-          status: status ? { name: status.name || null, code: status.code || null } : null,
+          status: EntityLinksService._buildStatusRef(status, data.status_id),
         };
       }
       if (type === 'qna') {
@@ -209,7 +220,7 @@ class EntityLinksService {
           code: data.code || null,
           asked_by: askedBy,
           answered_by: answeredBy,
-          status: st ? { name: st.name || null, code: st.code || null } : null,
+          status: EntityLinksService._buildStatusRef(st),
         };
       }
       if (type === 'customer_question') {
@@ -227,7 +238,7 @@ class EntityLinksService {
           code: data.code || null,
           asked_by: askedBy,
           answered_by: answeredBy,
-          status: st ? { name: st.name || null, code: st.code || null } : null,
+          status: EntityLinksService._buildStatusRef(st),
         };
       }
       return null;
