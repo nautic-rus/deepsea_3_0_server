@@ -6,10 +6,30 @@ const HistoryService = require('./historyService');
 
 class TimeLogsService {
   static formatDateForHistory(dateValue) {
-    const date = String(dateValue || '').trim();
-    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!match) return date;
-    return `${match[3]}.${match[2]}.${match[1]}`;
+    if (!dateValue) return '';
+
+    if (dateValue instanceof Date && !Number.isNaN(dateValue.getTime())) {
+      const day = String(dateValue.getUTCDate()).padStart(2, '0');
+      const month = String(dateValue.getUTCMonth() + 1).padStart(2, '0');
+      const year = String(dateValue.getUTCFullYear());
+      return `${day}.${month}.${year}`;
+    }
+
+    const date = String(dateValue).trim();
+    const isoMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      return `${isoMatch[3]}.${isoMatch[2]}.${isoMatch[1]}`;
+    }
+
+    const parsed = new Date(date);
+    if (!Number.isNaN(parsed.getTime())) {
+      const day = String(parsed.getUTCDate()).padStart(2, '0');
+      const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+      const year = String(parsed.getUTCFullYear());
+      return `${day}.${month}.${year}`;
+    }
+
+    return date;
   }
 
   static async recordIssueHistoryForTimeLog(timeLog, actor) {
