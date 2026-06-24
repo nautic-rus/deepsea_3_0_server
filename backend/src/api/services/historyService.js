@@ -7,7 +7,7 @@ const CustomerQuestionHistory = require('../../db/models/CustomerQuestionHistory
  * Convenience methods to add timeline/history entries for issues and documents.
  */
 class HistoryService {
-  static _shouldSkipDocumentHistoryField(fieldName) {
+  static _shouldSkipCommonHistoryField(fieldName) {
     return fieldName === 'updated_at'
       || fieldName === 'updatedAt'
       || fieldName === 'created_at'
@@ -17,7 +17,15 @@ class HistoryService {
       || fieldName === 'archive_user_id'
       || fieldName === 'archiveUserId'
       || fieldName === 'status_edit_date'
-      || fieldName === 'statusEditDate';
+      || fieldName === 'statusEditDate'
+      || fieldName === 'close_date'
+      || fieldName === 'closeDate'
+      || fieldName === 'logged_hours'
+      || fieldName === 'loggedHours';
+  }
+
+  static _shouldSkipDocumentHistoryField(fieldName) {
+    return HistoryService._shouldSkipCommonHistoryField(fieldName);
   }
 
   /**
@@ -36,7 +44,7 @@ class HistoryService {
       const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
       const writes = [];
       for (const k of keys) {
-        if (k === 'updated_at' || k === 'updatedAt' || k === 'created_at' || k === 'createdAt' || k === 'archive_data' || k === 'archiveData' || k === 'status_edit_date' || k === 'statusEditDate') continue;
+        if (HistoryService._shouldSkipCommonHistoryField(k)) continue;
         const bv = before[k];
         const av = after[k];
         const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
@@ -53,6 +61,8 @@ class HistoryService {
       const d = Array.isArray(details) ? details : Object.assign({}, details);
       delete d.updated_at;
       delete d.updatedAt;
+      delete d.close_date;
+      delete d.closeDate;
       payload.details = d;
     } else {
       payload.details = details;
@@ -105,6 +115,8 @@ class HistoryService {
       const d = Array.isArray(details) ? details : Object.assign({}, details);
       delete d.updated_at;
       delete d.updatedAt;
+      delete d.close_date;
+      delete d.closeDate;
       payload.details = d;
     } else {
       payload.details = details;
@@ -127,7 +139,7 @@ class HistoryService {
       const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
       const writes = [];
       for (const k of keys) {
-        if (k === 'updated_at' || k === 'updatedAt' || k === 'created_at' || k === 'createdAt' || k === 'archive_data' || k === 'archiveData' || k === 'status_edit_date' || k === 'statusEditDate') continue;
+        if (HistoryService._shouldSkipCommonHistoryField(k)) continue;
         let bv = before[k];
         let av = after[k];
         // For status and type fields, normalize to id only (avoid storing full object)
@@ -155,6 +167,8 @@ class HistoryService {
       const d = Array.isArray(details) ? details : Object.assign({}, details);
       delete d.updated_at;
       delete d.updatedAt;
+      delete d.close_date;
+      delete d.closeDate;
       payload.details = d;
     } else {
       payload.details = details;
