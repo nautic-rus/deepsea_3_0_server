@@ -1569,7 +1569,7 @@ ${pages.join('\n')}
       const materialIds = [...new Set(filteredRows
         .map((row) => Number(row && row.material_id))
         .filter((value) => !Number.isNaN(value) && value > 0))];
-      const statementMap = await SpecificationPdfService._loadStatementCodesByMaterialIds(materialIds);
+      const statementMap = await SpecificationPdfService._loadStatementCodesByMaterialIds(materialIds, spec.project_id);
       const enrichedRows = filteredRows.map((row) => ({
         ...row,
         statement_code: statementMap.get(Number(row.material_id)) || '',
@@ -1740,14 +1740,17 @@ ${pages.join('\n')}
     }
   }
 
-  static async _loadStatementCodesByMaterialIds(materialIds = []) {
+  static async _loadStatementCodesByMaterialIds(materialIds = [], projectId = null) {
     const uniqueIds = [...new Set((materialIds || [])
       .map((id) => Number(id))
       .filter((value) => !Number.isNaN(value) && value > 0))];
+    const normalizedProjectId = Number(projectId);
 
     if (uniqueIds.length === 0) {
       return new Map();
     }
+
+    const hasProjectFilter = Number.isFinite(normalizedProjectId) && normalizedProjectId > 0;
 
     const res = await pool.query(
       `
@@ -1758,9 +1761,10 @@ ${pages.join('\n')}
       JOIN statements s ON s.id = p.statement_id
       WHERE p.equipment_material_id = ANY($1::int[])
         AND p.statement_id IS NOT NULL
+        ${hasProjectFilter ? 'AND s.project_id = $2' : ''}
       ORDER BY p.equipment_material_id, p.id DESC
       `,
-      [uniqueIds]
+      hasProjectFilter ? [uniqueIds, normalizedProjectId] : [uniqueIds]
     );
 
     return new Map((res.rows || []).map((row) => [Number(row.equipment_material_id), row.statement_code || '']));
