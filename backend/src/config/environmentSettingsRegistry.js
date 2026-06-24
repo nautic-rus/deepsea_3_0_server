@@ -14,6 +14,7 @@ const definitions = [
   { key: 'LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IDENTIFIER', valueType: 'number', defaultValue: 8, description: 'Максимум неудачных попыток на один логин или email', isSecret: false, requiresRestart: false },
   { key: 'SESSION_DEACTIVATE_ON_EXPIRE', valueType: 'boolean', defaultValue: false, description: 'Деактивировать ли access-сессию при истечении срока', isSecret: false, requiresRestart: false },
   { key: 'PASSWORD_RESET_EXPIRES_MINUTES', valueType: 'number', defaultValue: 60, description: 'Срок жизни токена сброса пароля в минутах', isSecret: false, requiresRestart: false },
+  { key: 'MAX_HOURS_PER_DAY', valueType: 'number', defaultValue: 12, description: 'Максимальное количество часов, которое пользователь может списать за сутки', isSecret: false, requiresRestart: false },
   { key: 'FRONTEND_URL', valueType: 'string', defaultValue: '', description: 'Базовый URL фронтенда для ссылок в письмах', isSecret: false, requiresRestart: false },
   { key: 'FORAN_SERVICE_URL', valueType: 'string', defaultValue: '', description: 'Базовый URL отдельного FORAN backend для HTTP API', isSecret: false, requiresRestart: false },
   { key: 'FORAN_SERVICE_TOKEN', valueType: 'string', defaultValue: '', description: 'Токен для авторизации запросов к FORAN backend', isSecret: true, requiresRestart: false },
