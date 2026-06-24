@@ -4,9 +4,14 @@ const DocumentType = require('../../db/models/DocumentType');
 const Project = require('../../db/models/Project');
 const DocumentUploadNotificationBuffer = require('../../db/models/DocumentUploadNotificationBuffer');
 const NotificationDispatcher = require('./notificationDispatcher');
+const EntityWatchersService = require('./entityWatchersService');
 const { decodeMaybeLatin1 } = require('../../utils/textEncoding');
 
 class DocumentUploadNotificationService {
+  static _mergeParticipantIds(...groups) {
+    return [...new Set(groups.flat().map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id))];
+  }
+
   static async queueUploads({ document, actor, attachedEntries = [], storageItems = [] }) {
     if (!document || !document.id) return;
     if (!Array.isArray(attachedEntries) || attachedEntries.length === 0) return;
@@ -121,6 +126,12 @@ class DocumentUploadNotificationService {
     const projectParticipantIds = (projectParticipantsRes.rows || [])
       .map((row) => Number(row.user_id))
       .filter(Boolean);
+    let watcherIds = [];
+    try {
+      watcherIds = await EntityWatchersService.getWatcherIds('document', document.id);
+    } catch (error) {
+      console.error('Failed to load document watchers for upload notification', error && error.message ? error.message : error);
+    }
     const templateContext = {
       project: { id: document.project_id, code: (project && project.code) || null },
       document,
@@ -143,7 +154,7 @@ class DocumentUploadNotificationService {
       actor,
       entity: { id: document.id, code: 'document', title: document.title },
       content: { value: contentValue },
-      participantIds: [document.created_by, document.assigne_to],
+      participantIds: DocumentUploadNotificationService._mergeParticipantIds([document.created_by, document.assigne_to], watcherIds),
       templateContext,
       fallbackText: `Document uploaded: ${document.title}${fallbackSuffix}`,
       fallbackSubject: `Document uploaded ${document.title}${fallbackSuffix}`

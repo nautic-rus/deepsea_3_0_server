@@ -9,6 +9,7 @@ const IssueStorage = require('../../db/models/IssueStorage');
 const Storage = require('../../db/models/Storage');
 const SearchService = require('./searchService');
 const UserNotification = require('../../db/models/UserNotification');
+const EntityWatchersService = require('./entityWatchersService');
 
 /**
  * Service layer for issue-related business logic.
@@ -16,6 +17,10 @@ const UserNotification = require('../../db/models/UserNotification');
  * Handles permission checks and coordinates calls to the Issue model.
  */
 class IssuesService {
+  static _mergeParticipantIds(...groups) {
+    return [...new Set(groups.flat().map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id))];
+  }
+
   /**
    * List issues accessible to the actor with optional filters and pagination.
    *
@@ -298,6 +303,13 @@ class IssuesService {
       console.error('Failed to mark issue notifications as read', e && e.message ? e.message : e);
     }
 
+    try {
+      i.watchers = await EntityWatchersService.listWatchers('issue', i.id, actor);
+    } catch (e) {
+      console.error('Failed to load issue watchers', e && e.message ? e.message : e);
+      i.watchers = [];
+    }
+
     return i;
   }
 
@@ -344,7 +356,7 @@ class IssuesService {
       actor,
       entity: { id: created.id, code: 'issue', title: created.title },
       content: { value: created },
-      participantIds: [created.author_id, created.assignee_id],
+      participantIds: IssuesService._mergeParticipantIds([created.author_id, created.assignee_id]),
       templateContext: { project, issue: created, actor, issueUrl },
       fallbackText: `${project.name || '#' + created.project_id}: New issue #${created.id} - ${created.title}`,
       fallbackSubject: `New issue #${created.id}`
@@ -400,13 +412,19 @@ class IssuesService {
       try { _project = await Project.findById(Number(updated.project_id)); } catch (e) { _project = null; }
       const frontendRoot = process.env.FRONTEND_URL || '';
       const issueUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/issues/${updated.id}` : '';
+      let watcherIds = [];
+      try {
+        watcherIds = await EntityWatchersService.getWatcherIds('issue', updated.id);
+      } catch (e) {
+        console.error('Failed to load issue watchers for update notification', e && e.message ? e.message : e);
+      }
       NotificationDispatcher.dispatch({
         eventCode: 'issue_updated',
         projectId: updated.project_id,
         actor,
         entity: { id: updated.id, code: 'issue', title: updated.title },
         content: { before: existing, after: updated },
-        participantIds: [updated.author_id, updated.assignee_id, existing.author_id, existing.assignee_id],
+        participantIds: IssuesService._mergeParticipantIds([updated.author_id, updated.assignee_id, existing.author_id, existing.assignee_id], watcherIds),
         templateContext: { project: { id: updated.project_id, code: (_project && _project.code) || null }, issue: updated, actor, issueUrl, changes: { before: existing, after: updated } },
         fallbackText: `Issue updated: ${updated.title}`,
         fallbackSubject: `Issue updated ${updated.title}`
@@ -684,13 +702,19 @@ class IssuesService {
       try { _projForComment = await Project.findById(Number(existing.project_id)); } catch (e) { _projForComment = null; }
       const frontendRoot = process.env.FRONTEND_URL || '';
       const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/issues/${existing.id}` : '';
+      let watcherIds = [];
+      try {
+        watcherIds = await EntityWatchersService.getWatcherIds('issue', existing.id);
+      } catch (e) {
+        console.error('Failed to load issue watchers for comment notification', e && e.message ? e.message : e);
+      }
       NotificationDispatcher.dispatch({
         eventCode: 'comment_added',
         projectId: existing.project_id,
         actor,
         entity: { id: existing.id, code: 'issue', title: existing.title },
         content: { value: created.content },
-        participantIds: [existing.author_id, existing.assignee_id],
+        participantIds: IssuesService._mergeParticipantIds([existing.author_id, existing.assignee_id], watcherIds),
         templateContext: { project: { id: existing.project_id, code: (_projForComment && _projForComment.code) || null }, targetType: 'Issue', targetId: existing.id, targetTitle: existing.title, targetUrl, actor, message: created },
         fallbackText: `${existing.title}: new comment`,
         fallbackSubject: `New comment on issue ${existing.title}`

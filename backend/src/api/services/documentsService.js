@@ -11,6 +11,7 @@ const ProtectionService = require('./protectionService');
 const DocumentUploadNotificationService = require('./documentUploadNotificationService');
 const SearchService = require('./searchService');
 const UserNotification = require('../../db/models/UserNotification');
+const EntityWatchersService = require('./entityWatchersService');
 
 /**
  * DocumentsService
@@ -19,6 +20,10 @@ const UserNotification = require('../../db/models/UserNotification');
  * to the Document model.
  */
 class DocumentsService {
+  static _mergeParticipantIds(...groups) {
+    return [...new Set(groups.flat().map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id))];
+  }
+
   static _parseRev(v) {
     if (v === null) return null;
     if (typeof v === 'undefined') return undefined;
@@ -496,6 +501,13 @@ class DocumentsService {
       console.error('Failed to mark document notifications as read', e && e.message ? e.message : e);
     }
 
+    try {
+      d.watchers = await EntityWatchersService.listWatchers('document', d.id, actor);
+    } catch (e) {
+      console.error('Failed to load document watchers', e && e.message ? e.message : e);
+      d.watchers = [];
+    }
+
     return d;
   }
 
@@ -560,7 +572,7 @@ class DocumentsService {
         actor,
         entity: { id: created.id, code: 'document', title: created.title },
         content: { value: created },
-        participantIds: [created.created_by, created.assigne_to],
+        participantIds: DocumentsService._mergeParticipantIds([created.created_by, created.assigne_to]),
         templateContext: { project: { id: created.project_id, code: (project && project.code) || null }, document: created, actor, documentUrl },
         fallbackText: `New document: ${created.title}`,
         fallbackSubject: `New document ${created.title}`
@@ -647,13 +659,19 @@ class DocumentsService {
       const frontendRoot = process.env.FRONTEND_URL || '';
       const documentUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${updated.id}` : '';
       const projCtx = { id: updated.project_id, code: (_project && _project.code) || null };
+      let watcherIds = [];
+      try {
+        watcherIds = await EntityWatchersService.getWatcherIds('document', updated.id);
+      } catch (e) {
+        console.error('Failed to load document watchers for update notification', e && e.message ? e.message : e);
+      }
       NotificationDispatcher.dispatch({
         eventCode: 'document_updated',
         projectId: updated.project_id,
         actor,
         entity: { id: updated.id, code: 'document', title: updated.title },
         content: { before: existing, after: updated },
-        participantIds: [updated.created_by, updated.assigne_to, existing.created_by, existing.assigne_to],
+        participantIds: DocumentsService._mergeParticipantIds([updated.created_by, updated.assigne_to, existing.created_by, existing.assigne_to], watcherIds),
         templateContext: {
           project: projCtx,
           document: updated,
@@ -677,7 +695,7 @@ class DocumentsService {
         actor,
         entity: { id: updated.id, code: 'document', title: updated.title },
         content: { before: existing, after: updated },
-        participantIds: projectParticipantIds,
+        participantIds: DocumentsService._mergeParticipantIds(projectParticipantIds, watcherIds),
         templateContext: {
           project: projCtx,
           document: updated,
@@ -761,13 +779,19 @@ class DocumentsService {
       try { _projForComment = await Project.findById(Number(existing.project_id)); } catch (e) { _projForComment = null; }
       const frontendRoot = process.env.FRONTEND_URL || '';
       const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/documents/${existing.id}` : '';
+      let watcherIds = [];
+      try {
+        watcherIds = await EntityWatchersService.getWatcherIds('document', existing.id);
+      } catch (e) {
+        console.error('Failed to load document watchers for comment notification', e && e.message ? e.message : e);
+      }
       NotificationDispatcher.dispatch({
         eventCode: 'comment_added',
         projectId: existing.project_id,
         actor,
         entity: { id: existing.id, code: 'document', title: existing.title },
         content: { value: created.content },
-        participantIds: [existing.created_by, existing.assigne_to],
+        participantIds: DocumentsService._mergeParticipantIds([existing.created_by, existing.assigne_to], watcherIds),
         templateContext: { project: { id: existing.project_id, code: (_projForComment && _projForComment.code) || null }, targetType: 'Document', targetId: existing.id, targetTitle: existing.title, targetUrl, actor, message: created },
         fallbackText: `${existing.title}: new comment`,
         fallbackSubject: `New comment on document ${existing.title}`

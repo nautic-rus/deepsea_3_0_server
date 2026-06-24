@@ -8,10 +8,15 @@ const HistoryService = require('./historyService');
 const ProtectionService = require('./protectionService');
 const SearchService = require('./searchService');
 const UserNotification = require('../../db/models/UserNotification');
+const EntityWatchersService = require('./entityWatchersService');
 
 
 
 class CustomerQuestionsService {
+  static _mergeParticipantIds(...groups) {
+    return [...new Set(groups.flat().map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id))];
+  }
+
   static async listTypes(actor, projectId) {
     const requiredPermission = 'customer_questions.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
@@ -314,6 +319,13 @@ class CustomerQuestionsService {
       console.error('Failed to mark customer question notifications as read', e && e.message ? e.message : e);
     }
 
+    try {
+      q.watchers = await EntityWatchersService.listWatchers('customer_question', q.id, actor);
+    } catch (e) {
+      console.error('Failed to load customer question watchers', e && e.message ? e.message : e);
+      q.watchers = [];
+    }
+
     return q;
   }
 
@@ -370,7 +382,7 @@ class CustomerQuestionsService {
         actor,
         entity: { id: created.id, code: 'customer_question', title: created.question_title || created.id },
         content: { value: created },
-        participantIds: projectParticipantIds,
+        participantIds: CustomerQuestionsService._mergeParticipantIds(projectParticipantIds),
         templateContext: { project: { id: created.project_id, code: (created.project && created.project.code) || null }, question: created, actor, questionUrl },
         fallbackText: `New question in project ${created.project_id}`,
         fallbackSubject: `New question in project ${created.project_id}`
@@ -440,6 +452,12 @@ class CustomerQuestionsService {
       const frontendRoot = process.env.FRONTEND_URL || '';
       const questionUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/questions/${updated.id}` : '';
       const projCtx = { id: updated.project_id, code: (updated.project && updated.project.code) || null };
+      let watcherIds = [];
+      try {
+        watcherIds = await EntityWatchersService.getWatcherIds('customer_question', updated.id);
+      } catch (e) {
+        console.error('Failed to load customer question watchers for update notification', e && e.message ? e.message : e);
+      }
       NotificationDispatcher.dispatch({
         eventCode: 'question_updated_in_project',
         projectId: updated.project_id,
@@ -459,7 +477,7 @@ class CustomerQuestionsService {
         actor,
         entity: { id: updated.id, code: 'customer_question', title: updated.question_title || updated.id },
         content: { before: existing, after: updated },
-        participantIds: [updated.asked_by, updated.answered_by, existing.asked_by, existing.answered_by],
+        participantIds: CustomerQuestionsService._mergeParticipantIds([updated.asked_by, updated.answered_by, existing.asked_by, existing.answered_by], watcherIds),
         templateContext: { project: projCtx, question: updated, actor, questionUrl, changes: { before: existing, after: updated } },
         fallbackText: `Question updated: ${updated.question_title || updated.id}`,
         fallbackSubject: `Question updated ${updated.question_title || updated.id}`
@@ -578,13 +596,19 @@ class CustomerQuestionsService {
     {
       const frontendRoot = process.env.FRONTEND_URL || '';
       const targetUrl = frontendRoot ? `${frontendRoot.replace(/\/$/, '')}/questions/${existing.id}` : '';
+      let watcherIds = [];
+      try {
+        watcherIds = await EntityWatchersService.getWatcherIds('customer_question', existing.id);
+      } catch (e) {
+        console.error('Failed to load customer question watchers for comment notification', e && e.message ? e.message : e);
+      }
       NotificationDispatcher.dispatch({
         eventCode: 'comment_added',
         projectId: existing.project_id,
         actor,
         entity: { id: existing.id, code: 'customer_question', title: existing.question_title || existing.id },
         content: { value: created.content },
-        participantIds: [existing.asked_by, existing.answered_by],
+        participantIds: CustomerQuestionsService._mergeParticipantIds([existing.asked_by, existing.answered_by], watcherIds),
         templateContext: { project: { id: existing.project_id, code: (existing.project && existing.project.code) || null }, targetType: 'CustomerQuestion', targetId: existing.id, targetTitle: existing.question_title || existing.id, targetUrl, actor, message: created },
         fallbackText: `${existing.question_title || existing.id}: new comment`,
         fallbackSubject: `New comment on question ${existing.question_title || existing.id}`

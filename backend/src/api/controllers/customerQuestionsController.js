@@ -1,4 +1,5 @@
 const CustomerQuestionsService = require('../services/customerQuestionsService');
+const EntityWatchersService = require('../services/entityWatchersService');
 
 class CustomerQuestionsController {
   static async list(req, res, next) {
@@ -116,6 +117,54 @@ class CustomerQuestionsController {
       const { content, parent_id = null } = req.body || {};
       const created = await CustomerQuestionsService.addQuestionMessage(Number(id), content, actor, parent_id);
       res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  static async listWatchers(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const rows = await EntityWatchersService.listWatchers('customer_question', Number(id), actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  static async addWatcher(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const body = req.body || {};
+      const watcherIds = body.user_ids ?? body.userIds ?? body.user_id ?? body.userId;
+      const created = await EntityWatchersService.addWatcher('customer_question', Number(id), watcherIds, actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  static async addSelfWatcher(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const created = await EntityWatchersService.addSelfWatcher('customer_question', Number(id), actor);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
+  static async removeWatcher(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const userId = parseInt(req.params.userId, 10);
+      const ok = await EntityWatchersService.removeWatcher('customer_question', Number(id), Number(userId), actor);
+      res.json(ok);
+    } catch (err) { next(err); }
+  }
+
+  static async removeSelfWatcher(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const ok = await EntityWatchersService.removeSelfWatcher('customer_question', Number(id), actor);
+      res.json(ok);
     } catch (err) { next(err); }
   }
 
