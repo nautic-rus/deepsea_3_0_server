@@ -5,13 +5,19 @@ const { getEnvironmentSetting } = require('../../config/environmentSettings');
 const HistoryService = require('./historyService');
 
 class TimeLogsService {
+  static formatDateForHistory(dateValue) {
+    const date = String(dateValue || '').trim();
+    const match = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return date;
+    return `${match[3]}.${match[2]}.${match[1]}`;
+  }
+
   static async recordIssueHistoryForTimeLog(timeLog, actor) {
     try {
       const hours = Number(timeLog && timeLog.hours);
-      const hoursText = Number.isFinite(hours) ? String(hours) : String(timeLog && timeLog.hours);
-      const dateText = timeLog && timeLog.date ? String(timeLog.date) : '';
-      const descriptionText = timeLog && timeLog.description ? `: ${timeLog.description}` : '';
-      const message = `Added ${hoursText}h on ${dateText}${descriptionText}`;
+      const hoursText = Number.isFinite(hours) ? hours.toFixed(2) : String(timeLog && timeLog.hours);
+      const dateText = TimeLogsService.formatDateForHistory(timeLog && timeLog.date);
+      const message = `${hoursText}h(${dateText})`;
       await HistoryService.addIssueHistory(Number(timeLog.issue_id), actor, 'time_logged', message);
     } catch (error) {
       console.error('Failed to write issue history for time log creation', error && error.message ? error.message : error);
