@@ -2,8 +2,22 @@ const TimeLog = require('../../db/models/TimeLog');
 const { hasPermission } = require('./permissionChecker');
 const pool = require('../../db/connection');
 const { getEnvironmentSetting } = require('../../config/environmentSettings');
+const HistoryService = require('./historyService');
 
 class TimeLogsService {
+  static async recordIssueHistoryForTimeLog(timeLog, actor) {
+    try {
+      const hours = Number(timeLog && timeLog.hours);
+      const hoursText = Number.isFinite(hours) ? String(hours) : String(timeLog && timeLog.hours);
+      const dateText = timeLog && timeLog.date ? String(timeLog.date) : '';
+      const descriptionText = timeLog && timeLog.description ? `: ${timeLog.description}` : '';
+      const message = `Added ${hoursText}h on ${dateText}${descriptionText}`;
+      await HistoryService.addIssueHistory(Number(timeLog.issue_id), actor, 'time_logged', message);
+    } catch (error) {
+      console.error('Failed to write issue history for time log creation', error && error.message ? error.message : error);
+    }
+  }
+
   static async getMaxHoursPerDay() {
     const setting = await getEnvironmentSetting('MAX_HOURS_PER_DAY');
     const value = Number(setting && setting.value);
@@ -123,6 +137,7 @@ class TimeLogsService {
           if (!row.issue_id || !row.user_id) { const err = new Error('Missing required fields: issue_id and user_id must be provided either at top-level or inside interval'); err.statusCode = 400; throw err; }
           await TimeLogsService.assertDailyHoursLimit(row);
           const createdRow = await TimeLog.create(row);
+          await TimeLogsService.recordIssueHistoryForTimeLog(createdRow, actor);
           created.push(createdRow);
           count++;
           if (count > maxEntries) { const err = new Error('Interval too large'); err.statusCode = 400; throw err; }
@@ -136,7 +151,9 @@ class TimeLogsService {
     // Single time log
     if (!fields || !fields.issue_id || !fields.user_id || !fields.hours || !fields.date) { const err = new Error('Missing required fields'); err.statusCode = 400; throw err; }
     await TimeLogsService.assertDailyHoursLimit(fields);
-    return await TimeLog.create(fields);
+    const created = await TimeLog.create(fields);
+    await TimeLogsService.recordIssueHistoryForTimeLog(created, actor);
+    return created;
   }
 
   static async updateTimeLog(id, fields, actor) {
