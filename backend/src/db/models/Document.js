@@ -135,9 +135,15 @@ class Document {
     }
   if (created_by !== undefined) { where.push(`created_by = $${idx++}`); values.push(created_by); }
   if (assigne_to !== undefined) { where.push(`assigne_to = $${idx++}`); values.push(assigne_to); }
-    // my_doc_user_id: return documents where user is creator OR assignee
+    // my_doc_user_id: return documents where user is creator, assignee or watcher
     if (my_doc_user_id !== undefined && my_doc_user_id !== null) {
-      where.push(`(created_by = $${idx} OR assigne_to = $${idx})`);
+      where.push(`(created_by = $${idx} OR assigne_to = $${idx} OR EXISTS (
+        SELECT 1
+        FROM entity_watchers ew
+        WHERE ew.entity_type = 'document'
+          AND ew.entity_id = documents.id
+          AND ew.user_id = $${idx}
+      ))`);
       values.push(my_doc_user_id);
       idx++;
     }

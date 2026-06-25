@@ -21,9 +21,15 @@ class CustomerQuestion {
     if (priority !== undefined && priority !== null) { where.push(`priority = $${idx++}`); values.push(priority); }
     if (asked_by !== undefined && asked_by !== null) { where.push(`asked_by = $${idx++}`); values.push(asked_by); }
     if (answered_by !== undefined && answered_by !== null) { where.push(`answered_by = $${idx++}`); values.push(answered_by); }
-    // my_question_user_id: user is either asked_by or answered_by
+    // my_question_user_id: user is asked_by, answered_by or watcher
     if (my_question_user_id !== undefined && my_question_user_id !== null) {
-      where.push(`(asked_by = $${idx} OR answered_by = $${idx})`);
+      where.push(`(asked_by = $${idx} OR answered_by = $${idx} OR EXISTS (
+        SELECT 1
+        FROM entity_watchers ew
+        WHERE ew.entity_type = 'customer_question'
+          AND ew.entity_id = cq.id
+          AND ew.user_id = $${idx}
+      ))`);
       values.push(my_question_user_id);
       idx++;
     }

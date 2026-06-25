@@ -32,9 +32,15 @@ class Issue {
       where.push(`status_id IN (SELECT id FROM issue_status WHERE is_final = $${idx++})`);
       values.push(is_closed);
     }
-    // my_issue_user_id: return issues where user is author OR assignee
+    // my_issue_user_id: return issues where user is author, assignee or watcher
     if (my_issue_user_id !== undefined && my_issue_user_id !== null) {
-      where.push(`(author_id = $${idx} OR assignee_id = $${idx})`);
+      where.push(`(author_id = $${idx} OR assignee_id = $${idx} OR EXISTS (
+        SELECT 1
+        FROM entity_watchers ew
+        WHERE ew.entity_type = 'issue'
+          AND ew.entity_id = issues.id
+          AND ew.user_id = $${idx}
+      ))`);
       values.push(my_issue_user_id);
       idx++;
     }
