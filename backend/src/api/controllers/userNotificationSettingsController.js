@@ -6,9 +6,7 @@ class UserNotificationSettingsController {
       const userId = req.user && req.user.id ? Number(req.user.id) : null;
       if (!userId) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
       const projectId = req.query.project_id ? Number(req.query.project_id) : null;
-      const specializationQuery = req.query.specialization_id !== undefined ? req.query.specialization_id : req.query.specializationId;
-      const specializationId = specializationQuery !== undefined ? specializationQuery : null;
-      const rows = await UserNotificationSettingsService.list(userId, projectId, specializationId);
+      const rows = await UserNotificationSettingsService.list(userId, projectId);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }

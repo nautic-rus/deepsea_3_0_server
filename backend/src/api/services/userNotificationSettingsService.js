@@ -15,7 +15,7 @@ class UserNotificationSettingsService {
     return num;
   }
 
-  static async list(userId, projectId = null, specializationId = null) {
+  static async list(userId, projectId = null) {
     // validate user exists
     const user = await User.findById(userId);
     if (!user) { const err = new Error('User not found'); err.statusCode = 404; throw err; }
@@ -25,17 +25,18 @@ class UserNotificationSettingsService {
     const methods = await NotificationMethod.listAll();
 
     const normalizedProjectId = UserNotificationSettingsService._toNullableInteger(projectId, 'project_id');
-    const normalizedSpecializationId = UserNotificationSettingsService._toNullableInteger(specializationId, 'specialization_id');
 
     const settings = normalizedProjectId === null
-      ? await UserNotificationSetting.findByUser(userId, normalizedSpecializationId)
-      : await UserNotificationSetting.findByUserProject(userId, normalizedProjectId, normalizedSpecializationId);
+      ? await UserNotificationSetting.findByUser(userId)
+      : await UserNotificationSetting.findByUserProject(userId, normalizedProjectId);
 
     // map existing settings by composite key
     const map = new Map();
     for (const s of settings) {
       const key = `${s.event_id}:${s.method_id}`;
-      map.set(key, s);
+      const list = map.get(key) || [];
+      list.push(s);
+      map.set(key, list);
     }
 
     // assemble matrix: array of rows where each row corresponds to an event
@@ -44,11 +45,22 @@ class UserNotificationSettingsService {
         event: { id: ev.id, code: ev.code, name: ev.name, description: ev.description },
         methods: methods.map(m => {
           const key = `${ev.id}:${m.id}`;
-          const s = map.get(key) || null;
+          const matchingSettings = map.get(key) || [];
+          const defaultSetting = matchingSettings.find(s => s.specialization_id === null || typeof s.specialization_id === 'undefined') || null;
           return {
             method: { id: m.id, code: m.code, name: m.name, description: m.description },
-            enabled: s ? !!s.enabled : false,
-            config: s ? s.config : null
+            enabled: defaultSetting ? !!defaultSetting.enabled : false,
+            config: defaultSetting ? defaultSetting.config : null,
+            specialization_id: defaultSetting ? defaultSetting.specialization_id : null,
+            settings: matchingSettings.map(s => ({
+              id: s.id,
+              project_id: s.project_id,
+              specialization_id: s.specialization_id,
+              enabled: !!s.enabled,
+              config: s.config,
+              created_at: s.created_at,
+              updated_at: s.updated_at
+            }))
           };
         })
       };

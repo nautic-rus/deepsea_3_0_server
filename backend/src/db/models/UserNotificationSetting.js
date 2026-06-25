@@ -80,28 +80,26 @@ class UserNotificationSetting {
     return true;
   }
 
-  static async findByUser(user_id, specialization_id = null) {
+  static async findByUser(user_id) {
     const query = `
       SELECT *
       FROM public.user_notification_settings
       WHERE user_id = $1
-        AND specialization_id IS NOT DISTINCT FROM $2
       ORDER BY project_id NULLS FIRST, specialization_id NULLS FIRST, event_id
     `;
-    const res = await pool.query(query, [user_id, specialization_id]);
+    const res = await pool.query(query, [user_id]);
     return res.rows;
   }
 
-  static async findByUserProject(user_id, project_id, specialization_id = null) {
+  static async findByUserProject(user_id, project_id) {
     const query = `
       SELECT *
       FROM public.user_notification_settings
       WHERE user_id = $1
         AND project_id IS NOT DISTINCT FROM $2
-        AND specialization_id IS NOT DISTINCT FROM $3
-      ORDER BY event_id
+      ORDER BY specialization_id NULLS FIRST, event_id
     `;
-    const res = await pool.query(query, [user_id, project_id, specialization_id]);
+    const res = await pool.query(query, [user_id, project_id]);
     return res.rows;
   }
 
