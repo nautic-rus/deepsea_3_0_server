@@ -655,7 +655,6 @@ class IssuesService {
         entity: { id: updated.id, code: 'issue', title: updated.title },
         content: { value: { assignee_id: newAssignee } },
         participantIds: [],
-        directUserIds: [newAssignee].filter(Boolean),
         templateContext: { project: _project, issue: updated, actor, issueUrl, prevAssignee },
         fallbackText: `Task #${updated.id} assigned: ${updated.title}`,
         fallbackSubject: `Task assigned #${updated.id}`

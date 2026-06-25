@@ -6,7 +6,9 @@ class UserNotificationSettingsController {
       const userId = req.user && req.user.id ? Number(req.user.id) : null;
       if (!userId) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
       const projectId = req.query.project_id ? Number(req.query.project_id) : null;
-      const rows = await UserNotificationSettingsService.list(userId, projectId);
+      const specializationQuery = req.query.specialization_id !== undefined ? req.query.specialization_id : req.query.specializationId;
+      const specializationId = specializationQuery !== undefined ? specializationQuery : null;
+      const rows = await UserNotificationSettingsService.list(userId, projectId, specializationId);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }
@@ -19,6 +21,7 @@ class UserNotificationSettingsController {
       const body = req.body || {};
       const payload = {
         project_id: body.project_id !== undefined ? body.project_id : null,
+        specialization_id: body.specialization_id !== undefined ? body.specialization_id : (body.specializationId !== undefined ? body.specializationId : null),
         event_id: body.event_id || body.eventId || null,
         method_id: body.method_id || body.methodId || null,
         enabled: typeof body.enabled === 'boolean' ? body.enabled : true,
@@ -37,6 +40,7 @@ class UserNotificationSettingsController {
       const body = req.body || {};
       const payload = {
         project_id: body.project_id !== undefined ? body.project_id : null,
+        specialization_id: body.specialization_id !== undefined ? body.specialization_id : (body.specializationId !== undefined ? body.specializationId : null),
         event_id: body.event_id || body.eventId || null,
         method_id: body.method_id || body.methodId || null
       };

@@ -4,7 +4,18 @@ const NotificationEvent = require('../../db/models/NotificationEvent');
 const NotificationMethod = require('../../db/models/NotificationMethod');
 
 class UserNotificationSettingsService {
-  static async list(userId, projectId = null) {
+  static _toNullableInteger(value, fieldName) {
+    if (value === undefined || value === null || value === '') return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) {
+      const err = new Error(`Invalid ${fieldName}`);
+      err.statusCode = 400;
+      throw err;
+    }
+    return num;
+  }
+
+  static async list(userId, projectId = null, specializationId = null) {
     // validate user exists
     const user = await User.findById(userId);
     if (!user) { const err = new Error('User not found'); err.statusCode = 404; throw err; }
@@ -13,9 +24,12 @@ class UserNotificationSettingsService {
     const events = await NotificationEvent.listAll();
     const methods = await NotificationMethod.listAll();
 
-    const settings = (projectId === null || projectId === undefined)
-      ? await UserNotificationSetting.findByUser(userId)
-      : await UserNotificationSetting.findByUserProject(userId, projectId);
+    const normalizedProjectId = UserNotificationSettingsService._toNullableInteger(projectId, 'project_id');
+    const normalizedSpecializationId = UserNotificationSettingsService._toNullableInteger(specializationId, 'specialization_id');
+
+    const settings = normalizedProjectId === null
+      ? await UserNotificationSetting.findByUser(userId, normalizedSpecializationId)
+      : await UserNotificationSetting.findByUserProject(userId, normalizedProjectId, normalizedSpecializationId);
 
     // map existing settings by composite key
     const map = new Map();
@@ -45,22 +59,34 @@ class UserNotificationSettingsService {
   }
 
   static async upsert(userId, data) {
-    // data: { project_id, event_id, method_id, enabled, config }
-    const { project_id = null, event_id, method_id, enabled = true, config = null } = data;
+    // data: { project_id, specialization_id, event_id, method_id, enabled, config }
+    const { project_id = null, specialization_id = null, event_id, method_id, enabled = true, config = null } = data;
+    const normalizedProjectId = UserNotificationSettingsService._toNullableInteger(project_id, 'project_id');
+    const normalizedSpecializationId = UserNotificationSettingsService._toNullableInteger(specialization_id, 'specialization_id');
     if (!event_id || !method_id) { const err = new Error('event_id and method_id required'); err.statusCode = 400; throw err; }
 
-    const existing = await UserNotificationSetting.find(userId, project_id, event_id, method_id);
+    const existing = await UserNotificationSetting.find(userId, normalizedProjectId, normalizedSpecializationId, event_id, method_id);
     if (existing) {
-      return await UserNotificationSetting.updateByComposite(userId, project_id, event_id, method_id, { enabled, config });
+      return await UserNotificationSetting.updateByComposite(userId, normalizedProjectId, normalizedSpecializationId, event_id, method_id, { enabled, config });
     }
 
-    return await UserNotificationSetting.create({ user_id: userId, project_id, event_id, method_id, enabled, config });
+    return await UserNotificationSetting.create({
+      user_id: userId,
+      project_id: normalizedProjectId,
+      specialization_id: normalizedSpecializationId,
+      event_id,
+      method_id,
+      enabled,
+      config
+    });
   }
 
   static async remove(userId, data) {
-    const { project_id = null, event_id, method_id } = data;
+    const { project_id = null, specialization_id = null, event_id, method_id } = data;
+    const normalizedProjectId = UserNotificationSettingsService._toNullableInteger(project_id, 'project_id');
+    const normalizedSpecializationId = UserNotificationSettingsService._toNullableInteger(specialization_id, 'specialization_id');
     if (!event_id || !method_id) { const err = new Error('event_id and method_id required'); err.statusCode = 400; throw err; }
-    await UserNotificationSetting.delete(userId, project_id, event_id, method_id);
+    await UserNotificationSetting.delete(userId, normalizedProjectId, normalizedSpecializationId, event_id, method_id);
     return true;
   }
 }

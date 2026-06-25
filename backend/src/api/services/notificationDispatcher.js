@@ -2,7 +2,7 @@
  * Centralized notification dispatcher.
  *
  * Handles the full lifecycle: get recipients → filter by participants →
- * create one user_notifications record per user → send via Rocket.Chat / email.
+ * process enabled notification methods (notifications_bar / Rocket.Chat / email).
  *
  * Usage from any service:
  *   const NotificationDispatcher = require('./notificationDispatcher');
@@ -13,7 +13,6 @@ const UserNotification = require('../../db/models/UserNotification');
 const { buildNotificationData, resolveFieldNames } = require('../../db/models/UserNotification');
 const UserNotificationSetting = require('../../db/models/UserNotificationSetting');
 const NotificationEvent = require('../../db/models/NotificationEvent');
-const User = require('../../db/models/User');
 const { hasPermission } = require('./permissionChecker');
 const TemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
@@ -86,6 +85,43 @@ class NotificationDispatcher {
     return entityCode === 'document' || code.startsWith('document_') || code === 'comment_added';
   }
 
+  static _shouldFilterBySpecialization(entity) {
+    const entityCode = entity && entity.code ? String(entity.code).toLowerCase() : '';
+    return entityCode === 'document' || entityCode === 'customer_question';
+  }
+
+  static _normalizeSpecializationId(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const num = Number(value);
+    return Number.isNaN(num) ? null : num;
+  }
+
+  static _getSpecializationId({ entity, content, templateContext }) {
+    const explicit = NotificationDispatcher._normalizeSpecializationId(entity && entity.specialization_id);
+    if (explicit) return explicit;
+
+    const contextEntities = [
+      templateContext && templateContext.document,
+      templateContext && templateContext.question
+    ];
+    for (const item of contextEntities) {
+      const id = NotificationDispatcher._normalizeSpecializationId(item && item.specialization_id);
+      if (id) return id;
+    }
+
+    const contentEntities = [
+      content && content.value,
+      content && content.after,
+      content && content.before
+    ];
+    for (const item of contentEntities) {
+      const id = NotificationDispatcher._normalizeSpecializationId(item && item.specialization_id);
+      if (id) return id;
+    }
+
+    return null;
+  }
+
   static _getDocumentVisibilityState({ entity, content, templateContext }) {
     const document = templateContext && templateContext.document ? templateContext.document : null;
     const changes = templateContext && templateContext.changes && typeof templateContext.changes === 'object'
@@ -148,7 +184,6 @@ class NotificationDispatcher {
    * @param {string}  [opts.fallbackText]   - fallback text for RC if template renders empty
    * @param {string}  [opts.fallbackSubject]- fallback subject for email if template renders empty
    * @param {boolean} [opts.excludeActor=true] - whether to skip sending to the actor
-   * @param {number[]} [opts.directUserIds] - user IDs that always get a center notification (even if not subscribed)
    */
   static dispatch(opts) {
     // Fire-and-forget: run the heavy work asynchronously
@@ -177,8 +212,7 @@ class NotificationDispatcher {
       templateContext = {},
       fallbackText = '',
       fallbackSubject = '',
-      excludeActor = true,
-      directUserIds = []
+      excludeActor = true
     } = opts;
 
     // If the event itself is disabled, do not send anything for it.
@@ -187,8 +221,15 @@ class NotificationDispatcher {
 
     // 1. Get all potential recipients
     // Pass through target_user_id if provided in opts so model can special-case project_invite
+    const applySpecializationFilter = NotificationDispatcher._shouldFilterBySpecialization(entity);
+    const specializationId = applySpecializationFilter
+      ? NotificationDispatcher._getSpecializationId({ entity, content, templateContext })
+      : null;
+
     const allRecipients = await UserNotificationSetting.getRecipientsForEvent(projectId, eventCode, {
-      target_user_id: opts && (opts.target_user_id || opts.user_id) ? (opts.target_user_id || opts.user_id) : null
+      target_user_id: opts && (opts.target_user_id || opts.user_id) ? (opts.target_user_id || opts.user_id) : null,
+      specialization_id: specializationId,
+      apply_specialization_filter: applySpecializationFilter
     });
     if (!allRecipients || allRecipients.length === 0) return;
 
@@ -258,34 +299,27 @@ class NotificationDispatcher {
       }
     }
 
-    // 4. Loop: create DB record (once per user), send via method
-    const notifiedUserIds = new Set();
+    // 4. Loop: handle each enabled method from user_notification_settings.
+    const notificationBarUserIds = new Set();
 
     for (const r of filteredRecipients) {
       try {
         const uid = Number(r.user_id);
 
-        // Create center notification (once per user) unless user is inactive
         const isActive = typeof r.is_active !== 'undefined' ? Boolean(r.is_active) : true;
-        if (!notifiedUserIds.has(uid)) {
-          // mark as handled to avoid duplicate attempts (even if inactive)
-          notifiedUserIds.add(uid);
-          if (isActive) {
-            try {
-              UserNotification.create({
-                user_id: uid,
-                event_code: eventCode,
-                project_id: projectId,
-                data: notifData
-              }).catch(e => console.error('Failed to create user notification', e && e.message ? e.message : e));
-            } catch (e) {
-              console.error('Failed to queue user notification', e && e.message ? e.message : e);
-            }
-          }
-        }
 
-        // Deliver via channel (skip external channels for inactive users)
-        if (r.method_code === 'rocket_chat') {
+        if (r.method_code === 'notifications_bar') {
+          if (!isActive) continue;
+          if (!notificationBarUserIds.has(uid)) {
+            notificationBarUserIds.add(uid);
+            UserNotification.create({
+              user_id: uid,
+              event_code: eventCode,
+              project_id: projectId,
+              data: notifData
+            }).catch(e => console.error('Failed to create user notification', e && e.message ? e.message : e));
+          }
+        } else if (r.method_code === 'rocket_chat') {
           if (!isActive) {
             // skip sending to inactive user's Rocket.Chat
             continue;
@@ -344,30 +378,6 @@ class NotificationDispatcher {
         }
       } catch (err) {
         console.error('Failed to send notification to user', r.user_id, err && err.message ? err.message : err);
-      }
-    }
-
-    // Ensure center notifications for directUserIds (e.g. assignee) even if they weren't subscribed
-    if (directUserIds && directUserIds.length > 0) {
-      for (const uid of directUserIds) {
-        const numUid = Number(uid);
-        if (uid && !notifiedUserIds.has(numUid) && await NotificationDispatcher._canReceiveDocumentNotification(numUid, visibilityState, permissionCache)) {
-          // check if user is active before creating center notification
-          try {
-            const user = await User.findById(numUid);
-            notifiedUserIds.add(numUid);
-            if (user && user.is_active) {
-              UserNotification.create({
-                user_id: numUid,
-                event_code: eventCode,
-                project_id: projectId,
-                data: notifData
-              }).catch(e => console.error('Failed to create direct user notification', e && e.message ? e.message : e));
-            }
-          } catch (e) {
-            console.error('Failed to check/create direct user notification for', numUid, e && e.message ? e.message : e);
-          }
-        }
       }
     }
   }
