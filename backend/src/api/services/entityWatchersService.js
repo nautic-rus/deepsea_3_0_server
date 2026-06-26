@@ -263,6 +263,44 @@ class EntityWatchersService {
     return { success: true };
   }
 
+  static async removeWatcherById(entityType, entityId, watcherId, actor) {
+    const normalizedType = EntityWatchersService._normalizeEntityType(entityType);
+    if (!normalizedType) {
+      const err = new Error('Unsupported entity type');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    await EntityWatchersService._assertAccess(normalizedType, entityId, actor, 'watchers.delete');
+
+    const id = Number(watcherId);
+    if (!id || Number.isNaN(id)) {
+      const err = new Error('Invalid watcher_id');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const removed = await EntityWatcher.removeById(normalizedType, Number(entityId), id);
+    if (!removed) {
+      const err = new Error('Watcher not found');
+      err.statusCode = 404;
+      throw err;
+    }
+    return { success: true };
+  }
+
+  static async removeWatcherByUserOrWatcherId(entityType, entityId, watcherUserId, watcherId, actor) {
+    const userId = Number(watcherUserId);
+    if (userId && !Number.isNaN(userId)) {
+      try {
+        return await EntityWatchersService.removeWatcher(entityType, entityId, userId, actor);
+      } catch (err) {
+        if (!watcherId || !err || err.statusCode !== 404) throw err;
+      }
+    }
+    return EntityWatchersService.removeWatcherById(entityType, entityId, watcherId, actor);
+  }
+
   static async removeSelfWatcher(entityType, entityId, actor) {
     if (!actor || !actor.id) {
       const err = new Error('Authentication required');

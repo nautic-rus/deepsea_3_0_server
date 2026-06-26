@@ -114,6 +114,21 @@ class EntityWatcher {
     ]);
     return res.rows[0] || null;
   }
+
+  static async removeById(entity_type, entity_id, watcher_id) {
+    const typeVariants = EntityWatcher._entityTypeVariants(entity_type);
+    const query = `
+      DELETE FROM public.entity_watchers
+      WHERE entity_type = ANY($1::text[]) AND entity_id = $2 AND id = $3
+      RETURNING *
+    `;
+    const res = await pool.query(query, [
+      typeVariants,
+      Number(entity_id),
+      Number(watcher_id)
+    ]);
+    return res.rows[0] || null;
+  }
 }
 
 module.exports = EntityWatcher;

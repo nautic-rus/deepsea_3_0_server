@@ -14645,23 +14645,34 @@
               "type": "integer"
             },
             "description": "Document ID"
-          },
-          {
-            "in": "path",
-            "name": "userId",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Watcher user ID"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "integer",
+                    "description": "Watcher user ID"
+                  },
+                  "watcher_id": {
+                    "type": "integer",
+                    "description": "entity_watchers row ID"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Watcher removed"
           },
           "400": {
-            "description": "Invalid id or userId"
+            "description": "Invalid id, user_id or watcher_id"
           },
           "401": {
             "description": "Authentication required"
@@ -17693,23 +17704,34 @@
               "type": "integer"
             },
             "description": "Issue ID"
-          },
-          {
-            "in": "path",
-            "name": "userId",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Watcher user ID"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "integer",
+                    "description": "Watcher user ID"
+                  },
+                  "watcher_id": {
+                    "type": "integer",
+                    "description": "entity_watchers row ID"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Watcher removed"
           },
           "400": {
-            "description": "Invalid id or userId"
+            "description": "Invalid id, user_id or watcher_id"
           },
           "401": {
             "description": "Authentication required"
@@ -25858,23 +25880,34 @@
               "type": "integer"
             },
             "description": "Customer question ID"
-          },
-          {
-            "in": "path",
-            "name": "userId",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Watcher user ID"
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": {
+                    "type": "integer",
+                    "description": "Watcher user ID"
+                  },
+                  "watcher_id": {
+                    "type": "integer",
+                    "description": "entity_watchers row ID"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Watcher removed"
           },
           "400": {
-            "description": "Invalid id or userId"
+            "description": "Invalid id, user_id or watcher_id"
           },
           "401": {
             "description": "Authentication required"

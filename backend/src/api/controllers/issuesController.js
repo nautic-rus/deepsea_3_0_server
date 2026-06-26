@@ -302,8 +302,11 @@ class IssuesController {
     try {
       const actor = req.user || null;
       const id = parseInt(req.params.id, 10);
-      const userId = parseInt(req.params.userId, 10);
-      const ok = await EntityWatchersService.removeWatcher('issue', Number(id), Number(userId), actor);
+      const body = req.body || {};
+      const query = req.query || {};
+      const userId = req.params.userId ?? body.user_id ?? body.userId ?? query.user_id ?? query.userId;
+      const watcherId = body.watcher_id ?? body.watcherId ?? body.id ?? query.watcher_id ?? query.watcherId ?? query.id ?? req.params.userId;
+      const ok = await EntityWatchersService.removeWatcherByUserOrWatcherId('issue', Number(id), userId, watcherId, actor);
       res.json(ok);
     } catch (err) { next(err); }
   }
