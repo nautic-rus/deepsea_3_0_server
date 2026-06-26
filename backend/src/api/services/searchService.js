@@ -506,6 +506,9 @@ class SearchService {
       if (numericLikeQuery) {
         should.push({ match_phrase_prefix: { code: { query, boost: 6 } } });
         should.push({ match_phrase_prefix: { title: { query, boost: 2 } } });
+        should.push({ match: { comment: { query, boost: 1.5 } } });
+        should.push({ term: { entity_id_text: query } });
+        should.push({ term: { id: query } });
       } else {
         should.push({
           multi_match: {
@@ -514,6 +517,7 @@ class SearchService {
             fields: [
               'title^4',
               'code^4',
+              'comment^2',
               'messages_text^1.5',
               'files_text^1.5',
               'description'
@@ -521,6 +525,7 @@ class SearchService {
             fuzziness: 'AUTO'
           }
         });
+        should.push({ term: { id: query } });
       }
 
       // Filter by entity types
