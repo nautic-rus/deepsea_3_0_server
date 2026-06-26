@@ -27,6 +27,7 @@ const materialsProjectsController = require('../controllers/materialsProjectsCon
 const materialKitsController = require('../controllers/materialKitsController');
 const unitsController = require('../controllers/unitsController');
 const shipmentsController = require('../controllers/shipmentsController');
+const shipmentHistoryController = require('../controllers/shipmentHistoryController');
 const suppliersController = require('../controllers/suppliersController');
 const sfiCodesController = require('../controllers/sfiCodesController');
 const specificationsController = require('../controllers/specificationsController');
@@ -487,6 +488,9 @@ router.get('/shipments/:id', authMiddleware, shipmentsController.get);
 router.post('/shipments', authMiddleware, shipmentsController.create);
 router.put('/shipments/:id', authMiddleware, shipmentsController.update);
 router.delete('/shipments/:id', authMiddleware, shipmentsController.delete);
+router.post('/shipments/:id/messages', authMiddleware, shipmentsController.addMessage);
+router.get('/shipments/:id/messages', authMiddleware, shipmentsController.listMessages);
+router.get('/shipments/:id/history', authMiddleware, shipmentHistoryController.list);
 router.post('/shipments/:id/files', authMiddleware, _upload.single('file'), shipmentsController.attachFile);
 router.delete('/shipments/:id/files/:storage_id', authMiddleware, shipmentsController.detachFile);
 router.get('/shipments/:id/files', authMiddleware, shipmentsController.listFiles);

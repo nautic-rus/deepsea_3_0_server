@@ -44,6 +44,16 @@ class ShipmentsController {
     } catch (err) { next(err); }
   }
 
+  static async addMessage(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { content, parent_id = null } = req.body || {};
+      const created = await ShipmentsService.addShipmentMessage(Number(id), content, actor, parent_id);
+      res.status(201).json({ data: created });
+    } catch (err) { next(err); }
+  }
+
   static async attachFile(req, res, next) {
     try {
       const actor = req.user || null;
@@ -78,6 +88,16 @@ class ShipmentsController {
       const id = parseInt(req.params.id, 10);
       const { limit, offset = 0 } = req.query || {};
       const rows = await ShipmentsService.listShipmentFiles(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) }, actor);
+      res.json({ data: rows });
+    } catch (err) { next(err); }
+  }
+
+  static async listMessages(req, res, next) {
+    try {
+      const actor = req.user || null;
+      const id = parseInt(req.params.id, 10);
+      const { limit, offset = 0 } = req.query || {};
+      const rows = await ShipmentsService.listShipmentMessages(Number(id), { limit: limit != null ? Number(limit) : undefined, offset: Number(offset) }, actor);
       res.json({ data: rows });
     } catch (err) { next(err); }
   }

@@ -5777,6 +5777,132 @@ paths:
           description: Forbidden — missing permission shipments.delete
         "404":
           description: Shipment not found
+  /api/shipments/{id}/messages:
+    post:
+      tags:
+        - shipments
+      summary: Add shipment message
+      description: Adds a comment/message to a shipment.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+        - shipments.messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Shipment ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+                parent_id:
+                  type: integer
+                  nullable: true
+            example:
+              content: Shipment arrived at the warehouse.
+      responses:
+        "201":
+          description: Shipment message created
+        "400":
+          description: Invalid id or empty content
+        "401":
+          description: Authentication required
+        "403":
+          description: Forbidden — missing permission shipments.view or shipments.messages
+        "404":
+          description: Shipment not found
+    get:
+      tags:
+        - shipments
+      summary: List shipment messages
+      description: Returns messages/comments attached to a shipment.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+        - shipments.messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Shipment ID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Shipment messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+        "400":
+          description: Invalid id
+        "401":
+          description: Authentication required
+        "403":
+          description: Forbidden — missing permission shipments.view or shipments.messages
+        "404":
+          description: Shipment not found
+  /api/shipments/{id}/history:
+    get:
+      tags:
+        - shipments
+      summary: Shipment history
+      description: Returns the shipment timeline/history entries.
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+        - shipments.history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Shipment ID
+      responses:
+        "200":
+          description: Shipment history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "400":
+          description: Invalid id
+        "401":
+          description: Authentication required
+        "403":
+          description: Forbidden — missing permission shipments.view or shipments.history
+        "404":
+          description: Shipment not found
   /api/shipments/{id}/files:
     post:
       tags:

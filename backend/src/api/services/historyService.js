@@ -1,6 +1,7 @@
 const IssueHistory = require('../../db/models/IssueHistory');
 const DocumentHistory = require('../../db/models/DocumentHistory');
 const CustomerQuestionHistory = require('../../db/models/CustomerQuestionHistory');
+const ShipmentHistory = require('../../db/models/ShipmentHistory');
 
 /**
  * HistoryService
@@ -174,6 +175,46 @@ class HistoryService {
       payload.details = details;
     }
     return CustomerQuestionHistory.create(payload);
+  }
+
+  /**
+   * Add shipment history record.
+   * @param {number} shipmentId
+   * @param {Object|number} actor - actor object or actor id
+   * @param {string} action - short action code
+   * @param {Object|string|null} details - optional details
+   */
+  static async addShipmentHistory(shipmentId, actor, action, details = null) {
+    const actorId = (actor && typeof actor === 'object') ? (actor.id || actor.user_id || null) : actor;
+    if (details && typeof details === 'object' && details.before && details.after && typeof details.before === 'object' && typeof details.after === 'object') {
+      const before = details.before || {};
+      const after = details.after || {};
+      const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+      const writes = [];
+      for (const k of keys) {
+        if (HistoryService._shouldSkipCommonHistoryField(k)) continue;
+        const bv = before[k];
+        const av = after[k];
+        const bvStr = bv === undefined ? null : (typeof bv === 'string' ? bv : JSON.stringify(bv));
+        const avStr = av === undefined ? null : (typeof av === 'string' ? av : JSON.stringify(av));
+        if (bvStr === avStr) continue;
+        writes.push(ShipmentHistory.create({ shipment_id: shipmentId, actor_id: actorId, action: k, details: { before: bv, after: av } }));
+      }
+      return Promise.all(writes);
+    }
+
+    const payload = { shipment_id: shipmentId, actor_id: actorId, action };
+    if (details && typeof details === 'object') {
+      const d = Array.isArray(details) ? details : Object.assign({}, details);
+      delete d.updated_at;
+      delete d.updatedAt;
+      delete d.close_date;
+      delete d.closeDate;
+      payload.details = d;
+    } else {
+      payload.details = details;
+    }
+    return ShipmentHistory.create(payload);
   }
 
 }
