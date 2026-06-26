@@ -26,7 +26,7 @@ class CustomerQuestion {
       where.push(`(asked_by = $${idx} OR answered_by = $${idx} OR EXISTS (
         SELECT 1
         FROM entity_watchers ew
-        WHERE ew.entity_type = 'customer_question'
+        WHERE ew.entity_type IN ('customer_question', 'customer_questions', 'qna')
           AND ew.entity_id = cq.id
           AND ew.user_id = $${idx}
       ))`);

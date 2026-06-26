@@ -140,7 +140,7 @@ class Document {
       where.push(`(created_by = $${idx} OR assigne_to = $${idx} OR EXISTS (
         SELECT 1
         FROM entity_watchers ew
-        WHERE ew.entity_type = 'document'
+        WHERE ew.entity_type IN ('document', 'documents')
           AND ew.entity_id = documents.id
           AND ew.user_id = $${idx}
       ))`);

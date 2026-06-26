@@ -31,6 +31,9 @@ class EntityWatchersService {
     if (!entityType) return null;
     const normalized = String(entityType).trim().toLowerCase();
     if (normalized === 'qna') return 'customer_question';
+    if (normalized === 'issues') return 'issue';
+    if (normalized === 'documents') return 'document';
+    if (normalized === 'customer_questions') return 'customer_question';
     return ENTITY_CONFIG[normalized] ? normalized : null;
   }
 

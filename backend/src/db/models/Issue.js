@@ -37,7 +37,7 @@ class Issue {
       where.push(`(author_id = $${idx} OR assignee_id = $${idx} OR EXISTS (
         SELECT 1
         FROM entity_watchers ew
-        WHERE ew.entity_type = 'issue'
+        WHERE ew.entity_type IN ('issue', 'issues')
           AND ew.entity_id = issues.id
           AND ew.user_id = $${idx}
       ))`);
