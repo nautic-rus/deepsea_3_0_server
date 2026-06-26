@@ -36,12 +36,17 @@ class EntityWatchersService {
 
   static _buildUserRef(user) {
     if (!user) return null;
+    // Rows from entity_watchers joins carry both ew.id and ew.user_id.
+    // Prefer user_id so watcher payloads expose the actual user, not the watcher row id.
+    const userId = typeof user.user_id !== 'undefined' && user.user_id !== null
+      ? Number(user.user_id)
+      : Number(user.id);
     const fullName = [user.last_name, user.first_name, user.middle_name]
       .map((part) => (part == null ? '' : String(part).trim()))
       .filter(Boolean)
       .join(' ');
     return {
-      id: user.id,
+      id: Number.isNaN(userId) ? null : userId,
       username: user.username || null,
       email: user.email || null,
       avatar_id: user.avatar_id || null,
