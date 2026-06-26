@@ -252,6 +252,7 @@ router.get('/issues/:id/messages', authMiddleware, issuesController.listMessages
 // Watchers for issues
 router.get('/issues/:id/watchers', authMiddleware, issuesController.listWatchers);
 router.post('/issues/:id/watchers', authMiddleware, issuesController.addWatcher);
+router.delete('/issues/:id/watchers', authMiddleware, issuesController.removeSelfWatcher);
 router.delete('/issues/:id/watchers/:userId', authMiddleware, issuesController.removeWatcher);
 router.post('/issues/:id/watchers/me', authMiddleware, issuesController.addSelfWatcher);
 router.delete('/issues/:id/watchers/me', authMiddleware, issuesController.removeSelfWatcher);
@@ -284,6 +285,7 @@ router.get('/customer_questions/:id/messages', authMiddleware, customerQuestions
 // watchers for customer questions
 router.get('/customer_questions/:id/watchers', authMiddleware, customerQuestionsController.listWatchers);
 router.post('/customer_questions/:id/watchers', authMiddleware, customerQuestionsController.addWatcher);
+router.delete('/customer_questions/:id/watchers', authMiddleware, customerQuestionsController.removeSelfWatcher);
 router.delete('/customer_questions/:id/watchers/:userId', authMiddleware, customerQuestionsController.removeWatcher);
 router.post('/customer_questions/:id/watchers/me', authMiddleware, customerQuestionsController.addSelfWatcher);
 router.delete('/customer_questions/:id/watchers/me', authMiddleware, customerQuestionsController.removeSelfWatcher);
@@ -402,6 +404,7 @@ router.get('/documents/:id/messages', authMiddleware, documentsController.listMe
 // Watchers for documents
 router.get('/documents/:id/watchers', authMiddleware, documentsController.listWatchers);
 router.post('/documents/:id/watchers', authMiddleware, documentsController.addWatcher);
+router.delete('/documents/:id/watchers', authMiddleware, documentsController.removeSelfWatcher);
 router.delete('/documents/:id/watchers/:userId', authMiddleware, documentsController.removeWatcher);
 router.post('/documents/:id/watchers/me', authMiddleware, documentsController.addSelfWatcher);
 router.delete('/documents/:id/watchers/me', authMiddleware, documentsController.removeSelfWatcher);
