@@ -297,7 +297,7 @@ async function createAuthorizationCode({
 }
 
 function verifyPkce(codeVerifier, storedChallenge, method) {
-  if (!storedChallenge) return false;
+  if (!storedChallenge) return true;
   const normalizedMethod = String(method || 'S256').toUpperCase();
   if (normalizedMethod !== 'S256') return false;
   if (!codeVerifier) return false;

@@ -63,6 +63,8 @@ class OidcController {
         if (!code_challenge || String(code_challenge_method || '').toUpperCase() !== 'S256') {
           throw OidcService.buildClientError(400, 'invalid_request', 'PKCE with code_challenge_method=S256 is required');
         }
+      } else if (code_challenge && String(code_challenge_method || '').toUpperCase() !== 'S256') {
+        throw OidcService.buildClientError(400, 'invalid_request', 'Unsupported code_challenge_method');
       }
 
       const user = await OidcService.resolveAuthenticatedUser(req);
@@ -83,8 +85,8 @@ class OidcController {
         user,
         clientId: client_id,
         redirectUri: redirect_uri,
-        codeChallenge: code_challenge,
-        codeChallengeMethod: code_challenge_method,
+        codeChallenge: code_challenge || null,
+        codeChallengeMethod: code_challenge_method || null,
         nonce,
         scope: requestedScopes.join(' '),
         issuer: OidcService.getIssuerUrl(req),

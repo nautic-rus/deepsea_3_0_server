@@ -17,7 +17,7 @@ const definitions = [
   { key: 'OIDC_SIGNING_KID', valueType: 'string', defaultValue: 'deepsea-oidc', description: 'Key ID для JWKS', isSecret: false, requiresRestart: false },
   { key: 'OIDC_AUTH_CODE_EXPIRES_IN', valueType: 'string', defaultValue: '5m', description: 'TTL authorization code', isSecret: false, requiresRestart: false },
   { key: 'OIDC_ACCESS_TOKEN_EXPIRES_IN', valueType: 'string', defaultValue: '15m', description: 'TTL OIDC access token', isSecret: false, requiresRestart: false },
-  { key: 'OIDC_REQUIRE_PKCE', valueType: 'boolean', defaultValue: true, description: 'Требовать PKCE S256 для OIDC authorize', isSecret: false, requiresRestart: false },
+  { key: 'OIDC_REQUIRE_PKCE', valueType: 'boolean', defaultValue: false, description: 'Требовать PKCE S256 для OIDC authorize', isSecret: false, requiresRestart: false },
   { key: 'MAX_ACTIVE_SESSIONS_PER_USER', valueType: 'number', defaultValue: 5, description: 'Максимум активных сессий на одного пользователя', isSecret: false, requiresRestart: false },
   { key: 'LOGIN_RATE_LIMIT_WINDOW_MS', valueType: 'number', defaultValue: 600000, description: 'Окно лимита попыток входа в миллисекундах', isSecret: false, requiresRestart: false },
   { key: 'LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP', valueType: 'number', defaultValue: 20, description: 'Максимум неудачных попыток входа с одного IP', isSecret: false, requiresRestart: false },
