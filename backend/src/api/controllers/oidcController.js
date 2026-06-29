@@ -1,3 +1,4 @@
+const AuthService = require('../services/authService');
 const OidcService = require('../services/oidcService');
 
 function oidcError(res, statusCode, error, description) {
@@ -11,6 +12,139 @@ function getFullRequestUrl(req) {
   const issuer = OidcService.getIssuerUrl(req);
   const originalUrl = req.originalUrl || req.url || '/';
   return `${issuer}${originalUrl}`;
+}
+
+function setTokenCookieMaxAge(rawValue, fallback = null) {
+  const raw = String(rawValue || '').trim();
+  if (raw.endsWith('d')) return parseInt(raw, 10) * 24 * 60 * 60 * 1000;
+  if (raw.endsWith('h')) return parseInt(raw, 10) * 60 * 60 * 1000;
+  if (raw.endsWith('m')) return parseInt(raw, 10) * 60 * 1000;
+  if (raw.endsWith('s')) return parseInt(raw, 10) * 1000;
+  return fallback;
+}
+
+function setAuthCookies(res, result) {
+  const refreshMaxAge = setTokenCookieMaxAge(process.env.REFRESH_TOKEN_EXPIRES_IN || '7d');
+  const accessMaxAge = setTokenCookieMaxAge(process.env.JWT_EXPIRES_IN || '24h');
+
+  res.cookie('refresh_token', result.refresh_token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: refreshMaxAge
+  });
+
+  res.cookie('access_token', result.token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: accessMaxAge
+  });
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderLoginPage({ returnTo, errorMessage, clientName }) {
+  const safeReturnTo = escapeHtml(returnTo || '');
+  const safeError = errorMessage ? `<div class="error">${escapeHtml(errorMessage)}</div>` : '';
+  const safeClientName = escapeHtml(clientName || 'Matrix');
+
+  return `<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DeepSea OIDC Login</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(160deg, #06101d, #0b1730 60%, #09111f);
+      color: #f3f7ff;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .card {
+      width: min(100%, 420px);
+      margin: 24px;
+      padding: 28px;
+      border-radius: 20px;
+      background: rgba(10, 20, 35, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 18px 70px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(12px);
+    }
+    h1 { margin: 0 0 8px; font-size: 26px; }
+    p { margin: 0 0 20px; color: #a8b7d0; line-height: 1.5; }
+    label { display: block; margin: 14px 0 6px; font-size: 14px; color: #a8b7d0; }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: #f3f7ff;
+      outline: none;
+    }
+    button {
+      width: 100%;
+      margin-top: 20px;
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 16px;
+      background: linear-gradient(135deg, #77b8ff, #4f86ff);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .error {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255, 123, 123, 0.12);
+      color: #ff7b7b;
+      border: 1px solid rgba(255, 123, 123, 0.22);
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Вход для ${safeClientName}</h1>
+    <p>Авторизуйтесь в DeepSea, чтобы продолжить вход в Matrix.</p>
+    ${safeError}
+    <form method="post" action="/api/oidc/login">
+      <input type="hidden" name="return_to" value="${safeReturnTo}" />
+      <label for="username">Логин или email</label>
+      <input id="username" name="username" autocomplete="username" required />
+      <label for="password">Пароль</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required />
+      <button type="submit">Продолжить</button>
+    </form>
+  </main>
+</body>
+</html>`;
+}
+
+function sanitizeReturnTo(returnTo, req) {
+  if (!returnTo) return null;
+  try {
+    const issuer = OidcService.getIssuerUrl(req);
+    const parsed = new URL(returnTo, issuer);
+    if (`${parsed.protocol}//${parsed.host}` !== issuer) return null;
+    if (parsed.pathname !== '/api/oidc/authorize') return null;
+    return parsed.toString();
+  } catch (error) {
+    return null;
+  }
 }
 
 class OidcController {
@@ -69,14 +203,10 @@ class OidcController {
 
       const user = await OidcService.resolveAuthenticatedUser(req);
       if (!user) {
-        const frontendUrl = String(process.env.FRONTEND_URL || '').trim();
-        if (frontendUrl) {
-          const loginUrl = new URL(frontendUrl);
-          loginUrl.searchParams.set('return_to', getFullRequestUrl(req));
-          loginUrl.searchParams.set('client_name', OidcService.getClientName());
-          return res.redirect(302, loginUrl.toString());
-        }
-        throw OidcService.buildClientError(401, 'login_required', 'Authentication session is required');
+        const loginUrl = new URL('/api/oidc/login', OidcService.getIssuerUrl(req));
+        loginUrl.searchParams.set('return_to', getFullRequestUrl(req));
+        loginUrl.searchParams.set('client_name', OidcService.getClientName());
+        return res.redirect(302, loginUrl.toString());
       }
 
       const ipAddress = req.ip || req.connection.remoteAddress;
@@ -114,6 +244,41 @@ class OidcController {
         return oidcError(res, error.statusCode || 400, error.oidcError, error.oidcDescription);
       }
       next(error);
+    }
+  }
+
+  static async loginPage(req, res) {
+    const returnTo = sanitizeReturnTo(req.query && req.query.return_to, req) || '';
+    const user = await OidcService.resolveAuthenticatedUser(req).catch(() => null);
+    if (user && returnTo) {
+      return res.redirect(302, returnTo);
+    }
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).send(renderLoginPage({
+      returnTo,
+      errorMessage: req.query && req.query.error ? String(req.query.error_description || req.query.error) : '',
+      clientName: req.query && req.query.client_name ? String(req.query.client_name) : OidcService.getClientName()
+    }));
+  }
+
+  static async loginSubmit(req, res, next) {
+    try {
+      const { username, email, password, return_to } = req.body || {};
+      const identifier = (username || email || '').toString().trim().toLowerCase();
+      const ipAddress = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('user-agent') || '';
+      const result = await AuthService.login(identifier, password, ipAddress, userAgent);
+      setAuthCookies(res, result);
+
+      const safeReturnTo = sanitizeReturnTo(return_to, req) || OidcService.getIssuerUrl(req);
+      return res.redirect(302, safeReturnTo);
+    } catch (error) {
+      return res.status(401).send(renderLoginPage({
+        returnTo: sanitizeReturnTo(req.body && req.body.return_to, req) || '',
+        errorMessage: error && error.message ? error.message : 'Authentication failed',
+        clientName: OidcService.getClientName()
+      }));
     }
   }
 
