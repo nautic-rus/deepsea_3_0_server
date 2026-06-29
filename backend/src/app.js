@@ -207,8 +207,9 @@ app.get('/api-docs.json', (req, res) => {
   res.send(spec);
 });
 
-// OIDC provider endpoints and discovery live at the application root.
-app.use('/', oidcRoutes);
+// OIDC provider endpoints live under /api so the reverse proxy can route them
+// to the backend while keeping the SPA on the root domain.
+app.use('/api', oidcRoutes);
 
 // API Routes
 app.use('/api', apiRoutes);
