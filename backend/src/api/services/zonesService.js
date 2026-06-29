@@ -32,6 +32,11 @@ class ZonesService {
       err.statusCode = 400;
       throw err;
     }
+    if (fields.code !== undefined && fields.code !== null && fields.code !== '' && typeof fields.code !== 'string') {
+      const err = new Error('Invalid field: code');
+      err.statusCode = 400;
+      throw err;
+    }
 
     const requiredBBoxFields = [
       'bbox_min_x',
@@ -72,6 +77,11 @@ class ZonesService {
         throw err;
       }
       fields.project_id = Number(fields.project_id);
+    }
+    if (fields.code !== undefined && fields.code !== null && fields.code !== '' && typeof fields.code !== 'string') {
+      const err = new Error('Invalid field: code');
+      err.statusCode = 400;
+      throw err;
     }
 
     return await Zone.update(id, fields);

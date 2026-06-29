@@ -1,6 +1,7 @@
 const SpecificationPart = require('../../db/models/SpecificationPart');
 const Specification = require('../../db/models/Specification');
 const SpecificationVersion = require('../../db/models/SpecificationVersion');
+const Zone = require('../../db/models/Zone');
 const pool = require('../../db/connection');
 const { hasPermission } = require('./permissionChecker');
 const SpecificationPartsService = require('./specificationPartsService');
@@ -9,6 +10,12 @@ const SpecificationPartsService = require('./specificationPartsService');
 // It owns external source fetching and delegates normalization/persistence details
 // to SpecificationPartsService so the two responsibilities do not get tangled.
 class SpecificationPartsImportService {
+  static _normalizeZoneLookupCode(zoneValue) {
+    return zoneValue === null || zoneValue === undefined
+      ? ''
+      : String(zoneValue).trim();
+  }
+
   static async importFromBlocks(specificationVersionId, payload, actor, options = {}) {
     // Importing parts is an update operation, so we check identity and permissions first.
     if (!actor || !actor.id) {
@@ -315,6 +322,11 @@ class SpecificationPartsImportService {
     // We need material weights and unit ids before we can resolve quantity.
     const materialMap = await SpecificationPartsService._resolveMaterialMap(normalizedRows, projectId);
     const globalMaterialMap = await SpecificationPartsService._resolveGlobalMaterialMap(normalizedRows);
+    const zoneLookupCodes = [...new Set(normalizedRows
+      .map((row) => SpecificationPartsImportService._normalizeZoneLookupCode(row && row.zone))
+      .filter((code) => code !== null && code !== undefined && String(code).trim() !== ''))];
+    const zones = await Zone.findByProjectIdAndCodes(projectId, zoneLookupCodes);
+    const zoneIdByCode = new Map((zones || []).map((zoneRow) => [String(zoneRow.code).trim(), Number(zoneRow.id)]));
     const report = [];
     const client = await pool.connect();
     const sourceValues = [...(updateCurrentByPartOid ? successfulImportSourceValues : importSourceValues)];
@@ -383,13 +395,13 @@ class SpecificationPartsImportService {
           let paramIndex = 1;
 
           for (const rowValues of batchRows) {
-            batchPlaceholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
+            batchPlaceholders.push(`($${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++}, $${paramIndex++})`);
             batchValues.push(...rowValues);
           }
 
           const insertRes = await client.query(
             `INSERT INTO specification_parts
-              (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, profile_dem, length, width, thickness, radius, angle, nest_id, symmetry, route, system, unit, part_type, descriptions, cog_x, cog_y, cog_z, strgroup, created_by, source)
+              (specification_version_id, part_code, part_oid, material_id, sfi_code_id, quantity, qty, zone, zone_id, profile_dem, length, width, thickness, radius, angle, nest_id, symmetry, route, system, unit, part_type, descriptions, cog_x, cog_y, cog_z, strgroup, created_by, source)
              VALUES ${batchPlaceholders.join(', ')}
              RETURNING id`,
             batchValues
@@ -439,26 +451,27 @@ class SpecificationPartsImportService {
              quantity = $5,
              qty = $6,
              zone = $7,
-             profile_dem = $8,
-             length = $9,
-             width = $10,
-             thickness = $11,
-             radius = $12,
-             angle = $13,
-             nest_id = $14,
-             symmetry = $15,
-             route = $16,
-             system = $17,
-             unit = $18,
-             part_type = $19,
-             descriptions = $20,
-             cog_x = $21,
-             cog_y = $22,
-             cog_z = $23,
-             strgroup = $24,
-             created_by = $25,
-             source = $26
-         WHERE id = $27
+             zone_id = $8,
+             profile_dem = $9,
+             length = $10,
+             width = $11,
+             thickness = $12,
+             radius = $13,
+             angle = $14,
+             nest_id = $15,
+             symmetry = $16,
+             route = $17,
+             system = $18,
+             unit = $19,
+             part_type = $20,
+             descriptions = $21,
+             cog_x = $22,
+             cog_y = $23,
+             cog_z = $24,
+             strgroup = $25,
+             created_by = $26,
+             source = $27
+         WHERE id = $28
          RETURNING id`;
       const buildReportRow = (row, rowIndex, material, extra = {}) => ({
         row_index: rowIndex + 1,
@@ -531,6 +544,8 @@ class SpecificationPartsImportService {
           && !Number.isNaN(Number(row.length))
           ? { ...row, length: Number(row.length) / 1000 }
           : row;
+        const zoneLookupCode = SpecificationPartsImportService._normalizeZoneLookupCode(normalizedRow.zone);
+        const zoneId = zoneIdByCode.get(zoneLookupCode) ?? null;
 
         // ASTRUCTURE and SYSTEMS use dedicated quantity resolvers.
         // BLOCKS mostly keeps the legacy behavior, but unit 3 lengths are normalized to meters.
@@ -569,6 +584,7 @@ class SpecificationPartsImportService {
           resolvedQuantity,
           row.num_eq_part,
           row.zone,
+          zoneId,
           row.profile_dem ?? null,
           normalizedRow.length,
           normalizedRow.width,

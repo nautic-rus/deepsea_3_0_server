@@ -1990,6 +1990,7 @@ COMMENT ON TABLE public.projects IS 'Таблица проектов';
 CREATE TABLE public.zones (
     id integer NOT NULL,
     project_id integer NOT NULL,
+    code character varying(50),
     name character varying(255) NOT NULL,
     description text,
     bbox_min_x numeric(12,3) NOT NULL,

@@ -1471,6 +1471,10 @@
           "project_id": {
             "type": "integer"
           },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
           "project_name": {
             "type": "string",
             "nullable": true
@@ -1525,6 +1529,10 @@
         "properties": {
           "project_id": {
             "type": "integer"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
           },
           "name": {
             "type": "string"

@@ -600,13 +600,13 @@ class SpecificationPartsService {
         ? []
       : ['WEIGHT_UNIT', 'weight_unit'];
     const zoneKeys = sourceMode === 'astructure'
-      ? ['ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
+      ? ['ZONE', 'zone']
       : sourceMode === 'systems'
-        ? ['ZONENAME', 'zonename', 'ZONE', 'zone', 'BLOCK_CODE', 'block_code', 'STRGROUP', 'strgroup']
+        ? ['ZONEUSERID', 'zoneuserid']
       : sourceMode === 'equipment'
-        ? ['ZONE_NAME', 'zone_name', 'ZONE_USERID', 'zone_userid']
+        ? ['ZONE_USERID', 'zone_userid']
       : sourceMode === 'tray'
-        ? ['ZONE_NAME', 'zone_name', 'ZONE', 'zone']
+        ? ['ZONE', 'zone']
       : sourceMode === 'cable'
         ? ['FROM_ZONE_NAME', 'from_zone_name', 'TO_ZONE_NAME', 'to_zone_name']
       : ['BLOCK_CODE', 'block_code', 'zone', 'ZONE', 'STRGROUP', 'strgroup'];

@@ -100,6 +100,25 @@
 
 Если строка не проходит проверку, она не сохраняется, а попадает в `report` с причиной отказа.
 
+## Как формируются `zone` и `zone_id`
+
+Поле `zone` берётся из payload в зависимости от ветки:
+
+- `astructure`: `ZONE`
+- `systems`: `ZONEUSERID`
+- `equip_by_system_oid` и `equip_by_zone_oid`: `ZONE_USERID`
+- `tray_by_system_oid` и `tray_by_zone_oid`: `ZONE`
+- `cable_by_system_oid` и `cable_by_zone_oid`: составное значение из `FROM_ZONE_USERID` и `TO_ZONE_USERID`
+
+Поле `zone_id` определяется по `zones.code` внутри того же проекта спецификации:
+
+1. Берётся значение зоны из источника.
+2. Выполняется поиск в `zones` по:
+   - `zones.project_id = project_id` спецификации
+   - `zones.code = source zone`
+3. Если найдено совпадение, в `specification_parts.zone_id` сохраняется `zones.id`.
+4. Если совпадение не найдено, в `specification_parts.zone_id` сохраняется `null`.
+
 ## Как формируется `quantity`
 
 Это самая важная часть импорта. Логика зависит от ветки источника и от `unit_id` материала.

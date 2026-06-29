@@ -1,6 +1,29 @@
 const pool = require('../connection');
 
 class Zone {
+  static async findByProjectIdAndCodes(projectId, codes = [], executor = pool) {
+    const normalizedProjectId = Number(projectId);
+    const normalizedCodes = [...new Set((codes || [])
+      .map((code) => (code === null || code === undefined ? '' : String(code).trim()))
+      .filter((code) => code !== ''))];
+
+    if (!Number.isFinite(normalizedProjectId) || normalizedProjectId <= 0 || normalizedCodes.length === 0) {
+      return [];
+    }
+
+    const q = `SELECT z.id, z.project_id, p.name AS project_name, z.code, z.name, z.description,
+      z.bbox_min_x, z.bbox_min_y, z.bbox_min_z,
+      z.bbox_max_x, z.bbox_max_y, z.bbox_max_z,
+      z.created_at, z.updated_at
+      FROM zones z
+      LEFT JOIN projects p ON p.id = z.project_id
+      WHERE z.project_id = $1
+        AND z.code = ANY($2::text[])
+      ORDER BY z.id`;
+    const res = await executor.query(q, [normalizedProjectId, normalizedCodes]);
+    return res.rows;
+  }
+
   static async list(filters = {}) {
     const { project_id, search, page = 1, limit } = filters;
     const offset = limit ? (page - 1) * limit : 0;
@@ -13,13 +36,13 @@ class Zone {
       values.push(project_id);
     }
     if (search) {
-      where.push(`(z.name ILIKE $${idx} OR z.description ILIKE $${idx})`);
+      where.push(`(z.code ILIKE $${idx} OR z.name ILIKE $${idx} OR z.description ILIKE $${idx})`);
       values.push(`%${search}%`);
       idx++;
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    let q = `SELECT z.id, z.project_id, p.name AS project_name, z.name, z.description,
+    let q = `SELECT z.id, z.project_id, p.name AS project_name, z.code, z.name, z.description,
       z.bbox_min_x, z.bbox_min_y, z.bbox_min_z,
       z.bbox_max_x, z.bbox_max_y, z.bbox_max_z,
       z.created_at, z.updated_at
@@ -41,7 +64,7 @@ class Zone {
   }
 
   static async findById(id) {
-    const q = `SELECT z.id, z.project_id, p.name AS project_name, z.name, z.description,
+    const q = `SELECT z.id, z.project_id, p.name AS project_name, z.code, z.name, z.description,
       z.bbox_min_x, z.bbox_min_y, z.bbox_min_z,
       z.bbox_max_x, z.bbox_max_y, z.bbox_max_z,
       z.created_at, z.updated_at
@@ -56,6 +79,7 @@ class Zone {
   static async create(fields) {
     const allowed = [
       'project_id',
+      'code',
       'name',
       'description',
       'bbox_min_x',
@@ -94,6 +118,7 @@ class Zone {
 
     [
       'project_id',
+      'code',
       'name',
       'description',
       'bbox_min_x',
