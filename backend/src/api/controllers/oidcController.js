@@ -10,8 +10,11 @@ function oidcError(res, statusCode, error, description) {
 
 function getFullRequestUrl(req) {
   const issuer = OidcService.getIssuerUrl(req);
-  const originalUrl = req.originalUrl || req.url || '/';
-  return `${issuer}${originalUrl}`;
+  const originalUrl = String(req.originalUrl || req.url || '/');
+  const relativeUrl = originalUrl.startsWith('/api/')
+    ? originalUrl.slice(4)
+    : (originalUrl === '/api' ? '/' : originalUrl);
+  return `${issuer}${relativeUrl}`;
 }
 
 function setTokenCookieMaxAge(rawValue, fallback = null) {
