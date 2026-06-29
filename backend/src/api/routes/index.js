@@ -15,6 +15,7 @@ const rolesController = require('../controllers/rolesController');
 const projectsController = require('../controllers/projectsController');
 const projectCharacteristicsController = require('../controllers/projectCharacteristicsController');
 const projectImagesController = require('../controllers/projectImagesController');
+const zonesController = require('../controllers/zonesController');
 const issuesController = require('../controllers/issuesController');
 const documentsController = require('../controllers/documentsController');
 const documentWorkFlowsController = require('../controllers/documentWorkFlowsController');
@@ -184,6 +185,12 @@ router.get('/roles/permissions', authMiddleware, rolesController.getPermissionsB
 // ===== Projects routes =====
 // GET /api/projects
 router.get('/projects', authMiddleware, projectsController.list);
+// ===== Zones routes =====
+router.get('/zones', authMiddleware, zonesController.list);
+router.get('/zones/:id', authMiddleware, zonesController.get);
+router.post('/zones', authMiddleware, zonesController.create);
+router.put('/zones/:id', authMiddleware, zonesController.update);
+router.delete('/zones/:id', authMiddleware, zonesController.remove);
 // GET /api/search - unified full-text search across entities
 router.get('/search', authMiddleware, searchController.search);
 // GET /api/my_projects - list projects assigned to current user (no additional permission required)
@@ -494,6 +501,30 @@ router.get('/shipments/:id/history', authMiddleware, shipmentHistoryController.l
 router.post('/shipments/:id/files', authMiddleware, _upload.single('file'), shipmentsController.attachFile);
 router.delete('/shipments/:id/files/:storage_id', authMiddleware, shipmentsController.detachFile);
 router.get('/shipments/:id/files', authMiddleware, shipmentsController.listFiles);
+
+router.get('/shipment_statuses', authMiddleware, shipmentsController.listShipmentStatuses);
+router.get('/shipment_statuses/:id', authMiddleware, shipmentsController.getShipmentStatus);
+router.post('/shipment_statuses', authMiddleware, shipmentsController.createShipmentStatus);
+router.put('/shipment_statuses/:id', authMiddleware, shipmentsController.updateShipmentStatus);
+router.delete('/shipment_statuses/:id', authMiddleware, shipmentsController.deleteShipmentStatus);
+
+router.get('/shipment_storage_types', authMiddleware, shipmentsController.listShipmentStorageTypes);
+router.get('/shipment_storage_types/:id', authMiddleware, shipmentsController.getShipmentStorageType);
+router.post('/shipment_storage_types', authMiddleware, shipmentsController.createShipmentStorageType);
+router.put('/shipment_storage_types/:id', authMiddleware, shipmentsController.updateShipmentStorageType);
+router.delete('/shipment_storage_types/:id', authMiddleware, shipmentsController.deleteShipmentStorageType);
+
+router.get('/shipment_storage_statuses', authMiddleware, shipmentsController.listShipmentStorageStatuses);
+router.get('/shipment_storage_statuses/:id', authMiddleware, shipmentsController.getShipmentStorageStatus);
+router.post('/shipment_storage_statuses', authMiddleware, shipmentsController.createShipmentStorageStatus);
+router.put('/shipment_storage_statuses/:id', authMiddleware, shipmentsController.updateShipmentStorageStatus);
+router.delete('/shipment_storage_statuses/:id', authMiddleware, shipmentsController.deleteShipmentStorageStatus);
+
+router.get('/shipment_storage_reasons', authMiddleware, shipmentsController.listShipmentStorageReasons);
+router.get('/shipment_storage_reasons/:id', authMiddleware, shipmentsController.getShipmentStorageReason);
+router.post('/shipment_storage_reasons', authMiddleware, shipmentsController.createShipmentStorageReason);
+router.put('/shipment_storage_reasons/:id', authMiddleware, shipmentsController.updateShipmentStorageReason);
+router.delete('/shipment_storage_reasons/:id', authMiddleware, shipmentsController.deleteShipmentStorageReason);
 
 // ===== Shipment items (materials in shipment) =====
 // Removed: endpoints for managing shipment items are deprecated.

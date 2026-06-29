@@ -1,12 +1,74 @@
 const Shipment = require('../../db/models/Shipment');
 const ShipmentMaterial = require('../../db/models/ShipmentMaterial');
 const ShipmentStorage = require('../../db/models/ShipmentStorage');
+const ShipmentStatus = require('../../db/models/ShipmentStatus');
+const ShipmentStorageType = require('../../db/models/ShipmentStorageType');
+const ShipmentStorageReason = require('../../db/models/ShipmentStorageReason');
+const ShipmentStorageStatus = require('../../db/models/ShipmentStorageStatus');
 const Storage = require('../../db/models/Storage');
 const ShipmentMessage = require('../../db/models/ShipmentMessage');
 const HistoryService = require('./historyService');
 const { hasPermission } = require('./permissionChecker');
 
 class ShipmentsService {
+  static async _assertLookupPermission(actor, permission) {
+    if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
+    const allowed = await hasPermission(actor, permission);
+    if (!allowed) { const err = new Error(`Forbidden: missing permission ${permission}`); err.statusCode = 403; throw err; }
+  }
+
+  static _normalizeLookupFields(fields = {}) {
+    const normalized = Object.assign({}, fields);
+    if (typeof normalized.is_active !== 'undefined') {
+      normalized.is_active = normalized.is_active === true || normalized.is_active === 'true' || normalized.is_active === 1 || normalized.is_active === '1';
+    }
+    return normalized;
+  }
+
+  static async _listLookup(Model, actor, permission) {
+    await ShipmentsService._assertLookupPermission(actor, permission);
+    return await Model.list();
+  }
+
+  static async _getLookup(Model, id, actor, permission, notFoundMessage) {
+    await ShipmentsService._assertLookupPermission(actor, permission);
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const row = await Model.findById(Number(id));
+    if (!row && notFoundMessage) { const err = new Error(notFoundMessage); err.statusCode = 404; throw err; }
+    return row;
+  }
+
+  static async _createLookup(Model, fields, actor, permission) {
+    await ShipmentsService._assertLookupPermission(actor, permission);
+    if (!fields || !fields.name || !fields.code) { const err = new Error('Missing required fields: name, code'); err.statusCode = 400; throw err; }
+    return await Model.create(ShipmentsService._normalizeLookupFields(fields));
+  }
+
+  static async _updateLookup(Model, id, fields, actor, permission, notFoundMessage) {
+    await ShipmentsService._assertLookupPermission(actor, permission);
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const updated = await Model.update(Number(id), ShipmentsService._normalizeLookupFields(fields || {}));
+    if (!updated && notFoundMessage) { const err = new Error(notFoundMessage); err.statusCode = 404; throw err; }
+    return updated;
+  }
+
+  static async _deleteLookup(Model, id, actor, permission, refChecks = [], notFoundMessage) {
+    await ShipmentsService._assertLookupPermission(actor, permission);
+    if (!id || Number.isNaN(Number(id))) { const err = new Error('Invalid id'); err.statusCode = 400; throw err; }
+    const pool = require('../../db/connection');
+    for (const check of refChecks) {
+      const res = await pool.query(`SELECT 1 FROM ${check.table} WHERE ${check.column} = $1 LIMIT 1`, [Number(id)]);
+      if (res.rowCount > 0) {
+        const err = new Error(check.message || 'Cannot delete referenced row');
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+    const ok = await Model.delete(Number(id));
+    if (!ok && notFoundMessage) { const err = new Error(notFoundMessage); err.statusCode = 404; throw err; }
+    return ok;
+  }
+
   static async listShipments(query = {}, actor) {
     const requiredPermission = 'shipments.view';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
@@ -85,7 +147,7 @@ class ShipmentsService {
     return { success: true };
   }
 
-  static async attachFileToShipment(id, storageId, actor) {
+  static async attachFileToShipment(id, storageId, actor, metadata = {}) {
     const requiredPermission = 'shipments.update';
     if (!actor || !actor.id) { const err = new Error('Authentication required'); err.statusCode = 401; throw err; }
     const allowed = await hasPermission(actor, requiredPermission);
@@ -106,7 +168,17 @@ class ShipmentsService {
 
     const attached = [];
     for (const storageItem of storageItems) {
-      const row = await ShipmentStorage.attach({ shipment_id: Number(id), storage_id: Number(storageItem.id) });
+      const row = await ShipmentStorage.attach({
+        shipment_id: Number(id),
+        storage_id: Number(storageItem.id),
+        type_id: typeof metadata.type_id !== 'undefined' ? metadata.type_id : undefined,
+        rev: typeof metadata.rev !== 'undefined' ? metadata.rev : undefined,
+        archive: typeof metadata.archive !== 'undefined' ? metadata.archive : undefined,
+        archive_data: typeof metadata.archive_data !== 'undefined' ? metadata.archive_data : undefined,
+        status_id: typeof metadata.status_id !== 'undefined' ? metadata.status_id : undefined,
+        reason_id: typeof metadata.reason_id !== 'undefined' ? metadata.reason_id : undefined,
+        comment: typeof metadata.comment !== 'undefined' ? metadata.comment : undefined
+      });
       if (row) attached.push(row);
       (async () => {
         try {
@@ -295,6 +367,107 @@ class ShipmentsService {
     });
 
     return out;
+  }
+
+  static async listShipmentStatuses(actor) {
+    return await ShipmentsService._listLookup(ShipmentStatus, actor, 'shipments.view');
+  }
+
+  static async getShipmentStatusById(id, actor) {
+    return await ShipmentsService._getLookup(ShipmentStatus, id, actor, 'shipments.view', 'Shipment status not found');
+  }
+
+  static async createShipmentStatus(fields, actor) {
+    return await ShipmentsService._createLookup(ShipmentStatus, fields, actor, 'shipments.create');
+  }
+
+  static async updateShipmentStatus(id, fields, actor) {
+    return await ShipmentsService._updateLookup(ShipmentStatus, id, fields, actor, 'shipments.update', 'Shipment status not found');
+  }
+
+  static async deleteShipmentStatus(id, actor) {
+    return await ShipmentsService._deleteLookup(ShipmentStatus, id, actor, 'shipments.delete', [], 'Shipment status not found');
+  }
+
+  static async listShipmentStorageTypes(actor) {
+    return await ShipmentsService._listLookup(ShipmentStorageType, actor, 'shipments.view');
+  }
+
+  static async getShipmentStorageTypeById(id, actor) {
+    return await ShipmentsService._getLookup(ShipmentStorageType, id, actor, 'shipments.view', 'Shipment storage type not found');
+  }
+
+  static async createShipmentStorageType(fields, actor) {
+    return await ShipmentsService._createLookup(ShipmentStorageType, fields, actor, 'shipments.create');
+  }
+
+  static async updateShipmentStorageType(id, fields, actor) {
+    return await ShipmentsService._updateLookup(ShipmentStorageType, id, fields, actor, 'shipments.update', 'Shipment storage type not found');
+  }
+
+  static async deleteShipmentStorageType(id, actor) {
+    return await ShipmentsService._deleteLookup(
+      ShipmentStorageType,
+      id,
+      actor,
+      'shipments.delete',
+      [{ table: 'shipments_storage', column: 'type_id', message: 'Cannot delete storage type: it is referenced by shipment attachments' }],
+      'Shipment storage type not found'
+    );
+  }
+
+  static async listShipmentStorageStatuses(actor) {
+    return await ShipmentsService._listLookup(ShipmentStorageStatus, actor, 'shipments.view');
+  }
+
+  static async getShipmentStorageStatusById(id, actor) {
+    return await ShipmentsService._getLookup(ShipmentStorageStatus, id, actor, 'shipments.view', 'Shipment storage status not found');
+  }
+
+  static async createShipmentStorageStatus(fields, actor) {
+    return await ShipmentsService._createLookup(ShipmentStorageStatus, fields, actor, 'shipments.create');
+  }
+
+  static async updateShipmentStorageStatus(id, fields, actor) {
+    return await ShipmentsService._updateLookup(ShipmentStorageStatus, id, fields, actor, 'shipments.update', 'Shipment storage status not found');
+  }
+
+  static async deleteShipmentStorageStatus(id, actor) {
+    return await ShipmentsService._deleteLookup(
+      ShipmentStorageStatus,
+      id,
+      actor,
+      'shipments.delete',
+      [{ table: 'shipments_storage', column: 'status_id', message: 'Cannot delete storage status: it is referenced by shipment attachments' }],
+      'Shipment storage status not found'
+    );
+  }
+
+  static async listShipmentStorageReasons(actor) {
+    return await ShipmentsService._listLookup(ShipmentStorageReason, actor, 'shipments.view');
+  }
+
+  static async getShipmentStorageReasonById(id, actor) {
+    return await ShipmentsService._getLookup(ShipmentStorageReason, id, actor, 'shipments.view', 'Shipment storage reason not found');
+  }
+
+  static async createShipmentStorageReason(fields, actor) {
+    return await ShipmentsService._createLookup(ShipmentStorageReason, fields, actor, 'shipments.create');
+  }
+
+  static async updateShipmentStorageReason(id, fields, actor) {
+    return await ShipmentsService._updateLookup(ShipmentStorageReason, id, fields, actor, 'shipments.update', 'Shipment storage reason not found');
+  }
+
+  static async deleteShipmentStorageReason(id, actor) {
+    return await ShipmentsService._deleteLookup(
+      ShipmentStorageReason,
+      id,
+      actor,
+      'shipments.delete',
+      [{ table: 'shipments_storage', column: 'reason_id', message: 'Cannot delete storage reason: it is referenced by shipment attachments' }],
+      'Shipment storage reason not found'
+    );
   }
 }
 

@@ -70,6 +70,8 @@ tags:
     description: CRUD operations for storage
   - name: units
     description: CRUD operations for units
+  - name: zones
+    description: CRUD operations for ship room zones
   - name: environment_settings
     description: View and update environment settings
   - name: wiki
@@ -1013,6 +1015,70 @@ components:
         created_at:
           type: string
           format: date-time
+    Zone:
+      type: object
+      properties:
+        id:
+          type: integer
+        project_id:
+          type: integer
+        project_name:
+          type: string
+          nullable: true
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        bbox_min_x:
+          type: number
+        bbox_min_y:
+          type: number
+        bbox_min_z:
+          type: number
+        bbox_max_x:
+          type: number
+        bbox_max_y:
+          type: number
+        bbox_max_z:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ZoneCreate:
+      type: object
+      required:
+        - project_id
+        - name
+        - bbox_min_x
+        - bbox_min_y
+        - bbox_min_z
+        - bbox_max_x
+        - bbox_max_y
+        - bbox_max_z
+      properties:
+        project_id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        bbox_min_x:
+          type: number
+        bbox_min_y:
+          type: number
+        bbox_min_z:
+          type: number
+        bbox_max_x:
+          type: number
+        bbox_max_y:
+          type: number
+        bbox_max_z:
+          type: number
     ProjectAssignment:
       type: object
       properties:
@@ -2705,8 +2771,34 @@ components:
       type: object
       description: File attached to shipment via shipments_storage
       properties:
+        id:
+          type: integer
+        shipment_id:
+          type: integer
         storage_id:
           type: integer
+        type_id:
+          type: integer
+          nullable: true
+        rev:
+          type: string
+          nullable: true
+        archive:
+          type: boolean
+          nullable: true
+        archive_data:
+          type: string
+          format: date-time
+          nullable: true
+        status_id:
+          type: integer
+          nullable: true
+        reason_id:
+          type: integer
+          nullable: true
+        comment:
+          type: string
+          nullable: true
         url:
           type: string
           nullable: true
@@ -4464,6 +4556,155 @@ paths:
           description: Authentication required
         "404":
           description: Not found
+  /api/zones:
+    get:
+      tags:
+        - zones
+      summary: List zones
+      description: "Returns ship room zones with optional `project_id` and text search filters."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: project_id
+          in: query
+          description: Filter by project ID
+          schema:
+            type: integer
+        - name: search
+          in: query
+          description: Search by name or description
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: Page number (default 1)
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Records per page (if not specified — no limit)
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of zones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Zone"
+        "401":
+          description: Authentication required
+    post:
+      tags:
+        - zones
+      summary: Create zone
+      description: "Creates a new zone for a project. Required fields: project_id, name and bbox coordinates."
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZoneCreate"
+      responses:
+        "201":
+          description: Zone created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Zone"
+        "400":
+          description: Invalid request
+        "401":
+          description: Authentication required
+  /api/zones/{id}:
+    get:
+      tags:
+        - zones
+      summary: Get zone by ID
+      description: "Returns a single zone record by identifier."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Zone ID
+      responses:
+        "200":
+          description: Zone record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Zone"
+        "401":
+          description: Authentication required
+        "404":
+          description: Not found
+    put:
+      tags:
+        - zones
+      summary: Update zone
+      description: "Partial update of a zone."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Zone ID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ZoneCreate"
+      responses:
+        "200":
+          description: Updated record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Zone"
+        "401":
+          description: Authentication required
+        "404":
+          description: Not found
+    delete:
+      tags:
+        - zones
+      summary: Delete zone
+      description: "Deletes zone record."
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Zone ID
+      responses:
+        "200":
+          description: Zone deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        "401":
+          description: Authentication required
+        "404":
+          description: Not found
   /api/sfi_codes:
     get:
       tags:
@@ -5932,8 +6173,36 @@ paths:
                     - type: array
                       items:
                         type: integer
+                type_id:
+                  type: integer
+                  nullable: true
+                rev:
+                  type: integer
+                  nullable: true
+                archive:
+                  type: boolean
+                archive_data:
+                  type: string
+                  format: date-time
+                  nullable: true
+                status:
+                  type: integer
+                  nullable: true
+                reason:
+                  type: integer
+                  nullable: true
+                comment:
+                  type: string
+                  nullable: true
             example:
               storage_id: 42
+              type_id: 0
+              rev: 0
+              archive: true
+              archive_data: "2026-06-29T06:44:50.401Z"
+              status: 0
+              reason: 0
+              comment: string
           multipart/form-data:
             schema:
               type: object
@@ -5941,6 +6210,21 @@ paths:
                 file:
                   type: string
                   format: binary
+                type_id:
+                  type: integer
+                rev:
+                  type: integer
+                archive:
+                  type: boolean
+                archive_data:
+                  type: string
+                  format: date-time
+                status:
+                  type: integer
+                reason:
+                  type: integer
+                comment:
+                  type: string
       responses:
         "201":
           description: File attached to shipment
@@ -6057,6 +6341,438 @@ paths:
           description: Invalid id or storage_id
         "404":
           description: Shipment not found
+  /api/shipment_statuses:
+    get:
+      tags:
+        - shipments
+      summary: List shipment statuses
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+      responses:
+        "200":
+          description: Shipment statuses
+    post:
+      tags:
+        - shipments
+      summary: Create shipment status
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - name
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        "201":
+          description: Shipment status created
+  /api/shipment_statuses/{id}:
+    get:
+      tags:
+        - shipments
+      summary: Get shipment status
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shipment status
+    put:
+      tags:
+        - shipments
+      summary: Update shipment status
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.update
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        "200":
+          description: Shipment status updated
+    delete:
+      tags:
+        - shipments
+      summary: Delete shipment status
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.delete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shipment status deleted
+  /api/shipment_storage_types:
+    get:
+      tags:
+        - shipments
+      summary: List shipment storage types
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+      responses:
+        "200":
+          description: Shipment storage types
+    post:
+      tags:
+        - shipments
+      summary: Create shipment storage type
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - name
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        "201":
+          description: Shipment storage type created
+  /api/shipment_storage_types/{id}:
+    get:
+      tags:
+        - shipments
+      summary: Get shipment storage type
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shipment storage type
+    put:
+      tags:
+        - shipments
+      summary: Update shipment storage type
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.update
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        "200":
+          description: Shipment storage type updated
+    delete:
+      tags:
+        - shipments
+      summary: Delete shipment storage type
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.delete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shipment storage type deleted
+  /api/shipment_storage_statuses:
+    get:
+      tags:
+        - shipments
+      summary: List shipment storage statuses
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+      responses:
+        "200":
+          description: Shipment storage statuses
+    post:
+      tags:
+        - shipments
+      summary: Create shipment storage status
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - name
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        "201":
+          description: Shipment storage status created
+  /api/shipment_storage_statuses/{id}:
+    get:
+      tags:
+        - shipments
+      summary: Get shipment storage status
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shipment storage status
+    put:
+      tags:
+        - shipments
+      summary: Update shipment storage status
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.update
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        "200":
+          description: Shipment storage status updated
+    delete:
+      tags:
+        - shipments
+      summary: Delete shipment storage status
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.delete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shipment storage status deleted
+  /api/shipment_storage_reasons:
+    get:
+      tags:
+        - shipments
+      summary: List shipment storage reasons
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+      responses:
+        "200":
+          description: Shipment storage reasons
+    post:
+      tags:
+        - shipments
+      summary: Create shipment storage reason
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - name
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        "201":
+          description: Shipment storage reason created
+  /api/shipment_storage_reasons/{id}:
+    get:
+      tags:
+        - shipments
+      summary: Get shipment storage reason
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.view
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shipment storage reason
+    put:
+      tags:
+        - shipments
+      summary: Update shipment storage reason
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.update
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                name:
+                  type: string
+                description:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        "200":
+          description: Shipment storage reason updated
+    delete:
+      tags:
+        - shipments
+      summary: Delete shipment storage reason
+      security:
+        - bearerAuth: []
+      x-permissions:
+        - shipments.delete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shipment storage reason deleted
   /api/audit_logs:
     get:
       tags:

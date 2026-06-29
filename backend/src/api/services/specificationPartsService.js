@@ -787,7 +787,7 @@ class SpecificationPartsService {
     // BLOCKS follows the generic legacy import rules:
     // - unit 2 means we already have the final weight, so use TOTAL_WEIGHT.
     // - unit 1 means the part is counted by pieces, so prefer NUM_EQ_PART.
-    // - unit 3 means the part is counted by length, so use LENGTH.
+    // - unit 3 means the part is counted by length, so use LENGTH (already normalized to meters by import).
     // - for every other unit, we derive quantity from TOTAL_WEIGHT / material.weight.
     // - if we cannot calculate anything meaningful, we fall back to the raw quantity
     //   from the payload, and then to 1 as the final safety net.

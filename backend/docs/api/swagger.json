@@ -137,6 +137,10 @@
       "description": "CRUD operations for units"
     },
     {
+      "name": "zones",
+      "description": "CRUD operations for ship room zones"
+    },
+    {
       "name": "environment_settings",
       "description": "View and update environment settings"
     },
@@ -298,43 +302,100 @@
       "CustomerQuestion": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer" },
-          "question_title": { "type": "string", "nullable": true },
-          "question_text": { "type": "string" },
-          "answer_text": { "type": "string", "nullable": true },
-          "priority": { "type": "string", "nullable": true },
-          "due_date": { "type": "string", "format": "date", "nullable": true },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time" },
-          "close_date": { "type": "string", "format": "date-time", "nullable": true },
-          "project": { "$ref": "#/components/schemas/Project", "nullable": true },
-          "type": { "$ref": "#/components/schemas/CustomerQuestionType", "nullable": true },
-          "specialization_id": { "type": "integer", "nullable": true },
+          "id": {
+            "type": "integer"
+          },
+          "question_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "answer_text": {
+            "type": "string",
+            "nullable": true
+          },
+          "priority": {
+            "type": "string",
+            "nullable": true
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "close_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "project": {
+            "$ref": "#/components/schemas/Project",
+            "nullable": true
+          },
+          "type": {
+            "$ref": "#/components/schemas/CustomerQuestionType",
+            "nullable": true
+          },
+          "specialization_id": {
+            "type": "integer",
+            "nullable": true
+          },
           "specialization": {
             "type": "object",
             "nullable": true,
             "properties": {
-              "id": { "type": "integer" },
-              "name": { "type": "string" }
+              "id": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              }
             }
           },
-          "status": { "$ref": "#/components/schemas/CustomerQuestionStatus", "nullable": true },
+          "status": {
+            "$ref": "#/components/schemas/CustomerQuestionStatus",
+            "nullable": true
+          },
           "asked_by": {
             "type": "object",
             "nullable": true,
             "properties": {
-              "id": { "type": "integer" },
-              "full_name": { "type": "string" },
-              "avatar_id": { "type": "integer", "nullable": true }
+              "id": {
+                "type": "integer"
+              },
+              "full_name": {
+                "type": "string"
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
             }
           },
           "answered_by": {
             "type": "object",
             "nullable": true,
             "properties": {
-              "id": { "type": "integer" },
-              "full_name": { "type": "string" },
-              "avatar_id": { "type": "integer", "nullable": true }
+              "id": {
+                "type": "integer"
+              },
+              "full_name": {
+                "type": "string"
+              },
+              "avatar_id": {
+                "type": "integer",
+                "nullable": true
+              }
             }
           }
         }
@@ -561,8 +622,7 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
-          }
-          ,
+          },
           "archive_user_id": {
             "type": "integer",
             "nullable": true,
@@ -742,12 +802,16 @@
         "properties": {
           "documents_storage_id": {
             "type": "array",
-            "items": { "type": "integer" },
+            "items": {
+              "type": "integer"
+            },
             "description": "(legacy) list of `documents_storage.id` values to update"
           },
           "document_storage_ids": {
             "type": "array",
-            "items": { "type": "integer" },
+            "items": {
+              "type": "integer"
+            },
             "description": "Preferred: list of `documents_storage.id` values to update"
           },
           "status": {
@@ -757,7 +821,10 @@
           }
         },
         "example": {
-          "document_storage_ids": [123, 456],
+          "document_storage_ids": [
+            123,
+            456
+          ],
           "status": 1
         }
       },
@@ -1392,6 +1459,97 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "Zone": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "project_id": {
+            "type": "integer"
+          },
+          "project_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "bbox_min_x": {
+            "type": "number"
+          },
+          "bbox_min_y": {
+            "type": "number"
+          },
+          "bbox_min_z": {
+            "type": "number"
+          },
+          "bbox_max_x": {
+            "type": "number"
+          },
+          "bbox_max_y": {
+            "type": "number"
+          },
+          "bbox_max_z": {
+            "type": "number"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ZoneCreate": {
+        "type": "object",
+        "required": [
+          "project_id",
+          "name",
+          "bbox_min_x",
+          "bbox_min_y",
+          "bbox_min_z",
+          "bbox_max_x",
+          "bbox_max_y",
+          "bbox_max_z"
+        ],
+        "properties": {
+          "project_id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "bbox_min_x": {
+            "type": "number"
+          },
+          "bbox_min_y": {
+            "type": "number"
+          },
+          "bbox_min_z": {
+            "type": "number"
+          },
+          "bbox_max_x": {
+            "type": "number"
+          },
+          "bbox_max_y": {
+            "type": "number"
+          },
+          "bbox_max_z": {
+            "type": "number"
           }
         }
       },
@@ -3742,8 +3900,43 @@
         "type": "object",
         "description": "File attached to shipment via shipments_storage",
         "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "shipment_id": {
+            "type": "integer"
+          },
           "storage_id": {
             "type": "integer"
+          },
+          "type_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "rev": {
+            "type": "string",
+            "nullable": true
+          },
+          "archive": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "archive_data": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reason_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
           },
           "url": {
             "type": "string",
@@ -5630,36 +5823,109 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "score": { "type": "number", "format": "float" },
-                          "entity_type": { "type": "string", "enum": ["documents", "issues", "customer_questions"] },
-                          "entity_id": { "type": "integer" },
-                          "project_id": { "type": "integer", "nullable": true },
-                          "title": { "type": "string", "nullable": true },
-                          "description": { "type": "string", "nullable": true },
-                          "code": { "type": "string", "nullable": true },
-                          "comment": { "type": "string", "nullable": true },
-                          "priority": { "type": "string", "nullable": true },
-                          "project_name": { "type": "string", "nullable": true },
-                          "project_code": { "type": "string", "nullable": true },
-                          "status_name": { "type": "string", "nullable": true },
-                          "type_name": { "type": "string", "nullable": true },
-                          "stage_name": { "type": "string", "nullable": true },
-                          "specialization_name": { "type": "string", "nullable": true },
-                          "author_name": { "type": "string", "nullable": true },
-                          "assignee_name": { "type": "string", "nullable": true },
-                          "responsible_name": { "type": "string", "nullable": true },
-                          "created_at": { "type": "string", "format": "date-time", "nullable": true },
-                          "updated_at": { "type": "string", "format": "date-time", "nullable": true }
+                          "score": {
+                            "type": "number",
+                            "format": "float"
+                          },
+                          "entity_type": {
+                            "type": "string",
+                            "enum": [
+                              "documents",
+                              "issues",
+                              "customer_questions"
+                            ]
+                          },
+                          "entity_id": {
+                            "type": "integer"
+                          },
+                          "project_id": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "title": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "description": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "code": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "comment": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "priority": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "project_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "project_code": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "status_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "type_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "stage_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "specialization_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "author_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "assignee_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "responsible_name": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true
+                          }
                         }
                       }
                     },
                     "meta": {
                       "type": "object",
                       "properties": {
-                        "query": { "type": "string" },
-                        "total": { "type": "integer" },
-                        "limit": { "type": "integer" },
-                        "offset": { "type": "integer" }
+                        "query": {
+                          "type": "string"
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
                       }
                     }
                   }
@@ -5696,16 +5962,22 @@
               "type": "integer"
             },
             "example": 12
-          }
-          ,
+          },
           {
             "name": "type_id",
             "in": "query",
             "description": "Document type id for filtering (optional). Can be a single integer or array.",
             "schema": {
               "oneOf": [
-                { "type": "integer" },
-                { "type": "array", "items": { "type": "integer" } }
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                }
               ]
             },
             "example": 3
@@ -5725,40 +5997,75 @@
                         "stages": {
                           "type": "array",
                           "items": {
-                              "type": "object",
-                              "properties": {
-                                "stage_id": { "type": "integer", "nullable": true },
-                                "stage_name": { "type": "string", "nullable": true },
-                                "total_count": { "type": "integer" },
-                                "closed_count": { "type": "integer" },
-                                "open_count": { "type": "integer" },
-                                "percent_closed": { "type": "number", "format": "float" }
+                            "type": "object",
+                            "properties": {
+                              "stage_id": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "stage_name": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "total_count": {
+                                "type": "integer"
+                              },
+                              "closed_count": {
+                                "type": "integer"
+                              },
+                              "open_count": {
+                                "type": "integer"
+                              },
+                              "percent_closed": {
+                                "type": "number",
+                                "format": "float"
                               }
                             }
+                          }
                         },
-                          "specializations": {
+                        "specializations": {
                           "type": "array",
                           "items": {
                             "type": "object",
                             "properties": {
-                              "specialization_id": { "type": "integer", "nullable": true },
-                              "total_count": { "type": "integer" },
-                              "closed_count": { "type": "integer" },
-                              "open_count": { "type": "integer" },
-                              "percent_closed": { "type": "number", "format": "float" }
+                              "specialization_id": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "total_count": {
+                                "type": "integer"
+                              },
+                              "closed_count": {
+                                "type": "integer"
+                              },
+                              "open_count": {
+                                "type": "integer"
+                              },
+                              "percent_closed": {
+                                "type": "number",
+                                "format": "float"
+                              }
+                            }
+                          }
+                        },
+                        "overall": {
+                          "type": "object",
+                          "properties": {
+                            "total_count": {
+                              "type": "integer"
+                            },
+                            "closed_count": {
+                              "type": "integer"
+                            },
+                            "open_count": {
+                              "type": "integer"
+                            },
+                            "percent_closed": {
+                              "type": "number",
+                              "format": "float"
                             }
                           }
                         }
-                        ,
-                          "overall": {
-                            "type": "object",
-                            "properties": {
-                              "total_count": { "type": "integer" },
-                              "closed_count": { "type": "integer" },
-                              "open_count": { "type": "integer" },
-                              "percent_closed": { "type": "number", "format": "float" }
-                            }
-                          }
                       }
                     }
                   }
@@ -5792,7 +6099,10 @@
                 "$ref": "#/components/schemas/BulkUpdateDocumentFilesStatus"
               },
               "example": {
-                "documents_storage_id": [123, 456],
+                "documents_storage_id": [
+                  123,
+                  456
+                ],
                 "status": 1
               }
             }
@@ -5817,9 +6127,261 @@
               }
             }
           },
-          "400": { "description": "Invalid request" },
-          "401": { "description": "Authentication required" },
-          "403": { "description": "Forbidden — missing permission documents.update_storage_status" }
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden — missing permission documents.update_storage_status"
+          }
+        }
+      }
+    },
+    "/api/zones": {
+      "get": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "List zones",
+        "description": "Returns ship room zones with optional project_id and text search filters.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "query",
+            "description": "Filter by project ID",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Search by name or description",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (default 1)",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Records per page (if not specified — no limit)",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of zones",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Zone"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Create zone",
+        "description": "Creates a new zone for a project. Required fields: project_id, name and bbox coordinates.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Zone created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Zone"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          }
+        }
+      }
+    },
+    "/api/zones/{id}": {
+      "get": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Get zone by ID",
+        "description": "Returns a single zone record by identifier.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Zone ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Zone record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Zone"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Update zone",
+        "description": "Partial update of a zone.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Zone ID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZoneCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Zone"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "zones"
+        ],
+        "summary": "Delete zone",
+        "description": "Deletes zone record.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Zone ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Zone deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Not found"
+          }
         }
       }
     },
@@ -6790,14 +7352,14 @@
               }
             }
           },
+          "400": {
+            "description": "Invalid project_id"
+          },
           "401": {
             "description": "Authentication required"
           },
           "403": {
             "description": "Forbidden — missing permission materials.view"
-          },
-          "400": {
-            "description": "Invalid project_id"
           }
         }
       }
@@ -8298,11 +8860,46 @@
                         }
                       }
                     ]
+                  },
+                  "type_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "rev": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "archive": {
+                    "type": "boolean"
+                  },
+                  "archive_data": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  },
+                  "status": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "reason": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "comment": {
+                    "type": "string",
+                    "nullable": true
                   }
                 }
               },
               "example": {
-                "storage_id": 42
+                "storage_id": 42,
+                "type_id": 0,
+                "rev": 0,
+                "archive": true,
+                "archive_data": "2026-06-29T06:44:50.401Z",
+                "status": 0,
+                "reason": 0,
+                "comment": "string"
               }
             },
             "multipart/form-data": {
@@ -8312,6 +8909,28 @@
                   "file": {
                     "type": "string",
                     "format": "binary"
+                  },
+                  "type_id": {
+                    "type": "integer"
+                  },
+                  "rev": {
+                    "type": "integer"
+                  },
+                  "archive": {
+                    "type": "boolean"
+                  },
+                  "archive_data": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "status": {
+                    "type": "integer"
+                  },
+                  "reason": {
+                    "type": "integer"
+                  },
+                  "comment": {
+                    "type": "string"
                   }
                 }
               }
@@ -8505,6 +9124,730 @@
           },
           "404": {
             "description": "Shipment not found"
+          }
+        }
+      }
+    },
+    "/api/shipment_statuses": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "List shipment statuses",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment statuses"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Create shipment status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "name"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shipment status created"
+          }
+        }
+      }
+    },
+    "/api/shipment_statuses/{id}": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Get shipment status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment status"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Update shipment status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shipment status updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Delete shipment status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment status deleted"
+          }
+        }
+      }
+    },
+    "/api/shipment_storage_types": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "List shipment storage types",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment storage types"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Create shipment storage type",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "name"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shipment storage type created"
+          }
+        }
+      }
+    },
+    "/api/shipment_storage_types/{id}": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Get shipment storage type",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment storage type"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Update shipment storage type",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shipment storage type updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Delete shipment storage type",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment storage type deleted"
+          }
+        }
+      }
+    },
+    "/api/shipment_storage_statuses": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "List shipment storage statuses",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment storage statuses"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Create shipment storage status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "name"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shipment storage status created"
+          }
+        }
+      }
+    },
+    "/api/shipment_storage_statuses/{id}": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Get shipment storage status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment storage status"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Update shipment storage status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shipment storage status updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Delete shipment storage status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment storage status deleted"
+          }
+        }
+      }
+    },
+    "/api/shipment_storage_reasons": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "List shipment storage reasons",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.view"
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment storage reasons"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Create shipment storage reason",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code",
+                  "name"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Shipment storage reason created"
+          }
+        }
+      }
+    },
+    "/api/shipment_storage_reasons/{id}": {
+      "get": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Get shipment storage reason",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.view"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment storage reason"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Update shipment storage reason",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.update"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "is_active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shipment storage reason updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "shipments"
+        ],
+        "summary": "Delete shipment storage reason",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "x-permissions": [
+          "shipments.delete"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Shipment storage reason deleted"
           }
         }
       }
@@ -10208,10 +11551,19 @@
                         "overall": {
                           "type": "object",
                           "properties": {
-                            "total_count": { "type": "integer" },
-                            "closed_count": { "type": "integer" },
-                            "open_count": { "type": "integer" },
-                            "percent_closed": { "type": "number", "format": "float" }
+                            "total_count": {
+                              "type": "integer"
+                            },
+                            "closed_count": {
+                              "type": "integer"
+                            },
+                            "open_count": {
+                              "type": "integer"
+                            },
+                            "percent_closed": {
+                              "type": "number",
+                              "format": "float"
+                            }
                           }
                         },
                         "types": {
@@ -10219,12 +11571,27 @@
                           "items": {
                             "type": "object",
                             "properties": {
-                              "type_id": { "type": "integer", "nullable": true },
-                              "type_name": { "type": "string", "nullable": true },
-                              "total_count": { "type": "integer" },
-                              "closed_count": { "type": "integer" },
-                              "open_count": { "type": "integer" },
-                              "percent_closed": { "type": "number", "format": "float" }
+                              "type_id": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "type_name": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "total_count": {
+                                "type": "integer"
+                              },
+                              "closed_count": {
+                                "type": "integer"
+                              },
+                              "open_count": {
+                                "type": "integer"
+                              },
+                              "percent_closed": {
+                                "type": "number",
+                                "format": "float"
+                              }
                             }
                           }
                         },
@@ -10233,12 +11600,27 @@
                           "items": {
                             "type": "object",
                             "properties": {
-                              "specialization_id": { "type": "integer", "nullable": true },
-                              "specialization_name": { "type": "string", "nullable": true },
-                              "total_count": { "type": "integer" },
-                              "closed_count": { "type": "integer" },
-                              "open_count": { "type": "integer" },
-                              "percent_closed": { "type": "number", "format": "float" }
+                              "specialization_id": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "specialization_name": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "total_count": {
+                                "type": "integer"
+                              },
+                              "closed_count": {
+                                "type": "integer"
+                              },
+                              "open_count": {
+                                "type": "integer"
+                              },
+                              "percent_closed": {
+                                "type": "number",
+                                "format": "float"
+                              }
                             }
                           }
                         }
@@ -10249,7 +11631,9 @@
               }
             }
           },
-          "401": { "description": "Authentication required" }
+          "401": {
+            "description": "Authentication required"
+          }
         }
       }
     },
@@ -10270,18 +11654,18 @@
         "requestBody": {
           "required": true,
           "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CustomerQuestion"
-                },
-                "example": {
-                  "question_title": "Question about drawing A-123",
-                  "question_text": "The drawing references a missing detail in section B. Please clarify.",
-                  "project_id": 1,
-                  "specialization_id": 3,
-                  "type_id": 2
-                }
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerQuestion"
+              },
+              "example": {
+                "question_title": "Question about drawing A-123",
+                "question_text": "The drawing references a missing detail in section B. Please clarify.",
+                "project_id": 1,
+                "specialization_id": 3,
+                "type_id": 2
               }
+            }
           }
         },
         "responses": {
@@ -10517,17 +11901,17 @@
           "required": true,
           "content": {
             "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CustomerQuestion"
-                },
-                "example": {
-                  "question_title": "Clarify material spec",
-                  "question_text": "Please confirm the required material grade for item X.",
-                  "project_id": 1,
-                  "specialization_id": 3,
-                  "type_id": 2
-                }
+              "schema": {
+                "$ref": "#/components/schemas/CustomerQuestion"
+              },
+              "example": {
+                "question_title": "Clarify material spec",
+                "question_text": "Please confirm the required material grade for item X.",
+                "project_id": 1,
+                "specialization_id": 3,
+                "type_id": 2
               }
+            }
           }
         },
         "responses": {
@@ -13218,22 +14602,72 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "title": { "type": "string", "description": "Document title" },
-                  "description": { "type": "string", "nullable": true },
-                  "project_id": { "type": "integer", "description": "Project ID" },
-                  "stage_id": { "type": "integer", "nullable": true },
-                  "type_id": { "type": "integer", "nullable": true },
-                  "specialization_id": { "type": "integer", "nullable": true },
-                  "directory_id": { "type": "integer", "nullable": true },
-                  "status_id": { "type": "integer", "nullable": true },
-                  "assigne_to": { "type": "integer", "nullable": true },
-                  "created_by": { "type": "integer", "nullable": true },
-                  "code": { "type": "string", "nullable": true },
-                  "priority": { "type": "string", "nullable": true },
-                  "due_date": { "type": "string", "format": "date", "nullable": true },
-                  "estimated_hours": { "type": "number", "nullable": true },
-                  "sfi_code_id": { "type": "integer", "nullable": true },
-                  "public": { "type": "boolean", "description": "Is document public", "example": true }
+                  "title": {
+                    "type": "string",
+                    "description": "Document title"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "project_id": {
+                    "type": "integer",
+                    "description": "Project ID"
+                  },
+                  "stage_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "type_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "specialization_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "directory_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "status_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "assigne_to": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "created_by": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "code": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "priority": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "due_date": {
+                    "type": "string",
+                    "format": "date",
+                    "nullable": true
+                  },
+                  "estimated_hours": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "sfi_code_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "public": {
+                    "type": "boolean",
+                    "description": "Is document public",
+                    "example": true
+                  }
                 }
               },
               "example": {
@@ -13304,7 +14738,10 @@
                 "type": "integer"
               }
             },
-            "example": [3, 4],
+            "example": [
+              3,
+              4
+            ],
             "style": "form",
             "explode": false
           },
@@ -13318,7 +14755,10 @@
                 "type": "integer"
               }
             },
-            "example": [2, 5],
+            "example": [
+              2,
+              5
+            ],
             "style": "form",
             "explode": false
           },
@@ -13341,7 +14781,10 @@
                 "type": "integer"
               }
             },
-            "example": [1, 29],
+            "example": [
+              1,
+              29
+            ],
             "style": "form",
             "explode": false
           },
@@ -13499,11 +14942,26 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "title": { "type": "string" },
-                  "description": { "type": "string", "nullable": true },
-                  "stage_id": { "type": "integer", "nullable": true },
-                  "code": { "type": "string", "nullable": true },
-                  "public": { "type": "boolean", "description": "Is document public", "example": true }
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "stage_id": {
+                    "type": "integer",
+                    "nullable": true
+                  },
+                  "code": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "public": {
+                    "type": "boolean",
+                    "description": "Is document public",
+                    "example": true
+                  }
                 }
               },
               "example": {
@@ -13538,14 +14996,14 @@
         "tags": [
           "documents"
         ],
-        "summary": "Delete document",
+        "summary": "Remove current user from document watchers",
         "security": [
           {
             "bearerAuth": []
           }
         ],
         "x-permissions": [
-          "documents.delete"
+          "documents.view"
         ],
         "parameters": [
           {
@@ -13555,12 +15013,24 @@
             "schema": {
               "type": "integer"
             },
-            "example": "{{id}}"
+            "description": "Document ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Watcher removed"
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission documents.view"
+          },
+          "404": {
+            "description": "Document or watcher not found"
           }
         }
       },
@@ -13657,48 +15127,6 @@
           },
           "404": {
             "description": "Document not found"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "documents"
-        ],
-        "summary": "Remove current user from document watchers",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "documents.view"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Document ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Watcher removed"
-          },
-          "400": {
-            "description": "Invalid id"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Forbidden - missing permission documents.view"
-          },
-          "404": {
-            "description": "Document or watcher not found"
           }
         }
       }
@@ -13972,7 +15400,6 @@
                 "type": "object",
                 "description": "Path parameter `id` refers to `documents_storage.id` (preferred). For compatibility the body may include `document_storage_id` or legacy `storage_id`. Other optional fields: type_id, rev, archive, archive_data, status, reason, comment, user_id.",
                 "properties": {
-                  
                   "storage_id": {
                     "type": "integer",
                     "description": "(legacy) documents_storage.id or storage.id depending on client — prefer `document_storage_id`"
@@ -16771,14 +18198,14 @@
         "tags": [
           "issues"
         ],
-        "summary": "Delete issue",
+        "summary": "Remove current user from issue watchers",
         "security": [
           {
             "bearerAuth": []
           }
         ],
         "x-permissions": [
-          "issues.delete"
+          "issues.view"
         ],
         "parameters": [
           {
@@ -16788,12 +18215,24 @@
             "schema": {
               "type": "integer"
             },
-            "example": "{{id}}"
+            "description": "Issue ID"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "Watcher removed"
+          },
+          "400": {
+            "description": "Invalid id"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Forbidden - missing permission issues.view"
+          },
+          "404": {
+            "description": "Issue or watcher not found"
           }
         }
       },
@@ -16890,48 +18329,6 @@
           },
           "404": {
             "description": "Issue not found"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "issues"
-        ],
-        "summary": "Remove current user from issue watchers",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "issues.view"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Issue ID"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Watcher removed"
-          },
-          "400": {
-            "description": "Invalid id"
-          },
-          "401": {
-            "description": "Authentication required"
-          },
-          "403": {
-            "description": "Forbidden - missing permission issues.view"
-          },
-          "404": {
-            "description": "Issue or watcher not found"
           }
         }
       }
@@ -18250,25 +19647,25 @@
                   }
                 },
                 "example": {
-                "data": {
-                  "id": 2,
-                  "project_id": 12,
-                  "project": {
-                    "id": 12,
-                    "code": "PRJ-012",
-                    "name": "Factory expansion"
-                  },
-                  "code": "MK-002",
-                  "name": "Electrical kit",
-                  "description": "Kit for electrical package",
-                  "created_by": {
-                    "id": 341,
-                    "name": "Спиридович Павел Вячеславович",
-                    "avatar_id": 297
-                  },
-                  "updated_by": null,
-                  "created_at": "2026-05-31T12:00:00.000Z",
-                  "updated_at": "2026-05-31T12:00:00.000Z"
+                  "data": {
+                    "id": 2,
+                    "project_id": 12,
+                    "project": {
+                      "id": 12,
+                      "code": "PRJ-012",
+                      "name": "Factory expansion"
+                    },
+                    "code": "MK-002",
+                    "name": "Electrical kit",
+                    "description": "Kit for electrical package",
+                    "created_by": {
+                      "id": 341,
+                      "name": "Спиридович Павел Вячеславович",
+                      "avatar_id": 297
+                    },
+                    "updated_by": null,
+                    "created_at": "2026-05-31T12:00:00.000Z",
+                    "updated_at": "2026-05-31T12:00:00.000Z"
                   }
                 }
               }
@@ -18404,30 +19801,30 @@
                   }
                 },
                 "example": {
-                "data": {
-                  "id": 1,
-                  "project_id": 12,
-                  "project": {
-                    "id": 12,
-                    "code": "PRJ-012",
-                    "name": "Factory expansion"
-                  },
-                  "code": "MK-001",
-                  "name": "Pipe kit updated",
-                  "description": "Updated kit description",
-                  "created_by": {
-                    "id": 341,
-                    "name": "Спиридович Павел Вячеславович",
-                    "avatar_id": 297
-                  },
-                  "updated_by": {
-                    "id": 342,
-                    "name": "Иванов Иван Иванович",
-                    "avatar_id": 298
-                  },
-                  "created_at": "2026-05-31T12:00:00.000Z",
-                  "updated_at": "2026-05-31T12:30:00.000Z"
-                }
+                  "data": {
+                    "id": 1,
+                    "project_id": 12,
+                    "project": {
+                      "id": 12,
+                      "code": "PRJ-012",
+                      "name": "Factory expansion"
+                    },
+                    "code": "MK-001",
+                    "name": "Pipe kit updated",
+                    "description": "Updated kit description",
+                    "created_by": {
+                      "id": 341,
+                      "name": "Спиридович Павел Вячеславович",
+                      "avatar_id": 297
+                    },
+                    "updated_by": {
+                      "id": 342,
+                      "name": "Иванов Иван Иванович",
+                      "avatar_id": 298
+                    },
+                    "created_at": "2026-05-31T12:00:00.000Z",
+                    "updated_at": "2026-05-31T12:30:00.000Z"
+                  }
                 }
               }
             }
@@ -18646,12 +20043,12 @@
                   }
                 },
                 "example": {
-                "data": {
-                  "id": 1,
-                  "kit_id": 1,
-                  "part_code": "P-001",
-                  "material_id": 45,
-                  "material": {
+                  "data": {
+                    "id": 1,
+                    "kit_id": 1,
+                    "part_code": "P-001",
+                    "material_id": 45,
+                    "material": {
                       "id": 45,
                       "stock_code": "NR00000000000045",
                       "name": "Steel pipe DN50",
@@ -18727,13 +20124,13 @@
                   }
                 },
                 "example": {
-                "data": [
-                  {
-                    "id": 1,
-                    "kit_id": 1,
-                    "part_code": "P-001",
-                    "material_id": 45,
-                    "material": {
+                  "data": [
+                    {
+                      "id": 1,
+                      "kit_id": 1,
+                      "part_code": "P-001",
+                      "material_id": 45,
+                      "material": {
                         "id": 45,
                         "stock_code": "NR00000000000045",
                         "name": "Steel pipe DN50",
@@ -18825,12 +20222,12 @@
                   }
                 },
                 "example": {
-                "data": {
-                  "id": 1,
-                  "kit_id": 1,
-                  "part_code": "P-001",
-                  "material_id": 45,
-                  "material": {
+                  "data": {
+                    "id": 1,
+                    "kit_id": 1,
+                    "part_code": "P-001",
+                    "material_id": 45,
+                    "material": {
                       "id": 45,
                       "stock_code": "NR00000000000045",
                       "name": "Steel pipe DN50",
@@ -27268,228 +28665,56 @@
       }
     },
     "/api/statements_parts": {
-      "get": {
+      "delete": {
         "tags": [
           "statements"
         ],
-        "summary": "List statement parts",
+        "summary": "Delete statement parts",
         "security": [
           {
             "bearerAuth": []
           }
         ],
         "x-permissions": [
-          "statements.view"
-        ],
-        "parameters": [
-          {
-            "name": "statements_version_id",
-            "in": "query",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "statements_version_id": {
-                      "type": "integer",
-                      "nullable": true
-                    },
-                    "created_by": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "id": {
-                          "type": "integer"
-                        },
-                        "full_name": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "avatar_id": {
-                          "type": "integer",
-                          "nullable": true
-                        }
-                      }
-                    },
-                    "created_at": {
-                      "type": "string",
-                      "format": "date-time",
-                      "nullable": true
-                    },
-                    "updated_by": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "id": {
-                          "type": "integer"
-                        },
-                        "full_name": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "avatar_id": {
-                          "type": "integer",
-                          "nullable": true
-                        }
-                      }
-                    },
-                    "updated_at": {
-                      "type": "string",
-                      "format": "date-time",
-                      "nullable": true
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/StatementsPartGrouped"
-                      }
-                    }
-                  }
-                },
-                "example": {
-                  "statements_version_id": 15,
-                  "created_by": {
-                    "id": 341,
-                    "full_name": "Павел Спиридович",
-                    "avatar_id": 297
-                  },
-                  "created_at": "2026-05-19T06:31:23.334Z",
-                  "updated_by": {
-                    "id": 1,
-                    "full_name": "Admin Admin",
-                    "avatar_id": null
-                  },
-                  "updated_at": "2026-05-19T06:51:33.181Z",
-                  "data": [
-                    {
-                      "material": {
-                        "id": 55,
-                        "stock_code": "MAT-055",
-                        "name": "Steel plate",
-                        "description": "Base plate",
-                        "directory": null,
-                        "unit": null,
-                        "weight": 12.5,
-                        "type": "material",
-                        "status": "active"
-                      },
-                      "quantity": "725.172",
-                      "total_waight": "725.172",
-                      "specification_versions": [
-                        {
-                          "specification_version_id": 88,
-                          "specification_version": {
-                            "id": 88,
-                            "specification_id": 12,
-                            "version": "1.0",
-                            "notes": null,
-                            "created_by": 341,
-                            "created_at": "2026-05-18T10:00:00.000Z"
-                          },
-                          "specification": null,
-                          "quantity": "312.172",
-                          "total_waight": "312.172"
-                        }
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "statements"
-        ],
-        "summary": "Create statement part",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "statements.update"
+          "statements.delete"
         ],
         "requestBody": {
-          "required": true,
+          "description": "Delete all rows matching the provided statements version and material.",
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/StatementsPartCreate"
+                "type": "object",
+                "required": [
+                  "statements_version_id",
+                  "material_id"
+                ],
+                "properties": {
+                  "statements_version_id": {
+                    "type": "integer"
+                  },
+                  "material_id": {
+                    "type": "integer"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": "Created",
+          "200": {
+            "description": "Deleted",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "statements_version_id": {
-                      "type": "integer",
-                      "nullable": true
-                    },
-                    "created_by": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "id": {
-                          "type": "integer"
-                        },
-                        "full_name": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "avatar_id": {
-                          "type": "integer",
-                          "nullable": true
-                        }
-                      }
-                    },
-                    "created_at": {
-                      "type": "string",
-                      "format": "date-time",
-                      "nullable": true
-                    },
-                    "updated_by": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "id": {
-                          "type": "integer"
-                        },
-                        "full_name": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "avatar_id": {
-                          "type": "integer",
-                          "nullable": true
-                        }
-                      }
-                    },
-                    "updated_at": {
-                      "type": "string",
-                      "format": "date-time",
-                      "nullable": true
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/StatementsPart"
+                    "message": {
+                      "type": "string"
                     }
                   }
+                },
+                "example": {
+                  "message": "Deleted"
                 }
               }
             }
@@ -27656,67 +28881,6 @@
                       "$ref": "#/components/schemas/StatementsPart"
                     }
                   }
-                }
-              }
-            }
-          },
-          "423": {
-            "description": "Statements version is locked"
-          }
-        }
-      }
-    },
-    "/api/statements_parts": {
-      "delete": {
-        "tags": [
-          "statements"
-        ],
-        "summary": "Delete statement parts",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "x-permissions": [
-          "statements.delete"
-        ],
-        "requestBody": {
-          "description": "Delete all rows matching the provided statements version and material.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "statements_version_id",
-                  "material_id"
-                ],
-                "properties": {
-                  "statements_version_id": {
-                    "type": "integer"
-                  },
-                  "material_id": {
-                    "type": "integer"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "example": {
-                  "message": "Deleted"
                 }
               }
             }
@@ -28725,74 +29889,102 @@
             "name": "section_id",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer" }
+            "schema": {
+              "type": "integer"
+            }
           },
           {
             "name": "created_by",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer" }
+            "schema": {
+              "type": "integer"
+            }
           },
           {
             "name": "organization_id",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer" }
+            "schema": {
+              "type": "integer"
+            }
           },
           {
             "name": "organization_ids",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "description": "Comma-separated list of organization IDs" }
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated list of organization IDs"
+            }
           },
           {
             "name": "project_id",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer" }
+            "schema": {
+              "type": "integer"
+            }
           },
           {
             "name": "project_ids",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "description": "Comma-separated list of project IDs" }
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated list of project IDs"
+            }
           },
           {
             "name": "status",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "description": "Status or comma-separated list of statuses (e.g. active,archived)" }
+            "schema": {
+              "type": "string",
+              "description": "Status or comma-separated list of statuses (e.g. active,archived)"
+            }
           },
           {
             "name": "my_article",
             "in": "query",
             "required": false,
-            "schema": { "type": "boolean" },
+            "schema": {
+              "type": "boolean"
+            },
             "description": "If true, return articles created by current user"
           },
           {
             "name": "is_published",
             "in": "query",
             "required": false,
-            "schema": { "type": "boolean" }
+            "schema": {
+              "type": "boolean"
+            }
           },
           {
             "name": "search",
             "in": "query",
             "required": false,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "page",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "default": 1 }
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer" }
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -28922,7 +30114,6 @@
                     "title": {
                       "type": "string"
                     },
-                    
                     "content": {
                       "type": "string"
                     },
@@ -29376,10 +30567,10 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                    "name": {
-                      "type": "string"
-                    },
-                    "description": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
                     "type": "string",
                     "nullable": true
                   },
@@ -29683,10 +30874,19 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer" },
-                    "user_id": { "type": "integer" },
-                    "article_id": { "type": "integer" },
-                    "created_at": { "type": "string", "format": "date-time" }
+                    "id": {
+                      "type": "integer"
+                    },
+                    "user_id": {
+                      "type": "integer"
+                    },
+                    "article_id": {
+                      "type": "integer"
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
                   }
                 }
               }
@@ -29756,7 +30956,9 @@
                   "properties": {
                     "data": {
                       "type": "array",
-                      "items": { "type": "object" }
+                      "items": {
+                        "type": "object"
+                      }
                     }
                   }
                 }

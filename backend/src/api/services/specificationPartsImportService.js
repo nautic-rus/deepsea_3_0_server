@@ -524,29 +524,38 @@ class SpecificationPartsImportService {
           }));
           continue;
         }
-        // ASTRUCTURE and SYSTEMS use dedicated quantity resolvers; BLOCKS keeps the legacy behavior.
-        const quantityResolution = row.importBranch === 'astructure'
-          ? SpecificationPartsService._resolveAstructureQuantityDetails(row, material)
-          : row.importBranch === 'systems'
-            ? SpecificationPartsService._resolveSystemsQuantityDetails(row, material)
-            : row.importBranch === 'tray_by_system_oid' || row.importBranch === 'tray_by_zone_oid'
-              ? SpecificationPartsService._resolveTrayQuantityDetails(row, material)
-              : row.importBranch === 'cable_by_system_oid' || row.importBranch === 'cable_by_zone_oid'
-                ? SpecificationPartsService._resolveCableQuantityDetails(row, material)
-              : row.importBranch === 'equip_by_system_oid' || row.importBranch === 'equip_by_zone_oid'
-                ? SpecificationPartsService._resolveEquipmentQuantityDetails(row, material)
-                : SpecificationPartsService._resolveQuantityDetails(row, material);
+        const normalizedRow = row.importBranch === 'blocks'
+          && Number(material.unit_id) === 3
+          && row.length !== null
+          && row.length !== undefined
+          && !Number.isNaN(Number(row.length))
+          ? { ...row, length: Number(row.length) / 1000 }
+          : row;
+
+        // ASTRUCTURE and SYSTEMS use dedicated quantity resolvers.
+        // BLOCKS mostly keeps the legacy behavior, but unit 3 lengths are normalized to meters.
+        const quantityResolution = normalizedRow.importBranch === 'astructure'
+          ? SpecificationPartsService._resolveAstructureQuantityDetails(normalizedRow, material)
+          : normalizedRow.importBranch === 'systems'
+            ? SpecificationPartsService._resolveSystemsQuantityDetails(normalizedRow, material)
+            : normalizedRow.importBranch === 'tray_by_system_oid' || normalizedRow.importBranch === 'tray_by_zone_oid'
+              ? SpecificationPartsService._resolveTrayQuantityDetails(normalizedRow, material)
+              : normalizedRow.importBranch === 'cable_by_system_oid' || normalizedRow.importBranch === 'cable_by_zone_oid'
+                ? SpecificationPartsService._resolveCableQuantityDetails(normalizedRow, material)
+              : normalizedRow.importBranch === 'equip_by_system_oid' || normalizedRow.importBranch === 'equip_by_zone_oid'
+                ? SpecificationPartsService._resolveEquipmentQuantityDetails(normalizedRow, material)
+                : SpecificationPartsService._resolveQuantityDetails(normalizedRow, material);
         const resolvedQuantity = quantityResolution.quantity;
         const numericQuantity = SpecificationPartsService._toNumberOrNull(resolvedQuantity);
         if (numericQuantity === null || !Number.isFinite(numericQuantity) || numericQuantity <= 0) {
-          report.push(buildReportRow(row, rowIndex, material, {
+          report.push(buildReportRow(normalizedRow, rowIndex, material, {
             quantity: resolvedQuantity,
             reason: 'Quantity must be greater than 0'
           }));
           continue;
         }
         if (!quantityResolution.calculated) {
-          report.push(buildReportRow(row, rowIndex, material, {
+          report.push(buildReportRow(normalizedRow, rowIndex, material, {
             quantity: resolvedQuantity,
             reason: quantityResolution.reason || 'Quantity fell back to a default value'
           }));
@@ -561,28 +570,28 @@ class SpecificationPartsImportService {
           row.num_eq_part,
           row.zone,
           row.profile_dem ?? null,
-          row.length,
-          row.width,
-          row.thickness,
-          row.radius,
-          row.angle,
-          row.nest_id,
-          row.symmetry,
-          row.route,
-          row.system,
-          row.unit,
-          row.part_type,
+          normalizedRow.length,
+          normalizedRow.width,
+          normalizedRow.thickness,
+          normalizedRow.radius,
+          normalizedRow.angle,
+          normalizedRow.nest_id,
+          normalizedRow.symmetry,
+          normalizedRow.route,
+          normalizedRow.system,
+          normalizedRow.unit,
+          normalizedRow.part_type,
           null,
-          row.cog_x,
-          row.cog_y,
-          row.cog_z,
-          row.strgroup,
+          normalizedRow.cog_x,
+          normalizedRow.cog_y,
+          normalizedRow.cog_z,
+          normalizedRow.strgroup,
           actor.id,
-          row.sourceValue
+          normalizedRow.sourceValue
         ];
-        const partOidKey = row.part_oid !== null && row.part_oid !== undefined ? String(row.part_oid) : null;
+        const partOidKey = normalizedRow.part_oid !== null && normalizedRow.part_oid !== undefined ? String(normalizedRow.part_oid) : null;
         const existingId = updateCurrentByPartOid && partOidKey
-          ? existingRowsBySourcePartOid.get(buildSourcePartOidKey(row.sourceValue, partOidKey)) || null
+          ? existingRowsBySourcePartOid.get(buildSourcePartOidKey(normalizedRow.sourceValue, partOidKey)) || null
           : null;
         if (existingId) {
           const updateRes = await client.query(updateSql, [...persistenceValues, existingId]);

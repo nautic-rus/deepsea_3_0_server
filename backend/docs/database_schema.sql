@@ -1984,6 +1984,34 @@ COMMENT ON TABLE public.projects IS 'Таблица проектов';
 
 
 --
+-- Name: zones; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.zones (
+    id integer NOT NULL,
+    project_id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    description text,
+    bbox_min_x numeric(12,3) NOT NULL,
+    bbox_min_y numeric(12,3) NOT NULL,
+    bbox_min_z numeric(12,3) NOT NULL,
+    bbox_max_x numeric(12,3) NOT NULL,
+    bbox_max_y numeric(12,3) NOT NULL,
+    bbox_max_z numeric(12,3) NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE ONLY public.zones ALTER COLUMN description SET STORAGE PLAIN;
+
+
+--
+-- Name: TABLE zones; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.zones IS 'Помещения на судне';
+
+
+--
 -- Name: projects_characteristics; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2052,6 +2080,26 @@ CREATE SEQUENCE public.projects_id_seq
 --
 
 ALTER SEQUENCE public.projects_id_seq OWNED BY public.projects.id;
+
+
+--
+-- Name: zones_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.zones_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: zones_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.zones_id_seq OWNED BY public.zones.id;
 
 
 --
@@ -2308,6 +2356,65 @@ CREATE TABLE public.shipments_storage (
     id integer NOT NULL,
     shipment_id integer NOT NULL,
     storage_id integer NOT NULL,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    type_id integer,
+    rev character varying,
+    archive boolean DEFAULT false,
+    archive_data timestamp without time zone,
+    status_id integer,
+    reason_id integer,
+    comment text
+);
+
+--
+-- Name: shipment_statuses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.shipment_statuses (
+    id integer NOT NULL,
+    code character varying(50) NOT NULL,
+    name text NOT NULL,
+    description text,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+--
+-- Name: shipment_storage_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.shipment_storage_types (
+    id integer NOT NULL,
+    code character varying(50) NOT NULL,
+    name text NOT NULL,
+    description text,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+--
+-- Name: shipment_storage_statuses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.shipment_storage_statuses (
+    id integer NOT NULL,
+    code character varying(50) NOT NULL,
+    name text NOT NULL,
+    description text,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
+);
+
+--
+-- Name: shipment_storage_reasons; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.shipment_storage_reasons (
+    id integer NOT NULL,
+    code character varying(50) NOT NULL,
+    name text NOT NULL,
+    description text,
+    is_active boolean DEFAULT true,
     created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -3857,6 +3964,13 @@ ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.pro
 
 
 --
+-- Name: zones id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.zones ALTER COLUMN id SET DEFAULT nextval('public.zones_id_seq'::regclass);
+
+
+--
 -- Name: projects_characteristics id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4744,6 +4858,22 @@ ALTER TABLE ONLY public.projects_images
 
 ALTER TABLE ONLY public.projects
     ADD CONSTRAINT projects_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: zones zones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.zones
+    ADD CONSTRAINT zones_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: zones zones_bbox_valid_check; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.zones
+    ADD CONSTRAINT zones_bbox_valid_check CHECK (((bbox_min_x <= bbox_max_x) AND (bbox_min_y <= bbox_max_y) AND (bbox_min_z <= bbox_max_z)));
 
 
 --
@@ -6123,6 +6253,13 @@ CREATE INDEX idx_projects_owner_id ON public.projects USING btree (owner_id);
 --
 
 CREATE INDEX idx_projects_status ON public.projects USING btree (status);
+
+
+--
+-- Name: idx_zones_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_zones_project_id ON public.zones USING btree (project_id);
 
 
 --
@@ -7674,6 +7811,14 @@ ALTER TABLE ONLY public.projects_images
 
 ALTER TABLE ONLY public.projects
     ADD CONSTRAINT projects_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: zones zones_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.zones
+    ADD CONSTRAINT zones_project_id_fkey FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 
 
 --
