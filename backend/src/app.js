@@ -13,6 +13,7 @@ const config = require('./config');
 const { swaggerUi, swaggerSpec } = require('./config/swagger');
 const storageConfig = require('./config/storage');
 const cacheInvalidator = require('./utils/cacheInvalidator');
+const oidcRoutes = require('./oidc/routes');
 
 // Prometheus client for metrics
 const client = require('prom-client');
@@ -205,6 +206,9 @@ app.get('/api-docs.json', (req, res) => {
   const spec = getSwaggerSpec();
   res.send(spec);
 });
+
+// OIDC provider endpoints and discovery live at the application root.
+app.use('/', oidcRoutes);
 
 // API Routes
 app.use('/api', apiRoutes);
