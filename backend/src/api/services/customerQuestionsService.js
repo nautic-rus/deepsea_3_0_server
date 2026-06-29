@@ -14,7 +14,12 @@ const EntityWatchersService = require('./entityWatchersService');
 
 class CustomerQuestionsService {
   static _mergeParticipantIds(...groups) {
-    return [...new Set(groups.flat().map((id) => Number(id)).filter((id) => !Number.isNaN(id) && id))];
+    return [...new Set(groups.flat().map((value) => {
+      if (value && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'id')) {
+        return Number(value.id);
+      }
+      return Number(value);
+    }).filter((id) => !Number.isNaN(id) && id))];
   }
 
   static async listTypes(actor, projectId) {
@@ -477,7 +482,10 @@ class CustomerQuestionsService {
         actor,
         entity: { id: updated.id, code: 'customer_question', title: updated.question_title || updated.id },
         content: { before: existing, after: updated },
-        participantIds: CustomerQuestionsService._mergeParticipantIds([updated.asked_by, updated.answered_by, existing.asked_by, existing.answered_by], watcherIds),
+        participantIds: CustomerQuestionsService._mergeParticipantIds(
+          [updated.asked_by, updated.answered_by, existing.asked_by, existing.answered_by],
+          watcherIds
+        ),
         templateContext: { project: projCtx, question: updated, actor, questionUrl, changes: { before: existing, after: updated } },
         fallbackText: `Question updated: ${updated.question_title || updated.id}`,
         fallbackSubject: `Question updated ${updated.question_title || updated.id}`

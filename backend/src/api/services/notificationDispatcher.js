@@ -96,8 +96,21 @@ class NotificationDispatcher {
     return Number.isNaN(num) ? null : num;
   }
 
+  static _extractSpecializationId(value) {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'object') {
+      if (Object.prototype.hasOwnProperty.call(value, 'id')) {
+        return NotificationDispatcher._normalizeSpecializationId(value.id);
+      }
+      if (Object.prototype.hasOwnProperty.call(value, 'specialization_id')) {
+        return NotificationDispatcher._normalizeSpecializationId(value.specialization_id);
+      }
+    }
+    return NotificationDispatcher._normalizeSpecializationId(value);
+  }
+
   static _getSpecializationId({ entity, content, templateContext }) {
-    const explicit = NotificationDispatcher._normalizeSpecializationId(entity && entity.specialization_id);
+    const explicit = NotificationDispatcher._extractSpecializationId(entity && (entity.specialization_id || entity.specialization));
     if (explicit) return explicit;
 
     const contextEntities = [
@@ -105,7 +118,7 @@ class NotificationDispatcher {
       templateContext && templateContext.question
     ];
     for (const item of contextEntities) {
-      const id = NotificationDispatcher._normalizeSpecializationId(item && item.specialization_id);
+      const id = NotificationDispatcher._extractSpecializationId(item && (item.specialization_id || item.specialization));
       if (id) return id;
     }
 
@@ -115,7 +128,7 @@ class NotificationDispatcher {
       content && content.before
     ];
     for (const item of contentEntities) {
-      const id = NotificationDispatcher._normalizeSpecializationId(item && item.specialization_id);
+      const id = NotificationDispatcher._extractSpecializationId(item && (item.specialization_id || item.specialization));
       if (id) return id;
     }
 
