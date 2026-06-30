@@ -9,7 +9,7 @@ const spec = {
   },
   servers: [
     {
-      url: 'http://localhost:3110',
+      url: 'https://v3.deep-sea.ru',
       description: 'Local chat service'
     }
   ],
