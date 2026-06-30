@@ -9,6 +9,7 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       CHAT_SERVICE_NAME: ${CHAT_SERVICE_NAME:-deepsea-chat}
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-https://v3.deep-sea.ru}
+      CHAT_ADMIN_USER_IDS: ${CHAT_ADMIN_USER_IDS:-}
       DB_HOST: ${DB_HOST:-chat-db}
       DB_PORT: ${DB_PORT:-5432}
       DB_NAME: ${DB_NAME:-deepsea_chat}

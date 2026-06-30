@@ -65,6 +65,36 @@ class ChatController {
     }
   }
 
+  static async updateMemberRole(req, res, next) {
+    try {
+      const userId = req.body ? req.body.user_id : null;
+      const role = req.body ? req.body.role : null;
+      const data = await ChatService.updateMemberRole(req.params.roomId, userId, role, req.user);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async kickMember(req, res, next) {
+    try {
+      const userId = req.body ? req.body.user_id : null;
+      const data = await ChatService.kickMember(req.params.roomId, userId, req.user);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteRoom(req, res, next) {
+    try {
+      const data = await ChatService.deleteRoom(req.params.roomId, req.user);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async sendMessage(req, res, next) {
     try {
       const data = await ChatService.sendMessage(req.params.roomId, req.body || {}, req.user);
@@ -141,6 +171,33 @@ class ChatController {
   static async sync(req, res, next) {
     try {
       const data = await ChatService.sync(req.query || {}, req.user);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listSystemRoles(req, res, next) {
+    try {
+      const data = await ChatService.listSystemRoles(req.user);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getSystemRole(req, res, next) {
+    try {
+      const data = await ChatService.getSystemRoleForUser(Number(req.params.userId), req.user);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async setSystemRole(req, res, next) {
+    try {
+      const data = await ChatService.setSystemRole(Number(req.params.userId), req.body || {}, req.user);
       res.json({ data });
     } catch (error) {
       next(error);

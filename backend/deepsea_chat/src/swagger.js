@@ -88,6 +88,28 @@ const spec = {
         properties: {
           event_id: { type: 'string' }
         }
+      },
+      ChatMemberRoleRequest: {
+        type: 'object',
+        required: ['user_id', 'role'],
+        properties: {
+          user_id: { type: 'integer' },
+          role: { type: 'string', enum: ['owner', 'admin', 'member'] }
+        }
+      },
+      ChatKickRequest: {
+        type: 'object',
+        required: ['user_id'],
+        properties: {
+          user_id: { type: 'integer' }
+        }
+      },
+      ChatSystemRoleRequest: {
+        type: 'object',
+        required: ['role'],
+        properties: {
+          role: { type: 'string', enum: ['admin', 'user'] }
+        }
       }
     }
   },
@@ -116,6 +138,11 @@ const spec = {
         summary: 'Get room',
         parameters: [{ name: 'roomId', in: 'path', required: true, schema: { type: 'string' } }],
         responses: { 200: { description: 'Room details' } }
+      },
+      delete: {
+        summary: 'Delete room permanently',
+        parameters: [{ name: 'roomId', in: 'path', required: true, schema: { type: 'string' } }],
+        responses: { 200: { description: 'Room deleted' } }
       }
     },
     '/api/chat/rooms/{roomId}/members': {
@@ -156,6 +183,36 @@ const spec = {
         summary: 'Leave room',
         parameters: [{ name: 'roomId', in: 'path', required: true, schema: { type: 'string' } }],
         responses: { 200: { description: 'Leave event created' } }
+      }
+    },
+    '/api/chat/rooms/{roomId}/roles': {
+      post: {
+        summary: 'Change participant role in room',
+        parameters: [{ name: 'roomId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ChatMemberRoleRequest' }
+            }
+          }
+        },
+        responses: { 200: { description: 'Role updated' } }
+      }
+    },
+    '/api/chat/rooms/{roomId}/kick': {
+      post: {
+        summary: 'Kick participant from room',
+        parameters: [{ name: 'roomId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ChatKickRequest' }
+            }
+          }
+        },
+        responses: { 200: { description: 'Participant kicked' } }
       }
     },
     '/api/chat/rooms/{roomId}/messages': {
@@ -276,6 +333,32 @@ const spec = {
           { name: 'limit', in: 'query', schema: { type: 'integer' } }
         ],
         responses: { 200: { description: 'Sync response' } }
+      }
+    },
+    '/api/chat/users/roles': {
+      get: {
+        summary: 'List chat system roles',
+        responses: { 200: { description: 'System roles list' } }
+      }
+    },
+    '/api/chat/users/{userId}/role': {
+      get: {
+        summary: 'Get chat system role for user',
+        parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'integer' } }],
+        responses: { 200: { description: 'User system role' } }
+      },
+      put: {
+        summary: 'Set chat system role for user',
+        parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'integer' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ChatSystemRoleRequest' }
+            }
+          }
+        },
+        responses: { 200: { description: 'User system role updated' } }
       }
     }
   }

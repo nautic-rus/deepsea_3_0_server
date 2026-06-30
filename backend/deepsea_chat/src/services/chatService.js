@@ -22,6 +22,9 @@ function normalizeLimit(value, fallback = 50, max = 200) {
   return Math.min(parsed, max);
 }
 
+const ROOM_ROLES = ['owner', 'admin', 'member'];
+const SYSTEM_ROLES = ['admin', 'user'];
+
 class ChatService {
   static async createRoom(payload = {}, actor) {
     const memberIds = [...new Set([actor.id, ...(Array.isArray(payload.member_user_ids) ? payload.member_user_ids : [])].map(Number).filter(Boolean))];
@@ -49,8 +52,8 @@ class ChatService {
       );
 
       await client.query(
-        `INSERT INTO chat_room_members (room_id, user_id, membership, invited_by, joined_at)
-         VALUES ($1, $2, 'join', $2, CURRENT_TIMESTAMP)`,
+        `INSERT INTO chat_room_members (room_id, user_id, membership, member_role, invited_by, joined_at)
+         VALUES ($1, $2, 'join', 'owner', $2, CURRENT_TIMESTAMP)`,
         [roomId, actor.id]
       );
 
@@ -87,16 +90,16 @@ class ChatService {
         senderId: actor.id,
         eventType: 'm.room.member',
         stateKey: String(actor.id),
-        content: { membership: 'join', user_id: actor.id }
+        content: { membership: 'join', role: 'owner', user_id: actor.id }
       });
 
       for (const userId of memberIds) {
         if (userId === actor.id) continue;
         await client.query(
-          `INSERT INTO chat_room_members (room_id, user_id, membership, invited_by)
-           VALUES ($1, $2, 'invite', $3)
+          `INSERT INTO chat_room_members (room_id, user_id, membership, member_role, invited_by)
+           VALUES ($1, $2, 'invite', 'member', $3)
            ON CONFLICT (room_id, user_id)
-           DO UPDATE SET membership = EXCLUDED.membership, invited_by = EXCLUDED.invited_by, updated_at = CURRENT_TIMESTAMP`,
+           DO UPDATE SET membership = EXCLUDED.membership, member_role = COALESCE(chat_room_members.member_role, 'member'), invited_by = EXCLUDED.invited_by, updated_at = CURRENT_TIMESTAMP`,
           [roomId, userId, actor.id]
         );
 
@@ -105,7 +108,7 @@ class ChatService {
           senderId: actor.id,
           eventType: 'm.room.member',
           stateKey: String(userId),
-          content: { membership: 'invite', user_id: userId, invited_by: actor.id }
+          content: { membership: 'invite', role: 'member', user_id: userId, invited_by: actor.id }
         });
       }
 
@@ -120,6 +123,7 @@ class ChatService {
   }
 
   static async listRooms(actor) {
+    const systemRole = await this._getSystemRole(actor.id);
     const result = await pool.query(
       `SELECT
          r.room_id,
@@ -131,6 +135,7 @@ class ChatService {
          r.created_at,
          r.updated_at,
          m.membership,
+         m.member_role,
          m.last_read_event_id,
          last_event.event_id AS last_event_id,
          last_event.event_type AS last_event_type,
@@ -145,9 +150,9 @@ class ChatService {
          ORDER BY e.id DESC
          LIMIT 1
        ) AS last_event ON TRUE
-       WHERE m.user_id = $1
+       WHERE $2 = 'admin' OR m.user_id = $1
        ORDER BY COALESCE(last_event.created_at, r.created_at) DESC`,
-      [actor.id]
+      [actor.id, systemRole]
     );
 
     return result.rows;
@@ -174,6 +179,7 @@ class ChatService {
     await this._assertRoomVisible(roomId, actor.id);
     const result = await pool.query(
       `SELECT room_id, user_id, membership, invited_by, joined_at, left_at, last_read_event_id, created_at, updated_at
+       , member_role
        FROM chat_room_members
        WHERE room_id = $1
        ORDER BY user_id`,
@@ -183,7 +189,7 @@ class ChatService {
   }
 
   static async invite(roomId, userId, actor) {
-    await this._assertJoined(roomId, actor.id);
+    await this._assertCanInvite(roomId, actor.id);
     const normalizedUserId = Number(userId);
     if (!normalizedUserId) throw buildError('user_id is required', 400);
 
@@ -191,8 +197,8 @@ class ChatService {
     try {
       await client.query('BEGIN');
       await client.query(
-        `INSERT INTO chat_room_members (room_id, user_id, membership, invited_by)
-         VALUES ($1, $2, 'invite', $3)
+        `INSERT INTO chat_room_members (room_id, user_id, membership, member_role, invited_by)
+         VALUES ($1, $2, 'invite', 'member', $3)
          ON CONFLICT (room_id, user_id)
          DO UPDATE SET membership = 'invite', invited_by = EXCLUDED.invited_by, left_at = NULL, updated_at = CURRENT_TIMESTAMP`,
         [roomId, normalizedUserId, actor.id]
@@ -203,7 +209,7 @@ class ChatService {
         senderId: actor.id,
         eventType: 'm.room.member',
         stateKey: String(normalizedUserId),
-        content: { membership: 'invite', user_id: normalizedUserId, invited_by: actor.id }
+        content: { membership: 'invite', role: 'member', user_id: normalizedUserId, invited_by: actor.id }
       });
 
       await client.query('COMMIT');
@@ -230,8 +236,8 @@ class ChatService {
     try {
       await client.query('BEGIN');
       await client.query(
-        `INSERT INTO chat_room_members (room_id, user_id, membership, invited_by, joined_at, left_at)
-         VALUES ($1, $2, 'join', $2, CURRENT_TIMESTAMP, NULL)
+        `INSERT INTO chat_room_members (room_id, user_id, membership, member_role, invited_by, joined_at, left_at)
+         VALUES ($1, $2, 'join', 'member', $2, CURRENT_TIMESTAMP, NULL)
          ON CONFLICT (room_id, user_id)
          DO UPDATE SET membership = 'join', joined_at = CURRENT_TIMESTAMP, left_at = NULL, updated_at = CURRENT_TIMESTAMP`,
         [roomId, actor.id]
@@ -242,7 +248,7 @@ class ChatService {
         senderId: actor.id,
         eventType: 'm.room.member',
         stateKey: String(actor.id),
-        content: { membership: 'join', user_id: actor.id }
+        content: { membership: 'join', role: 'member', user_id: actor.id }
       });
 
       await client.query('COMMIT');
@@ -257,6 +263,7 @@ class ChatService {
 
   static async leave(roomId, actor) {
     await this._assertJoined(roomId, actor.id);
+    await this._assertCanLeave(roomId, actor.id);
 
     const client = await pool.connect();
     try {
@@ -284,6 +291,102 @@ class ChatService {
     } finally {
       client.release();
     }
+  }
+
+  static async updateMemberRole(roomId, userId, role, actor) {
+    const normalizedUserId = Number(userId);
+    const normalizedRole = String(role || '').trim();
+    if (!normalizedUserId) throw buildError('user_id is required', 400);
+    if (!ROOM_ROLES.includes(normalizedRole)) throw buildError('Invalid role', 400);
+
+    const actorMember = await this._assertCanManageRoles(roomId, actor.id);
+    const targetMember = await this._getMember(roomId, normalizedUserId);
+    if (!targetMember || targetMember.membership === 'leave') throw buildError('Member not found', 404);
+
+    const isSystemAdmin = actorMember.system_role === 'admin';
+
+    if (!isSystemAdmin && actorMember.member_role !== 'owner' && normalizedRole !== 'member') {
+      throw buildError('Only owner can assign admin or owner', 403);
+    }
+    if (!isSystemAdmin && actorMember.member_role !== 'owner' && targetMember.member_role !== 'member') {
+      throw buildError('Only owner can change admin or owner role', 403);
+    }
+    if (!isSystemAdmin && targetMember.member_role === 'owner' && normalizedRole !== 'owner' && Number(actor.id) !== normalizedUserId) {
+      throw buildError('Only owner can change another owner role', 403);
+    }
+    if (targetMember.member_role === 'owner' && normalizedRole !== 'owner') {
+      await this._assertNotLastOwner(roomId, normalizedUserId);
+    }
+
+    await pool.query(
+      `UPDATE chat_room_members
+       SET member_role = $3, updated_at = CURRENT_TIMESTAMP
+       WHERE room_id = $1 AND user_id = $2`,
+      [roomId, normalizedUserId, normalizedRole]
+    );
+
+    return this._insertEvent(pool, {
+      roomId,
+      senderId: actor.id,
+      eventType: 'm.room.member.role',
+      stateKey: String(normalizedUserId),
+      content: {
+        user_id: normalizedUserId,
+        role: normalizedRole,
+        changed_by: actor.id
+      }
+    });
+  }
+
+  static async kickMember(roomId, userId, actor) {
+    const normalizedUserId = Number(userId);
+    if (!normalizedUserId) throw buildError('user_id is required', 400);
+    if (Number(actor.id) === normalizedUserId) throw buildError('Use leave for self removal', 400);
+
+    const actorMember = await this._assertCanKick(roomId, actor.id);
+    const targetMember = await this._getMember(roomId, normalizedUserId);
+    if (!targetMember || targetMember.membership === 'leave') throw buildError('Member not found', 404);
+    const isSystemAdmin = actorMember.system_role === 'admin';
+    if (!isSystemAdmin && targetMember.member_role === 'owner') throw buildError('Owner cannot be kicked', 403);
+    if (!isSystemAdmin && actorMember.member_role !== 'owner' && targetMember.member_role === 'admin') {
+      throw buildError('Only owner can kick admin', 403);
+    }
+
+    await pool.query(
+      `UPDATE chat_room_members
+       SET membership = 'leave', left_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+       WHERE room_id = $1 AND user_id = $2`,
+      [roomId, normalizedUserId]
+    );
+
+    return this._insertEvent(pool, {
+      roomId,
+      senderId: actor.id,
+      eventType: 'm.room.member',
+      stateKey: String(normalizedUserId),
+      content: {
+        membership: 'leave',
+        user_id: normalizedUserId,
+        kicked_by: actor.id
+      }
+    });
+  }
+
+  static async deleteRoom(roomId, actor) {
+    if (!(await this._isSystemAdmin(actor.id))) {
+      const actorMember = await this._getMember(roomId, actor.id);
+      if (!actorMember || actorMember.membership !== 'join') throw buildError('Forbidden', 403);
+      if (actorMember.member_role !== 'owner') throw buildError('Only owner can delete room', 403);
+    }
+
+    const result = await pool.query(
+      `DELETE FROM chat_rooms
+       WHERE room_id = $1
+       RETURNING room_id`,
+      [roomId]
+    );
+    if (!result.rows[0]) throw buildError('Room not found', 404);
+    return { deleted: true, room_id: roomId };
   }
 
   static async sendMessage(roomId, payload = {}, actor) {
@@ -488,6 +591,7 @@ class ChatService {
   }
 
   static async sync(query = {}, actor) {
+    await this._assertAuthenticated(actor);
     const since = Number(query.since) || 0;
     const limit = normalizeLimit(query.limit, 100, 500);
 
@@ -539,7 +643,60 @@ class ChatService {
     };
   }
 
+  static async listSystemRoles(actor) {
+    await this._assertSystemAdmin(actor.id);
+    const result = await pool.query(
+      `SELECT user_id, role, assigned_by, created_at, updated_at
+       FROM chat_user_roles
+       ORDER BY user_id ASC`
+    );
+    const envAdmins = config.adminUserIds
+      .filter((userId) => !result.rows.some((row) => Number(row.user_id) === Number(userId)))
+      .map((userId) => ({
+        user_id: userId,
+        role: 'admin',
+        assigned_by: null,
+        created_at: null,
+        updated_at: null,
+        source: 'env'
+      }));
+    return [...envAdmins, ...result.rows.map((row) => ({ ...row, source: 'db' }))];
+  }
+
+  static async getSystemRoleForUser(userId, actor) {
+    await this._assertSystemAdmin(actor.id);
+    if (!userId) throw buildError('Invalid user id', 400);
+    return this._getSystemRoleEntry(userId);
+  }
+
+  static async setSystemRole(userId, payload = {}, actor) {
+    await this._assertSystemAdmin(actor.id);
+    if (!userId) throw buildError('Invalid user id', 400);
+    const role = String(payload.role || '').trim();
+    if (!SYSTEM_ROLES.includes(role)) throw buildError('Invalid system role', 400);
+
+    if (config.adminUserIds.includes(Number(userId)) && role !== 'admin') {
+      throw buildError('Env admin role cannot be downgraded via API', 400);
+    }
+
+    if (role === 'user') {
+      await pool.query('DELETE FROM chat_user_roles WHERE user_id = $1', [userId]);
+      return this._getSystemRoleEntry(userId);
+    }
+
+    await pool.query(
+      `INSERT INTO chat_user_roles (user_id, role, assigned_by)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id)
+       DO UPDATE SET role = EXCLUDED.role, assigned_by = EXCLUDED.assigned_by, updated_at = CURRENT_TIMESTAMP`,
+      [userId, role, actor.id]
+    );
+
+    return this._getSystemRoleEntry(userId);
+  }
+
   static async _assertRoomVisible(roomId, userId) {
+    const systemRole = await this._getSystemRole(userId);
     const result = await pool.query(
       `SELECT r.room_id, r.visibility, m.membership
        FROM chat_rooms r
@@ -550,14 +707,46 @@ class ChatService {
 
     const room = result.rows[0];
     if (!room) throw buildError('Room not found', 404);
+    if (systemRole === 'admin') return room;
     if (room.visibility === 'public') return room;
     if (!room.membership || room.membership === 'leave') throw buildError('Forbidden', 403);
     return room;
   }
 
   static async _assertJoined(roomId, userId) {
+    if (await this._isSystemAdmin(userId)) return;
     const membership = await this._getMembership(roomId, userId);
     if (membership !== 'join') throw buildError('Joined membership required', 403);
+  }
+
+  static async _assertCanInvite(roomId, userId) {
+    if (await this._isSystemAdmin(userId)) return { user_id: userId, member_role: 'admin', membership: 'join', system_role: 'admin' };
+    const member = await this._getRequiredJoinedMember(roomId, userId);
+    if (!['owner', 'admin'].includes(member.member_role)) throw buildError('Forbidden', 403);
+    return member;
+  }
+
+  static async _assertCanManageRoles(roomId, userId) {
+    if (await this._isSystemAdmin(userId)) return { user_id: userId, member_role: 'admin', membership: 'join', system_role: 'admin' };
+    const member = await this._getRequiredJoinedMember(roomId, userId);
+    if (!['owner', 'admin'].includes(member.member_role)) throw buildError('Forbidden', 403);
+    return member;
+  }
+
+  static async _assertCanKick(roomId, userId) {
+    if (await this._isSystemAdmin(userId)) return { user_id: userId, member_role: 'admin', membership: 'join', system_role: 'admin' };
+    const member = await this._getRequiredJoinedMember(roomId, userId);
+    if (!['owner', 'admin'].includes(member.member_role)) throw buildError('Forbidden', 403);
+    return member;
+  }
+
+  static async _assertCanLeave(roomId, userId) {
+    if (await this._isSystemAdmin(userId)) return { user_id: userId, member_role: 'admin', membership: 'join', system_role: 'admin' };
+    const member = await this._getRequiredJoinedMember(roomId, userId);
+    if (member.member_role === 'owner') {
+      await this._assertNotLastOwner(roomId, userId);
+    }
+    return member;
   }
 
   static async _getMembership(roomId, userId) {
@@ -568,6 +757,95 @@ class ChatService {
       [roomId, userId]
     );
     return result.rows[0] ? result.rows[0].membership : null;
+  }
+
+  static async _getMember(roomId, userId) {
+    const result = await pool.query(
+      `SELECT room_id, user_id, membership, member_role, invited_by, joined_at, left_at, last_read_event_id, created_at, updated_at
+       FROM chat_room_members
+       WHERE room_id = $1 AND user_id = $2
+       LIMIT 1`,
+      [roomId, userId]
+    );
+    return result.rows[0] || null;
+  }
+
+  static async _getRequiredJoinedMember(roomId, userId) {
+    const member = await this._getMember(roomId, userId);
+    if (!member || member.membership !== 'join') throw buildError('Joined membership required', 403);
+    return member;
+  }
+
+  static async _getSystemRole(userId) {
+    if (config.adminUserIds.includes(Number(userId))) return 'admin';
+    const result = await pool.query(
+      `SELECT role
+       FROM chat_user_roles
+       WHERE user_id = $1
+       LIMIT 1`,
+      [userId]
+    );
+    return result.rows[0] ? result.rows[0].role : 'user';
+  }
+
+  static async _getSystemRoleEntry(userId) {
+    const normalizedUserId = Number(userId);
+    if (config.adminUserIds.includes(normalizedUserId)) {
+      return {
+        user_id: normalizedUserId,
+        role: 'admin',
+        assigned_by: null,
+        created_at: null,
+        updated_at: null,
+        source: 'env'
+      };
+    }
+    const result = await pool.query(
+      `SELECT user_id, role, assigned_by, created_at, updated_at
+       FROM chat_user_roles
+       WHERE user_id = $1
+       LIMIT 1`,
+      [normalizedUserId]
+    );
+    if (result.rows[0]) return { ...result.rows[0], source: 'db' };
+    return {
+      user_id: normalizedUserId,
+      role: 'user',
+      assigned_by: null,
+      created_at: null,
+      updated_at: null,
+      source: 'default'
+    };
+  }
+
+  static async _isSystemAdmin(userId) {
+    return (await this._getSystemRole(userId)) === 'admin';
+  }
+
+  static async _assertSystemAdmin(userId) {
+    if (!(await this._isSystemAdmin(userId))) {
+      throw buildError('System admin required', 403);
+    }
+  }
+
+  static async _assertAuthenticated(actor) {
+    if (!actor || !actor.id) throw buildError('Authentication required', 401);
+  }
+
+  static async _assertNotLastOwner(roomId, userId) {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS owner_count
+       FROM chat_room_members
+       WHERE room_id = $1
+         AND membership = 'join'
+         AND member_role = 'owner'`,
+      [roomId]
+    );
+    const ownerCount = result.rows[0] ? Number(result.rows[0].owner_count) : 0;
+    const member = await this._getMember(roomId, userId);
+    if (member && member.member_role === 'owner' && ownerCount <= 1) {
+      throw buildError('Room must have at least one owner', 400);
+    }
   }
 
   static async _findDirectRoom(memberIds) {
