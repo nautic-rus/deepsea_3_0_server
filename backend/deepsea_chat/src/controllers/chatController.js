@@ -3,7 +3,7 @@ const ChatService = require('../services/chatService');
 class ChatController {
   static async createRoom(req, res, next) {
     try {
-      const data = await ChatService.createRoom(req.body || {}, req.user);
+      const data = await ChatService.createRoom(req.body || {}, req.user, req.headers || {});
       res.status(201).json({ data });
     } catch (error) {
       next(error);
@@ -12,7 +12,7 @@ class ChatController {
 
   static async listRooms(req, res, next) {
     try {
-      const data = await ChatService.listRooms(req.user);
+      const data = await ChatService.listRooms(req.user, req.headers || {});
       res.json({ data });
     } catch (error) {
       next(error);
@@ -21,7 +21,7 @@ class ChatController {
 
   static async getRoom(req, res, next) {
     try {
-      const data = await ChatService.getRoom(req.params.roomId, req.user);
+      const data = await ChatService.getRoom(req.params.roomId, req.user, req.headers || {});
       res.json({ data });
     } catch (error) {
       next(error);

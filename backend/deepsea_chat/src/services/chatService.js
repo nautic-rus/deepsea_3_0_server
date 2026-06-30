@@ -22,11 +22,17 @@ function normalizeLimit(value, fallback = 50, max = 200) {
   return Math.min(parsed, max);
 }
 
+function pickLogin(user, fallbackId) {
+  if (!user) return `user-${fallbackId}`;
+  const login = String(user.username || user.email || '').trim();
+  return login || `user-${fallbackId}`;
+}
+
 const ROOM_ROLES = ['owner', 'admin', 'member'];
 const SYSTEM_ROLES = ['admin', 'user'];
 
 class ChatService {
-  static async createRoom(payload = {}, actor) {
+  static async createRoom(payload = {}, actor, requestHeaders = {}) {
     const memberIds = [...new Set([actor.id, ...(Array.isArray(payload.member_user_ids) ? payload.member_user_ids : [])].map(Number).filter(Boolean))];
     const name = payload.name ? String(payload.name).trim() : null;
     const topic = payload.topic ? String(payload.topic).trim() : null;
@@ -37,9 +43,12 @@ class ChatService {
     if (isDirect && memberIds.length === 2) {
       const existingDirectRoom = await this._findDirectRoom(memberIds);
       if (existingDirectRoom) {
-        return this.getRoom(existingDirectRoom, actor);
+        return this.getRoom(existingDirectRoom, actor, requestHeaders);
       }
     }
+
+    const directRoomName = isDirect ? await this._buildDirectRoomName(memberIds, actor, requestHeaders) : null;
+    const roomName = isDirect ? directRoomName.canonical_name : name;
 
     const client = await pool.connect();
     try {
@@ -48,7 +57,7 @@ class ChatService {
       await client.query(
         `INSERT INTO chat_rooms (room_id, name, topic, visibility, is_direct, created_by)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [roomId, name, topic, visibility, isDirect, actor.id]
+        [roomId, roomName, topic, visibility, isDirect, actor.id]
       );
 
       await client.query(
@@ -65,13 +74,13 @@ class ChatService {
         content: { creator: actor.id, is_direct: isDirect, visibility }
       });
 
-      if (name) {
+      if (roomName) {
         await this._insertEvent(client, {
           roomId,
           senderId: actor.id,
           eventType: 'm.room.name',
           stateKey: '',
-          content: { name }
+          content: { name: roomName }
         });
       }
 
@@ -113,7 +122,7 @@ class ChatService {
       }
 
       await client.query('COMMIT');
-      return this.getRoom(roomId, actor);
+      return this.getRoom(roomId, actor, requestHeaders);
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
@@ -122,7 +131,7 @@ class ChatService {
     }
   }
 
-  static async listRooms(actor) {
+  static async listRooms(actor, requestHeaders = {}) {
     const systemRole = await this._getSystemRole(actor.id);
     const result = await pool.query(
       `SELECT
@@ -134,15 +143,28 @@ class ChatService {
          r.created_by,
          r.created_at,
          r.updated_at,
-         m.membership,
-         m.member_role,
-         m.last_read_event_id,
+         vm.membership,
+         vm.member_role,
+         vm.last_read_event_id,
+         rm.member_ids,
          last_event.event_id AS last_event_id,
          last_event.event_type AS last_event_type,
          last_event.content AS last_event_content,
          last_event.created_at AS last_event_at
-       FROM chat_room_members m
-       JOIN chat_rooms r ON r.room_id = m.room_id
+       FROM chat_rooms r
+       LEFT JOIN LATERAL (
+         SELECT m.membership, m.member_role, m.last_read_event_id
+         FROM chat_room_members m
+         WHERE m.room_id = r.room_id
+           AND m.user_id = $1
+         LIMIT 1
+       ) AS vm ON TRUE
+       LEFT JOIN LATERAL (
+         SELECT ARRAY_AGG(DISTINCT m2.user_id ORDER BY m2.user_id) AS member_ids
+         FROM chat_room_members m2
+         WHERE m2.room_id = r.room_id
+           AND m2.membership IN ('join', 'invite')
+       ) AS rm ON TRUE
        LEFT JOIN LATERAL (
          SELECT e.event_id, e.event_type, e.content, e.created_at
          FROM chat_events e
@@ -150,15 +172,15 @@ class ChatService {
          ORDER BY e.id DESC
          LIMIT 1
        ) AS last_event ON TRUE
-       WHERE $2 = 'admin' OR m.user_id = $1
+       WHERE $2 = 'admin' OR vm.membership IS NOT NULL
        ORDER BY COALESCE(last_event.created_at, r.created_at) DESC`,
       [actor.id, systemRole]
     );
 
-    return result.rows;
+    return this._decorateRooms(result.rows, actor, requestHeaders, { listMode: true });
   }
 
-  static async getRoom(roomId, actor) {
+  static async getRoom(roomId, actor, requestHeaders = {}) {
     await this._assertRoomVisible(roomId, actor.id);
 
     const roomResult = await pool.query(
@@ -172,7 +194,13 @@ class ChatService {
     if (!room) throw buildError('Room not found', 404);
 
     const members = await this.listMembers(roomId, actor);
-    return { ...room, members };
+    const [decoratedRoom] = await this._decorateRooms(
+      [{ ...room, member_ids: members.map((member) => Number(member.user_id)).filter(Boolean) }],
+      actor,
+      requestHeaders,
+      { listMode: false }
+    );
+    return { ...decoratedRoom, members };
   }
 
   static async listMembers(roomId, actor) {
@@ -715,8 +743,20 @@ class ChatService {
 
   static async _assertJoined(roomId, userId) {
     if (await this._isSystemAdmin(userId)) return;
+    const roomResult = await pool.query(
+      `SELECT is_direct
+       FROM chat_rooms
+       WHERE room_id = $1
+       LIMIT 1`,
+      [roomId]
+    );
+    const room = roomResult.rows[0];
+    if (!room) throw buildError('Room not found', 404);
+
     const membership = await this._getMembership(roomId, userId);
-    if (membership !== 'join') throw buildError('Joined membership required', 403);
+    if (membership === 'join') return;
+    if (room.is_direct && membership === 'invite') return;
+    throw buildError('Joined membership required', 403);
   }
 
   static async _assertCanInvite(roomId, userId) {
@@ -864,6 +904,110 @@ class ChatService {
       [sortedIds]
     );
     return result.rows[0] ? result.rows[0].room_id : null;
+  }
+
+  static async _decorateRooms(rooms, actor, requestHeaders = {}, options = {}) {
+    if (!Array.isArray(rooms) || rooms.length === 0) return rooms;
+
+    const directRoomRows = rooms.filter((room) => room && room.is_direct && Array.isArray(room.member_ids) && room.member_ids.length >= 2);
+    if (directRoomRows.length === 0) {
+      return rooms.map((room) => ({
+        ...room,
+        display_name: room && room.name ? room.name : null,
+        direct_name: room && room.is_direct ? (room.name || null) : null
+      }));
+    }
+
+    const userIds = [...new Set(directRoomRows.flatMap((room) => room.member_ids.map(Number).filter(Boolean)))];
+    const usersById = await this._fetchUsersByIds(userIds, requestHeaders);
+    if (actor && actor.id) {
+      usersById.set(Number(actor.id), actor);
+    }
+
+    return rooms.map((room) => {
+      if (!room || !room.is_direct || !Array.isArray(room.member_ids) || room.member_ids.length < 2) {
+        return {
+          ...room,
+          display_name: room && room.name ? room.name : null,
+          direct_name: room && room.is_direct ? (room.name || null) : null
+        };
+      }
+
+      const memberIds = room.member_ids.map(Number).filter(Boolean);
+      const labels = memberIds.map((memberId) => pickLogin(usersById.get(memberId), memberId));
+      const canonicalName = [...labels].sort((a, b) => a.localeCompare(b)).join('/');
+      let displayName = canonicalName;
+
+      if (options.listMode && actor && memberIds.includes(Number(actor.id))) {
+        const otherMemberId = memberIds.find((memberId) => Number(memberId) !== Number(actor.id));
+        if (otherMemberId) {
+          displayName = pickLogin(usersById.get(otherMemberId), otherMemberId);
+        }
+      }
+
+      return {
+        ...room,
+        name: options.listMode ? displayName : (room.name || canonicalName),
+        display_name: displayName,
+        direct_name: canonicalName
+      };
+    });
+  }
+
+  static async _fetchUsersByIds(userIds, requestHeaders = {}) {
+    const ids = [...new Set((Array.isArray(userIds) ? userIds : []).map(Number).filter(Boolean))];
+    const result = new Map();
+    if (ids.length === 0) return result;
+
+    const headers = {};
+    if (requestHeaders.authorization) headers.Authorization = requestHeaders.authorization;
+    if (requestHeaders.cookie) headers.Cookie = requestHeaders.cookie;
+
+    const responses = await Promise.all(ids.map(async (userId) => {
+      try {
+        const response = await fetch(`${config.authServiceUrl}/api/users/${userId}`, {
+          method: 'GET',
+          headers
+        });
+        if (!response.ok) return [userId, null];
+        const payload = await response.json();
+        const user = payload && payload.data ? payload.data : payload;
+        return [userId, user && user.id ? user : null];
+      } catch (error) {
+        return [userId, null];
+      }
+    }));
+
+    for (const [userId, user] of responses) {
+      result.set(userId, user);
+    }
+
+    return result;
+  }
+
+  static async _buildDirectRoomName(memberIds, actor, requestHeaders = {}) {
+    const normalizedMemberIds = [...new Set((Array.isArray(memberIds) ? memberIds : []).map(Number).filter(Boolean))];
+    if (normalizedMemberIds.length < 2) {
+      const actorLogin = pickLogin(actor, actor && actor.id ? actor.id : 'me');
+      return {
+        canonical_name: actorLogin,
+        display_name: actorLogin
+      };
+    }
+
+    const usersById = await this._fetchUsersByIds(normalizedMemberIds, requestHeaders);
+    if (actor && actor.id) {
+      usersById.set(Number(actor.id), actor);
+    }
+    const labels = normalizedMemberIds.map((memberId) => pickLogin(usersById.get(memberId), memberId));
+    const canonicalName = [...labels].sort((a, b) => a.localeCompare(b)).join('/');
+    const otherMemberId = normalizedMemberIds.find((memberId) => Number(memberId) !== Number(actor.id));
+    const displayName = otherMemberId ? pickLogin(usersById.get(otherMemberId), otherMemberId) : canonicalName;
+
+    return {
+      canonical_name: canonicalName,
+      display_name: displayName
+    };
   }
 
   static async _getRoomEvent(roomId, eventId) {
