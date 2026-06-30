@@ -9,7 +9,7 @@ const spec = {
   },
   servers: [
     {
-      url: 'http://localhost:3100',
+      url: 'http://localhost:3110',
       description: 'Local chat service'
     }
   ],
