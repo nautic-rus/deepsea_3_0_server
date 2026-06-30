@@ -194,6 +194,8 @@ class ChatService {
          vm.last_read_event_id,
          COALESCE(s.is_hidden, false) AS is_hidden,
          COALESCE(s.is_favorite, false) AS is_favorite,
+         COALESCE(unread.unread_count, 0)::int AS unread_count,
+         COALESCE(unread.unread_count, 0) > 0 AS has_unread,
          rm.member_ids,
          last_event.event_id AS last_event_id,
          last_event.event_type AS last_event_type,
@@ -214,6 +216,18 @@ class ChatService {
            AND m2.membership IN ('join', 'invite')
        ) AS rm ON TRUE
        LEFT JOIN chat_room_user_settings s ON s.room_id = r.room_id AND s.user_id = $1
+       LEFT JOIN LATERAL (
+         SELECT COUNT(*)::int AS unread_count
+         FROM chat_events e
+         WHERE e.room_id = r.room_id
+           AND e.event_type = 'm.room.message'
+           AND e.id > COALESCE((
+             SELECT e2.id
+             FROM chat_events e2
+             WHERE e2.event_id = vm.last_read_event_id
+             LIMIT 1
+           ), 0)
+       ) AS unread ON TRUE
        LEFT JOIN LATERAL (
          SELECT e.event_id, e.event_type, e.content, e.created_at
          FROM chat_events e
