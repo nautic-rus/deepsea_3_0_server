@@ -110,6 +110,13 @@ const spec = {
         properties: {
           role: { type: 'string', enum: ['admin', 'user'] }
         }
+      },
+      ChatRoomPreferencesRequest: {
+        type: 'object',
+        properties: {
+          is_hidden: { type: 'boolean' },
+          is_favorite: { type: 'boolean' }
+        }
       }
     }
   },
@@ -130,6 +137,9 @@ const spec = {
       },
       get: {
         summary: 'List my rooms',
+        parameters: [
+          { name: 'include_hidden', in: 'query', schema: { type: 'boolean' } }
+        ],
         responses: { 200: { description: 'Room list' } }
       }
     },
@@ -323,6 +333,21 @@ const spec = {
           }
         },
         responses: { 200: { description: 'Read marker updated' } }
+      }
+    },
+    '/api/chat/rooms/{roomId}/preferences': {
+      patch: {
+        summary: 'Update room preferences for current user',
+        parameters: [{ name: 'roomId', in: 'path', required: true, schema: { type: 'string' } }],
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ChatRoomPreferencesRequest' }
+            }
+          }
+        },
+        responses: { 200: { description: 'Room preferences updated' } }
       }
     },
     '/api/chat/sync': {

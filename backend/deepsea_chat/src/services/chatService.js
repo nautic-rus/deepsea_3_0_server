@@ -22,16 +22,61 @@ function normalizeLimit(value, fallback = 50, max = 200) {
   return Math.min(parsed, max);
 }
 
+function parseBoolean(value, fallback = false) {
+  if (value === true || value === 'true' || value === 1 || value === '1') return true;
+  if (value === false || value === 'false' || value === 0 || value === '0') return false;
+  return fallback;
+}
+
 function pickLogin(user, fallbackId) {
   if (!user) return `user-${fallbackId}`;
   const login = String(user.username || user.email || '').trim();
   return login || `user-${fallbackId}`;
 }
 
+function pickDisplayName(user, fallbackId) {
+  if (!user) return `user-${fallbackId}`;
+  const parts = [user.last_name, user.first_name, user.middle_name]
+    .map((part) => String(part || '').trim())
+    .filter(Boolean);
+  if (parts.length) return parts.join(' ');
+  const fullName = String(user.full_name || '').trim();
+  if (fullName) return fullName;
+  return pickLogin(user, fallbackId);
+}
+
+function formatSenderDisplay(user, fallbackId) {
+  const login = pickLogin(user, fallbackId);
+  const fullName = pickDisplayName(user, fallbackId);
+  return {
+    sender_login: login,
+    sender_full_name: fullName,
+    sender_display_name: fullName === login ? login : `${fullName} (${login})`
+  };
+}
+
 const ROOM_ROLES = ['owner', 'admin', 'member'];
 const SYSTEM_ROLES = ['admin', 'user'];
 
 class ChatService {
+  static async ensureSchema() {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS chat_room_user_settings (
+        room_id varchar(255) NOT NULL REFERENCES chat_rooms(room_id) ON DELETE CASCADE,
+        user_id integer NOT NULL,
+        is_hidden boolean NOT NULL DEFAULT false,
+        is_favorite boolean NOT NULL DEFAULT false,
+        created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (room_id, user_id)
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_chat_room_user_settings_user_id
+      ON chat_room_user_settings (user_id)
+    `);
+  }
+
   static async createRoom(payload = {}, actor, requestHeaders = {}) {
     const memberIds = [...new Set([actor.id, ...(Array.isArray(payload.member_user_ids) ? payload.member_user_ids : [])].map(Number).filter(Boolean))];
     const name = payload.name ? String(payload.name).trim() : null;
@@ -131,8 +176,9 @@ class ChatService {
     }
   }
 
-  static async listRooms(actor, requestHeaders = {}) {
+  static async listRooms(actor, requestHeaders = {}, query = {}) {
     const systemRole = await this._getSystemRole(actor.id);
+    const includeHidden = parseBoolean(query.include_hidden || query.includeHidden, false);
     const result = await pool.query(
       `SELECT
          r.room_id,
@@ -146,6 +192,8 @@ class ChatService {
          vm.membership,
          vm.member_role,
          vm.last_read_event_id,
+         COALESCE(s.is_hidden, false) AS is_hidden,
+         COALESCE(s.is_favorite, false) AS is_favorite,
          rm.member_ids,
          last_event.event_id AS last_event_id,
          last_event.event_type AS last_event_type,
@@ -165,6 +213,7 @@ class ChatService {
          WHERE m2.room_id = r.room_id
            AND m2.membership IN ('join', 'invite')
        ) AS rm ON TRUE
+       LEFT JOIN chat_room_user_settings s ON s.room_id = r.room_id AND s.user_id = $1
        LEFT JOIN LATERAL (
          SELECT e.event_id, e.event_type, e.content, e.created_at
          FROM chat_events e
@@ -172,8 +221,9 @@ class ChatService {
          ORDER BY e.id DESC
          LIMIT 1
        ) AS last_event ON TRUE
-       WHERE $2 = 'admin' OR vm.membership IS NOT NULL
-       ORDER BY COALESCE(last_event.created_at, r.created_at) DESC`,
+       WHERE ($2 = 'admin' OR vm.membership IS NOT NULL)
+       ${includeHidden ? '' : 'AND COALESCE(s.is_hidden, false) = false'}
+       ORDER BY COALESCE(s.is_favorite, false) DESC, COALESCE(last_event.created_at, r.created_at) DESC`,
       [actor.id, systemRole]
     );
 
@@ -193,9 +243,10 @@ class ChatService {
     const room = roomResult.rows[0];
     if (!room) throw buildError('Room not found', 404);
 
+    const settings = await this._getRoomSettings(roomId, actor.id);
     const members = await this.listMembers(roomId, actor);
     const [decoratedRoom] = await this._decorateRooms(
-      [{ ...room, member_ids: members.map((member) => Number(member.user_id)).filter(Boolean) }],
+      [{ ...room, ...settings, member_ids: members.map((member) => Number(member.user_id)).filter(Boolean) }],
       actor,
       requestHeaders,
       { listMode: false }
@@ -310,6 +361,12 @@ class ChatService {
         stateKey: String(actor.id),
         content: { membership: 'leave', user_id: actor.id }
       });
+
+      await client.query(
+        `DELETE FROM chat_room_user_settings
+         WHERE room_id = $1 AND user_id = $2`,
+        [roomId, actor.id]
+      );
 
       await client.query('COMMIT');
       return event;
@@ -468,7 +525,7 @@ class ChatService {
     });
   }
 
-  static async listMessages(roomId, query = {}, actor) {
+  static async listMessages(roomId, query = {}, actor, requestHeaders = {}) {
     await this._assertRoomVisible(roomId, actor.id);
     const limit = normalizeLimit(query.limit);
     const params = [roomId];
@@ -497,7 +554,7 @@ class ChatService {
       params
     );
 
-    return this._buildTimeline(result.rows, actor.id);
+    return this._buildTimeline(result.rows, actor.id, requestHeaders);
   }
 
   static async addReaction(roomId, eventId, payload = {}, actor) {
@@ -618,7 +675,31 @@ class ChatService {
     return { room_id: roomId, user_id: actor.id, event_id: String(eventId) };
   }
 
-  static async sync(query = {}, actor) {
+  static async updateRoomPreferences(roomId, payload = {}, actor) {
+    await this._assertRoomVisible(roomId, actor.id);
+    const hasHidden = Object.prototype.hasOwnProperty.call(payload, 'is_hidden');
+    const hasFavorite = Object.prototype.hasOwnProperty.call(payload, 'is_favorite');
+    if (!hasHidden && !hasFavorite) {
+      throw buildError('is_hidden or is_favorite is required', 400);
+    }
+
+    const current = await this._getRoomSettings(roomId, actor.id);
+    const nextHidden = hasHidden ? parseBoolean(payload.is_hidden, current.is_hidden) : current.is_hidden;
+    const nextFavorite = hasFavorite ? parseBoolean(payload.is_favorite, current.is_favorite) : current.is_favorite;
+
+    const result = await pool.query(
+      `INSERT INTO chat_room_user_settings (room_id, user_id, is_hidden, is_favorite)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (room_id, user_id)
+       DO UPDATE SET is_hidden = EXCLUDED.is_hidden, is_favorite = EXCLUDED.is_favorite, updated_at = CURRENT_TIMESTAMP
+       RETURNING room_id, user_id, is_hidden, is_favorite, created_at, updated_at`,
+      [roomId, actor.id, nextHidden, nextFavorite]
+    );
+
+    return result.rows[0];
+  }
+
+  static async sync(query = {}, actor, requestHeaders = {}) {
     await this._assertAuthenticated(actor);
     const since = Number(query.since) || 0;
     const limit = normalizeLimit(query.limit, 100, 500);
@@ -660,7 +741,7 @@ class ChatService {
       Array.from(grouped.entries()).map(async ([roomId, events]) => ({
         room_id: roomId,
         membership: membershipMap.get(roomId) || null,
-        timeline: await this._hydrateSyncTimeline(roomId, events, actor.id)
+        timeline: await this._hydrateSyncTimeline(roomId, events, actor.id, requestHeaders)
       }))
     );
 
@@ -816,6 +897,17 @@ class ChatService {
     return member;
   }
 
+  static async _getRoomSettings(roomId, userId) {
+    const result = await pool.query(
+      `SELECT is_hidden, is_favorite, created_at, updated_at
+       FROM chat_room_user_settings
+       WHERE room_id = $1 AND user_id = $2
+       LIMIT 1`,
+      [roomId, userId]
+    );
+    return result.rows[0] || { is_hidden: false, is_favorite: false, created_at: null, updated_at: null };
+  }
+
   static async _getSystemRole(userId) {
     if (config.adminUserIds.includes(Number(userId))) return 'admin';
     const result = await pool.query(
@@ -941,13 +1033,13 @@ class ChatService {
       if (options.listMode && actor && memberIds.includes(Number(actor.id))) {
         const otherMemberId = memberIds.find((memberId) => Number(memberId) !== Number(actor.id));
         if (otherMemberId) {
-          displayName = pickLogin(usersById.get(otherMemberId), otherMemberId);
+          displayName = pickDisplayName(usersById.get(otherMemberId), otherMemberId);
         }
       }
 
       return {
         ...room,
-        name: options.listMode ? displayName : (room.name || canonicalName),
+        name: displayName,
         display_name: displayName,
         direct_name: canonicalName
       };
@@ -1030,7 +1122,7 @@ class ChatService {
     return row;
   }
 
-  static async _buildTimeline(events, currentUserId) {
+  static async _buildTimeline(events, currentUserId, requestHeaders = {}) {
     if (!events.length) return [];
     const eventIds = events.map((event) => event.event_id);
     const related = await pool.query(
@@ -1041,10 +1133,10 @@ class ChatService {
       [eventIds]
     );
 
-    return this._hydrateTimelineRows(events, related.rows, currentUserId);
+    return this._hydrateTimelineRows(events, related.rows, currentUserId, requestHeaders);
   }
 
-  static async _hydrateSyncTimeline(roomId, events, currentUserId) {
+  static async _hydrateSyncTimeline(roomId, events, currentUserId, requestHeaders = {}) {
     if (!events.length) return [];
 
     const relationEvents = events.filter((event) => event.relation_event_id);
@@ -1083,7 +1175,7 @@ class ChatService {
       relatedRows = relatedResult.rows;
     }
 
-    const hydratedMessages = this._hydrateTimelineRows(baseMessages, relatedRows, currentUserId);
+    const hydratedMessages = await this._hydrateTimelineRows(baseMessages, relatedRows, currentUserId, requestHeaders);
     const hydratedById = new Map(hydratedMessages.map((event) => [event.event_id, event]));
     const appendedIds = new Set();
     const timeline = [];
@@ -1124,7 +1216,7 @@ class ChatService {
     });
   }
 
-  static _hydrateTimelineRows(events, relatedRows = [], currentUserId = null) {
+  static async _hydrateTimelineRows(events, relatedRows = [], currentUserId = null, requestHeaders = {}) {
     const relatedMap = new Map();
     for (const row of relatedRows) {
       const key = row.relation_event_id;
@@ -1133,8 +1225,14 @@ class ChatService {
       relatedMap.get(key).push(row);
     }
 
+    const senderIds = [...new Set(events.map((event) => Number(event.sender_id)).filter(Boolean))];
+    const usersById = await this._fetchUsersByIds(senderIds, requestHeaders);
+
     return events.map((event) => {
       if (event.event_type !== 'm.room.message') return event;
+
+      const senderUser = usersById.get(Number(event.sender_id)) || null;
+      const senderProfile = formatSenderDisplay(senderUser, event.sender_id);
 
       const clones = relatedMap.get(event.event_id) || [];
       const edits = clones.filter((row) => row.relation_type === 'm.replace');
@@ -1172,6 +1270,7 @@ class ChatService {
 
       return {
         ...event,
+        ...senderProfile,
         content,
         edited: Boolean(latestEdit),
         edited_at: latestEdit ? latestEdit.created_at : null,

@@ -12,7 +12,7 @@ class ChatController {
 
   static async listRooms(req, res, next) {
     try {
-      const data = await ChatService.listRooms(req.user, req.headers || {});
+      const data = await ChatService.listRooms(req.user, req.headers || {}, req.query || {});
       res.json({ data });
     } catch (error) {
       next(error);
@@ -106,7 +106,7 @@ class ChatController {
 
   static async listMessages(req, res, next) {
     try {
-      const data = await ChatService.listMessages(req.params.roomId, req.query || {}, req.user);
+      const data = await ChatService.listMessages(req.params.roomId, req.query || {}, req.user, req.headers || {});
       res.json({ data });
     } catch (error) {
       next(error);
@@ -168,9 +168,18 @@ class ChatController {
     }
   }
 
+  static async updateRoomPreferences(req, res, next) {
+    try {
+      const data = await ChatService.updateRoomPreferences(req.params.roomId, req.body || {}, req.user);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async sync(req, res, next) {
     try {
-      const data = await ChatService.sync(req.query || {}, req.user);
+      const data = await ChatService.sync(req.query || {}, req.user, req.headers || {});
       res.json({ data });
     } catch (error) {
       next(error);
