@@ -1,13 +1,20 @@
-version: '3.8'
-
 services:
   deepsea-chat:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: deepsea-chat
-    env_file:
-      - .env
+    environment:
+      PORT: ${PORT:-3100}
+      NODE_ENV: ${NODE_ENV:-development}
+      CHAT_SERVICE_NAME: ${CHAT_SERVICE_NAME:-deepsea-chat}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-https://v3.deep-sea.ru}
+      DB_HOST: ${DB_HOST:-chat-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-deepsea_chat}
+      DB_USER: ${DB_USER:-deepsea_chat}
+      DB_PASSWORD: ${DB_PASSWORD:-deepsea_chat}
+      DB_SSL: ${DB_SSL:-false}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
