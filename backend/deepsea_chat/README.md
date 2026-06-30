@@ -24,15 +24,25 @@
 - `POST /api/chat/rooms/:roomId/messages`
 - `GET /api/chat/rooms/:roomId/messages`
 - `POST /api/chat/rooms/:roomId/read_markers`
+- `POST /api/chat/read_markers/all`
 - `GET /api/chat/sync`
+- `GET /api/chat/stream`
 
 ## Авторизация
 
-Сервис не хранит свои логины и пароли. На каждый защищенный запрос он обращается в существующий backend:
+Сервис не хранит свои логины и пароли. На каждый защищенный запрос он обращается в существующий backend, но результат коротко кэшируется в памяти chat-service:
 
 - `GET ${AUTH_SERVICE_URL}/api/auth/me`
 
 И пробрасывает входящий `Authorization` и `Cookie`.
+
+По умолчанию кэш живет `10` секунд. Значение можно изменить через `CHAT_AUTH_CACHE_TTL_MS`.
+
+Для живого обновления интерфейса есть SSE-канал:
+
+- `GET /api/chat/stream`
+
+Клиент может держать одно соединение и обновлять список комнат/сообщения только по событиям, а `GET /api/chat/sync` оставить как fallback для первичной подгрузки и восстановления после обрывов.
 
 По умолчанию в `.env.example` используется `https://v3.deep-sea.ru`, чтобы отдельный chat-service проверял токен через production auth backend.
 

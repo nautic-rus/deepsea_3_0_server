@@ -335,6 +335,12 @@ const spec = {
         responses: { 200: { description: 'Read marker updated' } }
       }
     },
+    '/api/chat/read_markers/all': {
+      post: {
+        summary: 'Mark all rooms as read for current user',
+        responses: { 200: { description: 'All rooms marked as read' } }
+      }
+    },
     '/api/chat/rooms/{roomId}/preferences': {
       patch: {
         summary: 'Update room preferences for current user',
@@ -358,6 +364,12 @@ const spec = {
           { name: 'limit', in: 'query', schema: { type: 'integer' } }
         ],
         responses: { 200: { description: 'Sync response' } }
+      }
+    },
+    '/api/chat/stream': {
+      get: {
+        summary: 'Server-sent events stream for chat updates',
+        responses: { 200: { description: 'SSE connection established' } }
       }
     },
     '/api/chat/users/roles': {

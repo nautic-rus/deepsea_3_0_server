@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const pool = require('../db');
 const config = require('../config');
+const ChatBroadcaster = require('./chatBroadcaster');
 
 function buildError(message, statusCode) {
   const error = new Error(message);
@@ -59,6 +60,25 @@ const ROOM_ROLES = ['owner', 'admin', 'member'];
 const SYSTEM_ROLES = ['admin', 'user'];
 
 class ChatService {
+  static async openStream(actor, res) {
+    await this._assertAuthenticated(actor);
+
+    res.status(200);
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    if (typeof res.flushHeaders === 'function') {
+      res.flushHeaders();
+    }
+
+    res.write('retry: 5000\n\n');
+    ChatBroadcaster.register(actor.id, res);
+
+    return { connected: true, user_id: Number(actor.id) };
+  }
+
   static async ensureSchema() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS chat_room_user_settings (
@@ -167,6 +187,11 @@ class ChatService {
       }
 
       await client.query('COMMIT');
+      await this._notifyRoomMembers(roomId, 'room_created', {
+        room_id: roomId,
+        actor_id: actor.id,
+        is_direct: isDirect
+      });
       return this.getRoom(roomId, actor, requestHeaders);
     } catch (error) {
       await client.query('ROLLBACK');
@@ -306,6 +331,11 @@ class ChatService {
       });
 
       await client.query('COMMIT');
+      await this._notifyRoomMembers(roomId, 'member_invited', {
+        room_id: roomId,
+        actor_id: actor.id,
+        target_user_id: normalizedUserId
+      });
       return event;
     } catch (error) {
       await client.query('ROLLBACK');
@@ -345,6 +375,11 @@ class ChatService {
       });
 
       await client.query('COMMIT');
+      await this._notifyRoomMembers(roomId, 'member_joined', {
+        room_id: roomId,
+        actor_id: actor.id,
+        user_id: actor.id
+      });
       return event;
     } catch (error) {
       await client.query('ROLLBACK');
@@ -383,6 +418,17 @@ class ChatService {
       );
 
       await client.query('COMMIT');
+      await this._notifyRoomMembers(roomId, 'member_left', {
+        room_id: roomId,
+        actor_id: actor.id,
+        user_id: actor.id
+      });
+      ChatBroadcaster.sendToUser(actor.id, 'chat.update', {
+        kind: 'member_left',
+        room_id: roomId,
+        actor_id: actor.id,
+        user_id: actor.id
+      });
       return event;
     } catch (error) {
       await client.query('ROLLBACK');
@@ -424,7 +470,7 @@ class ChatService {
       [roomId, normalizedUserId, normalizedRole]
     );
 
-    return this._insertEvent(pool, {
+    const event = await this._insertEvent(pool, {
       roomId,
       senderId: actor.id,
       eventType: 'm.room.member.role',
@@ -435,6 +481,17 @@ class ChatService {
         changed_by: actor.id
       }
     });
+
+    await this._notifyRoomMembers(roomId, 'member_role_updated', {
+      room_id: roomId,
+      actor_id: actor.id,
+      target_user_id: normalizedUserId,
+      role: normalizedRole,
+      event_id: event.event_id,
+      stream_id: event.id
+    });
+
+    return event;
   }
 
   static async kickMember(roomId, userId, actor) {
@@ -458,7 +515,7 @@ class ChatService {
       [roomId, normalizedUserId]
     );
 
-    return this._insertEvent(pool, {
+    const event = await this._insertEvent(pool, {
       roomId,
       senderId: actor.id,
       eventType: 'm.room.member',
@@ -469,6 +526,24 @@ class ChatService {
         kicked_by: actor.id
       }
     });
+
+    await this._notifyRoomMembers(roomId, 'member_kicked', {
+      room_id: roomId,
+      actor_id: actor.id,
+      target_user_id: normalizedUserId,
+      event_id: event.event_id,
+      stream_id: event.id
+    });
+    ChatBroadcaster.sendToUser(normalizedUserId, 'chat.update', {
+      kind: 'member_kicked',
+      room_id: roomId,
+      actor_id: actor.id,
+      target_user_id: normalizedUserId,
+      event_id: event.event_id,
+      stream_id: event.id
+    });
+
+    return event;
   }
 
   static async deleteRoom(roomId, actor) {
@@ -478,6 +553,7 @@ class ChatService {
       if (actorMember.member_role !== 'owner') throw buildError('Only owner can delete room', 403);
     }
 
+    const recipientIds = await this._getRoomRecipientIds(roomId);
     const result = await pool.query(
       `DELETE FROM chat_rooms
        WHERE room_id = $1
@@ -485,6 +561,11 @@ class ChatService {
       [roomId]
     );
     if (!result.rows[0]) throw buildError('Room not found', 404);
+    ChatBroadcaster.sendToUsers(recipientIds, 'chat.update', {
+      kind: 'room_deleted',
+      room_id: roomId,
+      actor_id: actor.id
+    });
     return { deleted: true, room_id: roomId };
   }
 
@@ -493,7 +574,7 @@ class ChatService {
     const body = payload.body ? String(payload.body).trim() : '';
     if (!body) throw buildError('body is required', 400);
 
-    return this._insertEvent(pool, {
+    const event = await this._insertEvent(pool, {
       roomId,
       senderId: actor.id,
       eventType: 'm.room.message',
@@ -503,6 +584,16 @@ class ChatService {
       },
       relatesTo: payload.relates_to || null
     });
+
+    await this._notifyRoomMembers(roomId, 'message_created', {
+      room_id: roomId,
+      actor_id: actor.id,
+      event_id: event.event_id,
+      stream_id: event.id,
+      event_type: event.event_type
+    });
+
+    return event;
   }
 
   static async sendFiles(roomId, payload = {}, actor) {
@@ -527,7 +618,7 @@ class ChatService {
       };
     });
 
-    return this._insertEvent(pool, {
+    const event = await this._insertEvent(pool, {
       roomId,
       senderId: actor.id,
       eventType: 'm.room.message',
@@ -537,6 +628,16 @@ class ChatService {
         attachments: normalizedFiles
       }
     });
+
+    await this._notifyRoomMembers(roomId, 'message_created', {
+      room_id: roomId,
+      actor_id: actor.id,
+      event_id: event.event_id,
+      stream_id: event.id,
+      event_type: event.event_type
+    });
+
+    return event;
   }
 
   static async listMessages(roomId, query = {}, actor, requestHeaders = {}) {
@@ -594,7 +695,7 @@ class ChatService {
       return { already_exists: true, event_id: eventId, key };
     }
 
-    return this._insertEvent(pool, {
+    const event = await this._insertEvent(pool, {
       roomId,
       senderId: actor.id,
       eventType: 'm.reaction',
@@ -609,6 +710,17 @@ class ChatService {
         }
       }
     });
+
+    await this._notifyRoomMembers(roomId, 'reaction_added', {
+      room_id: roomId,
+      actor_id: actor.id,
+      target_event_id: eventId,
+      reaction_key: key,
+      event_id: event.event_id,
+      stream_id: event.id
+    });
+
+    return event;
   }
 
   static async removeReaction(roomId, eventId, key, actor) {
@@ -627,6 +739,15 @@ class ChatService {
       [roomId, actor.id, eventId, normalizedKey]
     );
 
+    if (deleted.rowCount > 0) {
+      await this._notifyRoomMembers(roomId, 'reaction_removed', {
+        room_id: roomId,
+        actor_id: actor.id,
+        target_event_id: eventId,
+        reaction_key: normalizedKey
+      });
+    }
+
     return {
       deleted: deleted.rowCount > 0,
       key: normalizedKey,
@@ -642,7 +763,7 @@ class ChatService {
     const body = payload.body ? String(payload.body).trim() : '';
     if (!body) throw buildError('body is required', 400);
 
-    return this._insertEvent(pool, {
+    const event = await this._insertEvent(pool, {
       roomId,
       senderId: actor.id,
       eventType: 'm.room.message.edit',
@@ -657,13 +778,23 @@ class ChatService {
         }
       }
     });
+
+    await this._notifyRoomMembers(roomId, 'message_edited', {
+      room_id: roomId,
+      actor_id: actor.id,
+      target_event_id: eventId,
+      event_id: event.event_id,
+      stream_id: event.id
+    });
+
+    return event;
   }
 
   static async deleteMessage(roomId, eventId, actor) {
     await this._assertJoined(roomId, actor.id);
     await this._getOwnEditableMessage(roomId, eventId, actor.id);
 
-    return this._insertEvent(pool, {
+    const event = await this._insertEvent(pool, {
       roomId,
       senderId: actor.id,
       eventType: 'm.room.redaction',
@@ -673,6 +804,16 @@ class ChatService {
         redacts: eventId
       }
     });
+
+    await this._notifyRoomMembers(roomId, 'message_deleted', {
+      room_id: roomId,
+      actor_id: actor.id,
+      target_event_id: eventId,
+      event_id: event.event_id,
+      stream_id: event.id
+    });
+
+    return event;
   }
 
   static async setReadMarker(roomId, eventId, actor) {
@@ -686,7 +827,64 @@ class ChatService {
       [roomId, actor.id, String(eventId)]
     );
 
+    ChatBroadcaster.sendToUser(actor.id, 'chat.update', {
+      kind: 'read_marker_updated',
+      room_id: roomId,
+      user_id: actor.id,
+      event_id: String(eventId)
+    });
+
     return { room_id: roomId, user_id: actor.id, event_id: String(eventId) };
+  }
+
+  static async markAllRead(actor) {
+    await this._assertAuthenticated(actor);
+
+    const result = await pool.query(
+      `WITH my_rooms AS (
+         SELECT room_id
+         FROM chat_room_members
+         WHERE user_id = $1
+           AND membership IN ('join', 'invite')
+       ),
+       latest_messages AS (
+         SELECT DISTINCT ON (r.room_id)
+           r.room_id,
+           e.event_id AS latest_event_id
+         FROM my_rooms r
+         LEFT JOIN chat_events e
+           ON e.room_id = r.room_id
+          AND e.event_type = 'm.room.message'
+         ORDER BY r.room_id, e.id DESC
+       ),
+       updated AS (
+         UPDATE chat_room_members m
+         SET last_read_event_id = lm.latest_event_id,
+             updated_at = CURRENT_TIMESTAMP
+         FROM latest_messages lm
+         WHERE m.room_id = lm.room_id
+           AND m.user_id = $1
+           AND lm.latest_event_id IS NOT NULL
+         RETURNING m.room_id, m.last_read_event_id
+       )
+       SELECT
+         COALESCE((SELECT COUNT(*)::int FROM updated), 0) AS updated_count,
+         COALESCE((SELECT JSON_AGG(JSON_BUILD_OBJECT('room_id', room_id, 'event_id', last_read_event_id)) FROM updated), '[]'::json) AS rooms`,
+      [actor.id]
+    );
+
+    const row = result.rows[0] || { updated_count: 0, rooms: [] };
+    ChatBroadcaster.sendToUser(actor.id, 'chat.update', {
+      kind: 'all_read',
+      user_id: actor.id,
+      updated_count: Number(row.updated_count) || 0,
+      rooms: row.rooms || []
+    });
+
+    return {
+      updated_count: Number(row.updated_count) || 0,
+      rooms: row.rooms || []
+    };
   }
 
   static async updateRoomPreferences(roomId, payload = {}, actor) {
@@ -709,6 +907,14 @@ class ChatService {
        RETURNING room_id, user_id, is_hidden, is_favorite, created_at, updated_at`,
       [roomId, actor.id, nextHidden, nextFavorite]
     );
+
+    ChatBroadcaster.sendToUser(actor.id, 'chat.update', {
+      kind: 'room_preferences_updated',
+      room_id: roomId,
+      user_id: actor.id,
+      is_hidden: result.rows[0].is_hidden,
+      is_favorite: result.rows[0].is_favorite
+    });
 
     return result.rows[0];
   }
@@ -920,6 +1126,35 @@ class ChatService {
       [roomId, userId]
     );
     return result.rows[0] || { is_hidden: false, is_favorite: false, created_at: null, updated_at: null };
+  }
+
+  static async _getRoomRecipientIds(roomId) {
+    const result = await pool.query(
+      `SELECT DISTINCT user_id
+       FROM chat_room_members
+       WHERE room_id = $1
+         AND membership IN ('join', 'invite')`,
+      [roomId]
+    );
+    return result.rows.map((row) => Number(row.user_id)).filter(Boolean);
+  }
+
+  static async _notifyRoomMembers(roomId, kind, payload = {}) {
+    try {
+      const recipientIds = await this._getRoomRecipientIds(roomId);
+      if (recipientIds.length === 0) return 0;
+      return ChatBroadcaster.sendToUsers(recipientIds, 'chat.update', {
+        kind,
+        ...payload
+      });
+    } catch (error) {
+      console.warn('Chat notification failed', {
+        room_id: roomId,
+        kind,
+        error: error && error.message ? error.message : String(error)
+      });
+      return 0;
+    }
   }
 
   static async _getSystemRole(userId) {

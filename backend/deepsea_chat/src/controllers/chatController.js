@@ -168,6 +168,15 @@ class ChatController {
     }
   }
 
+  static async markAllRead(req, res, next) {
+    try {
+      const data = await ChatService.markAllRead(req.user);
+      res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async updateRoomPreferences(req, res, next) {
     try {
       const data = await ChatService.updateRoomPreferences(req.params.roomId, req.body || {}, req.user);
@@ -181,6 +190,14 @@ class ChatController {
     try {
       const data = await ChatService.sync(req.query || {}, req.user, req.headers || {});
       res.json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async stream(req, res, next) {
+    try {
+      await ChatService.openStream(req.user, res);
     } catch (error) {
       next(error);
     }

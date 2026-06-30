@@ -36,8 +36,10 @@ router.delete('/api/chat/rooms/:roomId/messages/:eventId', ChatController.delete
 router.post('/api/chat/rooms/:roomId/messages/:eventId/reactions', ChatController.addReaction);
 router.delete('/api/chat/rooms/:roomId/messages/:eventId/reactions', ChatController.removeReaction);
 router.post('/api/chat/rooms/:roomId/read_markers', ChatController.setReadMarker);
+router.post('/api/chat/read_markers/all', ChatController.markAllRead);
 router.patch('/api/chat/rooms/:roomId/preferences', ChatController.updateRoomPreferences);
 router.get('/api/chat/sync', ChatController.sync);
+router.get('/api/chat/stream', ChatController.stream);
 router.get('/api/chat/users/roles', ChatController.listSystemRoles);
 router.get('/api/chat/users/:userId/role', ChatController.getSystemRole);
 router.put('/api/chat/users/:userId/role', ChatController.setSystemRole);
