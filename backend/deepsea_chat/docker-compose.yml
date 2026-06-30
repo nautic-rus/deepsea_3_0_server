@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  deepsea-chat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: deepsea-chat
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3100:3100"
+    depends_on:
+      chat-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  chat-db:
+    image: postgres:16-alpine
+    container_name: deepsea-chat-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-deepsea_chat}
+      POSTGRES_USER: ${DB_USER:-deepsea_chat}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-deepsea_chat}
+    ports:
+      - "5435:5432"
+    volumes:
+      - chat-db-data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-deepsea_chat} -d ${DB_NAME:-deepsea_chat}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  chat-db-data:

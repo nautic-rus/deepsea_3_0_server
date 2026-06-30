@@ -53,4 +53,10 @@ jobs:
             "cd '${{ secrets.TARGET_DIR_BACK }}' && \
              docker ps -a --filter \"name=deepsea-watcher\" -q | xargs -r docker rm -f || true && \
              docker compose pull || true && \
-             docker compose up -d --build --force-recreate --remove-orphans"
+             docker compose up -d --build --force-recreate --remove-orphans && \
+             if [ -d deepsea_chat ]; then \
+               cd deepsea_chat && \
+               if [ ! -f .env ] && [ -f .env.example ]; then cp .env.example .env; fi && \
+               docker compose pull || true && \
+               docker compose up -d --build --force-recreate --remove-orphans; \
+             fi"
