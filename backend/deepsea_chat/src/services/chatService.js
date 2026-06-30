@@ -235,7 +235,16 @@ class ChatService {
          LIMIT 1
        ) AS vm ON TRUE
        LEFT JOIN LATERAL (
-         SELECT ARRAY_AGG(DISTINCT m2.user_id ORDER BY m2.user_id) AS member_ids
+         SELECT
+           ARRAY_AGG(DISTINCT m2.user_id ORDER BY m2.user_id) AS member_ids,
+           JSONB_AGG(
+             JSONB_BUILD_OBJECT(
+               'user_id', m2.user_id,
+               'membership', m2.membership,
+               'member_role', m2.member_role
+             )
+             ORDER BY m2.user_id
+           ) AS members
          FROM chat_room_members m2
          WHERE m2.room_id = r.room_id
            AND m2.membership IN ('join', 'invite')
@@ -266,7 +275,8 @@ class ChatService {
       [actor.id, systemRole]
     );
 
-    return this._decorateRooms(result.rows, actor, requestHeaders, { listMode: true });
+    const decoratedRooms = await this._decorateRooms(result.rows, actor, requestHeaders, { listMode: true });
+    return this._attachRoomMembers(decoratedRooms, requestHeaders);
   }
 
   static async getRoom(roomId, actor, requestHeaders = {}) {
@@ -1291,6 +1301,44 @@ class ChatService {
         name: displayName,
         display_name: displayName,
         direct_name: canonicalName
+      };
+    });
+  }
+
+  static async _attachRoomMembers(rooms, requestHeaders = {}) {
+    if (!Array.isArray(rooms) || rooms.length === 0) return rooms;
+
+    const memberRows = rooms.flatMap((room) => (Array.isArray(room && room.members) ? room.members : []));
+    if (memberRows.length === 0) {
+      return rooms.map((room) => ({
+        ...room,
+        members: Array.isArray(room && room.members) ? room.members : []
+      }));
+    }
+
+    const userIds = [...new Set(memberRows.map((member) => Number(member.user_id)).filter(Boolean))];
+    const usersById = await this._fetchUsersByIds(userIds, requestHeaders);
+
+    return rooms.map((room) => {
+      const members = (Array.isArray(room && room.members) ? room.members : []).map((member) => {
+        const userId = Number(member.user_id);
+        const user = usersById.get(userId) || null;
+        const fullName = pickDisplayName(user, userId);
+        const login = pickLogin(user, userId);
+
+        return {
+          user_id: userId,
+          login,
+          full_name: fullName,
+          display_name: fullName === login ? login : `${fullName} (${login})`,
+          membership: member.membership || null,
+          member_role: member.member_role || null
+        };
+      });
+
+      return {
+        ...room,
+        members
       };
     });
   }
