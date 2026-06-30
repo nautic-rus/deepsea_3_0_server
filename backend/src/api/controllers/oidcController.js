@@ -1,4 +1,3 @@
-const AuthService = require('../services/authService');
 const OidcService = require('../services/oidcService');
 
 function oidcError(res, statusCode, error, description) {
@@ -15,34 +14,6 @@ function getFullRequestUrl(req) {
     ? originalUrl.slice(4)
     : (originalUrl === '/api' ? '/' : originalUrl);
   return `${issuer}${relativeUrl}`;
-}
-
-function setTokenCookieMaxAge(rawValue, fallback = null) {
-  const raw = String(rawValue || '').trim();
-  if (raw.endsWith('d')) return parseInt(raw, 10) * 24 * 60 * 60 * 1000;
-  if (raw.endsWith('h')) return parseInt(raw, 10) * 60 * 60 * 1000;
-  if (raw.endsWith('m')) return parseInt(raw, 10) * 60 * 1000;
-  if (raw.endsWith('s')) return parseInt(raw, 10) * 1000;
-  return fallback;
-}
-
-function setAuthCookies(res, result) {
-  const refreshMaxAge = setTokenCookieMaxAge(process.env.REFRESH_TOKEN_EXPIRES_IN || '7d');
-  const accessMaxAge = setTokenCookieMaxAge(process.env.JWT_EXPIRES_IN || '24h');
-
-  res.cookie('refresh_token', result.refresh_token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: refreshMaxAge
-  });
-
-  res.cookie('access_token', result.token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: accessMaxAge
-  });
 }
 
 function escapeHtml(value) {
@@ -71,7 +42,9 @@ function renderLoginPage({ returnTo, errorMessage, clientName }) {
       min-height: 100vh;
       display: grid;
       place-items: center;
-      background: linear-gradient(160deg, #06101d, #0b1730 60%, #09111f);
+      background:
+        radial-gradient(circle at top, rgba(82, 132, 255, 0.18), transparent 32%),
+        linear-gradient(160deg, #06101d, #0b1730 60%, #09111f);
       color: #f3f7ff;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
@@ -87,16 +60,15 @@ function renderLoginPage({ returnTo, errorMessage, clientName }) {
     }
     h1 { margin: 0 0 8px; font-size: 26px; }
     p { margin: 0 0 20px; color: #a8b7d0; line-height: 1.5; }
-    label { display: block; margin: 14px 0 6px; font-size: 14px; color: #a8b7d0; }
-    input {
-      width: 100%;
-      box-sizing: border-box;
+    .note {
+      margin-bottom: 16px;
       padding: 12px 14px;
       border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.04);
-      color: #f3f7ff;
-      outline: none;
+      background: rgba(81, 132, 255, 0.12);
+      color: #d9e6ff;
+      border: 1px solid rgba(81, 132, 255, 0.2);
+      line-height: 1.45;
+      font-size: 14px;
     }
     button {
       width: 100%;
@@ -121,16 +93,13 @@ function renderLoginPage({ returnTo, errorMessage, clientName }) {
 </head>
 <body>
   <main class="card">
-    <h1>Вход для ${safeClientName}</h1>
-    <p>Авторизуйтесь в DeepSea, чтобы продолжить вход в Matrix.</p>
+    <h1>Вход через DeepSea OIDC</h1>
+    <p>Один способ авторизации для ${safeClientName}: учётная запись DeepSea.</p>
+    <div class="note">Других вариантов входа нет. Эта форма создаёт сессию DeepSea, после чего вы вернётесь в ${safeClientName}.</div>
     ${safeError}
     <form method="post" action="/api/oidc/login">
       <input type="hidden" name="return_to" value="${safeReturnTo}" />
-      <label for="username">Логин или email</label>
-      <input id="username" name="username" autocomplete="username" required />
-      <label for="password">Пароль</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required />
-      <button type="submit">Продолжить</button>
+      <button type="submit">Войти через OIDC</button>
     </form>
   </main>
 </body>
@@ -267,15 +236,26 @@ class OidcController {
 
   static async loginSubmit(req, res, next) {
     try {
-      const { username, email, password, return_to } = req.body || {};
-      const identifier = (username || email || '').toString().trim().toLowerCase();
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      const userAgent = req.get('user-agent') || '';
-      const result = await AuthService.login(identifier, password, ipAddress, userAgent);
-      setAuthCookies(res, result);
+      const { return_to } = req.body || {};
+      const safeReturnTo = sanitizeReturnTo(return_to, req) || '';
+      const user = await OidcService.resolveAuthenticatedUser(req).catch(() => null);
+      if (user && safeReturnTo) {
+        return res.redirect(302, safeReturnTo);
+      }
 
-      const safeReturnTo = sanitizeReturnTo(return_to, req) || OidcService.getIssuerUrl(req);
-      return res.redirect(302, safeReturnTo);
+      const frontendUrl = String(process.env.FRONTEND_URL || '').trim();
+      if (frontendUrl) {
+        const loginUrl = new URL(frontendUrl.replace(/\/$/, '') + '/login');
+        if (safeReturnTo) loginUrl.searchParams.set('return_to', safeReturnTo);
+        loginUrl.searchParams.set('client_name', OidcService.getClientName());
+        return res.redirect(302, loginUrl.toString());
+      }
+
+      return res.status(401).send(renderLoginPage({
+        returnTo: safeReturnTo,
+        errorMessage: 'Требуется активная сессия DeepSea',
+        clientName: OidcService.getClientName()
+      }));
     } catch (error) {
       return res.status(401).send(renderLoginPage({
         returnTo: sanitizeReturnTo(req.body && req.body.return_to, req) || '',
