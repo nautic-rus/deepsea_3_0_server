@@ -7,7 +7,7 @@ async function start() {
   await pool.query('SELECT 1');
   await ChatService.ensureSchema();
   app.listen(config.port, () => {
-    console.log(`DeepSea chat service started on port ${config.port}`);
+    console.log(`${config.displayName} service started on port ${config.port}`);
   });
 }
 

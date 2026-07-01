@@ -66,6 +66,9 @@ services:
       dockerfile: Dockerfile
     user: root
     container_name: deepsea-backend
+    environment:
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://v3.deep-sea.ru,http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-https://v3.deep-sea.ru}
     ports:
       - "3000:3000"
     volumes:

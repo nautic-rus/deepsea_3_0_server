@@ -1,7 +1,7 @@
 {
   "name": "deepsea-chat",
   "version": "1.0.0",
-  "description": "Standalone chat service for DeepSea with Matrix-like rooms and event sync",
+  "description": "Standalone Deepsea Notificator service for DeepSea with Matrix-like rooms and event sync",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

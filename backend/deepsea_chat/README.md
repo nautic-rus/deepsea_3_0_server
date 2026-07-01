@@ -1,4 +1,4 @@
-# DeepSea Chat
+# Deepsea Notificator
 
 Отдельный чат-сервис с собственной PostgreSQL базой и авторизацией через уже существующий backend auth-service.
 
@@ -48,7 +48,13 @@
 По умолчанию в `.env.example` используется `https://v3.deep-sea.ru`, чтобы отдельный chat-service проверял токен через production auth backend.
 
 Для внутренних уведомлений backend может обращаться в `POST /api/internal/bot_notifications` с заголовком `X-DeepSea-Internal-Token`.
-Сервис кладет такие сообщения в bot-room пользователя и отображает отправителя как `DeepSea Bot`.
+Сервис кладет такие сообщения в bot-room пользователя и отображает отправителя как `Deepsea Notificator`.
+
+Если фронтенд ходит в `deepsea_chat` напрямую, задай `CHAT_CORS_ORIGINS` через запятую. Например:
+
+```env
+CHAT_CORS_ORIGINS=https://v3.deep-sea.ru,http://localhost:3000
+```
 
 ## Запуск
 

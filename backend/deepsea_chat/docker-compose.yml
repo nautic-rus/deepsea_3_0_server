@@ -8,8 +8,10 @@ services:
       PORT: ${PORT:-3100}
       NODE_ENV: ${NODE_ENV:-development}
       CHAT_SERVICE_NAME: ${CHAT_SERVICE_NAME:-deepsea-chat}
+      CHAT_DISPLAY_NAME: ${CHAT_DISPLAY_NAME:-Deepsea Notificator}
       AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-https://v3.deep-sea.ru}
       CHAT_ADMIN_USER_IDS: ${CHAT_ADMIN_USER_IDS:-}
+      CHAT_CORS_ORIGINS: ${CHAT_CORS_ORIGINS:-https://v3.deep-sea.ru,http://localhost:3000}
       CHAT_INTERNAL_TOKEN: ${CHAT_INTERNAL_TOKEN:-}
       DB_HOST: ${DB_HOST:-chat-db}
       DB_PORT: ${DB_PORT:-5432}

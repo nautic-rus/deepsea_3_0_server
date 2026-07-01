@@ -255,7 +255,7 @@ class NotificationDispatcher {
     const payload = {
       recipient_user_id: Number(userId),
       room_key: roomKey,
-      room_name: 'DeepSea Bot',
+      room_name: 'Deepsea Notificator',
       title: effectivePayloadBody.title,
       body: effectivePayloadBody.body,
       msgtype: effectivePayloadBody.msgtype,

@@ -1,16 +1,17 @@
+const config = require('./config');
 const swaggerUi = require('swagger-ui-express');
 
 const spec = {
   openapi: '3.0.3',
   info: {
-    title: 'DeepSea Chat API',
+    title: `${config.displayName} API`,
     version: '1.0.0',
-    description: 'Standalone Matrix-like chat service for DeepSea'
+    description: `Standalone Matrix-like chat service for ${config.displayName}`
   },
   servers: [
     {
       url: 'https://v3.deep-sea.ru',
-      description: 'Local chat service'
+      description: config.displayName
     }
   ],
   components: {

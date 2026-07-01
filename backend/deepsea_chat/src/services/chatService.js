@@ -61,7 +61,7 @@ const SYSTEM_ROLES = ['admin', 'user'];
 const CHAT_ROOM_MODES = ['chat', 'bot'];
 const BOT_SENDER_ID = 0;
 const BOT_SENDER_LOGIN = 'deepsea-bot';
-const BOT_SENDER_NAME = 'DeepSea Bot';
+const BOT_SENDER_NAME = config.displayName || 'Deepsea Notificator';
 
 function normalizeRoomMode(value) {
   const mode = String(value || '').trim().toLowerCase();

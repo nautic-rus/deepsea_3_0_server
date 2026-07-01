@@ -101,13 +101,42 @@ updateCpuMemoryMetrics();
 
 const app = express();
 
+function parseCorsOrigins(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return [];
+  if (raw === '*') return '*';
+  return raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function buildCorsOriginOption() {
+  const configured = parseCorsOrigins(process.env.CORS_ORIGINS || process.env.FRONTEND_URL || '');
+  if (configured === '*') return true;
+  if (Array.isArray(configured) && configured.length > 0) {
+    return (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (configured.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    };
+  }
+  return true;
+}
+
 // Middleware
-// Allow requests from any origin. This sets Access-Control-Allow-Origin: *
-// and permits common methods and headers used by the frontend.
+// Allow requests from configured origins and permit common methods/headers.
 app.use(cors({
-  origin: '*',
+  origin: buildCorsOriginOption(),
+  credentials: true,
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token'],
   exposedHeaders: ['Content-Disposition'],
   optionsSuccessStatus: 204
 }));
