@@ -2,7 +2,7 @@
  * Centralized notification dispatcher.
  *
  * Handles the full lifecycle: get recipients → filter by participants →
- * process enabled notification methods (notifications_bar / Rocket.Chat / email).
+ * process enabled notification methods (notifications_bar / Rocket.Chat / deepsea_chat / email).
  *
  * Usage from any service:
  *   const NotificationDispatcher = require('./notificationDispatcher');
@@ -17,6 +17,9 @@ const { hasPermission } = require('./permissionChecker');
 const TemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
 const RocketChatService = require('./rocketChatService');
+
+const DEEPSEA_CHAT_URL = String(process.env.DEEPSEA_CHAT_URL || process.env.CHAT_SERVICE_URL || '').replace(/\/$/, '');
+const DEEPSEA_CHAT_INTERNAL_TOKEN = String(process.env.DEEPSEA_CHAT_INTERNAL_TOKEN || process.env.CHAT_INTERNAL_TOKEN || '').trim();
 
 class NotificationDispatcher {
   static EXTERNAL_DUPLICATE_WINDOW_MS = 60 * 1000;
@@ -35,6 +38,26 @@ class NotificationDispatcher {
   static _normalizeMessagePart(value) {
     if (value === undefined || value === null) return '';
     return String(value).replace(/\s+/g, ' ').trim();
+  }
+
+  static _stripHtml(value) {
+    if (value === undefined || value === null) return '';
+    return String(value)
+      .replace(/<\s*br\s*\/?>/gi, '\n')
+      .replace(/<\/\s*(p|div|li|tr|ol|ul|h[1-6])\s*>/gi, '\n')
+      .replace(/<\s*li[^>]*>/gi, '- ')
+      .replace(/<\s*[^>]*>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .split('\n')
+      .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
   }
 
   static _reserveExternalDeliveryKey({ eventCode, methodCode, userId, projectId, entityId, target, subject, body }) {
@@ -181,6 +204,91 @@ class NotificationDispatcher {
     const allowed = await hasPermission({ id: uid }, 'documents.view_not_public');
     permissionCache.set(uid, allowed);
     return allowed;
+  }
+
+  static _buildDeepseaChatBody({ rendered, fallbackText, fallbackSubject, eventCode, entity, actor, notifData }) {
+    const body = String((rendered && rendered.text) || NotificationDispatcher._stripHtml(rendered && rendered.html) || fallbackText || '').trim();
+    const subject = String((rendered && rendered.subject) || fallbackSubject || `Notification: ${eventCode}`).trim();
+
+    return {
+      body: body || subject,
+      title: subject,
+      msgtype: 'm.notice',
+      metadata: {
+        event_code: eventCode,
+        entity: entity || null,
+        actor: actor || null,
+        notification: notifData || null
+      }
+    };
+  }
+
+  static async _sendDeepseaChatNotification({
+    eventCode,
+    projectId,
+    userId,
+    entity,
+    actor,
+    templateContext,
+    fallbackText,
+    fallbackSubject,
+    notifData,
+    rendered = null,
+    payloadBody = null
+  }) {
+    if (!DEEPSEA_CHAT_URL || !DEEPSEA_CHAT_INTERNAL_TOKEN) {
+      throw new Error('deepsea_chat notification channel is not configured');
+    }
+
+    const effectiveRendered = rendered || await TemplateService.render(eventCode, 'deepsea_chat', templateContext);
+    const effectivePayloadBody = payloadBody || NotificationDispatcher._buildDeepseaChatBody({
+      rendered: effectiveRendered,
+      fallbackText,
+      fallbackSubject,
+      eventCode,
+      entity,
+      actor,
+      notifData
+    });
+
+    const roomKey = `notification:${Number(userId)}`;
+    const payload = {
+      recipient_user_id: Number(userId),
+      room_key: roomKey,
+      room_name: 'DeepSea Bot',
+      title: effectivePayloadBody.title,
+      body: effectivePayloadBody.body,
+      msgtype: effectivePayloadBody.msgtype,
+      event_code: eventCode,
+      project_id: projectId,
+      entity: entity || null,
+      actor: actor || null,
+      content: notifData && notifData.content ? notifData.content : null,
+      metadata: effectivePayloadBody.metadata
+    };
+
+    const response = await fetch(`${DEEPSEA_CHAT_URL}/api/internal/bot_notifications`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-DeepSea-Internal-Token': DEEPSEA_CHAT_INTERNAL_TOKEN
+      },
+      body: JSON.stringify(payload)
+    });
+
+    let responseBody = null;
+    try {
+      responseBody = await response.json();
+    } catch (err) {
+      responseBody = null;
+    }
+
+    if (!response.ok) {
+      const detail = responseBody && responseBody.error ? responseBody.error : `HTTP ${response.status}`;
+      throw new Error(`deepsea_chat notification failed: ${detail}`);
+    }
+
+    return responseBody;
   }
 
   /**
@@ -359,6 +467,52 @@ class NotificationDispatcher {
           } catch (rcErr) {
             NotificationDispatcher._releaseExternalDeliveryKey(dedupKey);
             throw rcErr;
+          }
+        } else if (r.method_code === 'deepsea_chat') {
+          if (!isActive) {
+            continue;
+          }
+
+          const rendered = await TemplateService.render(eventCode, 'deepsea_chat', templateContext);
+          const payloadBody = NotificationDispatcher._buildDeepseaChatBody({
+            rendered,
+            fallbackText,
+            fallbackSubject,
+            eventCode,
+            entity,
+            actor,
+            notifData
+          });
+
+          const dedupKey = NotificationDispatcher._reserveExternalDeliveryKey({
+            eventCode,
+            methodCode: 'deepsea_chat',
+            userId: uid,
+            projectId,
+            entityId: entity && entity.id,
+            target: `notification:${uid}`,
+            subject: payloadBody.title,
+            body: payloadBody.body
+          });
+          if (!dedupKey) continue;
+
+          try {
+            await NotificationDispatcher._sendDeepseaChatNotification({
+              eventCode,
+              projectId,
+              userId: uid,
+              entity,
+              actor,
+              templateContext,
+              fallbackText,
+              fallbackSubject,
+              notifData,
+              rendered,
+              payloadBody
+            });
+          } catch (chatErr) {
+            NotificationDispatcher._releaseExternalDeliveryKey(dedupKey);
+            throw chatErr;
           }
         } else if (r.method_code === 'email') {
           if (!isActive) {

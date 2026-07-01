@@ -28,6 +28,8 @@ const definitions = [
   { key: 'FRONTEND_URL', valueType: 'string', defaultValue: '', description: 'Базовый URL фронтенда для ссылок в письмах', isSecret: false, requiresRestart: false },
   { key: 'FORAN_SERVICE_URL', valueType: 'string', defaultValue: '', description: 'Базовый URL отдельного FORAN backend для HTTP API', isSecret: false, requiresRestart: false },
   { key: 'FORAN_SERVICE_TOKEN', valueType: 'string', defaultValue: '', description: 'Токен для авторизации запросов к FORAN backend', isSecret: true, requiresRestart: false },
+  { key: 'DEEPSEA_CHAT_URL', valueType: 'string', defaultValue: '', description: 'Базовый URL сервиса deepsea_chat для внутренних уведомлений', isSecret: false, requiresRestart: false },
+  { key: 'DEEPSEA_CHAT_INTERNAL_TOKEN', valueType: 'string', defaultValue: '', description: 'Секрет для внутренних запросов в deepsea_chat', isSecret: true, requiresRestart: false },
   { key: 'ROCKET_CHAT_URL', valueType: 'string', defaultValue: '', description: 'Базовый URL Rocket.Chat', isSecret: false, requiresRestart: false },
   { key: 'ROCKET_CHAT_TOKEN', valueType: 'string', defaultValue: '', description: 'Токен Rocket.Chat REST API', isSecret: true, requiresRestart: false },
   { key: 'ROCKET_CHAT_USER_ID', valueType: 'string', defaultValue: '', description: 'User ID для Rocket.Chat token auth', isSecret: true, requiresRestart: false },

@@ -27,6 +27,7 @@
 - `POST /api/chat/read_markers/all`
 - `GET /api/chat/sync`
 - `GET /api/chat/stream`
+- `POST /api/internal/bot_notifications` - internal endpoint for backend notifications
 
 ## Авторизация
 
@@ -45,6 +46,9 @@
 Клиент может держать одно соединение и обновлять список комнат/сообщения только по событиям, а `GET /api/chat/sync` оставить как fallback для первичной подгрузки и восстановления после обрывов.
 
 По умолчанию в `.env.example` используется `https://v3.deep-sea.ru`, чтобы отдельный chat-service проверял токен через production auth backend.
+
+Для внутренних уведомлений backend может обращаться в `POST /api/internal/bot_notifications` с заголовком `X-DeepSea-Internal-Token`.
+Сервис кладет такие сообщения в bot-room пользователя и отображает отправителя как `DeepSea Bot`.
 
 ## Запуск
 

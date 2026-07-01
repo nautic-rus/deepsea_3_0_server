@@ -1,5 +1,6 @@
 const express = require('express');
 const authMiddleware = require('./middleware/auth');
+const internalAuth = require('./middleware/internalAuth');
 const ChatController = require('./controllers/chatController');
 const { swaggerUi, swaggerSpec } = require('./swagger');
 
@@ -43,5 +44,7 @@ router.get('/api/chat/stream', ChatController.stream);
 router.get('/api/chat/users/roles', ChatController.listSystemRoles);
 router.get('/api/chat/users/:userId/role', ChatController.getSystemRole);
 router.put('/api/chat/users/:userId/role', ChatController.setSystemRole);
+
+router.post('/api/internal/bot_notifications', internalAuth, ChatController.sendInternalNotification);
 
 module.exports = router;

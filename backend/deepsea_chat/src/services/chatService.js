@@ -58,6 +58,15 @@ function formatSenderDisplay(user, fallbackId) {
 
 const ROOM_ROLES = ['owner', 'admin', 'member'];
 const SYSTEM_ROLES = ['admin', 'user'];
+const CHAT_ROOM_MODES = ['chat', 'bot'];
+const BOT_SENDER_ID = 0;
+const BOT_SENDER_LOGIN = 'deepsea-bot';
+const BOT_SENDER_NAME = 'DeepSea Bot';
+
+function normalizeRoomMode(value) {
+  const mode = String(value || '').trim().toLowerCase();
+  return CHAT_ROOM_MODES.includes(mode) ? mode : 'chat';
+}
 
 class ChatService {
   static async openStream(actor, res) {
@@ -92,8 +101,25 @@ class ChatService {
       )
     `);
     await pool.query(`
+      ALTER TABLE chat_rooms
+      ADD COLUMN IF NOT EXISTS room_mode varchar(32) NOT NULL DEFAULT 'chat'
+    `);
+    await pool.query(`
+      ALTER TABLE chat_rooms
+      ADD COLUMN IF NOT EXISTS bot_key varchar(255)
+    `);
+    await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_chat_room_user_settings_user_id
       ON chat_room_user_settings (user_id)
+    `);
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_rooms_bot_key
+      ON chat_rooms (bot_key)
+      WHERE bot_key IS NOT NULL
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_chat_rooms_room_mode
+      ON chat_rooms (room_mode)
     `);
   }
 
@@ -103,9 +129,13 @@ class ChatService {
     const topic = payload.topic ? String(payload.topic).trim() : null;
     const visibility = payload.visibility === 'public' ? 'public' : 'private';
     const isDirect = Boolean(payload.is_direct);
+    const roomMode = normalizeRoomMode(payload.room_mode || payload.mode);
+    const botKey = roomMode === 'bot'
+      ? String(payload.bot_key || payload.room_key || '').trim() || null
+      : null;
     const roomId = buildRoomId();
 
-    if (isDirect && memberIds.length === 2) {
+    if (roomMode !== 'bot' && isDirect && memberIds.length === 2) {
       const existingDirectRoom = await this._findDirectRoom(memberIds);
       if (existingDirectRoom) {
         return this.getRoom(existingDirectRoom, actor, requestHeaders);
@@ -113,16 +143,18 @@ class ChatService {
     }
 
     const directRoomName = isDirect ? await this._buildDirectRoomName(memberIds, actor, requestHeaders) : null;
-    const roomName = isDirect ? directRoomName.canonical_name : name;
+    const roomName = roomMode === 'bot'
+      ? (name || BOT_SENDER_NAME)
+      : (isDirect ? directRoomName.canonical_name : name);
 
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       await client.query(
-        `INSERT INTO chat_rooms (room_id, name, topic, visibility, is_direct, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [roomId, roomName, topic, visibility, isDirect, actor.id]
+        `INSERT INTO chat_rooms (room_id, name, topic, visibility, is_direct, room_mode, bot_key, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [roomId, roomName, topic, visibility, isDirect, roomMode, botKey, actor.id]
       );
 
       await client.query(
@@ -211,6 +243,8 @@ class ChatService {
          r.topic,
          r.visibility,
          r.is_direct,
+         r.room_mode,
+         r.bot_key,
          r.created_by,
          r.created_at,
          r.updated_at,
@@ -283,7 +317,7 @@ class ChatService {
     await this._assertRoomVisible(roomId, actor.id);
 
     const roomResult = await pool.query(
-      `SELECT room_id, name, topic, visibility, is_direct, created_by, created_at, updated_at
+      `SELECT room_id, name, topic, visibility, is_direct, room_mode, bot_key, created_by, created_at, updated_at
        FROM chat_rooms
        WHERE room_id = $1`,
       [roomId]
@@ -604,6 +638,53 @@ class ChatService {
     });
 
     return event;
+  }
+
+  static async sendInternalNotification(payload = {}) {
+    const recipientUserId = Number(payload.recipient_user_id || payload.user_id);
+    const body = payload.body ? String(payload.body).trim() : '';
+    if (!recipientUserId) throw buildError('recipient_user_id is required', 400);
+    if (!body) throw buildError('body is required', 400);
+
+    const roomKey = String(payload.room_key || `notification:${recipientUserId}`).trim();
+    const room = await this._ensureBotRoom(recipientUserId, {
+      roomKey,
+      roomName: payload.room_name ? String(payload.room_name).trim() : BOT_SENDER_NAME
+    });
+
+    const senderId = BOT_SENDER_ID;
+    const event = await this._insertEvent(pool, {
+      roomId: room.room_id,
+      senderId,
+      eventType: 'm.room.message',
+      content: {
+        msgtype: payload.msgtype ? String(payload.msgtype) : 'm.notice',
+        body,
+        title: payload.title ? String(payload.title).trim() : null,
+        event_code: payload.event_code ? String(payload.event_code).trim() : null,
+        project_id: payload.project_id != null ? Number(payload.project_id) : null,
+        entity: payload.entity || null,
+        actor: payload.actor || null,
+        content: payload.content || null,
+        metadata: payload.metadata || null,
+        room_mode: 'bot'
+      }
+    });
+
+    await this._notifyRoomMembers(room.room_id, 'message_created', {
+      room_id: room.room_id,
+      actor_id: senderId,
+      event_id: event.event_id,
+      stream_id: event.id,
+      event_type: event.event_type,
+      room_mode: 'bot',
+      bot_notification: true
+    });
+
+    return {
+      room_id: room.room_id,
+      event
+    };
   }
 
   static async sendFiles(roomId, payload = {}, actor) {
@@ -1138,6 +1219,139 @@ class ChatService {
     return result.rows[0] || { is_hidden: false, is_favorite: false, created_at: null, updated_at: null };
   }
 
+  static async _findBotRoom(roomKey, userId) {
+    const result = await pool.query(
+      `SELECT r.room_id
+       FROM chat_rooms r
+       JOIN chat_room_members m ON m.room_id = r.room_id
+       WHERE r.room_mode = 'bot'
+         AND r.bot_key = $1
+         AND m.user_id = $2
+         AND m.membership IN ('join', 'invite')
+       LIMIT 1`,
+      [roomKey, userId]
+    );
+    return result.rows[0] ? result.rows[0].room_id : null;
+  }
+
+  static async _ensureBotRoom(userId, { roomKey, roomName = null } = {}) {
+    const normalizedUserId = Number(userId);
+    if (!normalizedUserId) throw buildError('recipient_user_id is required', 400);
+    const normalizedRoomKey = String(roomKey || `notification:${normalizedUserId}`).trim();
+    if (!normalizedRoomKey) throw buildError('room_key is required', 400);
+
+    const existingRoomId = await this._findBotRoom(normalizedRoomKey, normalizedUserId);
+    if (existingRoomId) {
+      return { room_id: existingRoomId, created: false };
+    }
+
+    const client = await pool.connect();
+    const roomId = buildRoomId();
+    const botRoomName = roomName || BOT_SENDER_NAME;
+
+    try {
+      await client.query('BEGIN');
+
+      const existingByKey = await client.query(
+        `SELECT room_id
+         FROM chat_rooms
+         WHERE room_mode = 'bot'
+           AND bot_key = $1
+         LIMIT 1
+         FOR UPDATE`,
+        [normalizedRoomKey]
+      );
+      if (existingByKey.rows[0]) {
+        const existingId = existingByKey.rows[0].room_id;
+        await client.query(
+          `INSERT INTO chat_room_members (room_id, user_id, membership, member_role, invited_by, joined_at, left_at)
+           VALUES ($1, $2, 'join', 'member', $2, CURRENT_TIMESTAMP, NULL)
+           ON CONFLICT (room_id, user_id)
+           DO UPDATE SET membership = 'join', left_at = NULL, updated_at = CURRENT_TIMESTAMP`,
+          [existingId, normalizedUserId]
+        );
+        await client.query(
+          `UPDATE chat_rooms
+           SET updated_at = CURRENT_TIMESTAMP
+           WHERE room_id = $1`,
+          [existingId]
+        );
+        await client.query('COMMIT');
+        return { room_id: existingId, created: false };
+      }
+
+      await client.query(
+        `INSERT INTO chat_rooms (room_id, name, topic, visibility, is_direct, room_mode, bot_key, created_by)
+         VALUES ($1, $2, $3, 'private', TRUE, 'bot', $4, $5)`,
+        [roomId, botRoomName, null, normalizedRoomKey, BOT_SENDER_ID]
+      );
+
+      await client.query(
+        `INSERT INTO chat_room_members (room_id, user_id, membership, member_role, invited_by, joined_at, left_at)
+         VALUES ($1, $2, 'join', 'member', $2, CURRENT_TIMESTAMP, NULL)`,
+        [roomId, normalizedUserId]
+      );
+
+      await client.query(
+        `INSERT INTO chat_events (event_id, room_id, sender_id, event_type, state_key, content, relates_to, relation_event_id, relation_type, reaction_key)
+         VALUES ($1, $2, $3, $4, '', $5::jsonb, NULL, NULL, NULL, NULL)`,
+        [
+          buildEventId(),
+          roomId,
+          BOT_SENDER_ID,
+          'm.room.create',
+          JSON.stringify({
+            creator: BOT_SENDER_ID,
+            is_direct: true,
+            visibility: 'private',
+            room_mode: 'bot',
+            bot_key: normalizedRoomKey
+          })
+        ]
+      );
+
+      await client.query(
+        `INSERT INTO chat_events (event_id, room_id, sender_id, event_type, state_key, content, relates_to, relation_event_id, relation_type, reaction_key)
+         VALUES ($1, $2, $3, $4, '', $5::jsonb, NULL, NULL, NULL, NULL)`,
+        [
+          buildEventId(),
+          roomId,
+          BOT_SENDER_ID,
+          'm.room.name',
+          JSON.stringify({ name: botRoomName })
+        ]
+      );
+
+      await client.query(
+        `INSERT INTO chat_events (event_id, room_id, sender_id, event_type, state_key, content, relates_to, relation_event_id, relation_type, reaction_key)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, NULL, NULL, NULL, NULL)`,
+        [
+          buildEventId(),
+          roomId,
+          BOT_SENDER_ID,
+          'm.room.member',
+          String(normalizedUserId),
+          JSON.stringify({ membership: 'join', role: 'member', user_id: normalizedUserId, bot_mode: true })
+        ]
+      );
+
+      await client.query(
+        `UPDATE chat_rooms
+         SET updated_at = CURRENT_TIMESTAMP
+         WHERE room_id = $1`,
+        [roomId]
+      );
+
+      await client.query('COMMIT');
+      return { room_id: roomId, created: true };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   static async _getRoomRecipientIds(roomId) {
     const result = await pool.query(
       `SELECT DISTINCT user_id
@@ -1528,8 +1742,14 @@ class ChatService {
     return events.map((event) => {
       if (event.event_type !== 'm.room.message') return event;
 
-      const senderUser = usersById.get(Number(event.sender_id)) || null;
-      const senderProfile = formatSenderDisplay(senderUser, event.sender_id);
+      const senderId = Number(event.sender_id);
+      const senderProfile = senderId === BOT_SENDER_ID
+        ? {
+            sender_login: BOT_SENDER_LOGIN,
+            sender_full_name: BOT_SENDER_NAME,
+            sender_display_name: BOT_SENDER_NAME
+          }
+        : formatSenderDisplay(usersById.get(senderId) || null, event.sender_id);
 
       const clones = relatedMap.get(event.event_id) || [];
       const edits = clones.filter((row) => row.relation_type === 'm.replace');

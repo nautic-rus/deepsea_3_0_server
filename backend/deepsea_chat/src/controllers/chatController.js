@@ -229,6 +229,15 @@ class ChatController {
       next(error);
     }
   }
+
+  static async sendInternalNotification(req, res, next) {
+    try {
+      const data = await ChatService.sendInternalNotification(req.body || {});
+      res.status(201).json({ data });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = ChatController;

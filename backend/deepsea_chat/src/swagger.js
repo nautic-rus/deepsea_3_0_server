@@ -111,6 +111,23 @@ const spec = {
           role: { type: 'string', enum: ['admin', 'user'] }
         }
       },
+      InternalBotNotificationRequest: {
+        type: 'object',
+        required: ['recipient_user_id', 'body'],
+        properties: {
+          recipient_user_id: { type: 'integer' },
+          room_key: { type: 'string' },
+          title: { type: 'string' },
+          body: { type: 'string' },
+          msgtype: { type: 'string', example: 'm.notice' },
+          event_code: { type: 'string' },
+          project_id: { type: 'integer' },
+          entity: { type: 'object' },
+          actor: { type: 'object' },
+          content: { type: 'object' },
+          metadata: { type: 'object' }
+        }
+      },
       ChatRoomPreferencesRequest: {
         type: 'object',
         properties: {
@@ -396,6 +413,21 @@ const spec = {
           }
         },
         responses: { 200: { description: 'User system role updated' } }
+      }
+    },
+    '/api/internal/bot_notifications': {
+      post: {
+        summary: 'Send internal bot notification',
+        description: 'Internal endpoint used by backend services to post bot messages into deepsea chat rooms.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/InternalBotNotificationRequest' }
+            }
+          }
+        },
+        responses: { 201: { description: 'Bot notification sent' } }
       }
     }
   }
