@@ -892,12 +892,15 @@ class SpecificationPartsService {
 
   static _resolveSystemsQuantityDetails(row, material) {
     // SYSTEMS quantity follows unit semantics:
-    // - unit 1 is a single item,
+    // - unit 1 uses the incoming QUANTITY from Oracle,
     // - unit 2 stores incoming WEIGHT directly,
     // - unit 3 stores incoming LENGTH,
     // - other units are derived from incoming WEIGHT and material unit weight.
     const unitId = material && material.unit_id !== null && material.unit_id !== undefined && !Number.isNaN(Number(material.unit_id))
       ? Number(material.unit_id)
+      : null;
+    const quantity = row.quantity !== null && row.quantity !== undefined && !Number.isNaN(Number(row.quantity))
+      ? Number(row.quantity)
       : null;
     const length = row.length !== null && row.length !== undefined && !Number.isNaN(Number(row.length))
       ? Number(row.length)
@@ -910,7 +913,9 @@ class SpecificationPartsService {
       : null;
 
     if (unitId === 1) {
-      return { quantity: 1, calculated: true, reason: null };
+      return quantity !== null
+        ? { quantity, calculated: true, reason: null }
+        : { quantity: 1, calculated: false, reason: 'QUANTITY is missing, fell back to 1' };
     }
 
     if (unitId === 2) {
