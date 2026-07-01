@@ -211,8 +211,11 @@ class NotificationDispatcher {
     return allowed;
   }
 
-  static _buildDeepseaChatBody({ rendered, fallbackText, fallbackSubject, eventCode, entity, actor, notifData }) {
-    const body = String((rendered && rendered.text) || NotificationDispatcher._stripHtml(rendered && rendered.html) || fallbackText || '').trim();
+  static _buildDeepseaChatBody({ rendered, fallbackText, fallbackSubject, eventCode, entity, actor, notifData, preferHtml = false }) {
+    const bodySource = preferHtml
+      ? ((rendered && rendered.html) || (rendered && rendered.text) || fallbackText || '')
+      : ((rendered && rendered.text) || NotificationDispatcher._stripHtml(rendered && rendered.html) || fallbackText || '');
+    const body = String(bodySource).trim();
     const subject = String((rendered && rendered.subject) || fallbackSubject || `Notification: ${eventCode}`).trim();
 
     return {
@@ -248,7 +251,7 @@ class NotificationDispatcher {
       throw new Error('deepsea_chat notification channel is not configured');
     }
 
-    const effectiveRendered = rendered || await TemplateService.render(eventCode, 'rocket_chat', templateContext);
+    const effectiveRendered = rendered || await TemplateService.render(eventCode, 'deepsea_chat', templateContext);
     const effectivePayloadBody = payloadBody || NotificationDispatcher._buildDeepseaChatBody({
       rendered: effectiveRendered,
       fallbackText,
@@ -256,7 +259,8 @@ class NotificationDispatcher {
       eventCode,
       entity,
       actor,
-      notifData
+      notifData,
+      preferHtml: true
     });
 
     const roomKey = `notification:${Number(userId)}`;
@@ -481,7 +485,7 @@ class NotificationDispatcher {
             continue;
           }
 
-          const rendered = await TemplateService.render(eventCode, 'rocket_chat', templateContext);
+          const rendered = await TemplateService.render(eventCode, 'deepsea_chat', templateContext);
           const payloadBody = NotificationDispatcher._buildDeepseaChatBody({
             rendered,
             fallbackText,
@@ -489,7 +493,8 @@ class NotificationDispatcher {
             eventCode,
             entity,
             actor,
-            notifData
+            notifData,
+            preferHtml: true
           });
 
           const dedupKey = NotificationDispatcher._reserveExternalDeliveryKey({

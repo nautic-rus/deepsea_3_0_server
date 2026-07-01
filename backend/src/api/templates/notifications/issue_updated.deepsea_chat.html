@@ -1,0 +1,11 @@
+<div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.5; color: #102033;">
+  <div style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">⚠️ Задача обновлена!</div>
+  <div><strong>Проект:</strong> {{project.code}}</div>
+  <div><strong>Номер:</strong> #{{issue.id}}</div>
+  <div><strong>Наименование:</strong> {{issue.title}}</div>
+  <div><strong>Обновил:</strong> {{actor.full_name}}</div>
+  <div style="margin-top: 12px;"><strong>Изменения:</strong></div>
+  <pre style="white-space: pre-wrap; margin-top: 6px; padding: 12px; background: #f8fafc; border-left: 4px solid #0f5bd7; border-radius: 6px; overflow-x: auto;">{{changes}}</pre>
+  <div style="margin-top: 12px;"><a href="{{issueUrl}}" style="color: #0f5bd7; text-decoration: none;">{{issueUrl}}</a></div>
+  <div style="margin-top: 16px; color: #64748b; font-size: 12px;"><em>Это автоматическое уведомление от {{company.name}}.</em></div>
+</div>
