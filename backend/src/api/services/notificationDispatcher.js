@@ -248,7 +248,7 @@ class NotificationDispatcher {
       throw new Error('deepsea_chat notification channel is not configured');
     }
 
-    const effectiveRendered = rendered || await TemplateService.render(eventCode, 'deepsea_chat', templateContext);
+    const effectiveRendered = rendered || await TemplateService.render(eventCode, 'rocket_chat', templateContext);
     const effectivePayloadBody = payloadBody || NotificationDispatcher._buildDeepseaChatBody({
       rendered: effectiveRendered,
       fallbackText,
@@ -481,7 +481,7 @@ class NotificationDispatcher {
             continue;
           }
 
-          const rendered = await TemplateService.render(eventCode, 'deepsea_chat', templateContext);
+          const rendered = await TemplateService.render(eventCode, 'rocket_chat', templateContext);
           const payloadBody = NotificationDispatcher._buildDeepseaChatBody({
             rendered,
             fallbackText,
