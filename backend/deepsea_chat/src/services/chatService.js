@@ -113,7 +113,7 @@ class ChatService {
       ON chat_room_user_settings (user_id)
     `);
     await pool.query(`
-      CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_rooms_bot_key
+      CREATE INDEX IF NOT EXISTS idx_chat_rooms_bot_key
       ON chat_rooms (bot_key)
       WHERE bot_key IS NOT NULL
     `);
