@@ -300,7 +300,7 @@ class ChatService {
          SELECT e.event_id, e.event_type, e.content, e.created_at
          FROM chat_events e
          WHERE e.room_id = r.room_id
-         ORDER BY e.id DESC
+         ORDER BY e.created_at DESC, e.id DESC
          LIMIT 1
        ) AS last_event ON TRUE
        WHERE ($2 = 'admin' OR vm.membership IS NOT NULL)
@@ -340,11 +340,30 @@ class ChatService {
   static async listMembers(roomId, actor) {
     await this._assertRoomVisible(roomId, actor.id);
     const result = await pool.query(
-      `SELECT room_id, user_id, membership, invited_by, joined_at, left_at, last_read_event_id, created_at, updated_at
-       , member_role
-       FROM chat_room_members
-       WHERE room_id = $1
-       ORDER BY user_id`,
+      `SELECT m.room_id,
+              m.user_id,
+              m.membership,
+              m.member_role,
+              m.invited_by,
+              m.joined_at,
+              m.left_at,
+              m.last_read_event_id,
+              m.created_at,
+              m.updated_at,
+              NULLIF(concat_ws(' ', u.last_name, u.first_name, u.middle_name), '') AS full_name,
+              u.email,
+              u.phone,
+              u.avatar_id,
+              d.name AS department_name,
+              o.name AS organization_name,
+              jt.name AS job_title_name
+       FROM chat_room_members m
+       LEFT JOIN users u ON u.id = m.user_id
+       LEFT JOIN department d ON d.id = u.department_id
+       LEFT JOIN organizations o ON o.id = u.organization_id
+       LEFT JOIN job_title jt ON jt.id = u.job_title_id
+       WHERE m.room_id = $1
+       ORDER BY m.user_id`,
       [roomId]
     );
     return result.rows;
