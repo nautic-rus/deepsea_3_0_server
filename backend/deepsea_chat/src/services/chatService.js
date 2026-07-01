@@ -327,7 +327,7 @@ class ChatService {
     if (!room) throw buildError('Room not found', 404);
 
     const settings = await this._getRoomSettings(roomId, actor.id);
-    const members = await this.listMembers(roomId, actor);
+    const members = await this.listMembers(roomId, actor, requestHeaders);
     const [decoratedRoom] = await this._decorateRooms(
       [{ ...room, ...settings, member_ids: members.map((member) => Number(member.user_id)).filter(Boolean) }],
       actor,
@@ -337,36 +337,51 @@ class ChatService {
     return { ...decoratedRoom, members };
   }
 
-  static async listMembers(roomId, actor) {
+  static async listMembers(roomId, actor, requestHeaders = {}) {
     await this._assertRoomVisible(roomId, actor.id);
     const result = await pool.query(
-      `SELECT m.room_id,
-              m.user_id,
-              m.membership,
-              m.member_role,
-              m.invited_by,
-              m.joined_at,
-              m.left_at,
-              m.last_read_event_id,
-              m.created_at,
-              m.updated_at,
-              NULLIF(concat_ws(' ', u.last_name, u.first_name, u.middle_name), '') AS full_name,
-              u.email,
-              u.phone,
-              u.avatar_id,
-              d.name AS department_name,
-              o.name AS organization_name,
-              jt.name AS job_title_name
-       FROM chat_room_members m
-       LEFT JOIN users u ON u.id = m.user_id
-       LEFT JOIN department d ON d.id = u.department_id
-       LEFT JOIN organizations o ON o.id = u.organization_id
-       LEFT JOIN job_title jt ON jt.id = u.job_title_id
-       WHERE m.room_id = $1
-       ORDER BY m.user_id`,
+      `SELECT room_id,
+              user_id,
+              membership,
+              member_role,
+              invited_by,
+              joined_at,
+              left_at,
+              last_read_event_id,
+              created_at,
+              updated_at
+       FROM chat_room_members
+       WHERE room_id = $1
+       ORDER BY user_id`,
       [roomId]
     );
-    return result.rows;
+
+    const memberRows = result.rows || [];
+    if (memberRows.length === 0) return memberRows;
+
+    const userIds = [...new Set(memberRows.map((member) => Number(member.user_id)).filter(Boolean))];
+    const usersById = await this._fetchUsersByIds(userIds, requestHeaders);
+
+    return memberRows.map((member) => {
+      const userId = Number(member.user_id);
+      const user = usersById.get(userId) || null;
+      const fullName = pickDisplayName(user, userId);
+      const login = pickLogin(user, userId);
+
+      return {
+        ...member,
+        user_id: userId,
+        login,
+        full_name: fullName,
+        display_name: fullName === login ? login : `${fullName} (${login})`,
+        email: user ? (user.email ?? null) : null,
+        phone: user ? (user.phone ?? null) : null,
+        avatar_id: user ? (user.avatar_id ?? null) : null,
+        department_name: user ? (user.department ?? null) : null,
+        organization_name: user ? (user.organization ?? null) : null,
+        job_title_name: user ? (user.job_title ?? null) : null
+      };
+    });
   }
 
   static async invite(roomId, userId, actor) {

@@ -30,7 +30,7 @@ class ChatController {
 
   static async listMembers(req, res, next) {
     try {
-      const data = await ChatService.listMembers(req.params.roomId, req.user);
+      const data = await ChatService.listMembers(req.params.roomId, req.user, req.headers || {});
       res.json({ data });
     } catch (error) {
       next(error);
