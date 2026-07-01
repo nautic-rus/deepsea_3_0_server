@@ -16,8 +16,9 @@ function parseCorsOrigins(value) {
 
 app.use(cors({
   origin: parseCorsOrigins(process.env.CHAT_CORS_ORIGINS),
+  credentials: true,
   methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'Cookie']
 }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
