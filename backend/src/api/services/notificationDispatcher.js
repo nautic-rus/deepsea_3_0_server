@@ -18,8 +18,13 @@ const TemplateService = require('./notificationTemplateService');
 const EmailService = require('./emailService');
 const RocketChatService = require('./rocketChatService');
 
-const DEEPSEA_CHAT_URL = String(process.env.DEEPSEA_CHAT_URL || process.env.CHAT_SERVICE_URL || '').replace(/\/$/, '');
-const DEEPSEA_CHAT_INTERNAL_TOKEN = String(process.env.DEEPSEA_CHAT_INTERNAL_TOKEN || process.env.CHAT_INTERNAL_TOKEN || '').trim();
+function getDeepseaChatUrl() {
+  return String(process.env.DEEPSEA_CHAT_URL || process.env.CHAT_SERVICE_URL || '').replace(/\/$/, '');
+}
+
+function getDeepseaChatInternalToken() {
+  return String(process.env.DEEPSEA_CHAT_INTERNAL_TOKEN || process.env.CHAT_INTERNAL_TOKEN || '').trim();
+}
 
 class NotificationDispatcher {
   static EXTERNAL_DUPLICATE_WINDOW_MS = 60 * 1000;
@@ -236,7 +241,10 @@ class NotificationDispatcher {
     rendered = null,
     payloadBody = null
   }) {
-    if (!DEEPSEA_CHAT_URL || !DEEPSEA_CHAT_INTERNAL_TOKEN) {
+    const deepseaChatUrl = getDeepseaChatUrl();
+    const deepseaChatInternalToken = getDeepseaChatInternalToken();
+
+    if (!deepseaChatUrl || !deepseaChatInternalToken) {
       throw new Error('deepsea_chat notification channel is not configured');
     }
 
@@ -267,11 +275,11 @@ class NotificationDispatcher {
       metadata: effectivePayloadBody.metadata
     };
 
-    const response = await fetch(`${DEEPSEA_CHAT_URL}/api/internal/bot_notifications`, {
+    const response = await fetch(`${deepseaChatUrl}/api/internal/bot_notifications`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-DeepSea-Internal-Token': DEEPSEA_CHAT_INTERNAL_TOKEN
+        'X-DeepSea-Internal-Token': deepseaChatInternalToken
       },
       body: JSON.stringify(payload)
     });

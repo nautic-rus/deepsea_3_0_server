@@ -10,7 +10,6 @@ if (!process.env.NODE_ENV) {
 
 const { initializeEnvironmentSettings } = require('./config/environmentSettings');
 const { assertJwtSecretsConfigured } = require('./utils/jwt');
-const documentUploadAggregator = require('./workers/documentUploadAggregator');
 
 async function startServer() {
   await initializeEnvironmentSettings();
@@ -21,6 +20,7 @@ async function startServer() {
 
   const app = require('./app');
   const config = require('./config');
+  const documentUploadAggregator = require('./workers/documentUploadAggregator');
 
   const port = config.port || 3000;
   const host = config.host || '0.0.0.0';
